@@ -14,6 +14,23 @@
  * limitations under the License.
  */
 
-export { ansiblePlugin, AnsiblePage } from './plugin';
-export { AnsibleLogo } from './components/AnsibleLogo';
-export { SidebarSectionLabel } from './components/SidebarSectionLabel';
+import { makeStyles, Typography } from '@material-ui/core';
+import { useSidebarOpenState } from '@backstage/core-components';
+
+const useStyles = makeStyles(theme => ({
+  label: {
+    padding: '16px 24px 4px 24px',
+    fontSize: 11,
+    fontWeight: 700,
+    textTransform: 'uppercase',
+    letterSpacing: '0.07em',
+    color: theme.palette.text.secondary,
+  },
+}));
+
+export const SidebarSectionLabel = ({ text }: { text: string }) => {
+  const classes = useStyles();
+  const { isOpen } = useSidebarOpenState();
+  if (!isOpen) return null;
+  return <Typography className={classes.label}>{text}</Typography>;
+};

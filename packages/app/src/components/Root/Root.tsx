@@ -1,11 +1,12 @@
 import { PropsWithChildren } from 'react';
-import { makeStyles, Typography } from '@material-ui/core';
+import { makeStyles } from '@material-ui/core';
 import HomeIcon from '@material-ui/icons/Home';
 import ExtensionIcon from '@material-ui/icons/Extension';
 import LibraryBooks from '@material-ui/icons/LibraryBooks';
 import CategoryIcon from '@material-ui/icons/Category';
 import LogoFull from './LogoFull';
 import LogoIcon from './LogoIcon';
+import { SidebarSectionLabel } from '@ansible/plugin-backstage-rhaap';
 import {
   Settings as SidebarSettings,
   UserSettingsSignInAvatar,
@@ -46,24 +47,6 @@ const useSidebarLogoStyles = makeStyles({
     marginLeft: 24,
   },
 });
-
-const useSectionLabelStyles = makeStyles(theme => ({
-  label: {
-    padding: '16px 24px 4px 24px',
-    fontSize: 11,
-    fontWeight: 700,
-    textTransform: 'uppercase',
-    letterSpacing: '0.07em',
-    color: theme.palette.text.secondary,
-  },
-}));
-
-const SidebarSectionLabel = ({ text }: { text: string }) => {
-  const classes = useSectionLabelStyles();
-  const { isOpen } = useSidebarOpenState();
-  if (!isOpen) return null;
-  return <Typography className={classes.label}>{text}</Typography>;
-};
 
 const SidebarLogo = () => {
   const classes = useSidebarLogoStyles();
