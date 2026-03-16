@@ -113,6 +113,7 @@ catalog:
         - API
         - Users
   # Note: No static locations needed - aap-admins group is dynamically managed by AAPEntityProvider
+  # Demo content is loaded via app-config.local.yaml (gitignored) from ~/ansible-demo-content/
   useUrlReadersSearch: true
   providers:
     rhaap:
@@ -201,9 +202,11 @@ permission:
     admin:
       users:
         - name: user:default/admin              # Bootstrap admin for initial setup
+        - name: user:development/guest          # Guest user for demo access
         - name: group:default/aap-admins        # 🚀 DYNAMIC RBAC: AAP superusers with full permissions
       superUsers:
         - name: user:default/admin              # Bootstrap admin with full permissions  
+        - name: user:development/guest          # Guest user for demo access
         - name: group:default/aap-admins        # 🚀 DYNAMIC RBAC: AAP superusers with full permissions
     # Plugins that require permission evaluation
     pluginsWithPermission:
