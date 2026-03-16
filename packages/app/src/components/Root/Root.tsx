@@ -70,7 +70,11 @@ export const Root = ({ children }: PropsWithChildren<{}>) => (
       </SidebarGroup>
       <SidebarDivider />
       <SidebarGroup label="Menu" icon={<MenuIcon />}>
-        <SidebarItem icon={HomeIcon} to="catalog" text="Projects" />
+        <SidebarItem
+          icon={HomeIcon}
+          to="/self-service/projects"
+          text="Projects"
+        />
         <SidebarItem
           icon={DashboardIcon}
           to="self-service"

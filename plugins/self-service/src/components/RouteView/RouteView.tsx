@@ -12,6 +12,7 @@ import { TaskList } from '../TaskList';
 import { CatalogItemsDetails } from '../CatalogItemDetails';
 import { EETabs } from '../ExecutionEnvironments';
 import { EEDetailsPage } from '../ExecutionEnvironments/catalog/EEDetailsPage';
+import { ProjectsTabs } from '../Projects';
 import { CollectionsCatalogPage } from '../CollectionsCatalog';
 import { CollectionDetailsPage } from '../CollectionsCatalog/CollectionDetailsPage';
 
@@ -67,6 +68,11 @@ export const RouteView = () => {
           <Route path="docs" element={<EETabs />} />
         </Route>
         <Route path="catalog/:templateName" element={<EEDetailsPage />} />
+        <Route path="projects">
+          <Route index element={<Navigate to="catalog" replace />} />
+          <Route path="catalog" element={<ProjectsTabs />} />
+          <Route path="create" element={<ProjectsTabs />} />
+        </Route>
         <Route path="collections" element={<CollectionsCatalogPage />} />
         <Route
           path="collections/:collectionName"
