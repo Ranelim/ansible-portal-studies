@@ -1,0 +1,41 @@
+# =============================================================================
+# Local Configuration for Ansible Self-Service Portal Prototype
+# =============================================================================
+#
+# Copy this file to app-config.local.yaml and fill in the placeholder values.
+# The app-config.local.yaml file is gitignored and will NOT be committed.
+#
+#   cp app-config.local.yaml.example app-config.local.yaml
+#
+# You will need credentials from an Ansible Automation Platform (AAP) instance
+# with an OAuth application configured. See PROTOTYPE-SETUP.md for details.
+# =============================================================================
+
+signInPage: guest
+
+auth:
+  environment: development
+  providers:
+    guest:
+      dangerouslyAllowOutsideDevelopment: false
+    rhaap:
+      development:
+        host: https://<AAP_HOST>
+        checkSSL: false
+        clientId: <AAP_OAUTH_CLIENT_ID>
+        clientSecret: <AAP_OAUTH_CLIENT_SECRET>
+        signIn:
+          resolvers:
+            - resolver: allowNewAAPUserSignIn
+
+ansible:
+  rhaap:
+    baseUrl: https://<AAP_HOST>
+    token: <AAP_API_TOKEN>
+    checkSSL: false
+
+catalog:
+  providers:
+    rhaap:
+      development:
+        orgs: Default
