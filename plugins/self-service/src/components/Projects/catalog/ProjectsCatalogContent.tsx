@@ -1,32 +1,34 @@
-import { useState, useEffect } from 'react';
-import { Progress, Table, TableColumn } from '@backstage/core-components';
-import {
-  CatalogFilterLayout,
-  EntityListProvider,
-  UserListPicker,
-  catalogApiRef,
-  useStarredEntities,
-} from '@backstage/plugin-catalog-react';
+import { useState, useMemo, useCallback } from 'react';
+import { Table, TableColumn } from '@backstage/core-components';
 import {
   Box,
   Button,
-  Chip,
   Typography,
   makeStyles,
+  IconButton,
+  InputBase,
+  Chip,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Checkbox,
+  ListItemText,
 } from '@material-ui/core';
-import { useApi } from '@backstage/core-plugin-api';
-import { Entity } from '@backstage/catalog-model';
-import { useNavigate } from 'react-router-dom';
-import StarBorder from '@material-ui/icons/StarBorder';
-import { TagFilterPicker } from '../../utils/TagFilterPicker';
+import SearchIcon from '@material-ui/icons/Search';
+import StarIcon from '@material-ui/icons/Star';
+import StarBorderIcon from '@material-ui/icons/StarBorder';
+import OpenInNewIcon from '@material-ui/icons/OpenInNew';
+import { PipelineStatusIcons, PipelineColumnHeader } from './PipelineStatus';
+import {
+  AapStatusIcons,
+  LastJobRunCell,
+  AapColumnHeader,
+  LastJobRunColumnHeader,
+} from './AapStatus';
+import { DEMO_PROJECTS, DemoProject } from './projectsDemoData';
 
 const useStyles = makeStyles(theme => ({
-  tagsContainer: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: theme.spacing(1),
-    alignItems: 'center',
-  },
   emptyContainer: {
     display: 'flex',
     flexDirection: 'column',
@@ -59,6 +61,52 @@ const useStyles = makeStyles(theme => ({
       backgroundColor: theme.palette.primary.dark,
     },
   },
+  toolbarRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: theme.spacing(2),
+    flexWrap: 'wrap',
+    gap: theme.spacing(1),
+  },
+  searchBox: {
+    display: 'flex',
+    alignItems: 'center',
+    border: `1px solid ${theme.palette.divider}`,
+    borderRadius: theme.shape.borderRadius,
+    padding: '2px 8px',
+    minWidth: 260,
+    backgroundColor: theme.palette.background.paper,
+  },
+  filterRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: theme.spacing(1),
+    flexWrap: 'wrap',
+  },
+  filterChip: {
+    borderRadius: 16,
+    textTransform: 'none',
+  },
+  filterSelect: {
+    minWidth: 160,
+    '& .MuiSelect-select': {
+      padding: '8px 12px',
+    },
+  },
+  projectLink: {
+    cursor: 'pointer',
+    fontWeight: 500,
+    color: theme.palette.primary.main,
+    '&:hover': {
+      textDecoration: 'underline',
+    },
+  },
+  actionsCell: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 4,
+  },
 }));
 
 const ProjectsEmptyState = ({
@@ -89,189 +137,175 @@ const ProjectsEmptyState = ({
   );
 };
 
-const ProjectsTagPicker = ({
-  entities,
-  selectedTags,
-  onTagChange,
-}: {
-  entities: Entity[];
-  selectedTags: string[];
-  onTagChange: (tags: string[]) => void;
-}) => {
-  const availableTags = Array.from(
-    new Set(entities.flatMap(e => e.metadata?.tags || [])),
-  ).sort();
+type PipelineFilter = 'all' | 'passed' | 'failed' | 'running';
 
-  if (availableTags.length === 0) return null;
-
-  return (
-    <TagFilterPicker
-      label="Tags"
-      options={availableTags}
-      value={selectedTags}
-      onChange={onTagChange}
-    />
-  );
-};
-
-const ProjectsTable = ({
-  entities,
-  loading,
-}: {
-  entities: Entity[];
-  loading: boolean;
-}) => {
-  const navigate = useNavigate();
-  const { isStarredEntity, toggleStarredEntity } = useStarredEntities();
-
-  const columns: TableColumn<Entity>[] = [
-    {
-      title: 'Name',
-      field: 'metadata.name',
-      render: (entity: Entity) => (
-        <Typography
-          variant="body2"
-          style={{ cursor: 'pointer', fontWeight: 500 }}
-          onClick={() =>
-            navigate(
-              `/catalog/default/component/${entity.metadata.name}`,
-            )
-          }
-        >
-          {entity.metadata.title || entity.metadata.name}
-        </Typography>
-      ),
-    },
-    {
-      title: 'Description',
-      field: 'metadata.description',
-      render: (entity: Entity) => (
-        <Typography variant="body2" color="textSecondary">
-          {entity.metadata.description || '—'}
-        </Typography>
-      ),
-    },
-    {
-      title: 'Owner',
-      field: 'spec.owner',
-      render: (entity: Entity) => (
-        <Typography variant="body2">
-          {(entity.spec as Record<string, string>)?.owner || '—'}
-        </Typography>
-      ),
-    },
-    {
-      title: 'Tags',
-      render: (entity: Entity) => (
-        <Box display="flex" flexWrap="wrap" style={{ gap: 4 }}>
-          {(entity.metadata.tags || []).map(tag => (
-            <Chip key={tag} label={tag} size="small" variant="outlined" />
-          ))}
-        </Box>
-      ),
-    },
-    {
-      title: 'Starred',
-      width: '60px',
-      render: (entity: Entity) => {
-        const starred = isStarredEntity(entity);
-        return (
-          <Box
-            style={{ cursor: 'pointer' }}
-            onClick={() => toggleStarredEntity(entity)}
-          >
-            {starred ? (
-              <StarBorder style={{ color: '#faaf00' }} />
-            ) : (
-              <StarBorder />
-            )}
-          </Box>
-        );
-      },
-    },
-  ];
-
-  if (loading) return <Progress />;
-
-  return (
-    <Table
-      columns={columns}
-      data={entities}
-      title="Projects"
-      options={{
-        paging: true,
-        pageSize: 20,
-        search: true,
-        sorting: true,
-      }}
-    />
-  );
-};
-
-const ProjectsListPage = ({
+const ProjectsCatalogTable = ({
   onTabSwitch,
 }: {
   onTabSwitch: (index: number) => void;
 }) => {
-  const catalogApi = useApi(catalogApiRef);
-  const [entities, setEntities] = useState<Entity[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const classes = useStyles();
+  const [projects, setProjects] = useState<DemoProject[]>(DEMO_PROJECTS);
+  const [searchText, setSearchText] = useState('');
+  const [pipelineFilter, setPipelineFilter] = useState<PipelineFilter>('all');
+  const [aapFilter, setAapFilter] = useState<string[]>([]);
 
-  useEffect(() => {
-    let cancelled = false;
-    catalogApi
-      .getEntities({
-        filter: [{ kind: 'Component', 'spec.type': 'service' }],
-      })
-      .then(response => {
-        if (cancelled) return;
-        const projectEntities = response.items.filter(
-          e =>
-            e.metadata.tags?.includes('ansible') &&
-            !(e.spec as Record<string, string>)?.type?.includes(
-              'execution-environment',
-            ),
-        );
-        setEntities(projectEntities);
-        setLoading(false);
-      })
-      .catch(() => {
-        if (!cancelled) setLoading(false);
+  const toggleStar = useCallback((name: string) => {
+    setProjects(prev =>
+      prev.map(p => (p.name === name ? { ...p, starred: !p.starred } : p)),
+    );
+  }, []);
+
+  const filteredProjects = useMemo(() => {
+    let result = projects;
+
+    if (searchText) {
+      const lower = searchText.toLowerCase();
+      result = result.filter(p => p.name.toLowerCase().includes(lower));
+    }
+
+    if (pipelineFilter !== 'all') {
+      result = result.filter(p => {
+        if (pipelineFilter === 'passed')
+          return p.pipeline.every(s => s.status === 'passed');
+        if (pipelineFilter === 'failed')
+          return p.pipeline.some(s => s.status === 'failed');
+        if (pipelineFilter === 'running')
+          return p.pipeline.some(s => s.status === 'running');
+        return true;
       });
-    return () => {
-      cancelled = true;
-    };
-  }, [catalogApi]);
+    }
 
-  const filteredEntities =
-    selectedTags.length > 0
-      ? entities.filter(e =>
-          selectedTags.some(tag => e.metadata.tags?.includes(tag)),
-        )
-      : entities;
+    if (aapFilter.length > 0) {
+      result = result.filter(p => {
+        if (aapFilter.includes('synced'))
+          return (
+            p.aap.project === 'synced' && p.aap.jobTemplate === 'synced'
+          );
+        if (aapFilter.includes('pending'))
+          return (
+            p.aap.project === 'pending' || p.aap.jobTemplate === 'pending'
+          );
+        return true;
+      });
+    }
 
-  if (!loading && entities.length === 0) {
+    return result;
+  }, [projects, searchText, pipelineFilter, aapFilter]);
+
+  const columns: TableColumn<DemoProject>[] = [
+    {
+      title: 'Name',
+      field: 'name',
+      render: (row: DemoProject) => (
+        <Typography variant="body2" className={classes.projectLink}>
+          {row.title}
+        </Typography>
+      ),
+    },
+    {
+      title: (<PipelineColumnHeader />) as unknown as string,
+      sorting: false,
+      render: (row: DemoProject) => (
+        <PipelineStatusIcons
+          stages={row.pipeline}
+          pipelineType={row.pipelineType}
+        />
+      ),
+    },
+    {
+      title: (<AapColumnHeader />) as unknown as string,
+      sorting: false,
+      render: (row: DemoProject) => <AapStatusIcons aap={row.aap} />,
+    },
+    {
+      title: (<LastJobRunColumnHeader />) as unknown as string,
+      sorting: false,
+      render: (row: DemoProject) => <LastJobRunCell jobRun={row.lastJobRun} />,
+    },
+    {
+      title: '',
+      width: '100px',
+      sorting: false,
+      render: (row: DemoProject) => (
+        <Box className={classes.actionsCell}>
+          <IconButton size="small" onClick={() => toggleStar(row.name)}>
+            {row.starred ? (
+              <StarIcon style={{ color: '#faaf00' }} />
+            ) : (
+              <StarBorderIcon />
+            )}
+          </IconButton>
+          <IconButton size="small">
+            <OpenInNewIcon fontSize="small" />
+          </IconButton>
+        </Box>
+      ),
+    },
+  ];
+
+  if (projects.length === 0) {
     return <ProjectsEmptyState onTabSwitch={onTabSwitch} />;
   }
 
   return (
-    <CatalogFilterLayout>
-      <CatalogFilterLayout.Filters>
-        <UserListPicker
-          initialFilter="all"
-          availableFilters={['all', 'starred']}
-        />
-        <ProjectsTagPicker
-          entities={entities}
-          selectedTags={selectedTags}
-          onTagChange={setSelectedTags}
-        />
-      </CatalogFilterLayout.Filters>
-      <CatalogFilterLayout.Content>
-        <ProjectsTable entities={filteredEntities} loading={loading} />
-      </CatalogFilterLayout.Content>
-    </CatalogFilterLayout>
+    <Box>
+      <Box className={classes.toolbarRow}>
+        <Box className={classes.searchBox}>
+          <SearchIcon style={{ color: '#999', marginRight: 4 }} />
+          <InputBase
+            placeholder="Search projects..."
+            value={searchText}
+            onChange={e => setSearchText(e.target.value)}
+            fullWidth
+          />
+        </Box>
+        <Box className={classes.filterRow}>
+          {(['all', 'passed', 'failed', 'running'] as PipelineFilter[]).map(
+            f => (
+              <Chip
+                key={f}
+                label={f === 'all' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1)}
+                onClick={() => setPipelineFilter(f)}
+                variant={pipelineFilter === f ? 'default' : 'outlined'}
+                color={pipelineFilter === f ? 'primary' : 'default'}
+                className={classes.filterChip}
+                size="small"
+              />
+            ),
+          )}
+          <FormControl variant="outlined" size="small" className={classes.filterSelect}>
+            <InputLabel>AAP Status</InputLabel>
+            <Select
+              multiple
+              value={aapFilter}
+              onChange={e => setAapFilter(e.target.value as string[])}
+              label="AAP Status"
+              renderValue={(selected) => (selected as string[]).join(', ')}
+            >
+              {['synced', 'pending'].map(opt => (
+                <MenuItem key={opt} value={opt}>
+                  <Checkbox checked={aapFilter.includes(opt)} size="small" />
+                  <ListItemText primary={opt.charAt(0).toUpperCase() + opt.slice(1)} />
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Box>
+      </Box>
+      <Table<DemoProject>
+        columns={columns}
+        data={filteredProjects}
+        title={`Projects (${filteredProjects.length})`}
+        options={{
+          paging: true,
+          pageSize: 20,
+          search: false,
+          sorting: true,
+          padding: 'dense',
+        }}
+      />
+    </Box>
   );
 };
 
@@ -280,9 +314,5 @@ export const ProjectsCatalogContent = ({
 }: {
   onTabSwitch: (index: number) => void;
 }) => {
-  return (
-    <EntityListProvider>
-      <ProjectsListPage onTabSwitch={onTabSwitch} />
-    </EntityListProvider>
-  );
+  return <ProjectsCatalogTable onTabSwitch={onTabSwitch} />;
 };
