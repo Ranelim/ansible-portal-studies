@@ -80,7 +80,6 @@ const app = createApp({
         {...props}
         align="center"
         title="Select a sign-in method"
-        auto
         providers={['guest', ...providers]}
       />
     ),

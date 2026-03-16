@@ -1,9 +1,8 @@
 import { PropsWithChildren } from 'react';
-import { makeStyles } from '@material-ui/core';
+import { makeStyles, Typography } from '@material-ui/core';
 import HomeIcon from '@material-ui/icons/Home';
 import ExtensionIcon from '@material-ui/icons/Extension';
 import LibraryBooks from '@material-ui/icons/LibraryBooks';
-import CreateComponentIcon from '@material-ui/icons/AddCircleOutline';
 import CategoryIcon from '@material-ui/icons/Category';
 import LogoFull from './LogoFull';
 import LogoIcon from './LogoIcon';
@@ -26,10 +25,12 @@ import {
 } from '@backstage/core-components';
 import MenuIcon from '@material-ui/icons/Menu';
 import SearchIcon from '@material-ui/icons/Search';
-import { MyGroupsSidebarItem } from '@backstage/plugin-org';
-import GroupIcon from '@material-ui/icons/People';
-import { AnsibleLogo } from '@ansible/plugin-backstage-rhaap';
-import { Administration } from '@backstage-community/plugin-rbac';
+import DashboardIcon from '@material-ui/icons/Dashboard';
+import WebAssetIcon from '@material-ui/icons/WebAsset';
+import MemoryIcon from '@material-ui/icons/Memory';
+import SchoolIcon from '@material-ui/icons/School';
+import SettingsIcon from '@material-ui/icons/Settings';
+import VpnKeyIcon from '@material-ui/icons/VpnKey';
 
 const useSidebarLogoStyles = makeStyles({
   root: {
@@ -45,6 +46,24 @@ const useSidebarLogoStyles = makeStyles({
     marginLeft: 24,
   },
 });
+
+const useSectionLabelStyles = makeStyles(theme => ({
+  label: {
+    padding: '16px 24px 4px 24px',
+    fontSize: 11,
+    fontWeight: 700,
+    textTransform: 'uppercase',
+    letterSpacing: '0.07em',
+    color: theme.palette.text.secondary,
+  },
+}));
+
+const SidebarSectionLabel = ({ text }: { text: string }) => {
+  const classes = useSectionLabelStyles();
+  const { isOpen } = useSidebarOpenState();
+  if (!isOpen) return null;
+  return <Typography className={classes.label}>{text}</Typography>;
+};
 
 const SidebarLogo = () => {
   const classes = useSidebarLogoStyles();
@@ -68,46 +87,46 @@ export const Root = ({ children }: PropsWithChildren<{}>) => (
       </SidebarGroup>
       <SidebarDivider />
       <SidebarGroup label="Menu" icon={<MenuIcon />}>
-        {/* Global nav, not org-specific */}
-        <SidebarItem icon={HomeIcon} to="catalog" text="Home" />
-        <MyGroupsSidebarItem
-          singularTitle="My Group"
-          pluralTitle="My Groups"
-          icon={GroupIcon}
+        <SidebarItem icon={HomeIcon} to="catalog" text="Projects" />
+        <SidebarItem
+          icon={DashboardIcon}
+          to="self-service"
+          text="Software Templates"
         />
-        <SidebarItem icon={ExtensionIcon} to="api-docs" text="APIs" />
-        <SidebarItem icon={LibraryBooks} to="docs" text="Docs" />
-        <SidebarItem icon={CreateComponentIcon} to="create" text="Create..." />
-        {/* End global nav */}
+        <SidebarItem
+          icon={WebAssetIcon}
+          to="ansible/overview"
+          text="Workspaces"
+        />
+        <SidebarDivider />
+        <SidebarSectionLabel text="Shared Assets" />
+        <SidebarItem
+          icon={MemoryIcon}
+          to="/self-service/ee"
+          text="Execution Environments"
+        />
+        <SidebarItem
+          icon={CategoryIcon}
+          to="/self-service/collections"
+          text="Collections"
+        />
+        <SidebarDivider />
+        <SidebarSectionLabel text="Learn" />
+        <SidebarItem icon={LibraryBooks} to="docs" text="Documentation" />
+        <SidebarItem icon={SchoolIcon} to="docs" text="Training" />
         <SidebarDivider />
         <SidebarScrollWrapper>
-          {/* Items in this group will be scrollable if they run out of space */}
+          <SidebarSectionLabel text="Administration" />
+          <SidebarItem icon={SettingsIcon} to="settings" text="General" />
           <SidebarItem
-            icon={AnsibleLogo}
-            to="ansible/overview"
-            text="Ansible"
+            icon={ExtensionIcon}
+            to="settings"
+            text="Integrations"
           />
-          <SidebarItem
-            icon={AnsibleLogo}
-            to="self-service"
-            text="Self Service"
-          />
-          <SidebarItem
-            icon={MenuIcon}
-            to="/self-service/ee"
-            text="Execution Environments"
-          />
-          <SidebarItem
-            icon={CategoryIcon}
-            to="/self-service/collections"
-            text="Collections"
-          />
+          <SidebarItem icon={VpnKeyIcon} to="rbac" text="Access Control" />
         </SidebarScrollWrapper>
       </SidebarGroup>
       <SidebarSpace />
-      <SidebarDivider />
-      <Administration />
-      <SidebarDivider />
       <SidebarGroup
         label="Settings"
         icon={<UserSettingsSignInAvatar />}
