@@ -481,10 +481,36 @@ const SourceCodeStep = ({
         </Select>
       </FormControl>
 
+      {/* Create new repository checkbox -- placed above repo field since it changes the UI below */}
+      <FormControlLabel
+        className={classes.createNewCheckbox}
+        control={
+          <Checkbox
+            checked={form.createNewRepository}
+            onChange={e =>
+              setForm(prev => ({
+                ...prev,
+                createNewRepository: e.target.checked,
+                selectedExistingRepo: '',
+              }))
+            }
+            color="primary"
+            size="small"
+          />
+        }
+        label={
+          <Typography variant="body2">
+            Create new repository
+          </Typography>
+        }
+      />
+
       {/* Repository selection (existing repos) -- hidden when "create new" is checked */}
       {!form.createNewRepository && (
-        <FormControl variant="outlined" fullWidth style={{ marginBottom: 8 }}>
-          <InputLabel>Repository</InputLabel>
+        <FormControl variant="outlined" fullWidth style={{ marginTop: 8 }}>
+          <InputLabel shrink={Boolean(form.selectedExistingRepo)}>
+            Repository
+          </InputLabel>
           <Select
             value={form.selectedExistingRepo}
             onChange={e =>
@@ -494,13 +520,7 @@ const SourceCodeStep = ({
               }))
             }
             label="Repository"
-            displayEmpty
           >
-            <MenuItem value="" disabled>
-              <Typography variant="body2" color="textSecondary">
-                Select a synced repository...
-              </Typography>
-            </MenuItem>
             {SYNCED_REPOS.filter(
               r =>
                 (form.sourceControlProvider === 'Github' &&
@@ -529,30 +549,6 @@ const SourceCodeStep = ({
           </Select>
         </FormControl>
       )}
-
-      {/* Create new repository checkbox */}
-      <FormControlLabel
-        className={classes.createNewCheckbox}
-        control={
-          <Checkbox
-            checked={form.createNewRepository}
-            onChange={e =>
-              setForm(prev => ({
-                ...prev,
-                createNewRepository: e.target.checked,
-                selectedExistingRepo: '',
-              }))
-            }
-            color="primary"
-            size="small"
-          />
-        }
-        label={
-          <Typography variant="body2">
-            Create new repository
-          </Typography>
-        }
-      />
 
       {/* New repo fields */}
       {form.createNewRepository && (
