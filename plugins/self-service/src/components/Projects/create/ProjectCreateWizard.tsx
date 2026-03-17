@@ -1,12 +1,21 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import {
   Box,
   Button,
+  Checkbox,
   Chip,
+  Collapse,
   Divider,
   FormControl,
   FormControlLabel,
+  IconButton,
+  InputBase,
   InputLabel,
+  Link,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
   MenuItem,
   Radio,
   Select,
@@ -15,13 +24,77 @@ import {
   StepLabel,
   Switch,
   TextField,
+  Tooltip,
   Typography,
   makeStyles,
 } from '@material-ui/core';
 import ArrowBackIcon from '@material-ui/icons/ArrowBack';
 import CheckCircleIcon from '@material-ui/icons/CheckCircle';
 import RadioButtonUncheckedIcon from '@material-ui/icons/RadioButtonUnchecked';
+import SearchIcon from '@material-ui/icons/Search';
+import EditIcon from '@material-ui/icons/Edit';
+import LockIcon from '@material-ui/icons/Lock';
+import GitHubIcon from '@material-ui/icons/GitHub';
+import AddIcon from '@material-ui/icons/Add';
+import FolderIcon from '@material-ui/icons/Folder';
+import InfoOutlinedIcon from '@material-ui/icons/InfoOutlined';
 import type { DemoTemplate } from './templatesDemoData';
+import {
+  SYNCED_REPOS,
+  CUSTOM_PIPELINE_STAGES,
+  COMPREHENSIVE_STAGES,
+  STANDARD_STAGES,
+} from './templatesDemoData';
+
+// ─── Shared wizard form state ─────────────────────────────────────────────────
+
+type WizardFormState = {
+  serviceName: string;
+  serviceDescription: string;
+  owner: string;
+  aiPrompt: string;
+  aiGenerated: boolean;
+  repoMode: 'new' | 'existing';
+  newRepoOrg: string;
+  newRepoName: string;
+  newRepoVisibility: string;
+  existingRepoUrl: string;
+  existingRepoName: string;
+  defaultBranch: string;
+  pipelineType: string;
+  customStages: string[];
+  aapController: string;
+  aapOrganization: string;
+  executionEnvironment: string;
+  autoCreateProject: boolean;
+  autoCreateJobTemplate: boolean;
+  aapOverride: boolean;
+};
+
+const createInitialState = (template: DemoTemplate): WizardFormState => ({
+  serviceName: '',
+  serviceDescription: '',
+  owner: 'platform-engineering',
+  aiPrompt: '',
+  aiGenerated: false,
+  repoMode: 'new',
+  newRepoOrg: 'acme-corp',
+  newRepoName: '',
+  newRepoVisibility: 'private',
+  existingRepoUrl: '',
+  existingRepoName: '',
+  defaultBranch: 'main',
+  pipelineType: template.defaultPipeline,
+  customStages: ['syntax', 'lint', 'policy'],
+  aapController: 'prod-controller',
+  aapOrganization: 'Default',
+  executionEnvironment: 'ee-supported',
+  autoCreateProject: true,
+  autoCreateJobTemplate: true,
+  aapOverride: false,
+});
+
+// ─── Styles ───────────────────────────────────────────────────────────────────
 
 const useStyles = makeStyles(theme => ({
   root: {
@@ -75,29 +148,6 @@ const useStyles = makeStyles(theme => ({
     fontSize: 14,
     marginBottom: theme.spacing(3),
   },
-  fieldGroup: {
-    marginBottom: theme.spacing(3),
-  },
-  aiBox: {
-    border: `2px solid ${theme.palette.primary.main}`,
-    borderRadius: theme.shape.borderRadius,
-    padding: theme.spacing(2),
-    marginBottom: theme.spacing(3),
-  },
-  aiHeader: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: theme.spacing(1),
-    marginBottom: theme.spacing(1),
-    fontWeight: 600,
-    color: theme.palette.primary.main,
-  },
-  aiButton: {
-    textTransform: 'none',
-    fontWeight: 600,
-    borderRadius: 16,
-    marginTop: theme.spacing(1),
-  },
   actions: {
     display: 'flex',
     justifyContent: 'flex-end',
@@ -110,9 +160,113 @@ const useStyles = makeStyles(theme => ({
     borderRadius: 20,
     padding: '8px 28px',
   },
+  nextButtonDisabled: {
+    opacity: 0.5,
+  },
   prevButton: {
     textTransform: 'none',
   },
+
+  // AI Jumpstart
+  aiBox: {
+    border: `2px solid ${theme.palette.primary.main}`,
+    borderRadius: theme.shape.borderRadius,
+    padding: theme.spacing(2.5),
+    marginBottom: theme.spacing(3),
+    position: 'relative' as const,
+  },
+  aiHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: theme.spacing(1),
+    marginBottom: theme.spacing(0.5),
+    fontWeight: 600,
+    fontSize: 15,
+    color: theme.palette.primary.main,
+  },
+  aiHint: {
+    color: theme.palette.text.secondary,
+    fontSize: 12,
+    marginBottom: theme.spacing(1.5),
+  },
+  aiButton: {
+    textTransform: 'none',
+    fontWeight: 600,
+    borderRadius: 16,
+    marginTop: theme.spacing(1),
+  },
+  aiFilledField: {
+    '& .MuiOutlinedInput-root': {
+      backgroundColor:
+        theme.palette.type === 'dark'
+          ? 'rgba(25, 118, 210, 0.08)'
+          : 'rgba(25, 118, 210, 0.04)',
+    },
+  },
+  orDivider: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: theme.spacing(2),
+    margin: theme.spacing(2, 0),
+    '& hr': {
+      flex: 1,
+    },
+  },
+
+  // Source Code
+  repoModeToggle: {
+    display: 'flex',
+    gap: theme.spacing(1),
+    marginBottom: theme.spacing(3),
+  },
+  repoModeButton: {
+    flex: 1,
+    textTransform: 'none',
+    padding: theme.spacing(1.5),
+    borderRadius: theme.shape.borderRadius,
+    border: `1px solid ${theme.palette.divider}`,
+    justifyContent: 'flex-start',
+    gap: theme.spacing(1),
+  },
+  repoModeButtonActive: {
+    borderColor: theme.palette.primary.main,
+    borderWidth: 2,
+    backgroundColor:
+      theme.palette.type === 'dark'
+        ? 'rgba(25, 118, 210, 0.08)'
+        : 'rgba(25, 118, 210, 0.04)',
+  },
+  repoSearchBox: {
+    display: 'flex',
+    alignItems: 'center',
+    border: `1px solid ${theme.palette.divider}`,
+    borderRadius: theme.shape.borderRadius,
+    padding: '4px 12px',
+    marginBottom: theme.spacing(2),
+    backgroundColor: theme.palette.background.default,
+  },
+  repoList: {
+    maxHeight: 240,
+    overflow: 'auto',
+    border: `1px solid ${theme.palette.divider}`,
+    borderRadius: theme.shape.borderRadius,
+    marginBottom: theme.spacing(2),
+  },
+  repoItem: {
+    cursor: 'pointer',
+    '&:hover': {
+      backgroundColor: theme.palette.action.hover,
+    },
+  },
+  repoItemSelected: {
+    backgroundColor:
+      theme.palette.type === 'dark'
+        ? 'rgba(25, 118, 210, 0.12)'
+        : 'rgba(25, 118, 210, 0.06)',
+    borderLeft: `3px solid ${theme.palette.primary.main}`,
+  },
+
+  // Pipeline
   pipelineOption: {
     border: `1px solid ${theme.palette.divider}`,
     borderRadius: theme.shape.borderRadius,
@@ -127,9 +281,10 @@ const useStyles = makeStyles(theme => ({
   pipelineOptionSelected: {
     borderColor: theme.palette.primary.main,
     borderWidth: 2,
-    backgroundColor: theme.palette.type === 'dark'
-      ? 'rgba(25, 118, 210, 0.08)'
-      : 'rgba(25, 118, 210, 0.04)',
+    backgroundColor:
+      theme.palette.type === 'dark'
+        ? 'rgba(25, 118, 210, 0.08)'
+        : 'rgba(25, 118, 210, 0.04)',
   },
   pipelineTitle: {
     fontWeight: 600,
@@ -141,18 +296,93 @@ const useStyles = makeStyles(theme => ({
     lineHeight: 1.5,
     margin: theme.spacing(0.5, 0, 1, 0),
   },
-  pipelineStages: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 4,
-    marginBottom: theme.spacing(0.5),
-  },
   stageLabels: {
     color: theme.palette.text.secondary,
     fontSize: 11,
   },
+  pipelineInfoBar: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: theme.spacing(1),
+    padding: theme.spacing(1.5),
+    backgroundColor:
+      theme.palette.type === 'dark'
+        ? 'rgba(255,255,255,0.04)'
+        : 'rgba(0,0,0,0.02)',
+    borderRadius: theme.shape.borderRadius,
+    marginBottom: theme.spacing(2),
+    fontSize: 12,
+    color: theme.palette.text.secondary,
+  },
+  customStageItem: {
+    borderBottom: `1px solid ${theme.palette.divider}`,
+    padding: theme.spacing(1, 2),
+    '&:last-child': {
+      borderBottom: 'none',
+    },
+  },
+
+  // AAP Destination
+  defaultsCard: {
+    border: `1px solid ${theme.palette.divider}`,
+    borderRadius: theme.shape.borderRadius,
+    padding: theme.spacing(2),
+    backgroundColor:
+      theme.palette.type === 'dark'
+        ? 'rgba(255,255,255,0.02)'
+        : 'rgba(0,0,0,0.01)',
+  },
+  defaultRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: theme.spacing(1, 0),
+  },
+  defaultLabel: {
+    color: theme.palette.text.secondary,
+    fontSize: 13,
+  },
+  defaultValue: {
+    fontWeight: 500,
+    fontSize: 14,
+    display: 'flex',
+    alignItems: 'center',
+    gap: 4,
+  },
+
+  // Review
+  reviewSection: {
+    border: `1px solid ${theme.palette.divider}`,
+    borderRadius: theme.shape.borderRadius,
+    padding: theme.spacing(2),
+    marginBottom: theme.spacing(2),
+  },
+  reviewSectionTitle: {
+    fontWeight: 600,
+    fontSize: 14,
+    marginBottom: theme.spacing(1),
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  reviewRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    padding: theme.spacing(0.5, 0),
+  },
+  reviewLabel: {
+    color: theme.palette.text.secondary,
+    fontSize: 13,
+  },
+  reviewValue: {
+    fontSize: 13,
+    fontWeight: 500,
+    textAlign: 'right' as const,
+  },
+
+  // Success
   successContainer: {
-    textAlign: 'center',
+    textAlign: 'center' as const,
     padding: theme.spacing(6, 2),
   },
   successIcon: {
@@ -162,262 +392,870 @@ const useStyles = makeStyles(theme => ({
   },
 }));
 
-const COMPREHENSIVE_STAGES = [
-  'Commit', 'Lint', 'Policy Check', 'EE Compatibility', 'Integration Test', 'Pushed to AAP',
-];
-const STANDARD_STAGES = [
-  'Commit', 'Lint', 'Policy Check', 'EE Compatibility', 'Pushed to AAP',
-];
+// ─── Stage Icons ──────────────────────────────────────────────────────────────
 
-const PipelineStageIcons = ({ count }: { count: number }) => (
+const StageIconRow = ({
+  stages,
+  tooltips,
+}: {
+  stages: string[];
+  tooltips?: boolean;
+}) => (
   <Box display="flex" alignItems="center" style={{ gap: 3 }}>
-    {Array.from({ length: count }).map((_, i) => (
-      <CheckCircleIcon key={i} style={{ color: '#4caf50', fontSize: 20 }} />
+    {stages.map((stage, i) => (
+      <Tooltip key={i} title={tooltips ? stage : ''}>
+        <CheckCircleIcon style={{ color: '#4caf50', fontSize: 20 }} />
+      </Tooltip>
     ))}
   </Box>
 );
 
-const CustomStageIcons = ({ count }: { count: number }) => (
-  <Box display="flex" alignItems="center" style={{ gap: 3 }}>
-    {Array.from({ length: count }).map((_, i) => (
-      <RadioButtonUncheckedIcon key={i} style={{ color: '#bdbdbd', fontSize: 20 }} />
-    ))}
-  </Box>
-);
+// ─── Step 1: Details & AI Jumpstart ───────────────────────────────────────────
 
-// Step 1: Details & AI Jumpstart
-const DetailsStep = ({ template }: { template: DemoTemplate }) => {
+const DetailsStep = ({
+  form,
+  setForm,
+  template,
+}: {
+  form: WizardFormState;
+  setForm: React.Dispatch<React.SetStateAction<WizardFormState>>;
+  template: DemoTemplate;
+}) => {
   const classes = useStyles();
+
+  const handleAiGenerate = () => {
+    if (!form.aiPrompt.trim()) return;
+    setForm(prev => ({
+      ...prev,
+      aiGenerated: true,
+      serviceName: 'ai-generated-project',
+      serviceDescription: `Auto-generated: ${prev.aiPrompt.slice(0, 80)}`,
+    }));
+  };
+
   return (
     <Box>
       <Box className={classes.aiBox}>
         <Typography className={classes.aiHeader}>
           Lightspeed AI Jumpstart
         </Typography>
+        <Typography className={classes.aiHint}>
+          Describe what you want to build and we'll pre-fill all wizard steps
+          for your review. You can adjust any generated value before creating.
+        </Typography>
         <TextField
           variant="outlined"
           fullWidth
           multiline
           rows={3}
-          placeholder={`Describe the service you want to build (e.g., "Create a new ${template.title} in GitHub").`}
+          placeholder={`e.g., "Create a new ${template.title} to automate RHEL patching across 3 data centers"`}
+          value={form.aiPrompt}
+          onChange={e => setForm(prev => ({ ...prev, aiPrompt: e.target.value }))}
         />
         <Button
           variant="contained"
           color="primary"
           size="small"
           className={classes.aiButton}
+          onClick={handleAiGenerate}
+          disabled={!form.aiPrompt.trim()}
         >
           Generate settings with AI
         </Button>
       </Box>
-      <Divider />
-      <Typography variant="subtitle2" style={{ margin: '16px 0 12px' }}>
-        Manual configuration
-      </Typography>
-      <Box className={classes.fieldGroup}>
-        <TextField
-          label="Service name"
-          variant="outlined"
-          fullWidth
-          required
-          helperText="Lowercase letters, numbers, and hyphens only"
-          style={{ marginBottom: 16 }}
-        />
-        <TextField
-          label="Service description"
-          variant="outlined"
-          fullWidth
-          required
-          style={{ marginBottom: 16 }}
-        />
-        <TextField
-          label="Owner"
-          variant="outlined"
-          fullWidth
-          defaultValue={template.owner.replace('group:default/', '')}
-        />
-      </Box>
-    </Box>
-  );
-};
 
-// Step 2: Source Code (Git)
-const SourceCodeStep = () => {
-  const classes = useStyles();
-  return (
-    <Box>
-      <Box className={classes.fieldGroup}>
-        <TextField
-          label="Repository Location"
-          variant="outlined"
-          fullWidth
-          required
-          placeholder="github.com / my-org / project-name"
-          style={{ marginBottom: 16 }}
-        />
-        <FormControl variant="outlined" fullWidth style={{ marginBottom: 16 }}>
-          <InputLabel>Repository Visibility</InputLabel>
-          <Select defaultValue="private" label="Repository Visibility">
-            <MenuItem value="public">Public</MenuItem>
-            <MenuItem value="private">Private</MenuItem>
-            <MenuItem value="internal">Internal</MenuItem>
-          </Select>
-        </FormControl>
-        <TextField
-          label="Default Branch"
-          variant="outlined"
-          fullWidth
-          defaultValue="main"
-          style={{ marginBottom: 16 }}
-        />
-      </Box>
-      <Divider />
-      <Typography variant="subtitle2" style={{ margin: '16px 0 12px' }}>
-        Optional scaffolding
-      </Typography>
-      <Box display="flex" flexDirection="column" style={{ gap: 4 }}>
-        <FormControlLabel
-          control={<Switch defaultChecked color="primary" />}
-          label="Include Ansible Lint config"
-        />
-        <FormControlLabel
-          control={<Switch defaultChecked color="primary" />}
-          label="Include Molecule testing"
-        />
-      </Box>
-    </Box>
-  );
-};
-
-// Step 3: Pipeline & Governance
-const PipelineStep = ({ template }: { template: DemoTemplate }) => {
-  const classes = useStyles();
-  const [selected, setSelected] = useState<string>(template.defaultPipeline);
-
-  return (
-    <Box>
-      <Box
-        className={`${classes.pipelineOption} ${selected === 'comprehensive' ? classes.pipelineOptionSelected : ''}`}
-        onClick={() => setSelected('comprehensive')}
-      >
-        <FormControlLabel
-          value="comprehensive"
-          control={<Radio checked={selected === 'comprehensive'} color="primary" />}
-          label=""
-          style={{ marginRight: 0 }}
-        />
-        <Typography className={classes.pipelineTitle} component="span">
-          Comprehensive pipeline (recommended)
+      <Box className={classes.orDivider}>
+        <Divider />
+        <Typography variant="body2" color="textSecondary">
+          or fill in manually
         </Typography>
+        <Divider />
+      </Box>
+
+      <TextField
+        label="Service name"
+        variant="outlined"
+        fullWidth
+        required
+        value={form.serviceName}
+        onChange={e => setForm(prev => ({ ...prev, serviceName: e.target.value }))}
+        helperText="Lowercase letters, numbers, and hyphens only"
+        className={form.aiGenerated ? classes.aiFilledField : undefined}
+        style={{ marginBottom: 16 }}
+      />
+      <TextField
+        label="Service description"
+        variant="outlined"
+        fullWidth
+        required
+        value={form.serviceDescription}
+        onChange={e =>
+          setForm(prev => ({ ...prev, serviceDescription: e.target.value }))
+        }
+        className={form.aiGenerated ? classes.aiFilledField : undefined}
+        style={{ marginBottom: 16 }}
+      />
+      <TextField
+        label="Owner (auto-detected from your team)"
+        variant="outlined"
+        fullWidth
+        value={form.owner}
+        onChange={e => setForm(prev => ({ ...prev, owner: e.target.value }))}
+        helperText="Pre-filled from your team membership. Change only if you belong to multiple teams."
+        InputProps={{ style: { color: '#888' } }}
+      />
+    </Box>
+  );
+};
+
+// ─── Step 2: Source Code (Git) ────────────────────────────────────────────────
+
+const SourceCodeStep = ({
+  form,
+  setForm,
+}: {
+  form: WizardFormState;
+  setForm: React.Dispatch<React.SetStateAction<WizardFormState>>;
+}) => {
+  const classes = useStyles();
+  const [repoSearch, setRepoSearch] = useState('');
+
+  const filteredRepos = useMemo(() => {
+    if (!repoSearch) return SYNCED_REPOS;
+    const lower = repoSearch.toLowerCase();
+    return SYNCED_REPOS.filter(
+      r =>
+        r.name.toLowerCase().includes(lower) ||
+        r.org.toLowerCase().includes(lower),
+    );
+  }, [repoSearch]);
+
+  return (
+    <Box>
+      <Box className={classes.repoModeToggle}>
+        <Button
+          className={`${classes.repoModeButton} ${form.repoMode === 'new' ? classes.repoModeButtonActive : ''}`}
+          onClick={() => setForm(prev => ({ ...prev, repoMode: 'new' }))}
+          startIcon={<AddIcon />}
+        >
+          <Box textAlign="left">
+            <Typography variant="body2" style={{ fontWeight: 600 }}>
+              Create new repository
+            </Typography>
+            <Typography variant="caption" color="textSecondary">
+              Scaffold a fresh repo with the template structure
+            </Typography>
+          </Box>
+        </Button>
+        <Button
+          className={`${classes.repoModeButton} ${form.repoMode === 'existing' ? classes.repoModeButtonActive : ''}`}
+          onClick={() => setForm(prev => ({ ...prev, repoMode: 'existing' }))}
+          startIcon={<FolderIcon />}
+        >
+          <Box textAlign="left">
+            <Typography variant="body2" style={{ fontWeight: 600 }}>
+              Use existing repository
+            </Typography>
+            <Typography variant="caption" color="textSecondary">
+              Select a synced repo and add pipeline + catalog
+            </Typography>
+          </Box>
+        </Button>
+      </Box>
+
+      {form.repoMode === 'new' ? (
+        <Box>
+          <Box display="flex" style={{ gap: 12, marginBottom: 16 }}>
+            <FormControl variant="outlined" style={{ minWidth: 180 }}>
+              <InputLabel>Organization</InputLabel>
+              <Select
+                value={form.newRepoOrg}
+                onChange={e =>
+                  setForm(prev => ({
+                    ...prev,
+                    newRepoOrg: e.target.value as string,
+                  }))
+                }
+                label="Organization"
+              >
+                <MenuItem value="acme-corp">acme-corp</MenuItem>
+                <MenuItem value="platform-team">platform-team</MenuItem>
+              </Select>
+            </FormControl>
+            <Typography
+              variant="h6"
+              style={{ alignSelf: 'center', color: '#999' }}
+            >
+              /
+            </Typography>
+            <TextField
+              label="Repository name"
+              variant="outlined"
+              fullWidth
+              required
+              value={form.newRepoName}
+              onChange={e =>
+                setForm(prev => ({ ...prev, newRepoName: e.target.value }))
+              }
+              placeholder="my-automation-project"
+            />
+          </Box>
+          <Box display="flex" style={{ gap: 12, marginBottom: 16 }}>
+            <FormControl variant="outlined" style={{ minWidth: 180 }}>
+              <InputLabel>Visibility</InputLabel>
+              <Select
+                value={form.newRepoVisibility}
+                onChange={e =>
+                  setForm(prev => ({
+                    ...prev,
+                    newRepoVisibility: e.target.value as string,
+                  }))
+                }
+                label="Visibility"
+              >
+                <MenuItem value="public">Public</MenuItem>
+                <MenuItem value="private">Private</MenuItem>
+                <MenuItem value="internal">Internal</MenuItem>
+              </Select>
+            </FormControl>
+            <TextField
+              label="Default branch"
+              variant="outlined"
+              value={form.defaultBranch}
+              onChange={e =>
+                setForm(prev => ({ ...prev, defaultBranch: e.target.value }))
+              }
+              style={{ width: 160 }}
+            />
+          </Box>
+        </Box>
+      ) : (
+        <Box>
+          <Box className={classes.repoSearchBox}>
+            <SearchIcon style={{ color: '#999', marginRight: 8 }} />
+            <InputBase
+              placeholder="Search synced repositories..."
+              fullWidth
+              value={repoSearch}
+              onChange={e => setRepoSearch(e.target.value)}
+            />
+          </Box>
+          <List className={classes.repoList} disablePadding>
+            {filteredRepos.map(repo => (
+              <ListItem
+                key={repo.url}
+                className={`${classes.repoItem} ${form.existingRepoUrl === repo.url ? classes.repoItemSelected : ''}`}
+                onClick={() =>
+                  setForm(prev => ({
+                    ...prev,
+                    existingRepoUrl: repo.url,
+                    existingRepoName: repo.name,
+                  }))
+                }
+              >
+                <ListItemIcon style={{ minWidth: 36 }}>
+                  <GitHubIcon fontSize="small" />
+                </ListItemIcon>
+                <ListItemText
+                  primary={
+                    <Typography variant="body2" style={{ fontWeight: 500 }}>
+                      {repo.org}/{repo.name}
+                    </Typography>
+                  }
+                  secondary={
+                    <Box display="flex" alignItems="center" style={{ gap: 8 }}>
+                      <Typography variant="caption">{repo.host}</Typography>
+                      <Chip
+                        label={repo.visibility}
+                        size="small"
+                        variant="outlined"
+                        style={{ height: 18, fontSize: 10 }}
+                      />
+                    </Box>
+                  }
+                />
+                {form.existingRepoUrl === repo.url && (
+                  <CheckCircleIcon
+                    style={{ color: '#4caf50', fontSize: 20 }}
+                  />
+                )}
+              </ListItem>
+            ))}
+          </List>
+          <Link
+            component="button"
+            variant="body2"
+            onClick={() => setForm(prev => ({ ...prev, repoMode: 'new' }))}
+            style={{ display: 'flex', alignItems: 'center', gap: 4 }}
+          >
+            <AddIcon fontSize="small" />
+            Don't see your repo? Connect a new Git repository
+          </Link>
+        </Box>
+      )}
+    </Box>
+  );
+};
+
+// ─── Step 3: Pipeline & Governance ────────────────────────────────────────────
+
+const PipelineStep = ({
+  form,
+  setForm,
+}: {
+  form: WizardFormState;
+  setForm: React.Dispatch<React.SetStateAction<WizardFormState>>;
+}) => {
+  const classes = useStyles();
+
+  const toggleCustomStage = (id: string) => {
+    setForm(prev => ({
+      ...prev,
+      customStages: prev.customStages.includes(id)
+        ? prev.customStages.filter(s => s !== id)
+        : [...prev.customStages, id],
+    }));
+  };
+
+  return (
+    <Box>
+      <Box className={classes.pipelineInfoBar}>
+        <InfoOutlinedIcon style={{ fontSize: 16 }} />
+        <Typography variant="body2" style={{ fontSize: 12 }}>
+          The selected pipeline will be added as a CI/CD workflow file in your
+          repository (e.g., <code>.github/workflows/ansible-governance.yml</code>{' '}
+          or <code>.gitlab-ci.yml</code>).
+        </Typography>
+      </Box>
+
+      {/* Comprehensive */}
+      <Box
+        className={`${classes.pipelineOption} ${form.pipelineType === 'comprehensive' ? classes.pipelineOptionSelected : ''}`}
+        onClick={() => setForm(prev => ({ ...prev, pipelineType: 'comprehensive' }))}
+      >
+        <Box display="flex" alignItems="center">
+          <Radio
+            checked={form.pipelineType === 'comprehensive'}
+            color="primary"
+            style={{ padding: '4px 8px 4px 0' }}
+          />
+          <Typography className={classes.pipelineTitle}>
+            Comprehensive pipeline (recommended)
+          </Typography>
+        </Box>
         <Typography className={classes.pipelineDescription}>
           The safest path to production. Enforces all code quality and security
           policies, plus live integration testing on temporary infrastructure
           before final deployment.
         </Typography>
-        <PipelineStageIcons count={COMPREHENSIVE_STAGES.length} />
+        <StageIconRow stages={COMPREHENSIVE_STAGES} tooltips />
         <Typography className={classes.stageLabels}>
           {COMPREHENSIVE_STAGES.join(' > ')}
         </Typography>
       </Box>
 
+      {/* Standard */}
       <Box
-        className={`${classes.pipelineOption} ${selected === 'standard' ? classes.pipelineOptionSelected : ''}`}
-        onClick={() => setSelected('standard')}
+        className={`${classes.pipelineOption} ${form.pipelineType === 'standard' ? classes.pipelineOptionSelected : ''}`}
+        onClick={() => setForm(prev => ({ ...prev, pipelineType: 'standard' }))}
       >
-        <FormControlLabel
-          value="standard"
-          control={<Radio checked={selected === 'standard'} color="primary" />}
-          label=""
-          style={{ marginRight: 0 }}
-        />
-        <Typography className={classes.pipelineTitle} component="span">
-          Standard pipeline
-        </Typography>
+        <Box display="flex" alignItems="center">
+          <Radio
+            checked={form.pipelineType === 'standard'}
+            color="primary"
+            style={{ padding: '4px 8px 4px 0' }}
+          />
+          <Typography className={classes.pipelineTitle}>
+            Standard pipeline
+          </Typography>
+        </Box>
         <Typography className={classes.pipelineDescription}>
-          A faster, streamlined pipeline. Enforces mandatory syntax, policy,
-          and Execution Environment checks, but bypasses live integration
-          testing.
+          A faster, streamlined pipeline. Enforces mandatory syntax, policy, and
+          Execution Environment checks, but bypasses live integration testing.
         </Typography>
-        <PipelineStageIcons count={STANDARD_STAGES.length} />
+        <StageIconRow stages={STANDARD_STAGES} tooltips />
         <Typography className={classes.stageLabels}>
           {STANDARD_STAGES.join(' > ')}
         </Typography>
       </Box>
 
+      {/* Custom */}
       <Box
-        className={`${classes.pipelineOption} ${selected === 'custom' ? classes.pipelineOptionSelected : ''}`}
-        onClick={() => setSelected('custom')}
+        className={`${classes.pipelineOption} ${form.pipelineType === 'custom' ? classes.pipelineOptionSelected : ''}`}
+        onClick={() => setForm(prev => ({ ...prev, pipelineType: 'custom' }))}
       >
-        <FormControlLabel
-          value="custom"
-          control={<Radio checked={selected === 'custom'} color="primary" />}
-          label=""
-          style={{ marginRight: 0 }}
-        />
-        <Typography className={classes.pipelineTitle} component="span">
-          Custom pipeline
-        </Typography>
+        <Box display="flex" alignItems="center">
+          <Radio
+            checked={form.pipelineType === 'custom'}
+            color="primary"
+            style={{ padding: '4px 8px 4px 0' }}
+          />
+          <Typography className={classes.pipelineTitle}>
+            Custom pipeline
+          </Typography>
+        </Box>
         <Typography className={classes.pipelineDescription}>
           Build a tailored pipeline. Manually configure the specific linting,
           governance, and testing gates that apply to this service.
         </Typography>
-        <CustomStageIcons count={3} />
-        <Typography className={classes.stageLabels}>
-          Customize steps
-        </Typography>
+
+        <Collapse in={form.pipelineType === 'custom'}>
+          <Divider style={{ margin: '12px 0' }} />
+          <Typography
+            variant="subtitle2"
+            style={{ marginBottom: 8, fontSize: 13 }}
+          >
+            Select pipeline stages:
+          </Typography>
+          <List
+            disablePadding
+            style={{
+              border: '1px solid rgba(0,0,0,0.12)',
+              borderRadius: 4,
+            }}
+          >
+            {CUSTOM_PIPELINE_STAGES.map(stage => (
+              <ListItem
+                key={stage.id}
+                dense
+                button
+                className={classes.customStageItem}
+                onClick={e => {
+                  e.stopPropagation();
+                  toggleCustomStage(stage.id);
+                }}
+              >
+                <ListItemIcon style={{ minWidth: 36 }}>
+                  <Checkbox
+                    edge="start"
+                    checked={form.customStages.includes(stage.id)}
+                    color="primary"
+                    size="small"
+                  />
+                </ListItemIcon>
+                <ListItemText
+                  primary={
+                    <Typography variant="body2" style={{ fontWeight: 500 }}>
+                      {stage.label}
+                    </Typography>
+                  }
+                  secondary={stage.description}
+                />
+              </ListItem>
+            ))}
+          </List>
+          {form.customStages.length > 0 && (
+            <Box mt={1.5}>
+              <Typography variant="caption" color="textSecondary">
+                Pipeline: Commit {'>'}{' '}
+                {form.customStages
+                  .map(
+                    id =>
+                      CUSTOM_PIPELINE_STAGES.find(s => s.id === id)?.label,
+                  )
+                  .filter(Boolean)
+                  .join(' > ')}{' '}
+                {'>'} Pushed to AAP
+              </Typography>
+            </Box>
+          )}
+        </Collapse>
+
+        {form.pipelineType !== 'custom' && (
+          <>
+            <Box display="flex" alignItems="center" style={{ gap: 3 }}>
+              {[1, 2, 3].map(i => (
+                <RadioButtonUncheckedIcon
+                  key={i}
+                  style={{ color: '#bdbdbd', fontSize: 20 }}
+                />
+              ))}
+            </Box>
+            <Typography className={classes.stageLabels}>
+              Customize steps
+            </Typography>
+          </>
+        )}
       </Box>
     </Box>
   );
 };
 
-// Step 4: Destination (AAP)
-const DestinationStep = () => {
+// ─── Step 4: Destination (AAP) ────────────────────────────────────────────────
+
+const DestinationStep = ({
+  form,
+  setForm,
+}: {
+  form: WizardFormState;
+  setForm: React.Dispatch<React.SetStateAction<WizardFormState>>;
+}) => {
   const classes = useStyles();
+
+  if (!form.aapOverride) {
+    return (
+      <Box>
+        <Typography
+          variant="body2"
+          color="textSecondary"
+          style={{ marginBottom: 16 }}
+        >
+          Your admin has pre-configured default AAP settings. These will be used
+          unless you override them.
+        </Typography>
+        <Box className={classes.defaultsCard}>
+          <Box className={classes.defaultRow}>
+            <Typography className={classes.defaultLabel}>
+              AAP Controller
+            </Typography>
+            <Typography className={classes.defaultValue}>
+              <LockIcon style={{ fontSize: 14, color: '#999' }} />
+              Production Controller (aap.example.com)
+            </Typography>
+          </Box>
+          <Divider />
+          <Box className={classes.defaultRow}>
+            <Typography className={classes.defaultLabel}>
+              Organization
+            </Typography>
+            <Typography className={classes.defaultValue}>
+              <LockIcon style={{ fontSize: 14, color: '#999' }} />
+              Default
+            </Typography>
+          </Box>
+          <Divider />
+          <Box className={classes.defaultRow}>
+            <Typography className={classes.defaultLabel}>
+              Execution Environment
+            </Typography>
+            <Typography className={classes.defaultValue}>
+              <LockIcon style={{ fontSize: 14, color: '#999' }} />
+              Red Hat Supported EE
+            </Typography>
+          </Box>
+          <Divider />
+          <Box className={classes.defaultRow}>
+            <Typography className={classes.defaultLabel}>
+              Auto-create AAP Project
+            </Typography>
+            <Typography className={classes.defaultValue}>Yes</Typography>
+          </Box>
+          <Divider />
+          <Box className={classes.defaultRow}>
+            <Typography className={classes.defaultLabel}>
+              Auto-create Job Template
+            </Typography>
+            <Typography className={classes.defaultValue}>Yes</Typography>
+          </Box>
+        </Box>
+        <Box mt={2}>
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<EditIcon />}
+            onClick={() => setForm(prev => ({ ...prev, aapOverride: true }))}
+            style={{ textTransform: 'none' }}
+          >
+            Change defaults
+          </Button>
+        </Box>
+      </Box>
+    );
+  }
+
   return (
     <Box>
-      <Box className={classes.fieldGroup}>
-        <FormControl variant="outlined" fullWidth style={{ marginBottom: 16 }}>
-          <InputLabel>AAP Controller</InputLabel>
-          <Select defaultValue="" label="AAP Controller">
-            <MenuItem value="prod-controller">Production Controller (aap.example.com)</MenuItem>
-            <MenuItem value="dev-controller">Development Controller (aap-dev.example.com)</MenuItem>
-          </Select>
-        </FormControl>
-        <TextField
-          label="AAP Organization"
-          variant="outlined"
-          fullWidth
-          defaultValue="Default"
-          style={{ marginBottom: 16 }}
-        />
-        <FormControl variant="outlined" fullWidth style={{ marginBottom: 16 }}>
-          <InputLabel>Execution Environment</InputLabel>
-          <Select defaultValue="" label="Execution Environment">
-            <MenuItem value="ee-minimal">Minimal Execution Environment</MenuItem>
-            <MenuItem value="ee-supported">Red Hat Supported EE</MenuItem>
-            <MenuItem value="ee-custom">Custom EE (cloud-tools)</MenuItem>
-          </Select>
-        </FormControl>
-      </Box>
+      <FormControl
+        variant="outlined"
+        fullWidth
+        style={{ marginBottom: 16 }}
+      >
+        <InputLabel>AAP Controller</InputLabel>
+        <Select
+          value={form.aapController}
+          onChange={e =>
+            setForm(prev => ({
+              ...prev,
+              aapController: e.target.value as string,
+            }))
+          }
+          label="AAP Controller"
+        >
+          <MenuItem value="prod-controller">
+            Production Controller (aap.example.com)
+          </MenuItem>
+          <MenuItem value="dev-controller">
+            Development Controller (aap-dev.example.com)
+          </MenuItem>
+        </Select>
+      </FormControl>
+      <TextField
+        label="AAP Organization"
+        variant="outlined"
+        fullWidth
+        value={form.aapOrganization}
+        onChange={e =>
+          setForm(prev => ({
+            ...prev,
+            aapOrganization: e.target.value,
+          }))
+        }
+        style={{ marginBottom: 16 }}
+      />
+      <FormControl
+        variant="outlined"
+        fullWidth
+        style={{ marginBottom: 16 }}
+      >
+        <InputLabel>Execution Environment</InputLabel>
+        <Select
+          value={form.executionEnvironment}
+          onChange={e =>
+            setForm(prev => ({
+              ...prev,
+              executionEnvironment: e.target.value as string,
+            }))
+          }
+          label="Execution Environment"
+        >
+          <MenuItem value="ee-minimal">Minimal Execution Environment</MenuItem>
+          <MenuItem value="ee-supported">Red Hat Supported EE</MenuItem>
+          <MenuItem value="ee-custom">Custom EE (cloud-tools)</MenuItem>
+        </Select>
+      </FormControl>
       <Divider />
-      <Typography variant="subtitle2" style={{ margin: '16px 0 12px' }}>
+      <Typography variant="subtitle2" style={{ margin: '16px 0 8px' }}>
         Auto-provisioning
       </Typography>
-      <Box display="flex" flexDirection="column" style={{ gap: 4 }}>
-        <FormControlLabel
-          control={<Switch defaultChecked color="primary" />}
-          label="Auto-create AAP Project from Git repository"
-        />
-        <FormControlLabel
-          control={<Switch defaultChecked color="primary" />}
-          label="Auto-create Job Template"
-        />
+      <FormControlLabel
+        control={
+          <Switch
+            checked={form.autoCreateProject}
+            onChange={e =>
+              setForm(prev => ({
+                ...prev,
+                autoCreateProject: e.target.checked,
+              }))
+            }
+            color="primary"
+          />
+        }
+        label="Auto-create AAP Project from Git repository"
+      />
+      <FormControlLabel
+        control={
+          <Switch
+            checked={form.autoCreateJobTemplate}
+            onChange={e =>
+              setForm(prev => ({
+                ...prev,
+                autoCreateJobTemplate: e.target.checked,
+              }))
+            }
+            color="primary"
+          />
+        }
+        label="Auto-create Job Template"
+      />
+      <Box mt={1}>
+        <Button
+          variant="text"
+          size="small"
+          onClick={() => setForm(prev => ({ ...prev, aapOverride: false }))}
+          style={{ textTransform: 'none' }}
+        >
+          Reset to defaults
+        </Button>
       </Box>
     </Box>
   );
 };
 
-// Success screen
+// ─── Step 5: Review & Create ──────────────────────────────────────────────────
+
+const ReviewStep = ({
+  form,
+  template,
+  onJumpToStep,
+}: {
+  form: WizardFormState;
+  template: DemoTemplate;
+  onJumpToStep: (step: number) => void;
+}) => {
+  const classes = useStyles();
+
+  const pipelineLabel =
+    form.pipelineType === 'comprehensive'
+      ? 'Comprehensive pipeline'
+      : form.pipelineType === 'standard'
+        ? 'Standard pipeline'
+        : `Custom (${form.customStages.length} stages)`;
+
+  const repoLabel =
+    form.repoMode === 'new'
+      ? `${form.newRepoOrg}/${form.newRepoName || '(not set)'}`
+      : form.existingRepoName || '(not selected)';
+
+  const controllerLabel = form.aapOverride
+    ? form.aapController === 'prod-controller'
+      ? 'Production Controller'
+      : 'Development Controller'
+    : 'Production Controller (default)';
+
+  const eeLabel = form.aapOverride
+    ? form.executionEnvironment === 'ee-minimal'
+      ? 'Minimal EE'
+      : form.executionEnvironment === 'ee-supported'
+        ? 'Red Hat Supported EE'
+        : 'Custom EE (cloud-tools)'
+    : 'Red Hat Supported EE (default)';
+
+  const EditButton = ({ step }: { step: number }) => (
+    <IconButton size="small" onClick={() => onJumpToStep(step)}>
+      <EditIcon fontSize="small" />
+    </IconButton>
+  );
+
+  return (
+    <Box>
+      <Box className={classes.reviewSection}>
+        <Typography className={classes.reviewSectionTitle}>
+          Project Details
+          <EditButton step={0} />
+        </Typography>
+        <Box className={classes.reviewRow}>
+          <Typography className={classes.reviewLabel}>Template</Typography>
+          <Typography className={classes.reviewValue}>
+            {template.title}
+          </Typography>
+        </Box>
+        <Box className={classes.reviewRow}>
+          <Typography className={classes.reviewLabel}>Service name</Typography>
+          <Typography className={classes.reviewValue}>
+            {form.serviceName || '(not set)'}
+          </Typography>
+        </Box>
+        <Box className={classes.reviewRow}>
+          <Typography className={classes.reviewLabel}>Description</Typography>
+          <Typography className={classes.reviewValue}>
+            {form.serviceDescription || '(not set)'}
+          </Typography>
+        </Box>
+        <Box className={classes.reviewRow}>
+          <Typography className={classes.reviewLabel}>Owner</Typography>
+          <Typography className={classes.reviewValue}>{form.owner}</Typography>
+        </Box>
+      </Box>
+
+      <Box className={classes.reviewSection}>
+        <Typography className={classes.reviewSectionTitle}>
+          Source Code
+          <EditButton step={1} />
+        </Typography>
+        <Box className={classes.reviewRow}>
+          <Typography className={classes.reviewLabel}>Mode</Typography>
+          <Typography className={classes.reviewValue}>
+            {form.repoMode === 'new' ? 'Create new repository' : 'Use existing repository'}
+          </Typography>
+        </Box>
+        <Box className={classes.reviewRow}>
+          <Typography className={classes.reviewLabel}>Repository</Typography>
+          <Typography className={classes.reviewValue}>{repoLabel}</Typography>
+        </Box>
+        {form.repoMode === 'new' && (
+          <>
+            <Box className={classes.reviewRow}>
+              <Typography className={classes.reviewLabel}>
+                Visibility
+              </Typography>
+              <Typography className={classes.reviewValue}>
+                {form.newRepoVisibility}
+              </Typography>
+            </Box>
+            <Box className={classes.reviewRow}>
+              <Typography className={classes.reviewLabel}>Branch</Typography>
+              <Typography className={classes.reviewValue}>
+                {form.defaultBranch}
+              </Typography>
+            </Box>
+          </>
+        )}
+      </Box>
+
+      <Box className={classes.reviewSection}>
+        <Typography className={classes.reviewSectionTitle}>
+          Pipeline & Governance
+          <EditButton step={2} />
+        </Typography>
+        <Box className={classes.reviewRow}>
+          <Typography className={classes.reviewLabel}>Pipeline</Typography>
+          <Typography className={classes.reviewValue}>
+            {pipelineLabel}
+          </Typography>
+        </Box>
+        {form.pipelineType === 'custom' && (
+          <Box className={classes.reviewRow}>
+            <Typography className={classes.reviewLabel}>Stages</Typography>
+            <Typography className={classes.reviewValue}>
+              Commit {'>'}{' '}
+              {form.customStages
+                .map(
+                  id => CUSTOM_PIPELINE_STAGES.find(s => s.id === id)?.label,
+                )
+                .filter(Boolean)
+                .join(' > ')}{' '}
+              {'>'} Pushed to AAP
+            </Typography>
+          </Box>
+        )}
+      </Box>
+
+      <Box className={classes.reviewSection}>
+        <Typography className={classes.reviewSectionTitle}>
+          Destination (AAP)
+          <EditButton step={3} />
+        </Typography>
+        <Box className={classes.reviewRow}>
+          <Typography className={classes.reviewLabel}>Controller</Typography>
+          <Typography className={classes.reviewValue}>
+            {controllerLabel}
+          </Typography>
+        </Box>
+        <Box className={classes.reviewRow}>
+          <Typography className={classes.reviewLabel}>Organization</Typography>
+          <Typography className={classes.reviewValue}>
+            {form.aapOrganization}
+          </Typography>
+        </Box>
+        <Box className={classes.reviewRow}>
+          <Typography className={classes.reviewLabel}>
+            Execution Environment
+          </Typography>
+          <Typography className={classes.reviewValue}>{eeLabel}</Typography>
+        </Box>
+        <Box className={classes.reviewRow}>
+          <Typography className={classes.reviewLabel}>
+            Auto-create Project
+          </Typography>
+          <Typography className={classes.reviewValue}>
+            {form.autoCreateProject ? 'Yes' : 'No'}
+          </Typography>
+        </Box>
+        <Box className={classes.reviewRow}>
+          <Typography className={classes.reviewLabel}>
+            Auto-create Job Template
+          </Typography>
+          <Typography className={classes.reviewValue}>
+            {form.autoCreateJobTemplate ? 'Yes' : 'No'}
+          </Typography>
+        </Box>
+      </Box>
+    </Box>
+  );
+};
+
+// ─── Success Screen ───────────────────────────────────────────────────────────
+
 const SuccessScreen = ({
   template,
   onClose,
@@ -442,7 +1280,7 @@ const SuccessScreen = ({
         color="textSecondary"
         style={{ marginBottom: 24, fontStyle: 'italic' }}
       >
-        (This is a prototype demo -- no actual resources were created.)
+        (This is a prototype demo — no actual resources were created.)
       </Typography>
       <Box display="flex" justifyContent="center" style={{ gap: 12 }}>
         <Button variant="outlined" onClick={onClose}>
@@ -456,6 +1294,29 @@ const SuccessScreen = ({
   );
 };
 
+// ─── Validation ───────────────────────────────────────────────────────────────
+
+const isStepValid = (step: number, form: WizardFormState): boolean => {
+  switch (step) {
+    case 0:
+      return Boolean(form.serviceName.trim() && form.serviceDescription.trim());
+    case 1:
+      if (form.repoMode === 'new') return Boolean(form.newRepoName.trim());
+      return Boolean(form.existingRepoUrl);
+    case 2:
+      if (form.pipelineType === 'custom') return form.customStages.length > 0;
+      return true;
+    case 3:
+      return true;
+    case 4:
+      return true;
+    default:
+      return true;
+  }
+};
+
+// ─── Main Wizard ──────────────────────────────────────────────────────────────
+
 export const ProjectCreateWizard = ({
   template,
   onClose,
@@ -466,6 +1327,11 @@ export const ProjectCreateWizard = ({
   const classes = useStyles();
   const [activeStep, setActiveStep] = useState(0);
   const [completed, setCompleted] = useState(false);
+  const [form, setForm] = useState<WizardFormState>(() =>
+    createInitialState(template),
+  );
+
+  const stepValid = isStepValid(activeStep, form);
 
   const handleNext = useCallback(() => {
     if (activeStep === template.steps.length - 1) {
@@ -479,11 +1345,16 @@ export const ProjectCreateWizard = ({
     setActiveStep(prev => prev - 1);
   }, []);
 
+  const handleJumpToStep = useCallback((step: number) => {
+    setActiveStep(step);
+  }, []);
+
   if (completed) {
     return <SuccessScreen template={template} onClose={onClose} />;
   }
 
   const currentStep = template.steps[activeStep];
+  const isLastStep = activeStep === template.steps.length - 1;
 
   return (
     <Box className={classes.root}>
@@ -500,19 +1371,30 @@ export const ProjectCreateWizard = ({
         <Typography variant="h5" style={{ fontWeight: 600 }}>
           Create Service
         </Typography>
-        <Chip label="Template" size="small" className={classes.templateBadge} />
+        <Chip
+          label="Template"
+          size="small"
+          className={classes.templateBadge}
+        />
       </Box>
       <Typography className={classes.subtitle}>
         Create a governed automation repository and pipeline from this template.
-        This setup automatically generates your project structure and connects
-        it to the Ansible Automation Platform, enforcing quality, security, and
+        This setup automatically generates your project structure and connects it
+        to the Ansible Automation Platform, enforcing quality, security, and
         compatibility checks before any code is promoted to an active Job
         Template.
       </Typography>
 
-      <Stepper activeStep={activeStep} className={classes.stepper} alternativeLabel={false}>
+      <Stepper activeStep={activeStep} className={classes.stepper}>
         {template.steps.map((step, index) => (
-          <Step key={step.title} completed={index < activeStep}>
+          <Step
+            key={step.title}
+            completed={index < activeStep}
+            style={{ cursor: index < activeStep ? 'pointer' : 'default' }}
+            onClick={() => {
+              if (index < activeStep) handleJumpToStep(index);
+            }}
+          >
             <StepLabel>{step.title}</StepLabel>
           </Step>
         ))}
@@ -526,10 +1408,25 @@ export const ProjectCreateWizard = ({
           {currentStep.description}
         </Typography>
 
-        {activeStep === 0 && <DetailsStep template={template} />}
-        {activeStep === 1 && <SourceCodeStep />}
-        {activeStep === 2 && <PipelineStep template={template} />}
-        {activeStep === 3 && <DestinationStep />}
+        {activeStep === 0 && (
+          <DetailsStep form={form} setForm={setForm} template={template} />
+        )}
+        {activeStep === 1 && (
+          <SourceCodeStep form={form} setForm={setForm} />
+        )}
+        {activeStep === 2 && (
+          <PipelineStep form={form} setForm={setForm} />
+        )}
+        {activeStep === 3 && (
+          <DestinationStep form={form} setForm={setForm} />
+        )}
+        {activeStep === 4 && (
+          <ReviewStep
+            form={form}
+            template={template}
+            onJumpToStep={handleJumpToStep}
+          />
+        )}
       </Box>
 
       <Box className={classes.actions}>
@@ -542,9 +1439,10 @@ export const ProjectCreateWizard = ({
           variant="contained"
           color="primary"
           onClick={handleNext}
-          className={classes.nextButton}
+          disabled={!stepValid}
+          className={`${classes.nextButton} ${!stepValid ? classes.nextButtonDisabled : ''}`}
         >
-          {activeStep === template.steps.length - 1 ? 'Create' : 'Next'}
+          {isLastStep ? 'Create' : 'Next'}
         </Button>
       </Box>
     </Box>

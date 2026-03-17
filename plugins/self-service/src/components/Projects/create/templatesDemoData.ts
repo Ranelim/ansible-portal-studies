@@ -14,6 +14,49 @@ export type DemoTemplate = {
   steps: WizardStep[];
 };
 
+export type SyncedRepo = {
+  name: string;
+  org: string;
+  host: 'github.com' | 'gitlab.com';
+  visibility: 'public' | 'private' | 'internal';
+  url: string;
+};
+
+export const SYNCED_REPOS: SyncedRepo[] = [
+  { name: 'infra-playbooks', org: 'acme-corp', host: 'github.com', visibility: 'private', url: 'https://github.com/acme-corp/infra-playbooks' },
+  { name: 'network-configs', org: 'acme-corp', host: 'github.com', visibility: 'private', url: 'https://github.com/acme-corp/network-configs' },
+  { name: 'cloud-provisioning', org: 'acme-corp', host: 'github.com', visibility: 'internal', url: 'https://github.com/acme-corp/cloud-provisioning' },
+  { name: 'rhel-hardening', org: 'acme-corp', host: 'gitlab.com', visibility: 'private', url: 'https://gitlab.com/acme-corp/rhel-hardening' },
+  { name: 'security-compliance', org: 'acme-corp', host: 'gitlab.com', visibility: 'private', url: 'https://gitlab.com/acme-corp/security-compliance' },
+  { name: 'windows-patching', org: 'platform-team', host: 'github.com', visibility: 'private', url: 'https://github.com/platform-team/windows-patching' },
+];
+
+export const CUSTOM_PIPELINE_STAGES = [
+  { id: 'syntax', label: 'Syntax Check', description: 'Validates YAML and Ansible syntax correctness' },
+  { id: 'lint', label: 'Ansible Lint', description: 'Enforces Ansible best practices and coding standards' },
+  { id: 'yaml-lint', label: 'YAML Lint', description: 'Validates YAML formatting and structure' },
+  { id: 'policy', label: 'Policy Check (OPA)', description: 'Validates against organizational policies for credential exposure, hardcoded secrets, etc.' },
+  { id: 'ee-compat', label: 'EE Compatibility', description: 'Verifies playbook runs correctly in the target Execution Environment' },
+  { id: 'molecule', label: 'Integration Test (Molecule)', description: 'Runs Molecule scenarios on temporary infrastructure to validate behavior' },
+  { id: 'sast', label: 'Security Scan (SAST)', description: 'Scans for security vulnerabilities and insecure patterns' },
+];
+
+export const COMPREHENSIVE_STAGES = [
+  'Commit', 'Lint', 'Policy Check', 'EE Compatibility', 'Integration Test', 'Pushed to AAP',
+];
+
+export const STANDARD_STAGES = [
+  'Commit', 'Lint', 'Policy Check', 'EE Compatibility', 'Pushed to AAP',
+];
+
+const WIZARD_STEPS: WizardStep[] = [
+  { title: 'Details & AI Jumpstart', description: 'Describe what you want to automate, or fill in the details manually.' },
+  { title: 'Source Code (Git)', description: 'Create a new repository or select an existing synced repo.' },
+  { title: 'Pipeline & Governance', description: 'Select the governance pipeline for your automation code. These automated validation steps ensure that only safe, tested, and compliant playbooks are promoted to your Ansible Controller.' },
+  { title: 'Destination (AAP)', description: 'Configure how this project connects to your Ansible Automation Platform.' },
+  { title: 'Review & Create', description: 'Review your selections before creating the project.' },
+];
+
 export const DEMO_TEMPLATES: DemoTemplate[] = [
   {
     name: 'create-playbook-project',
@@ -24,12 +67,7 @@ export const DEMO_TEMPLATES: DemoTemplate[] = [
     owner: 'group:default/platform-engineering',
     type: 'project',
     defaultPipeline: 'standard',
-    steps: [
-      { title: 'Details & AI Jumpstart', description: 'Describe what you want to automate or fill in the details manually.' },
-      { title: 'Source Code (Git)', description: 'Configure the Git repository for your project\'s source code.' },
-      { title: 'Pipeline & Governance', description: 'Select the governance pipeline for your automation code.' },
-      { title: 'Destination (AAP)', description: 'Configure how this project connects to your Ansible Automation Platform.' },
-    ],
+    steps: WIZARD_STEPS,
   },
   {
     name: 'create-cloud-provisioning-project',
@@ -40,12 +78,7 @@ export const DEMO_TEMPLATES: DemoTemplate[] = [
     owner: 'group:default/platform-engineering',
     type: 'project',
     defaultPipeline: 'comprehensive',
-    steps: [
-      { title: 'Details & AI Jumpstart', description: 'Describe your cloud provisioning needs or fill in the details manually.' },
-      { title: 'Source Code (Git)', description: 'Configure the Git repository for your project\'s source code.' },
-      { title: 'Pipeline & Governance', description: 'Select the governance pipeline for your automation code.' },
-      { title: 'Destination (AAP)', description: 'Configure how this project connects to your Ansible Automation Platform.' },
-    ],
+    steps: WIZARD_STEPS,
   },
   {
     name: 'create-network-automation-project',
@@ -56,11 +89,6 @@ export const DEMO_TEMPLATES: DemoTemplate[] = [
     owner: 'group:default/network-operations',
     type: 'project',
     defaultPipeline: 'comprehensive',
-    steps: [
-      { title: 'Details & AI Jumpstart', description: 'Describe your network automation needs or fill in the details manually.' },
-      { title: 'Source Code (Git)', description: 'Configure the Git repository for your project\'s source code.' },
-      { title: 'Pipeline & Governance', description: 'Select the governance pipeline for your automation code.' },
-      { title: 'Destination (AAP)', description: 'Configure how this project connects to your Ansible Automation Platform.' },
-    ],
+    steps: WIZARD_STEPS,
   },
 ];
