@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback } from 'react';
 import {
   Box,
   Button,
@@ -9,9 +9,7 @@ import {
   FormControl,
   FormControlLabel,
   IconButton,
-  InputBase,
   InputLabel,
-  Link,
   List,
   ListItem,
   ListItemIcon,
@@ -31,12 +29,7 @@ import {
 import ArrowBackIcon from '@material-ui/icons/ArrowBack';
 import CheckCircleIcon from '@material-ui/icons/CheckCircle';
 import RadioButtonUncheckedIcon from '@material-ui/icons/RadioButtonUnchecked';
-import SearchIcon from '@material-ui/icons/Search';
 import EditIcon from '@material-ui/icons/Edit';
-import LockIcon from '@material-ui/icons/Lock';
-import GitHubIcon from '@material-ui/icons/GitHub';
-import AddIcon from '@material-ui/icons/Add';
-import FolderIcon from '@material-ui/icons/Folder';
 import InfoOutlinedIcon from '@material-ui/icons/InfoOutlined';
 import type { DemoTemplate } from './templatesDemoData';
 import {
@@ -54,13 +47,11 @@ type WizardFormState = {
   owner: string;
   aiPrompt: string;
   aiGenerated: boolean;
-  repoMode: 'new' | 'existing';
+  selectedRepo: string;
+  sourceControlProvider: string;
   newRepoOrg: string;
   newRepoName: string;
-  newRepoVisibility: string;
-  existingRepoUrl: string;
-  existingRepoName: string;
-  defaultBranch: string;
+  branch: string;
   pipelineType: string;
   customStages: string[];
   aapController: string;
@@ -68,8 +59,9 @@ type WizardFormState = {
   executionEnvironment: string;
   autoCreateProject: boolean;
   autoCreateJobTemplate: boolean;
-  aapOverride: boolean;
 };
+
+const REPO_CREATE_NEW = '__create_new__';
 
 const createInitialState = (template: DemoTemplate): WizardFormState => ({
   serviceName: '',
@@ -77,13 +69,11 @@ const createInitialState = (template: DemoTemplate): WizardFormState => ({
   owner: 'platform-engineering',
   aiPrompt: '',
   aiGenerated: false,
-  repoMode: 'new',
+  selectedRepo: REPO_CREATE_NEW,
+  sourceControlProvider: 'Github',
   newRepoOrg: 'acme-corp',
   newRepoName: '',
-  newRepoVisibility: 'private',
-  existingRepoUrl: '',
-  existingRepoName: '',
-  defaultBranch: 'main',
+  branch: 'main',
   pipelineType: template.defaultPipeline,
   customStages: ['syntax', 'lint', 'policy'],
   aapController: 'prod-controller',
@@ -91,7 +81,6 @@ const createInitialState = (template: DemoTemplate): WizardFormState => ({
   executionEnvironment: 'ee-supported',
   autoCreateProject: true,
   autoCreateJobTemplate: true,
-  aapOverride: false,
 });
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
@@ -214,56 +203,21 @@ const useStyles = makeStyles(theme => ({
   },
 
   // Source Code
-  repoModeToggle: {
-    display: 'flex',
-    gap: theme.spacing(1),
-    marginBottom: theme.spacing(3),
-  },
-  repoModeButton: {
-    flex: 1,
-    textTransform: 'none',
-    padding: theme.spacing(1.5),
-    borderRadius: theme.shape.borderRadius,
-    border: `1px solid ${theme.palette.divider}`,
-    justifyContent: 'flex-start',
-    gap: theme.spacing(1),
-  },
-  repoModeButtonActive: {
-    borderColor: theme.palette.primary.main,
-    borderWidth: 2,
-    backgroundColor:
-      theme.palette.type === 'dark'
-        ? 'rgba(25, 118, 210, 0.08)'
-        : 'rgba(25, 118, 210, 0.04)',
-  },
-  repoSearchBox: {
-    display: 'flex',
-    alignItems: 'center',
-    border: `1px solid ${theme.palette.divider}`,
-    borderRadius: theme.shape.borderRadius,
-    padding: '4px 12px',
-    marginBottom: theme.spacing(2),
-    backgroundColor: theme.palette.background.default,
-  },
-  repoList: {
-    maxHeight: 240,
-    overflow: 'auto',
-    border: `1px solid ${theme.palette.divider}`,
-    borderRadius: theme.shape.borderRadius,
+  repoSelectHint: {
+    color: theme.palette.text.secondary,
+    fontSize: 12,
+    marginTop: 4,
     marginBottom: theme.spacing(2),
   },
-  repoItem: {
-    cursor: 'pointer',
-    '&:hover': {
-      backgroundColor: theme.palette.action.hover,
-    },
+  newRepoFields: {
+    marginTop: theme.spacing(2),
+    paddingTop: theme.spacing(2),
+    borderTop: `1px solid ${theme.palette.divider}`,
   },
-  repoItemSelected: {
-    backgroundColor:
-      theme.palette.type === 'dark'
-        ? 'rgba(25, 118, 210, 0.12)'
-        : 'rgba(25, 118, 210, 0.06)',
-    borderLeft: `3px solid ${theme.palette.primary.main}`,
+  existingRepoFields: {
+    marginTop: theme.spacing(2),
+    paddingTop: theme.spacing(2),
+    borderTop: `1px solid ${theme.palette.divider}`,
   },
 
   // Pipeline
@@ -323,31 +277,11 @@ const useStyles = makeStyles(theme => ({
   },
 
   // AAP Destination
-  defaultsCard: {
-    border: `1px solid ${theme.palette.divider}`,
-    borderRadius: theme.shape.borderRadius,
-    padding: theme.spacing(2),
-    backgroundColor:
-      theme.palette.type === 'dark'
-        ? 'rgba(255,255,255,0.02)'
-        : 'rgba(0,0,0,0.01)',
-  },
-  defaultRow: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: theme.spacing(1, 0),
-  },
-  defaultLabel: {
+  prefilledHint: {
     color: theme.palette.text.secondary,
-    fontSize: 13,
-  },
-  defaultValue: {
-    fontWeight: 500,
-    fontSize: 14,
-    display: 'flex',
-    alignItems: 'center',
-    gap: 4,
+    fontSize: 12,
+    fontStyle: 'italic',
+    marginBottom: theme.spacing(2),
   },
 
   // Review
@@ -518,70 +452,85 @@ const SourceCodeStep = ({
   setForm: React.Dispatch<React.SetStateAction<WizardFormState>>;
 }) => {
   const classes = useStyles();
-  const [repoSearch, setRepoSearch] = useState('');
-
-  const filteredRepos = useMemo(() => {
-    if (!repoSearch) return SYNCED_REPOS;
-    const lower = repoSearch.toLowerCase();
-    return SYNCED_REPOS.filter(
-      r =>
-        r.name.toLowerCase().includes(lower) ||
-        r.org.toLowerCase().includes(lower),
-    );
-  }, [repoSearch]);
+  const isNew = form.selectedRepo === REPO_CREATE_NEW;
+  const selectedSyncedRepo = SYNCED_REPOS.find(r => r.url === form.selectedRepo);
 
   return (
     <Box>
-      <Box className={classes.repoModeToggle}>
-        <Button
-          className={`${classes.repoModeButton} ${form.repoMode === 'new' ? classes.repoModeButtonActive : ''}`}
-          onClick={() => setForm(prev => ({ ...prev, repoMode: 'new' }))}
-          startIcon={<AddIcon />}
+      <FormControl variant="outlined" fullWidth>
+        <InputLabel>Repository</InputLabel>
+        <Select
+          value={form.selectedRepo}
+          onChange={e => {
+            const val = e.target.value as string;
+            const repo = SYNCED_REPOS.find(r => r.url === val);
+            setForm(prev => ({
+              ...prev,
+              selectedRepo: val,
+              sourceControlProvider: repo?.host === 'gitlab.com' ? 'Gitlab' : 'Github',
+            }));
+          }}
+          label="Repository"
         >
-          <Box textAlign="left">
-            <Typography variant="body2" style={{ fontWeight: 600 }}>
-              Create new repository
-            </Typography>
-            <Typography variant="caption" color="textSecondary">
-              Scaffold a fresh repo with the template structure
-            </Typography>
-          </Box>
-        </Button>
-        <Button
-          className={`${classes.repoModeButton} ${form.repoMode === 'existing' ? classes.repoModeButtonActive : ''}`}
-          onClick={() => setForm(prev => ({ ...prev, repoMode: 'existing' }))}
-          startIcon={<FolderIcon />}
-        >
-          <Box textAlign="left">
-            <Typography variant="body2" style={{ fontWeight: 600 }}>
-              Use existing repository
-            </Typography>
-            <Typography variant="caption" color="textSecondary">
-              Select a synced repo and add pipeline + catalog
-            </Typography>
-          </Box>
-        </Button>
-      </Box>
+          <MenuItem value={REPO_CREATE_NEW}>
+            <Box display="flex" alignItems="center" style={{ gap: 8 }}>
+              <Typography variant="body2" style={{ fontWeight: 600 }}>
+                + Create new repository
+              </Typography>
+            </Box>
+          </MenuItem>
+          <Divider />
+          {SYNCED_REPOS.map(repo => (
+            <MenuItem key={repo.url} value={repo.url}>
+              <Box display="flex" alignItems="center" style={{ gap: 8, width: '100%' }}>
+                <Typography variant="body2">
+                  {repo.org}/{repo.name}
+                </Typography>
+                <Chip
+                  label={repo.host.replace('.com', '')}
+                  size="small"
+                  variant="outlined"
+                  style={{ height: 18, fontSize: 10, marginLeft: 'auto' }}
+                />
+              </Box>
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+      <Typography className={classes.repoSelectHint}>
+        {isNew
+          ? 'A new repository will be created with the template structure.'
+          : 'The generated files will be pushed as a pull request to the selected repository.'}
+      </Typography>
 
-      {form.repoMode === 'new' ? (
-        <Box>
+      {isNew && (
+        <Box className={classes.newRepoFields}>
+          <FormControl variant="outlined" fullWidth style={{ marginBottom: 16 }}>
+            <InputLabel>Source control provider</InputLabel>
+            <Select
+              value={form.sourceControlProvider}
+              onChange={e =>
+                setForm(prev => ({
+                  ...prev,
+                  sourceControlProvider: e.target.value as string,
+                }))
+              }
+              label="Source control provider"
+            >
+              <MenuItem value="Github">GitHub</MenuItem>
+              <MenuItem value="Gitlab">GitLab</MenuItem>
+            </Select>
+          </FormControl>
           <Box display="flex" style={{ gap: 12, marginBottom: 16 }}>
-            <FormControl variant="outlined" style={{ minWidth: 180 }}>
-              <InputLabel>Organization</InputLabel>
-              <Select
-                value={form.newRepoOrg}
-                onChange={e =>
-                  setForm(prev => ({
-                    ...prev,
-                    newRepoOrg: e.target.value as string,
-                  }))
-                }
-                label="Organization"
-              >
-                <MenuItem value="acme-corp">acme-corp</MenuItem>
-                <MenuItem value="platform-team">platform-team</MenuItem>
-              </Select>
-            </FormControl>
+            <TextField
+              label="Organization / Owner"
+              variant="outlined"
+              value={form.newRepoOrg}
+              onChange={e =>
+                setForm(prev => ({ ...prev, newRepoOrg: e.target.value }))
+              }
+              style={{ minWidth: 200 }}
+            />
             <Typography
               variant="h6"
               style={{ alignSelf: 'center', color: '#999' }}
@@ -600,97 +549,25 @@ const SourceCodeStep = ({
               placeholder="my-automation-project"
             />
           </Box>
-          <Box display="flex" style={{ gap: 12, marginBottom: 16 }}>
-            <FormControl variant="outlined" style={{ minWidth: 180 }}>
-              <InputLabel>Visibility</InputLabel>
-              <Select
-                value={form.newRepoVisibility}
-                onChange={e =>
-                  setForm(prev => ({
-                    ...prev,
-                    newRepoVisibility: e.target.value as string,
-                  }))
-                }
-                label="Visibility"
-              >
-                <MenuItem value="public">Public</MenuItem>
-                <MenuItem value="private">Private</MenuItem>
-                <MenuItem value="internal">Internal</MenuItem>
-              </Select>
-            </FormControl>
-            <TextField
-              label="Default branch"
-              variant="outlined"
-              value={form.defaultBranch}
-              onChange={e =>
-                setForm(prev => ({ ...prev, defaultBranch: e.target.value }))
-              }
-              style={{ width: 160 }}
-            />
-          </Box>
         </Box>
-      ) : (
-        <Box>
-          <Box className={classes.repoSearchBox}>
-            <SearchIcon style={{ color: '#999', marginRight: 8 }} />
-            <InputBase
-              placeholder="Search synced repositories..."
-              fullWidth
-              value={repoSearch}
-              onChange={e => setRepoSearch(e.target.value)}
-            />
-          </Box>
-          <List className={classes.repoList} disablePadding>
-            {filteredRepos.map(repo => (
-              <ListItem
-                key={repo.url}
-                className={`${classes.repoItem} ${form.existingRepoUrl === repo.url ? classes.repoItemSelected : ''}`}
-                onClick={() =>
-                  setForm(prev => ({
-                    ...prev,
-                    existingRepoUrl: repo.url,
-                    existingRepoName: repo.name,
-                  }))
-                }
-              >
-                <ListItemIcon style={{ minWidth: 36 }}>
-                  <GitHubIcon fontSize="small" />
-                </ListItemIcon>
-                <ListItemText
-                  primary={
-                    <Typography variant="body2" style={{ fontWeight: 500 }}>
-                      {repo.org}/{repo.name}
-                    </Typography>
-                  }
-                  secondary={
-                    <Box display="flex" alignItems="center" style={{ gap: 8 }}>
-                      <Typography variant="caption">{repo.host}</Typography>
-                      <Chip
-                        label={repo.visibility}
-                        size="small"
-                        variant="outlined"
-                        style={{ height: 18, fontSize: 10 }}
-                      />
-                    </Box>
-                  }
-                />
-                {form.existingRepoUrl === repo.url && (
-                  <CheckCircleIcon
-                    style={{ color: '#4caf50', fontSize: 20 }}
-                  />
-                )}
-              </ListItem>
-            ))}
-          </List>
-          <Link
-            component="button"
-            variant="body2"
-            onClick={() => setForm(prev => ({ ...prev, repoMode: 'new' }))}
-            style={{ display: 'flex', alignItems: 'center', gap: 4 }}
-          >
-            <AddIcon fontSize="small" />
-            Don't see your repo? Connect a new Git repository
-          </Link>
+      )}
+
+      {!isNew && selectedSyncedRepo && (
+        <Box className={classes.existingRepoFields}>
+          <TextField
+            label="Branch name"
+            variant="outlined"
+            fullWidth
+            value={form.branch}
+            onChange={e =>
+              setForm(prev => ({ ...prev, branch: e.target.value }))
+            }
+            helperText="The generated files will be pushed to this branch as a pull request."
+            style={{ marginBottom: 16 }}
+          />
+          <Typography variant="body2" color="textSecondary" style={{ fontSize: 12 }}>
+            Visibility: <strong>{selectedSyncedRepo.visibility}</strong> (inherited from repository)
+          </Typography>
         </Box>
       )}
     </Box>
@@ -892,84 +769,12 @@ const DestinationStep = ({
 }) => {
   const classes = useStyles();
 
-  if (!form.aapOverride) {
-    return (
-      <Box>
-        <Typography
-          variant="body2"
-          color="textSecondary"
-          style={{ marginBottom: 16 }}
-        >
-          Your admin has pre-configured default AAP settings. These will be used
-          unless you override them.
-        </Typography>
-        <Box className={classes.defaultsCard}>
-          <Box className={classes.defaultRow}>
-            <Typography className={classes.defaultLabel}>
-              AAP Controller
-            </Typography>
-            <Typography className={classes.defaultValue}>
-              <LockIcon style={{ fontSize: 14, color: '#999' }} />
-              Production Controller (aap.example.com)
-            </Typography>
-          </Box>
-          <Divider />
-          <Box className={classes.defaultRow}>
-            <Typography className={classes.defaultLabel}>
-              Organization
-            </Typography>
-            <Typography className={classes.defaultValue}>
-              <LockIcon style={{ fontSize: 14, color: '#999' }} />
-              Default
-            </Typography>
-          </Box>
-          <Divider />
-          <Box className={classes.defaultRow}>
-            <Typography className={classes.defaultLabel}>
-              Execution Environment
-            </Typography>
-            <Typography className={classes.defaultValue}>
-              <LockIcon style={{ fontSize: 14, color: '#999' }} />
-              Red Hat Supported EE
-            </Typography>
-          </Box>
-          <Divider />
-          <Box className={classes.defaultRow}>
-            <Typography className={classes.defaultLabel}>
-              Auto-create AAP Project
-            </Typography>
-            <Typography className={classes.defaultValue}>Yes</Typography>
-          </Box>
-          <Divider />
-          <Box className={classes.defaultRow}>
-            <Typography className={classes.defaultLabel}>
-              Auto-create Job Template
-            </Typography>
-            <Typography className={classes.defaultValue}>Yes</Typography>
-          </Box>
-        </Box>
-        <Box mt={2}>
-          <Button
-            variant="outlined"
-            size="small"
-            startIcon={<EditIcon />}
-            onClick={() => setForm(prev => ({ ...prev, aapOverride: true }))}
-            style={{ textTransform: 'none' }}
-          >
-            Change defaults
-          </Button>
-        </Box>
-      </Box>
-    );
-  }
-
   return (
     <Box>
-      <FormControl
-        variant="outlined"
-        fullWidth
-        style={{ marginBottom: 16 }}
-      >
+      <Typography className={classes.prefilledHint}>
+        Pre-filled with your organization's defaults. Adjust as needed.
+      </Typography>
+      <FormControl variant="outlined" fullWidth style={{ marginBottom: 16 }}>
         <InputLabel>AAP Controller</InputLabel>
         <Select
           value={form.aapController}
@@ -995,18 +800,11 @@ const DestinationStep = ({
         fullWidth
         value={form.aapOrganization}
         onChange={e =>
-          setForm(prev => ({
-            ...prev,
-            aapOrganization: e.target.value,
-          }))
+          setForm(prev => ({ ...prev, aapOrganization: e.target.value }))
         }
         style={{ marginBottom: 16 }}
       />
-      <FormControl
-        variant="outlined"
-        fullWidth
-        style={{ marginBottom: 16 }}
-      >
+      <FormControl variant="outlined" fullWidth style={{ marginBottom: 16 }}>
         <InputLabel>Execution Environment</InputLabel>
         <Select
           value={form.executionEnvironment}
@@ -1027,45 +825,37 @@ const DestinationStep = ({
       <Typography variant="subtitle2" style={{ margin: '16px 0 8px' }}>
         Auto-provisioning
       </Typography>
-      <FormControlLabel
-        control={
-          <Switch
-            checked={form.autoCreateProject}
-            onChange={e =>
-              setForm(prev => ({
-                ...prev,
-                autoCreateProject: e.target.checked,
-              }))
-            }
-            color="primary"
-          />
-        }
-        label="Auto-create AAP Project from Git repository"
-      />
-      <FormControlLabel
-        control={
-          <Switch
-            checked={form.autoCreateJobTemplate}
-            onChange={e =>
-              setForm(prev => ({
-                ...prev,
-                autoCreateJobTemplate: e.target.checked,
-              }))
-            }
-            color="primary"
-          />
-        }
-        label="Auto-create Job Template"
-      />
-      <Box mt={1}>
-        <Button
-          variant="text"
-          size="small"
-          onClick={() => setForm(prev => ({ ...prev, aapOverride: false }))}
-          style={{ textTransform: 'none' }}
-        >
-          Reset to defaults
-        </Button>
+      <Box display="flex" flexDirection="column" style={{ gap: 4 }}>
+        <FormControlLabel
+          control={
+            <Switch
+              checked={form.autoCreateProject}
+              onChange={e =>
+                setForm(prev => ({
+                  ...prev,
+                  autoCreateProject: e.target.checked,
+                }))
+              }
+              color="primary"
+            />
+          }
+          label="Auto-create AAP Project from Git repository"
+        />
+        <FormControlLabel
+          control={
+            <Switch
+              checked={form.autoCreateJobTemplate}
+              onChange={e =>
+                setForm(prev => ({
+                  ...prev,
+                  autoCreateJobTemplate: e.target.checked,
+                }))
+              }
+              color="primary"
+            />
+          }
+          label="Auto-create Job Template"
+        />
       </Box>
     </Box>
   );
@@ -1084,6 +874,8 @@ const ReviewStep = ({
 }) => {
   const classes = useStyles();
 
+  const isNew = form.selectedRepo === REPO_CREATE_NEW;
+
   const pipelineLabel =
     form.pipelineType === 'comprehensive'
       ? 'Comprehensive pipeline'
@@ -1091,24 +883,23 @@ const ReviewStep = ({
         ? 'Standard pipeline'
         : `Custom (${form.customStages.length} stages)`;
 
-  const repoLabel =
-    form.repoMode === 'new'
-      ? `${form.newRepoOrg}/${form.newRepoName || '(not set)'}`
-      : form.existingRepoName || '(not selected)';
+  const repoLabel = isNew
+    ? `${form.newRepoOrg}/${form.newRepoName || '(not set)'} (new)`
+    : SYNCED_REPOS.find(r => r.url === form.selectedRepo)
+      ? `${SYNCED_REPOS.find(r => r.url === form.selectedRepo)!.org}/${SYNCED_REPOS.find(r => r.url === form.selectedRepo)!.name}`
+      : '(not selected)';
 
-  const controllerLabel = form.aapOverride
-    ? form.aapController === 'prod-controller'
+  const controllerLabel =
+    form.aapController === 'prod-controller'
       ? 'Production Controller'
-      : 'Development Controller'
-    : 'Production Controller (default)';
+      : 'Development Controller';
 
-  const eeLabel = form.aapOverride
-    ? form.executionEnvironment === 'ee-minimal'
+  const eeLabel =
+    form.executionEnvironment === 'ee-minimal'
       ? 'Minimal EE'
       : form.executionEnvironment === 'ee-supported'
         ? 'Red Hat Supported EE'
-        : 'Custom EE (cloud-tools)'
-    : 'Red Hat Supported EE (default)';
+        : 'Custom EE (cloud-tools)';
 
   const EditButton = ({ step }: { step: number }) => (
     <IconButton size="small" onClick={() => onJumpToStep(step)}>
@@ -1153,32 +944,26 @@ const ReviewStep = ({
           <EditButton step={1} />
         </Typography>
         <Box className={classes.reviewRow}>
-          <Typography className={classes.reviewLabel}>Mode</Typography>
-          <Typography className={classes.reviewValue}>
-            {form.repoMode === 'new' ? 'Create new repository' : 'Use existing repository'}
+          <Typography className={classes.reviewLabel}>
+            {isNew ? 'New repository' : 'Existing repository'}
           </Typography>
-        </Box>
-        <Box className={classes.reviewRow}>
-          <Typography className={classes.reviewLabel}>Repository</Typography>
           <Typography className={classes.reviewValue}>{repoLabel}</Typography>
         </Box>
-        {form.repoMode === 'new' && (
-          <>
-            <Box className={classes.reviewRow}>
-              <Typography className={classes.reviewLabel}>
-                Visibility
-              </Typography>
-              <Typography className={classes.reviewValue}>
-                {form.newRepoVisibility}
-              </Typography>
-            </Box>
-            <Box className={classes.reviewRow}>
-              <Typography className={classes.reviewLabel}>Branch</Typography>
-              <Typography className={classes.reviewValue}>
-                {form.defaultBranch}
-              </Typography>
-            </Box>
-          </>
+        {isNew && (
+          <Box className={classes.reviewRow}>
+            <Typography className={classes.reviewLabel}>Provider</Typography>
+            <Typography className={classes.reviewValue}>
+              {form.sourceControlProvider}
+            </Typography>
+          </Box>
+        )}
+        {!isNew && (
+          <Box className={classes.reviewRow}>
+            <Typography className={classes.reviewLabel}>Branch</Typography>
+            <Typography className={classes.reviewValue}>
+              {form.branch}
+            </Typography>
+          </Box>
         )}
       </Box>
 
@@ -1301,8 +1086,9 @@ const isStepValid = (step: number, form: WizardFormState): boolean => {
     case 0:
       return Boolean(form.serviceName.trim() && form.serviceDescription.trim());
     case 1:
-      if (form.repoMode === 'new') return Boolean(form.newRepoName.trim());
-      return Boolean(form.existingRepoUrl);
+      if (form.selectedRepo === REPO_CREATE_NEW)
+        return Boolean(form.newRepoName.trim() && form.newRepoOrg.trim());
+      return Boolean(form.selectedRepo);
     case 2:
       if (form.pipelineType === 'custom') return form.customStages.length > 0;
       return true;
