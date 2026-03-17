@@ -12,6 +12,7 @@ export type DemoTemplate = {
   owner: string;
   type: string;
   defaultPipeline: 'comprehensive' | 'standard';
+  pipelineHint: string;
   steps: WizardStep[];
 };
 
@@ -83,33 +84,36 @@ export const DEMO_TEMPLATES: DemoTemplate[] = [
     name: 'create-playbook-project',
     title: 'Ansible Playbook Project',
     description:
-      'Scaffold a general-purpose Ansible playbook project with a standard directory structure, role scaffolding, inventory layout, and CI linting pipeline. The most common starting point for configuration management and server provisioning automation.',
-    tags: ['ansible', 'playbook', 'project', 'starter'],
+      'General-purpose playbook project with a standard directory structure, role scaffolding, inventory layout, and CI linting pipeline. The most common starting point for configuration management and server provisioning.',
+    tags: ['playbook', 'starter', 'config-management'],
     owner: 'group:default/platform-engineering',
     type: 'project',
     defaultPipeline: 'standard',
+    pipelineHint: 'Lint + policy check + EE compatibility. Good for most automation projects.',
     steps: WIZARD_STEPS,
   },
   {
     name: 'create-cloud-provisioning-project',
     title: 'Cloud Provisioning Project',
     description:
-      'Scaffold an automation project pre-configured for cloud infrastructure provisioning. Includes the relevant cloud collections, credential structure, and dynamic inventory plugins for AWS, Azure, or GCP.',
-    tags: ['ansible', 'cloud', 'aws', 'azure', 'gcp', 'project'],
+      'Pre-configured for cloud infrastructure provisioning with relevant cloud collections, credential structure, and dynamic inventory plugins for AWS, Azure, or GCP.',
+    tags: ['cloud', 'aws', 'azure', 'gcp', 'provisioning'],
     owner: 'group:default/platform-engineering',
     type: 'project',
     defaultPipeline: 'comprehensive',
+    pipelineHint: 'Full pipeline including integration tests and security scans. Recommended for production infrastructure.',
     steps: WIZARD_STEPS,
   },
   {
     name: 'create-network-automation-project',
     title: 'Network Automation Project',
     description:
-      'Scaffold an automation project for network device configuration and compliance management. Pre-configured with network collections for Cisco, Juniper, or Arista platforms, and includes NETCONF/RESTCONF/SSH connection profiles.',
-    tags: ['ansible', 'network', 'cisco', 'juniper', 'arista', 'project'],
+      'Network device configuration and compliance management with collections for Cisco, Juniper, or Arista platforms. Includes NETCONF/RESTCONF/SSH connection profiles.',
+    tags: ['network', 'cisco', 'juniper', 'arista', 'compliance'],
     owner: 'group:default/network-operations',
     type: 'project',
     defaultPipeline: 'comprehensive',
+    pipelineHint: 'Full pipeline including integration tests and security scans. Required for network device changes.',
     steps: WIZARD_STEPS,
   },
 ];

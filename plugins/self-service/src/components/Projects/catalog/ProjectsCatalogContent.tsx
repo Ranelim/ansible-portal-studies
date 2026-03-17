@@ -122,9 +122,9 @@ const ProjectsEmptyState = ({
         No projects yet
       </Typography>
       <Typography className={classes.emptyDescription}>
-        Create your first automation project from a software template. Projects
-        connect your Git repository to AAP and provide governed CI/CD pipelines
-        for your Ansible content.
+        Create your first automation project from a template. Projects connect
+        your Git repository to AAP and provide governed CI/CD pipelines for your
+        Ansible content.
       </Typography>
       <Button
         variant="contained"

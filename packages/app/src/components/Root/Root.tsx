@@ -26,7 +26,6 @@ import {
 } from '@backstage/core-components';
 import MenuIcon from '@material-ui/icons/Menu';
 import SearchIcon from '@material-ui/icons/Search';
-import DashboardIcon from '@material-ui/icons/Dashboard';
 import WebAssetIcon from '@material-ui/icons/WebAsset';
 import MemoryIcon from '@material-ui/icons/Memory';
 import SchoolIcon from '@material-ui/icons/School';
@@ -74,11 +73,6 @@ export const Root = ({ children }: PropsWithChildren<{}>) => (
           icon={HomeIcon}
           to="/self-service/projects"
           text="Projects"
-        />
-        <SidebarItem
-          icon={DashboardIcon}
-          to="self-service"
-          text="Software Templates"
         />
         <SidebarItem
           icon={WebAssetIcon}
