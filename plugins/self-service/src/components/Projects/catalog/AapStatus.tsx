@@ -56,8 +56,8 @@ const useStyles = makeStyles(theme => ({
   },
 }));
 
-const StatusIcon = ({ status }: { status: 'synced' | 'pending' | 'error' }) => {
-  if (status === 'synced') {
+const StatusIcon = ({ status }: { status: 'published' | 'pending' | 'error' }) => {
+  if (status === 'published') {
     return <CheckCircleIcon style={{ color: '#4caf50', fontSize: 18 }} />;
   }
   if (status === 'error') {
@@ -66,14 +66,14 @@ const StatusIcon = ({ status }: { status: 'synced' | 'pending' | 'error' }) => {
   return <RadioButtonUncheckedIcon style={{ color: '#bdbdbd', fontSize: 18 }} />;
 };
 
-const statusText = (status: 'synced' | 'pending' | 'error') => {
-  if (status === 'synced') return 'Synced';
+const statusText = (status: 'published' | 'pending' | 'error') => {
+  if (status === 'published') return 'Published';
   if (status === 'error') return 'Error';
   return 'Pending';
 };
 
 const getOverallLabel = (aap: AapStatusType) => {
-  if (aap.project === 'synced' && aap.jobTemplate === 'synced')
+  if (aap.project === 'published' && aap.jobTemplate === 'published')
     return 'Published';
   if (aap.project === 'error' || aap.jobTemplate === 'error') return 'Error';
   return 'Pending';
@@ -102,12 +102,12 @@ export const AapStatusIcons = ({ aap }: { aap: AapStatusType }) => {
         style={{ gap: 2, cursor: 'pointer' }}
         onClick={handleClick}
       >
-        <Tooltip title={`AAP Project: ${statusText(aap.project)}`}>
+        <Tooltip title={`AAP Project: ${statusText(aap.project)}`} arrow>
           <Box display="flex">
             <StatusIcon status={aap.project} />
           </Box>
         </Tooltip>
-        <Tooltip title={`Job Template: ${statusText(aap.jobTemplate)}`}>
+        <Tooltip title={`Job Template: ${statusText(aap.jobTemplate)}`} arrow>
           <Box display="flex">
             <StatusIcon status={aap.jobTemplate} />
           </Box>
@@ -127,9 +127,9 @@ export const AapStatusIcons = ({ aap }: { aap: AapStatusType }) => {
                 AAP Promotion: {overallLabel}
               </Typography>
               <Typography className={classes.popoverDescription}>
-                This action uses the service manifest in your repository to
-                synchronize project and job template definitions with your
-                Ansible Controller.
+                Publishing creates or updates the AAP project and job template
+                in your Ansible Controller based on the manifest in your
+                repository. This is a manual action.
               </Typography>
             </Box>
             <IconButton size="small" onClick={handleClose}>
@@ -148,14 +148,14 @@ export const AapStatusIcons = ({ aap }: { aap: AapStatusType }) => {
                 size="small"
                 className={classes.actionButton}
               >
-                Create AAP Project...
+                Publish to AAP...
               </Button>
             )}
           </Box>
           <Box className={classes.statusRow}>
             <StatusIcon status={aap.jobTemplate} />
             <Typography className={classes.statusLabel}>
-              AAP Job Template: {statusText(aap.jobTemplate)}
+              Job Template: {statusText(aap.jobTemplate)}
             </Typography>
             {aap.jobTemplate === 'pending' && (
               <Button
@@ -164,7 +164,7 @@ export const AapStatusIcons = ({ aap }: { aap: AapStatusType }) => {
                 size="small"
                 className={classes.actionButton}
               >
-                Create AAP Job Template
+                Publish Job Template
               </Button>
             )}
           </Box>
@@ -217,7 +217,7 @@ export const LastJobRunCell = ({ jobRun }: { jobRun: LastJobRun }) => {
 export const AapColumnHeader = () => (
   <Box display="flex" alignItems="center" style={{ gap: 4 }}>
     AAP
-    <Tooltip title="AAP promotion status. Shows whether the project and job template are synced to your Ansible Controller.">
+    <Tooltip title="Whether the AAP project and job template have been published to your Ansible Controller. Push to AAP is a manual action.">
       <HelpOutlineIcon style={{ fontSize: 14, color: '#999' }} />
     </Tooltip>
   </Box>
@@ -225,8 +225,8 @@ export const AapColumnHeader = () => (
 
 export const LastJobRunColumnHeader = () => (
   <Box display="flex" alignItems="center" style={{ gap: 4 }}>
-    Last AAP Job Run
-    <Tooltip title="Status of the most recent job run in AAP for this project.">
+    Last Job Run
+    <Tooltip title="Status and time of the most recent job execution in AAP.">
       <HelpOutlineIcon style={{ fontSize: 14, color: '#999' }} />
     </Tooltip>
   </Box>

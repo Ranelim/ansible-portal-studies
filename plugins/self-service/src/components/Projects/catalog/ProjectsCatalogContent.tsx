@@ -8,12 +8,6 @@ import {
   IconButton,
   InputBase,
   Chip,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Checkbox,
-  ListItemText,
 } from '@material-ui/core';
 import SearchIcon from '@material-ui/icons/Search';
 import StarIcon from '@material-ui/icons/Star';
@@ -89,12 +83,6 @@ const useStyles = makeStyles(theme => ({
     borderRadius: 16,
     textTransform: 'none',
   },
-  filterSelect: {
-    minWidth: 160,
-    '& .MuiSelect-select': {
-      padding: '8px 12px',
-    },
-  },
   projectLink: {
     cursor: 'pointer',
     fontWeight: 500,
@@ -149,7 +137,6 @@ const ProjectsCatalogTable = ({
   const [projects, setProjects] = useState<DemoProject[]>(DEMO_PROJECTS);
   const [searchText, setSearchText] = useState('');
   const [pipelineFilter, setPipelineFilter] = useState<PipelineFilter>('all');
-  const [aapFilter, setAapFilter] = useState<string[]>([]);
 
   const toggleStar = useCallback((name: string) => {
     setProjects(prev =>
@@ -177,22 +164,8 @@ const ProjectsCatalogTable = ({
       });
     }
 
-    if (aapFilter.length > 0) {
-      result = result.filter(p => {
-        if (aapFilter.includes('synced'))
-          return (
-            p.aap.project === 'synced' && p.aap.jobTemplate === 'synced'
-          );
-        if (aapFilter.includes('pending'))
-          return (
-            p.aap.project === 'pending' || p.aap.jobTemplate === 'pending'
-          );
-        return true;
-      });
-    }
-
     return result;
-  }, [projects, searchText, pipelineFilter, aapFilter]);
+  }, [projects, searchText, pipelineFilter]);
 
   const columns: TableColumn<DemoProject>[] = [
     {
@@ -261,19 +234,10 @@ const ProjectsCatalogTable = ({
             fullWidth
           />
         </Box>
-        <Box style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <Button
-            variant="contained"
-            color="primary"
-            startIcon={<AddIcon />}
-            onClick={() => onTabSwitch(1)}
-            style={{ textTransform: 'none', fontWeight: 600, whiteSpace: 'nowrap' }}
-          >
-            Create Project
-          </Button>
-        </Box>
-      </Box>
-      <Box style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+        <Box className={classes.filterRow}>
+          <Typography variant="body2" color="textSecondary" style={{ fontSize: 13, whiteSpace: 'nowrap' }}>
+            Pipeline:
+          </Typography>
           {(['all', 'passed', 'failed', 'running'] as PipelineFilter[]).map(
             f => (
               <Chip
@@ -287,23 +251,16 @@ const ProjectsCatalogTable = ({
               />
             ),
           )}
-          <FormControl variant="outlined" size="small" className={classes.filterSelect}>
-            <InputLabel>AAP Status</InputLabel>
-            <Select
-              multiple
-              value={aapFilter}
-              onChange={e => setAapFilter(e.target.value as string[])}
-              label="AAP Status"
-              renderValue={(selected) => (selected as string[]).join(', ')}
-            >
-              {['synced', 'pending'].map(opt => (
-                <MenuItem key={opt} value={opt}>
-                  <Checkbox checked={aapFilter.includes(opt)} size="small" />
-                  <ListItemText primary={opt.charAt(0).toUpperCase() + opt.slice(1)} />
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+        </Box>
+        <Button
+          variant="contained"
+          color="primary"
+          startIcon={<AddIcon />}
+          onClick={() => onTabSwitch(1)}
+          style={{ textTransform: 'none', fontWeight: 600, whiteSpace: 'nowrap' }}
+        >
+          Create Project
+        </Button>
       </Box>
       <Table<DemoProject>
         columns={columns}
