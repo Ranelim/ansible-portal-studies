@@ -47,11 +47,14 @@ type WizardFormState = {
   owner: string;
   aiPrompt: string;
   aiGenerated: boolean;
-  selectedRepo: string;
+  createNewRepository: boolean;
   sourceControlProvider: string;
-  newRepoOrg: string;
-  newRepoName: string;
+  repositoryOwner: string;
+  repositoryName: string;
+  selectedExistingRepo: string;
   branch: string;
+  createNewBranch: boolean;
+  newBranchName: string;
   pipelineType: string;
   customStages: string[];
   aapController: string;
@@ -61,7 +64,7 @@ type WizardFormState = {
   autoCreateJobTemplate: boolean;
 };
 
-const REPO_CREATE_NEW = '__create_new__';
+const BRANCH_CREATE_NEW = '__create_new__';
 
 const createInitialState = (template: DemoTemplate): WizardFormState => ({
   serviceName: '',
@@ -69,11 +72,14 @@ const createInitialState = (template: DemoTemplate): WizardFormState => ({
   owner: 'platform-engineering',
   aiPrompt: '',
   aiGenerated: false,
-  selectedRepo: REPO_CREATE_NEW,
+  createNewRepository: false,
   sourceControlProvider: 'Github',
-  newRepoOrg: 'acme-corp',
-  newRepoName: '',
+  repositoryOwner: 'acme-corp',
+  repositoryName: '',
+  selectedExistingRepo: '',
   branch: 'main',
+  createNewBranch: false,
+  newBranchName: '',
   pipelineType: template.defaultPipeline,
   customStages: ['syntax', 'lint', 'policy'],
   aapController: 'prod-controller',
@@ -203,21 +209,17 @@ const useStyles = makeStyles(theme => ({
   },
 
   // Source Code
-  repoSelectHint: {
-    color: theme.palette.text.secondary,
-    fontSize: 12,
-    marginTop: 4,
-    marginBottom: theme.spacing(2),
+  createNewCheckbox: {
+    marginTop: theme.spacing(2),
+    marginBottom: theme.spacing(1),
   },
-  newRepoFields: {
+  repoFields: {
     marginTop: theme.spacing(2),
     paddingTop: theme.spacing(2),
     borderTop: `1px solid ${theme.palette.divider}`,
   },
-  existingRepoFields: {
+  branchSection: {
     marginTop: theme.spacing(2),
-    paddingTop: theme.spacing(2),
-    borderTop: `1px solid ${theme.palette.divider}`,
   },
 
   // Pipeline
@@ -444,6 +446,8 @@ const DetailsStep = ({
 
 // ─── Step 2: Source Code (Git) ────────────────────────────────────────────────
 
+const DEMO_BRANCHES = ['main', 'develop', 'staging'];
+
 const SourceCodeStep = ({
   form,
   setForm,
@@ -452,88 +456,124 @@ const SourceCodeStep = ({
   setForm: React.Dispatch<React.SetStateAction<WizardFormState>>;
 }) => {
   const classes = useStyles();
-  const isNew = form.selectedRepo === REPO_CREATE_NEW;
-  const selectedSyncedRepo = SYNCED_REPOS.find(r => r.url === form.selectedRepo);
+  const selectedSyncedRepo = SYNCED_REPOS.find(
+    r => r.url === form.selectedExistingRepo,
+  );
 
   return (
     <Box>
-      <FormControl variant="outlined" fullWidth>
-        <InputLabel>Repository</InputLabel>
+      {/* Source control provider */}
+      <FormControl variant="outlined" fullWidth style={{ marginBottom: 16 }}>
+        <InputLabel>Source control provider</InputLabel>
         <Select
-          value={form.selectedRepo}
-          onChange={e => {
-            const val = e.target.value as string;
-            const repo = SYNCED_REPOS.find(r => r.url === val);
+          value={form.sourceControlProvider}
+          onChange={e =>
             setForm(prev => ({
               ...prev,
-              selectedRepo: val,
-              sourceControlProvider: repo?.host === 'gitlab.com' ? 'Gitlab' : 'Github',
-            }));
-          }}
-          label="Repository"
+              sourceControlProvider: e.target.value as string,
+              selectedExistingRepo: '',
+            }))
+          }
+          label="Source control provider"
         >
-          <MenuItem value={REPO_CREATE_NEW}>
-            <Box display="flex" alignItems="center" style={{ gap: 8 }}>
-              <Typography variant="body2" style={{ fontWeight: 600 }}>
-                + Create new repository
-              </Typography>
-            </Box>
-          </MenuItem>
-          <Divider />
-          {SYNCED_REPOS.map(repo => (
-            <MenuItem key={repo.url} value={repo.url}>
-              <Box display="flex" alignItems="center" style={{ gap: 8, width: '100%' }}>
-                <Typography variant="body2">
-                  {repo.org}/{repo.name}
-                </Typography>
-                <Chip
-                  label={repo.host.replace('.com', '')}
-                  size="small"
-                  variant="outlined"
-                  style={{ height: 18, fontSize: 10, marginLeft: 'auto' }}
-                />
-              </Box>
-            </MenuItem>
-          ))}
+          <MenuItem value="Github">GitHub</MenuItem>
+          <MenuItem value="Gitlab">GitLab</MenuItem>
         </Select>
       </FormControl>
-      <Typography className={classes.repoSelectHint}>
-        {isNew
-          ? 'A new repository will be created with the template structure.'
-          : 'The generated files will be pushed as a pull request to the selected repository.'}
-      </Typography>
 
-      {isNew && (
-        <Box className={classes.newRepoFields}>
-          <FormControl variant="outlined" fullWidth style={{ marginBottom: 16 }}>
-            <InputLabel>Source control provider</InputLabel>
-            <Select
-              value={form.sourceControlProvider}
-              onChange={e =>
-                setForm(prev => ({
-                  ...prev,
-                  sourceControlProvider: e.target.value as string,
-                }))
-              }
-              label="Source control provider"
-            >
-              <MenuItem value="Github">GitHub</MenuItem>
-              <MenuItem value="Gitlab">GitLab</MenuItem>
-            </Select>
-          </FormControl>
+      {/* Repository selection (existing repos) -- hidden when "create new" is checked */}
+      {!form.createNewRepository && (
+        <FormControl variant="outlined" fullWidth style={{ marginBottom: 8 }}>
+          <InputLabel>Repository</InputLabel>
+          <Select
+            value={form.selectedExistingRepo}
+            onChange={e =>
+              setForm(prev => ({
+                ...prev,
+                selectedExistingRepo: e.target.value as string,
+              }))
+            }
+            label="Repository"
+            displayEmpty
+          >
+            <MenuItem value="" disabled>
+              <Typography variant="body2" color="textSecondary">
+                Select a synced repository...
+              </Typography>
+            </MenuItem>
+            {SYNCED_REPOS.filter(
+              r =>
+                (form.sourceControlProvider === 'Github' &&
+                  r.host === 'github.com') ||
+                (form.sourceControlProvider === 'Gitlab' &&
+                  r.host === 'gitlab.com'),
+            ).map(repo => (
+              <MenuItem key={repo.url} value={repo.url}>
+                <Box
+                  display="flex"
+                  alignItems="center"
+                  style={{ gap: 8, width: '100%' }}
+                >
+                  <Typography variant="body2">
+                    {repo.org}/{repo.name}
+                  </Typography>
+                  <Chip
+                    label={repo.visibility}
+                    size="small"
+                    variant="outlined"
+                    style={{ height: 18, fontSize: 10, marginLeft: 'auto' }}
+                  />
+                </Box>
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      )}
+
+      {/* Create new repository checkbox */}
+      <FormControlLabel
+        className={classes.createNewCheckbox}
+        control={
+          <Checkbox
+            checked={form.createNewRepository}
+            onChange={e =>
+              setForm(prev => ({
+                ...prev,
+                createNewRepository: e.target.checked,
+                selectedExistingRepo: '',
+              }))
+            }
+            color="primary"
+            size="small"
+          />
+        }
+        label={
+          <Typography variant="body2">
+            Create new repository
+          </Typography>
+        }
+      />
+
+      {/* New repo fields */}
+      {form.createNewRepository && (
+        <Box className={classes.repoFields}>
           <Box display="flex" style={{ gap: 12, marginBottom: 16 }}>
             <TextField
               label="Organization / Owner"
               variant="outlined"
-              value={form.newRepoOrg}
+              value={form.repositoryOwner}
               onChange={e =>
-                setForm(prev => ({ ...prev, newRepoOrg: e.target.value }))
+                setForm(prev => ({
+                  ...prev,
+                  repositoryOwner: e.target.value,
+                }))
               }
-              style={{ minWidth: 200 }}
+              helperText="The organization or username that owns the repository"
+              style={{ minWidth: 220 }}
             />
             <Typography
               variant="h6"
-              style={{ alignSelf: 'center', color: '#999' }}
+              style={{ alignSelf: 'center', color: '#999', paddingBottom: 20 }}
             >
               /
             </Typography>
@@ -542,32 +582,110 @@ const SourceCodeStep = ({
               variant="outlined"
               fullWidth
               required
-              value={form.newRepoName}
+              value={form.repositoryName}
               onChange={e =>
-                setForm(prev => ({ ...prev, newRepoName: e.target.value }))
+                setForm(prev => ({
+                  ...prev,
+                  repositoryName: e.target.value,
+                }))
               }
               placeholder="my-automation-project"
+              helperText="The name of the new repository to create"
             />
           </Box>
         </Box>
       )}
 
-      {!isNew && selectedSyncedRepo && (
-        <Box className={classes.existingRepoFields}>
-          <TextField
-            label="Branch name"
-            variant="outlined"
-            fullWidth
-            value={form.branch}
-            onChange={e =>
-              setForm(prev => ({ ...prev, branch: e.target.value }))
-            }
-            helperText="The generated files will be pushed to this branch as a pull request."
-            style={{ marginBottom: 16 }}
-          />
-          <Typography variant="body2" color="textSecondary" style={{ fontSize: 12 }}>
-            Visibility: <strong>{selectedSyncedRepo.visibility}</strong> (inherited from repository)
+      {/* Branch selection -- shown for existing repos */}
+      {!form.createNewRepository && form.selectedExistingRepo && (
+        <Box className={classes.branchSection}>
+          <Divider style={{ marginBottom: 16 }} />
+          {!form.createNewBranch ? (
+            <FormControl variant="outlined" fullWidth>
+              <InputLabel>Branch</InputLabel>
+              <Select
+                value={form.branch}
+                onChange={e => {
+                  const val = e.target.value as string;
+                  if (val === BRANCH_CREATE_NEW) {
+                    setForm(prev => ({
+                      ...prev,
+                      createNewBranch: true,
+                      newBranchName: '',
+                    }));
+                  } else {
+                    setForm(prev => ({ ...prev, branch: val }));
+                  }
+                }}
+                label="Branch"
+              >
+                {DEMO_BRANCHES.map(b => (
+                  <MenuItem key={b} value={b}>
+                    {b}
+                  </MenuItem>
+                ))}
+                <Divider />
+                <MenuItem value={BRANCH_CREATE_NEW}>
+                  <Typography variant="body2" style={{ fontWeight: 600 }}>
+                    + Create new branch
+                  </Typography>
+                </MenuItem>
+              </Select>
+            </FormControl>
+          ) : (
+            <Box>
+              <TextField
+                label="New branch name"
+                variant="outlined"
+                fullWidth
+                required
+                value={form.newBranchName}
+                onChange={e =>
+                  setForm(prev => ({
+                    ...prev,
+                    newBranchName: e.target.value,
+                  }))
+                }
+                placeholder="feat/my-automation"
+                helperText="A new branch will be created from main"
+              />
+              <Button
+                size="small"
+                onClick={() =>
+                  setForm(prev => ({
+                    ...prev,
+                    createNewBranch: false,
+                    newBranchName: '',
+                  }))
+                }
+                style={{ textTransform: 'none', marginTop: 4 }}
+              >
+                Use existing branch instead
+              </Button>
+            </Box>
+          )}
+          <Typography
+            variant="body2"
+            color="textSecondary"
+            style={{ fontSize: 12, marginTop: 8 }}
+          >
+            The generated files will be pushed to this branch as a{' '}
+            {form.sourceControlProvider === 'Gitlab'
+              ? 'merge request'
+              : 'pull request'}
+            .
           </Typography>
+          {selectedSyncedRepo && (
+            <Typography
+              variant="body2"
+              color="textSecondary"
+              style={{ fontSize: 12, marginTop: 4 }}
+            >
+              Visibility:{' '}
+              <strong>{selectedSyncedRepo.visibility}</strong>{' '}
+              (inherited from repository)
+            </Typography>
+          )}
         </Box>
       )}
     </Box>
@@ -874,8 +992,6 @@ const ReviewStep = ({
 }) => {
   const classes = useStyles();
 
-  const isNew = form.selectedRepo === REPO_CREATE_NEW;
-
   const pipelineLabel =
     form.pipelineType === 'comprehensive'
       ? 'Comprehensive pipeline'
@@ -883,11 +999,17 @@ const ReviewStep = ({
         ? 'Standard pipeline'
         : `Custom (${form.customStages.length} stages)`;
 
-  const repoLabel = isNew
-    ? `${form.newRepoOrg}/${form.newRepoName || '(not set)'} (new)`
-    : SYNCED_REPOS.find(r => r.url === form.selectedRepo)
-      ? `${SYNCED_REPOS.find(r => r.url === form.selectedRepo)!.org}/${SYNCED_REPOS.find(r => r.url === form.selectedRepo)!.name}`
+  const repoLabel = form.createNewRepository
+    ? `${form.repositoryOwner}/${form.repositoryName || '(not set)'} (new)`
+    : SYNCED_REPOS.find(r => r.url === form.selectedExistingRepo)
+      ? `${SYNCED_REPOS.find(r => r.url === form.selectedExistingRepo)!.org}/${SYNCED_REPOS.find(r => r.url === form.selectedExistingRepo)!.name}`
       : '(not selected)';
+
+  const branchLabel = form.createNewRepository
+    ? 'main (default)'
+    : form.createNewBranch
+      ? `${form.newBranchName} (new)`
+      : form.branch;
 
   const controllerLabel =
     form.aapController === 'prod-controller'
@@ -944,27 +1066,35 @@ const ReviewStep = ({
           <EditButton step={1} />
         </Typography>
         <Box className={classes.reviewRow}>
+          <Typography className={classes.reviewLabel}>Provider</Typography>
+          <Typography className={classes.reviewValue}>
+            {form.sourceControlProvider}
+          </Typography>
+        </Box>
+        <Box className={classes.reviewRow}>
           <Typography className={classes.reviewLabel}>
-            {isNew ? 'New repository' : 'Existing repository'}
+            {form.createNewRepository ? 'New repository' : 'Repository'}
           </Typography>
           <Typography className={classes.reviewValue}>{repoLabel}</Typography>
         </Box>
-        {isNew && (
-          <Box className={classes.reviewRow}>
-            <Typography className={classes.reviewLabel}>Provider</Typography>
-            <Typography className={classes.reviewValue}>
-              {form.sourceControlProvider}
-            </Typography>
-          </Box>
-        )}
-        {!isNew && (
+        {!form.createNewRepository && (
           <Box className={classes.reviewRow}>
             <Typography className={classes.reviewLabel}>Branch</Typography>
             <Typography className={classes.reviewValue}>
-              {form.branch}
+              {branchLabel}
             </Typography>
           </Box>
         )}
+        <Box className={classes.reviewRow}>
+          <Typography className={classes.reviewLabel}>Delivery</Typography>
+          <Typography className={classes.reviewValue}>
+            {form.createNewRepository
+              ? 'Push directly to new repo'
+              : form.sourceControlProvider === 'Gitlab'
+                ? 'Merge request'
+                : 'Pull request'}
+          </Typography>
+        </Box>
       </Box>
 
       <Box className={classes.reviewSection}>
@@ -1086,9 +1216,13 @@ const isStepValid = (step: number, form: WizardFormState): boolean => {
     case 0:
       return Boolean(form.serviceName.trim() && form.serviceDescription.trim());
     case 1:
-      if (form.selectedRepo === REPO_CREATE_NEW)
-        return Boolean(form.newRepoName.trim() && form.newRepoOrg.trim());
-      return Boolean(form.selectedRepo);
+      if (form.createNewRepository)
+        return Boolean(
+          form.repositoryOwner.trim() && form.repositoryName.trim(),
+        );
+      if (!form.selectedExistingRepo) return false;
+      if (form.createNewBranch) return Boolean(form.newBranchName.trim());
+      return true;
     case 2:
       if (form.pipelineType === 'custom') return form.customStages.length > 0;
       return true;
