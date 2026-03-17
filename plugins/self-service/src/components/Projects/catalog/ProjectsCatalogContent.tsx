@@ -497,14 +497,17 @@ const ProjectsCatalogTable = ({
       <Table<DemoProject>
         columns={columns}
         data={filteredProjects}
-        title={`Projects (${filteredProjects.length})`}
+        title={`${filteredProjects.length} projects`}
         options={{
           paging: true,
-          pageSize: 20,
+          pageSize: 10,
+          pageSizeOptions: [5, 10, 20],
+          emptyRowsWhenPaging: false,
           search: false,
           sorting: true,
           padding: 'dense',
         }}
+        style={{ width: '100%', overflowX: 'hidden' }}
       />
     </Box>
   );

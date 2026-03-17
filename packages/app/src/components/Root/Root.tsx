@@ -4,8 +4,6 @@ import HomeIcon from '@material-ui/icons/Home';
 import ExtensionIcon from '@material-ui/icons/Extension';
 import LibraryBooks from '@material-ui/icons/LibraryBooks';
 import CategoryIcon from '@material-ui/icons/Category';
-import LogoFull from './LogoFull';
-import LogoIcon from './LogoIcon';
 import { SidebarSectionLabel } from '@ansible/plugin-backstage-rhaap';
 import {
   Settings as SidebarSettings,
@@ -21,8 +19,6 @@ import {
   SidebarPage,
   SidebarScrollWrapper,
   SidebarSpace,
-  useSidebarOpenState,
-  Link,
 } from '@backstage/core-components';
 import MenuIcon from '@material-ui/icons/Menu';
 import SearchIcon from '@material-ui/icons/Search';
@@ -36,114 +32,111 @@ import VpnKeyIcon from '@material-ui/icons/VpnKey';
 const useSidebarLogoStyles = makeStyles({
   root: {
     width: sidebarConfig.drawerWidthClosed,
-    height: 3 * sidebarConfig.logoHeight,
-    display: 'flex',
-    flexFlow: 'row nowrap',
-    alignItems: 'center',
-    marginBottom: -14,
-  },
-  link: {
-    width: sidebarConfig.drawerWidthClosed,
-    marginLeft: 24,
+    height: 16,
+    flexShrink: 0,
   },
 });
 
-const SidebarLogo = () => {
+const SidebarSpacer = () => {
   const classes = useSidebarLogoStyles();
-  const { isOpen } = useSidebarOpenState();
-
-  return (
-    <div className={classes.root}>
-      <Link to="/" underline="none" className={classes.link} aria-label="Home">
-        {isOpen ? <LogoFull /> : <LogoIcon />}
-      </Link>
-    </div>
-  );
+  return <div className={classes.root} />;
 };
 
 const HEADER_HEIGHT = 64;
 
-const useRootStyles = makeStyles({
+const useRootStyles = makeStyles(theme => ({
   '@global': {
     '.BackstageSidebar-root': {
-      top: HEADER_HEIGHT,
+      top: `${HEADER_HEIGHT}px !important`,
     },
     '.BackstageSidebar-drawer': {
-      top: HEADER_HEIGHT,
+      top: `${HEADER_HEIGHT}px !important`,
+    },
+    'body, html': {
+      backgroundColor: `${theme.palette.background.default} !important`,
     },
   },
   fixedHeaderOffset: {
     paddingTop: HEADER_HEIGHT,
     minHeight: '100vh',
+    backgroundColor: theme.palette.background.default,
   },
-});
+}));
 
 export const Root = ({ children }: PropsWithChildren<{}>) => {
   const rootClasses = useRootStyles();
   return (
-  <div className={rootClasses.fixedHeaderOffset}>
-  <SidebarPage>
-    <Sidebar>
-      <SidebarLogo />
-      <SidebarGroup label="Search" icon={<SearchIcon />} to="/search">
-        <SidebarSearchModal />
-      </SidebarGroup>
-      <SidebarDivider />
-      <SidebarGroup label="Menu" icon={<MenuIcon />}>
-        <SidebarItem
-          icon={HomeIcon}
-          to="/self-service/projects"
-          text="Projects"
-        />
-        <SidebarItem
-          icon={DescriptionOutlinedIcon}
-          to="/self-service/catalog"
-          text="Templates"
-        />
-        <SidebarItem
-          icon={WebAssetIcon}
-          to="ansible/overview"
-          text="Workspaces"
-        />
-        <SidebarDivider />
-        <SidebarSectionLabel text="Shared Assets" />
-        <SidebarItem
-          icon={MemoryIcon}
-          to="/self-service/ee"
-          text="Execution Environments"
-        />
-        <SidebarItem
-          icon={CategoryIcon}
-          to="/self-service/collections"
-          text="Collections"
-        />
-        <SidebarDivider />
-        <SidebarSectionLabel text="Learn" />
-        <SidebarItem icon={LibraryBooks} to="docs" text="Documentation" />
-        <SidebarItem icon={SchoolIcon} to="docs" text="Training" />
-        <SidebarDivider />
-        <SidebarScrollWrapper>
-          <SidebarSectionLabel text="Administration" />
-          <SidebarItem icon={SettingsIcon} to="settings" text="General" />
-          <SidebarItem
-            icon={ExtensionIcon}
-            to="settings"
-            text="Integrations"
-          />
-          <SidebarItem icon={VpnKeyIcon} to="rbac" text="Access Control" />
-        </SidebarScrollWrapper>
-      </SidebarGroup>
-      <SidebarSpace />
-      <SidebarGroup
-        label="Settings"
-        icon={<UserSettingsSignInAvatar />}
-        to="/settings"
-      >
-        <SidebarSettings />
-      </SidebarGroup>
-    </Sidebar>
-    {children}
-  </SidebarPage>
-  </div>
+    <div className={rootClasses.fixedHeaderOffset}>
+      <SidebarPage>
+        <Sidebar>
+          <SidebarSpacer />
+          <SidebarGroup label="Search" icon={<SearchIcon />} to="/search">
+            <SidebarSearchModal />
+          </SidebarGroup>
+          <SidebarDivider />
+          <SidebarGroup label="Menu" icon={<MenuIcon />}>
+            <SidebarItem
+              icon={HomeIcon}
+              to="/self-service/projects"
+              text="Projects"
+            />
+            <SidebarItem
+              icon={DescriptionOutlinedIcon}
+              to="/self-service/catalog"
+              text="Templates"
+            />
+            <SidebarItem
+              icon={WebAssetIcon}
+              to="ansible/overview"
+              text="Workspaces"
+            />
+            <SidebarDivider />
+            <SidebarSectionLabel text="Shared Assets" />
+            <SidebarItem
+              icon={MemoryIcon}
+              to="/self-service/ee"
+              text="Execution Environments"
+            />
+            <SidebarItem
+              icon={CategoryIcon}
+              to="/self-service/collections"
+              text="Collections"
+            />
+            <SidebarDivider />
+            <SidebarSectionLabel text="Learn" />
+            <SidebarItem icon={LibraryBooks} to="docs" text="Documentation" />
+            <SidebarItem icon={SchoolIcon} to="docs" text="Training" />
+            <SidebarDivider />
+            <SidebarScrollWrapper>
+              <SidebarSectionLabel text="Administration" />
+              <SidebarItem
+                icon={SettingsIcon}
+                to="settings"
+                text="General"
+              />
+              <SidebarItem
+                icon={ExtensionIcon}
+                to="settings"
+                text="Integrations"
+              />
+              <SidebarItem
+                icon={VpnKeyIcon}
+                to="rbac"
+                text="Access Control"
+              />
+            </SidebarScrollWrapper>
+          </SidebarGroup>
+          <SidebarSpace />
+          <SidebarGroup
+            label="Settings"
+            icon={<UserSettingsSignInAvatar />}
+            to="/settings"
+          >
+            <SidebarSettings />
+          </SidebarGroup>
+        </Sidebar>
+        {children}
+      </SidebarPage>
+    </div>
   );
 };

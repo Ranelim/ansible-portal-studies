@@ -11,11 +11,19 @@ import {
 import CheckCircleIcon from '@material-ui/icons/CheckCircle';
 import RadioButtonUncheckedIcon from '@material-ui/icons/RadioButtonUnchecked';
 import ErrorIcon from '@material-ui/icons/Error';
+import AutorenewIcon from '@material-ui/icons/Autorenew';
 import HelpOutlineIcon from '@material-ui/icons/HelpOutline';
 import CloseIcon from '@material-ui/icons/Close';
 import type { AapStatus as AapStatusType, LastJobRun } from './projectsDemoData';
 
 const useStyles = makeStyles(theme => ({
+  '@keyframes spin': {
+    from: { transform: 'rotate(0deg)' },
+    to: { transform: 'rotate(360deg)' },
+  },
+  spinIcon: {
+    animation: '$spin 1.5s linear infinite',
+  },
   popoverContent: {
     padding: theme.spacing(2.5),
     maxWidth: 380,
@@ -41,7 +49,11 @@ const useStyles = makeStyles(theme => ({
     display: 'flex',
     alignItems: 'center',
     gap: 8,
-    padding: '6px 0',
+    padding: '6px 8px',
+    borderRadius: 4,
+    '&:hover': {
+      backgroundColor: theme.palette.action.hover,
+    },
   },
   statusLabel: {
     fontSize: 13,
@@ -53,6 +65,16 @@ const useStyles = makeStyles(theme => ({
     borderRadius: 16,
     padding: '4px 14px',
     marginLeft: 8,
+  },
+  iconWrapper: {
+    display: 'inline-flex',
+    cursor: 'pointer',
+    borderRadius: 2,
+    padding: 1,
+    transition: 'background-color 0.15s',
+    '&:hover': {
+      backgroundColor: theme.palette.action.hover,
+    },
   },
 }));
 
@@ -99,18 +121,18 @@ export const AapStatusIcons = ({ aap }: { aap: AapStatusType }) => {
       <Box
         display="flex"
         alignItems="center"
-        style={{ gap: 2, cursor: 'pointer' }}
+        style={{ gap: 2 }}
         onClick={handleClick}
       >
         <Tooltip title={`AAP Project: ${statusText(aap.project)}`} arrow>
-          <Box display="flex">
+          <span className={classes.iconWrapper} role="button" tabIndex={0}>
             <StatusIcon status={aap.project} />
-          </Box>
+          </span>
         </Tooltip>
         <Tooltip title={`Job Template: ${statusText(aap.jobTemplate)}`} arrow>
-          <Box display="flex">
+          <span className={classes.iconWrapper} role="button" tabIndex={0}>
             <StatusIcon status={aap.jobTemplate} />
-          </Box>
+          </span>
         </Tooltip>
       </Box>
       <Popover
@@ -174,6 +196,17 @@ export const AapStatusIcons = ({ aap }: { aap: AapStatusType }) => {
   );
 };
 
+const JobRunStatusIcon = ({ status }: { status: string }) => {
+  const classes = useStyles();
+  if (status === 'failed') {
+    return <ErrorIcon style={{ color: '#f44336', fontSize: 16 }} />;
+  }
+  if (status === 'running') {
+    return <AutorenewIcon style={{ color: '#2196f3', fontSize: 16 }} className={classes.spinIcon} />;
+  }
+  return <CheckCircleIcon style={{ color: '#4caf50', fontSize: 16 }} />;
+};
+
 export const LastJobRunCell = ({ jobRun }: { jobRun: LastJobRun }) => {
   if (jobRun.status === 'none') {
     return (
@@ -183,11 +216,6 @@ export const LastJobRunCell = ({ jobRun }: { jobRun: LastJobRun }) => {
     );
   }
 
-  const colorMap: Record<string, string> = {
-    success: '#4caf50',
-    failed: '#f44336',
-    running: '#2196f3',
-  };
   const labelMap: Record<string, string> = {
     success: 'Success',
     failed: 'Failed',
@@ -196,12 +224,7 @@ export const LastJobRunCell = ({ jobRun }: { jobRun: LastJobRun }) => {
 
   return (
     <Box display="flex" alignItems="center" style={{ gap: 6 }}>
-      <CheckCircleIcon
-        style={{
-          color: colorMap[jobRun.status],
-          fontSize: 16,
-        }}
-      />
+      <JobRunStatusIcon status={jobRun.status} />
       <Typography variant="body2">
         {labelMap[jobRun.status]}
         {jobRun.timestamp && (
@@ -217,8 +240,10 @@ export const LastJobRunCell = ({ jobRun }: { jobRun: LastJobRun }) => {
 export const AapColumnHeader = () => (
   <Box display="flex" alignItems="center" style={{ gap: 4 }}>
     AAP
-    <Tooltip title="Whether the AAP project and job template have been pushed to your Ansible Controller. Push to AAP is a manual action.">
-      <HelpOutlineIcon style={{ fontSize: 14, color: '#999' }} />
+    <Tooltip title="Whether the AAP project and job template have been pushed to your Ansible Controller. Push to AAP is a manual action." arrow>
+      <span style={{ display: 'inline-flex', cursor: 'help' }}>
+        <HelpOutlineIcon style={{ fontSize: 14, color: '#999' }} />
+      </span>
     </Tooltip>
   </Box>
 );
@@ -226,8 +251,10 @@ export const AapColumnHeader = () => (
 export const LastJobRunColumnHeader = () => (
   <Box display="flex" alignItems="center" style={{ gap: 4 }}>
     Last Job Run
-    <Tooltip title="Status and time of the most recent job execution in AAP.">
-      <HelpOutlineIcon style={{ fontSize: 14, color: '#999' }} />
+    <Tooltip title="Status and time of the most recent job execution in AAP." arrow>
+      <span style={{ display: 'inline-flex', cursor: 'help' }}>
+        <HelpOutlineIcon style={{ fontSize: 14, color: '#999' }} />
+      </span>
     </Tooltip>
   </Box>
 );

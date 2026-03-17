@@ -26,6 +26,7 @@ import { entityPage } from './components/catalog/EntityPage';
 import { searchPage } from './components/search/SearchPage';
 import { Root } from './components/Root';
 import { GlobalHeader } from './components/GlobalHeader';
+import { LightspeedProvider, LightspeedPanel } from './components/Lightspeed';
 import { getThemes } from '@red-hat-developer-hub/backstage-plugin-theme';
 
 import {
@@ -145,8 +146,11 @@ export default app.createRoot(
     <AlertDisplay />
     <OAuthRequestDialog />
     <AppRouter>
-      <GlobalHeader />
-      <Root>{routes}</Root>
+      <LightspeedProvider>
+        <GlobalHeader />
+        <Root>{routes}</Root>
+        <LightspeedPanel />
+      </LightspeedProvider>
     </AppRouter>
   </>,
 );
