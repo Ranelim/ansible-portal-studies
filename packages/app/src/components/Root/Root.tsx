@@ -61,9 +61,20 @@ const SidebarLogo = () => {
   );
 };
 
+const HEADER_HEIGHT = 64;
+
 const useRootStyles = makeStyles({
+  '@global': {
+    '.BackstageSidebar-root': {
+      top: HEADER_HEIGHT,
+    },
+    '.BackstageSidebar-drawer': {
+      top: HEADER_HEIGHT,
+    },
+  },
   fixedHeaderOffset: {
-    paddingTop: 64,
+    paddingTop: HEADER_HEIGHT,
+    minHeight: '100vh',
   },
 });
 
