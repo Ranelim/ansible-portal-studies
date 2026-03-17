@@ -141,6 +141,12 @@ const useStyles = makeStyles(theme => ({
   stepDescription: {
     color: theme.palette.text.secondary,
     fontSize: 14,
+    marginBottom: theme.spacing(1),
+  },
+  stepWhy: {
+    color: theme.palette.text.hint,
+    fontSize: 13,
+    fontStyle: 'italic',
     marginBottom: theme.spacing(3),
   },
   actions: {
@@ -409,7 +415,7 @@ const DetailsStep = ({
       </Box>
 
       <TextField
-        label="Service name"
+        label="Project name"
         variant="outlined"
         fullWidth
         required
@@ -420,7 +426,7 @@ const DetailsStep = ({
         style={{ marginBottom: 16 }}
       />
       <TextField
-        label="Service description"
+        label="Project description"
         variant="outlined"
         fullWidth
         required
@@ -787,7 +793,7 @@ const PipelineStep = ({
         </Box>
         <Typography className={classes.pipelineDescription}>
           Build a tailored pipeline. Manually configure the specific linting,
-          governance, and testing gates that apply to this service.
+          governance, and testing gates that apply to this project.
         </Typography>
 
         <Collapse in={form.pipelineType === 'custom'}>
@@ -1039,7 +1045,7 @@ const ReviewStep = ({
           </Typography>
         </Box>
         <Box className={classes.reviewRow}>
-          <Typography className={classes.reviewLabel}>Service name</Typography>
+          <Typography className={classes.reviewLabel}>Project name</Typography>
           <Typography className={classes.reviewValue}>
             {form.serviceName || '(not set)'}
           </Typography>
@@ -1285,7 +1291,7 @@ export const ProjectCreateWizard = ({
       </Box>
       <Box className={classes.titleRow}>
         <Typography variant="h5" style={{ fontWeight: 600 }}>
-          Create Service
+          Create Project
         </Typography>
         <Chip
           label="Template"
@@ -1323,6 +1329,11 @@ export const ProjectCreateWizard = ({
         <Typography className={classes.stepDescription}>
           {currentStep.description}
         </Typography>
+        {currentStep.why && (
+          <Typography className={classes.stepWhy}>
+            {currentStep.why}
+          </Typography>
+        )}
 
         {activeStep === 0 && (
           <DetailsStep form={form} setForm={setForm} template={template} />

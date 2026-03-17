@@ -19,6 +19,7 @@ import SearchIcon from '@material-ui/icons/Search';
 import StarIcon from '@material-ui/icons/Star';
 import StarBorderIcon from '@material-ui/icons/StarBorder';
 import OpenInNewIcon from '@material-ui/icons/OpenInNew';
+import AddIcon from '@material-ui/icons/Add';
 import { PipelineStatusIcons, PipelineColumnHeader } from './PipelineStatus';
 import {
   AapStatusIcons,
@@ -260,7 +261,19 @@ const ProjectsCatalogTable = ({
             fullWidth
           />
         </Box>
-        <Box className={classes.filterRow}>
+        <Box style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<AddIcon />}
+            onClick={() => onTabSwitch(1)}
+            style={{ textTransform: 'none', fontWeight: 600, whiteSpace: 'nowrap' }}
+          >
+            Create Project
+          </Button>
+        </Box>
+      </Box>
+      <Box style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
           {(['all', 'passed', 'failed', 'running'] as PipelineFilter[]).map(
             f => (
               <Chip
@@ -291,7 +304,6 @@ const ProjectsCatalogTable = ({
               ))}
             </Select>
           </FormControl>
-        </Box>
       </Box>
       <Table<DemoProject>
         columns={columns}

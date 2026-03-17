@@ -3,7 +3,7 @@ import { Header, Page, HeaderTabs, Content } from '@backstage/core-components';
 import { Box, makeStyles } from '@material-ui/core';
 import { useLocation, useNavigate } from 'react-router-dom';
 import CategoryOutlinedIcon from '@material-ui/icons/CategoryOutlined';
-import AddCircleOutlineIcon from '@material-ui/icons/AddCircleOutline';
+import DescriptionOutlinedIcon from '@material-ui/icons/DescriptionOutlined';
 import { ProjectsCatalogContent } from './catalog/ProjectsCatalogContent';
 import { ProjectsCreateContent } from './create/ProjectsCreateContent';
 
@@ -24,8 +24,8 @@ const tabs = [
   },
   {
     id: 1,
-    label: 'Create',
-    icon: <AddCircleOutlineIcon />,
+    label: 'Templates',
+    icon: <DescriptionOutlinedIcon />,
     path: 'create',
   },
 ];

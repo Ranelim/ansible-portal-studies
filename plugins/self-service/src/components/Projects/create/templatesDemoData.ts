@@ -1,6 +1,7 @@
 export type WizardStep = {
   title: string;
   description: string;
+  why: string;
 };
 
 export type DemoTemplate = {
@@ -50,11 +51,31 @@ export const STANDARD_STAGES = [
 ];
 
 const WIZARD_STEPS: WizardStep[] = [
-  { title: 'Details & AI Jumpstart', description: 'Describe what you want to automate, or fill in the details manually.' },
-  { title: 'Source Code (Git)', description: 'Create a new repository or select an existing synced repo.' },
-  { title: 'Pipeline & Governance', description: 'Select the governance pipeline for your automation code. These automated validation steps ensure that only safe, tested, and compliant playbooks are promoted to your Ansible Controller.' },
-  { title: 'Destination (AAP)', description: 'Configure how this project connects to your Ansible Automation Platform.' },
-  { title: 'Review & Create', description: 'Review your selections before creating the project.' },
+  {
+    title: 'Details & AI Jumpstart',
+    description: 'Describe what you want to automate, or fill in the details manually.',
+    why: 'Naming and describing your project up front helps your team discover and understand it. AI Jumpstart can save time by pre-filling the remaining steps based on your intent.',
+  },
+  {
+    title: 'Source Code (Git)',
+    description: 'Create a new repository or select an existing synced repo.',
+    why: 'Every automation project is backed by a Git repository. This is where your playbooks, roles, and inventory live — and it enables version control, collaboration, and auditability.',
+  },
+  {
+    title: 'Pipeline & Governance',
+    description: 'Select the governance pipeline for your automation code.',
+    why: 'Pipelines run automated checks (linting, policy, testing) on every commit so only safe, tested, and compliant playbooks reach production. Choosing the right level of governance balances speed with risk.',
+  },
+  {
+    title: 'Destination (AAP)',
+    description: 'Configure how this project connects to your Ansible Automation Platform.',
+    why: 'Connecting to AAP lets your automation be executed, scheduled, and monitored centrally. This step ensures your project and job templates are registered and ready to run.',
+  },
+  {
+    title: 'Review & Create',
+    description: 'Review your selections before creating the project.',
+    why: 'A final review prevents misconfiguration. Once created, the repository, pipeline, and AAP resources are provisioned automatically.',
+  },
 ];
 
 export const DEMO_TEMPLATES: DemoTemplate[] = [
