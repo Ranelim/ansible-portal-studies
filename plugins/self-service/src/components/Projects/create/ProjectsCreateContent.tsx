@@ -10,29 +10,11 @@ import {
   Button,
   InputBase,
   Grid,
-  Tooltip,
 } from '@material-ui/core';
 import SearchIcon from '@material-ui/icons/Search';
 import PersonIcon from '@material-ui/icons/Person';
-import StorageIcon from '@material-ui/icons/Storage';
-import CloudIcon from '@material-ui/icons/Cloud';
-import DeviceHubIcon from '@material-ui/icons/DeviceHub';
-import VerifiedUserIcon from '@material-ui/icons/VerifiedUser';
-import InfoOutlinedIcon from '@material-ui/icons/InfoOutlined';
 import { DEMO_TEMPLATES, DemoTemplate } from './templatesDemoData';
 import { ProjectCreateWizard } from './ProjectCreateWizard';
-
-const TEMPLATE_ICONS: Record<string, React.ElementType> = {
-  'create-playbook-project': StorageIcon,
-  'create-cloud-provisioning-project': CloudIcon,
-  'create-network-automation-project': DeviceHubIcon,
-};
-
-const TEMPLATE_COLORS: Record<string, string> = {
-  'create-playbook-project': '#1565C0',
-  'create-cloud-provisioning-project': '#2E7D32',
-  'create-network-automation-project': '#E65100',
-};
 
 const useStyles = makeStyles(theme => ({
   description: {
@@ -55,31 +37,13 @@ const useStyles = makeStyles(theme => ({
     height: '100%',
     display: 'flex',
     flexDirection: 'column',
-    transition: 'box-shadow 0.2s ease, border-color 0.2s ease',
-    border: `1px solid ${theme.palette.divider}`,
+    transition: 'box-shadow 0.2s ease',
     '&:hover': {
       boxShadow: theme.shadows[4],
-      borderColor: theme.palette.primary.main,
     },
   },
-  cardHeader: {
-    display: 'flex',
-    alignItems: 'flex-start',
-    gap: theme.spacing(1.5),
-    padding: theme.spacing(2, 2, 1.5),
-  },
-  iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  cardTitleGroup: {
-    flex: 1,
-    minWidth: 0,
+  cardTitleArea: {
+    padding: theme.spacing(2, 2, 1),
   },
   cardTitle: {
     fontWeight: 600,
@@ -104,20 +68,6 @@ const useStyles = makeStyles(theme => ({
     display: 'flex',
     flexWrap: 'wrap',
     gap: 4,
-    marginBottom: theme.spacing(1),
-  },
-  pipelineRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 4,
-    marginTop: theme.spacing(0.5),
-  },
-  pipelineBadge: {
-    borderRadius: 12,
-    fontSize: 11,
-    fontWeight: 600,
-    textTransform: 'none',
-    height: 22,
   },
   cardActions: {
     justifyContent: 'space-between',
@@ -146,23 +96,13 @@ const TemplateCard = ({
   onStart: (template: DemoTemplate) => void;
 }) => {
   const classes = useStyles();
-  const IconComponent = TEMPLATE_ICONS[template.name] || StorageIcon;
-  const accentColor = TEMPLATE_COLORS[template.name] || '#1565C0';
 
   return (
-    <Card className={classes.card} elevation={0}>
-      <Box className={classes.cardHeader}>
-        <Box
-          className={classes.iconContainer}
-          style={{ backgroundColor: `${accentColor}18` }}
-        >
-          <IconComponent style={{ color: accentColor, fontSize: 22 }} />
-        </Box>
-        <Box className={classes.cardTitleGroup}>
-          <Typography className={classes.cardTitle}>
-            {template.title}
-          </Typography>
-        </Box>
+    <Card className={classes.card}>
+      <Box className={classes.cardTitleArea}>
+        <Typography className={classes.cardTitle}>
+          {template.title}
+        </Typography>
       </Box>
       <CardContent className={classes.cardContent}>
         <Typography className={classes.cardDescription}>
@@ -170,24 +110,14 @@ const TemplateCard = ({
         </Typography>
         <Box className={classes.tagsContainer}>
           {template.tags.map(tag => (
-            <Chip key={tag} label={tag} size="small" variant="outlined" style={{ fontSize: 11, height: 20 }} />
+            <Chip
+              key={tag}
+              label={tag}
+              size="small"
+              variant="outlined"
+              style={{ fontSize: 11, height: 20 }}
+            />
           ))}
-        </Box>
-        <Box className={classes.pipelineRow}>
-          <VerifiedUserIcon style={{ fontSize: 14, color: accentColor }} />
-          <Chip
-            label={`${template.defaultPipeline === 'comprehensive' ? 'Comprehensive' : 'Standard'} pipeline`}
-            size="small"
-            style={{
-              backgroundColor: `${accentColor}18`,
-              color: accentColor,
-              fontWeight: 600,
-            }}
-            className={classes.pipelineBadge}
-          />
-          <Tooltip title={template.pipelineHint} placement="top" arrow>
-            <InfoOutlinedIcon style={{ fontSize: 14, color: '#999', cursor: 'help' }} />
-          </Tooltip>
         </Box>
       </CardContent>
       <CardActions className={classes.cardActions}>
