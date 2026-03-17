@@ -9,12 +9,20 @@ import {
 } from '@material-ui/core';
 import CheckCircleIcon from '@material-ui/icons/CheckCircle';
 import ErrorIcon from '@material-ui/icons/Error';
+import AutorenewIcon from '@material-ui/icons/Autorenew';
 import RadioButtonUncheckedIcon from '@material-ui/icons/RadioButtonUnchecked';
 import HelpOutlineIcon from '@material-ui/icons/HelpOutline';
 import CloseIcon from '@material-ui/icons/Close';
 import type { PipelineStage } from './projectsDemoData';
 
 const useStyles = makeStyles(theme => ({
+  '@keyframes spin': {
+    from: { transform: 'rotate(0deg)' },
+    to: { transform: 'rotate(360deg)' },
+  },
+  spinIcon: {
+    animation: '$spin 1.5s linear infinite',
+  },
   stageRow: {
     display: 'flex',
     alignItems: 'center',
@@ -59,6 +67,7 @@ const StageIconSimple = ({
   status: PipelineStage['status'];
   size?: number;
 }) => {
+  const classes = useStyles();
   const colorMap: Record<string, string> = {
     passed: '#4caf50',
     failed: '#f44336',
@@ -72,6 +81,9 @@ const StageIconSimple = ({
   }
   if (status === 'failed') {
     return <ErrorIcon style={{ color, fontSize: size }} />;
+  }
+  if (status === 'running') {
+    return <AutorenewIcon style={{ color, fontSize: size }} className={classes.spinIcon} />;
   }
   return <CheckCircleIcon style={{ color, fontSize: size }} />;
 };

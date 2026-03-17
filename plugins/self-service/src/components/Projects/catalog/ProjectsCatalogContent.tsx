@@ -8,12 +8,26 @@ import {
   IconButton,
   InputBase,
   Chip,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Menu,
+  ListItemIcon,
+  ListItemText,
+  Collapse,
+  Divider,
 } from '@material-ui/core';
 import SearchIcon from '@material-ui/icons/Search';
 import StarIcon from '@material-ui/icons/Star';
 import StarBorderIcon from '@material-ui/icons/StarBorder';
-import OpenInNewIcon from '@material-ui/icons/OpenInNew';
 import AddIcon from '@material-ui/icons/Add';
+import FilterListIcon from '@material-ui/icons/FilterList';
+import MoreVertIcon from '@material-ui/icons/MoreVert';
+import CodeIcon from '@material-ui/icons/Code';
+import VisibilityIcon from '@material-ui/icons/Visibility';
+import DeleteOutlineIcon from '@material-ui/icons/DeleteOutline';
+import CancelIcon from '@material-ui/icons/Cancel';
 import { PipelineStatusIcons, PipelineColumnHeader } from './PipelineStatus';
 import {
   AapStatusIcons,
@@ -22,6 +36,25 @@ import {
   LastJobRunColumnHeader,
 } from './AapStatus';
 import { DEMO_PROJECTS, DemoProject } from './projectsDemoData';
+
+type PipelineFilter = 'all' | 'passed' | 'failed' | 'running';
+type AapFilter = 'all' | 'published' | 'pending';
+type JobRunFilter = 'all' | 'success' | 'failed' | 'running';
+
+type ActiveFilters = {
+  pipeline: PipelineFilter;
+  aap: AapFilter;
+  jobRun: JobRunFilter;
+};
+
+const DEFAULT_FILTERS: ActiveFilters = {
+  pipeline: 'all',
+  aap: 'all',
+  jobRun: 'all',
+};
+
+const hasActiveFilters = (filters: ActiveFilters) =>
+  filters.pipeline !== 'all' || filters.aap !== 'all' || filters.jobRun !== 'all';
 
 const useStyles = makeStyles(theme => ({
   emptyContainer: {
@@ -59,10 +92,9 @@ const useStyles = makeStyles(theme => ({
   toolbarRow: {
     display: 'flex',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: theme.spacing(2),
+    gap: theme.spacing(1.5),
+    marginBottom: theme.spacing(1),
     flexWrap: 'wrap',
-    gap: theme.spacing(1),
   },
   searchBox: {
     display: 'flex',
@@ -73,15 +105,39 @@ const useStyles = makeStyles(theme => ({
     minWidth: 260,
     backgroundColor: theme.palette.background.paper,
   },
-  filterRow: {
+  filterToggle: {
+    textTransform: 'none',
+    fontWeight: 500,
+    borderRadius: theme.shape.borderRadius,
+  },
+  filterBar: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: theme.spacing(2),
+    padding: theme.spacing(1.5, 0),
+    flexWrap: 'wrap',
+  },
+  filterSelect: {
+    minWidth: 150,
+    '& .MuiSelect-select': {
+      padding: '8px 12px',
+      fontSize: 13,
+    },
+    '& .MuiInputLabel-root': {
+      fontSize: 13,
+    },
+  },
+  activeFiltersRow: {
     display: 'flex',
     alignItems: 'center',
     gap: theme.spacing(1),
+    paddingBottom: theme.spacing(1.5),
     flexWrap: 'wrap',
   },
-  filterChip: {
+  activeChip: {
     borderRadius: 16,
     textTransform: 'none',
+    fontSize: 12,
   },
   projectLink: {
     cursor: 'pointer',
@@ -126,7 +182,52 @@ const ProjectsEmptyState = ({
   );
 };
 
-type PipelineFilter = 'all' | 'passed' | 'failed' | 'running';
+const RowActionsMenu = ({ projectName }: { projectName: string }) => {
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+
+  const handleOpen = (event: React.MouseEvent<HTMLElement>) => {
+    event.stopPropagation();
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleClose = () => setAnchorEl(null);
+
+  const handleAction = (action: string) => {
+    // eslint-disable-next-line no-console
+    console.log(`${action}: ${projectName}`);
+    handleClose();
+  };
+
+  return (
+    <>
+      <IconButton size="small" onClick={handleOpen}>
+        <MoreVertIcon fontSize="small" />
+      </IconButton>
+      <Menu
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
+        onClose={handleClose}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+        getContentAnchorEl={null}
+      >
+        <MenuItem onClick={() => handleAction('edit-workspace')}>
+          <ListItemIcon><CodeIcon fontSize="small" /></ListItemIcon>
+          <ListItemText primary="Edit in Workspace" />
+        </MenuItem>
+        <MenuItem onClick={() => handleAction('view-source')}>
+          <ListItemIcon><VisibilityIcon fontSize="small" /></ListItemIcon>
+          <ListItemText primary="View Source" />
+        </MenuItem>
+        <Divider />
+        <MenuItem onClick={() => handleAction('delete')}>
+          <ListItemIcon><DeleteOutlineIcon fontSize="small" style={{ color: '#f44336' }} /></ListItemIcon>
+          <ListItemText primary="Delete" primaryTypographyProps={{ style: { color: '#f44336' } }} />
+        </MenuItem>
+      </Menu>
+    </>
+  );
+};
 
 const ProjectsCatalogTable = ({
   onTabSwitch,
@@ -136,12 +237,29 @@ const ProjectsCatalogTable = ({
   const classes = useStyles();
   const [projects, setProjects] = useState<DemoProject[]>(DEMO_PROJECTS);
   const [searchText, setSearchText] = useState('');
-  const [pipelineFilter, setPipelineFilter] = useState<PipelineFilter>('all');
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [filters, setFilters] = useState<ActiveFilters>({ ...DEFAULT_FILTERS });
 
   const toggleStar = useCallback((name: string) => {
     setProjects(prev =>
       prev.map(p => (p.name === name ? { ...p, starred: !p.starred } : p)),
     );
+  }, []);
+
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (filters.pipeline !== 'all') count++;
+    if (filters.aap !== 'all') count++;
+    if (filters.jobRun !== 'all') count++;
+    return count;
+  }, [filters]);
+
+  const clearFilter = useCallback((key: keyof ActiveFilters) => {
+    setFilters(prev => ({ ...prev, [key]: 'all' }));
+  }, []);
+
+  const clearAllFilters = useCallback(() => {
+    setFilters({ ...DEFAULT_FILTERS });
   }, []);
 
   const filteredProjects = useMemo(() => {
@@ -152,20 +270,34 @@ const ProjectsCatalogTable = ({
       result = result.filter(p => p.name.toLowerCase().includes(lower));
     }
 
-    if (pipelineFilter !== 'all') {
+    if (filters.pipeline !== 'all') {
       result = result.filter(p => {
-        if (pipelineFilter === 'passed')
+        if (filters.pipeline === 'passed')
           return p.pipeline.every(s => s.status === 'passed');
-        if (pipelineFilter === 'failed')
+        if (filters.pipeline === 'failed')
           return p.pipeline.some(s => s.status === 'failed');
-        if (pipelineFilter === 'running')
+        if (filters.pipeline === 'running')
           return p.pipeline.some(s => s.status === 'running');
         return true;
       });
     }
 
+    if (filters.aap !== 'all') {
+      result = result.filter(p => {
+        if (filters.aap === 'published')
+          return p.aap.project === 'published' && p.aap.jobTemplate === 'published';
+        if (filters.aap === 'pending')
+          return p.aap.project === 'pending' || p.aap.jobTemplate === 'pending';
+        return true;
+      });
+    }
+
+    if (filters.jobRun !== 'all') {
+      result = result.filter(p => p.lastJobRun.status === filters.jobRun);
+    }
+
     return result;
-  }, [projects, searchText, pipelineFilter]);
+  }, [projects, searchText, filters]);
 
   const columns: TableColumn<DemoProject>[] = [
     {
@@ -199,7 +331,7 @@ const ProjectsCatalogTable = ({
     },
     {
       title: '',
-      width: '100px',
+      width: '80px',
       sorting: false,
       render: (row: DemoProject) => (
         <Box className={classes.actionsCell}>
@@ -210,9 +342,7 @@ const ProjectsCatalogTable = ({
               <StarBorderIcon />
             )}
           </IconButton>
-          <IconButton size="small">
-            <OpenInNewIcon fontSize="small" />
-          </IconButton>
+          <RowActionsMenu projectName={row.name} />
         </Box>
       ),
     },
@@ -220,6 +350,29 @@ const ProjectsCatalogTable = ({
 
   if (projects.length === 0) {
     return <ProjectsEmptyState onTabSwitch={onTabSwitch} />;
+  }
+
+  const filterLabels: { key: keyof ActiveFilters; label: string; value: string }[] = [];
+  if (filters.pipeline !== 'all') {
+    filterLabels.push({
+      key: 'pipeline',
+      label: 'Pipeline',
+      value: filters.pipeline.charAt(0).toUpperCase() + filters.pipeline.slice(1),
+    });
+  }
+  if (filters.aap !== 'all') {
+    filterLabels.push({
+      key: 'aap',
+      label: 'AAP',
+      value: filters.aap.charAt(0).toUpperCase() + filters.aap.slice(1),
+    });
+  }
+  if (filters.jobRun !== 'all') {
+    filterLabels.push({
+      key: 'jobRun',
+      label: 'Last Job Run',
+      value: filters.jobRun.charAt(0).toUpperCase() + filters.jobRun.slice(1),
+    });
   }
 
   return (
@@ -234,24 +387,17 @@ const ProjectsCatalogTable = ({
             fullWidth
           />
         </Box>
-        <Box className={classes.filterRow}>
-          <Typography variant="body2" color="textSecondary" style={{ fontSize: 13, whiteSpace: 'nowrap' }}>
-            Pipeline:
-          </Typography>
-          {(['all', 'passed', 'failed', 'running'] as PipelineFilter[]).map(
-            f => (
-              <Chip
-                key={f}
-                label={f === 'all' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1)}
-                onClick={() => setPipelineFilter(f)}
-                variant={pipelineFilter === f ? 'default' : 'outlined'}
-                color={pipelineFilter === f ? 'primary' : 'default'}
-                className={classes.filterChip}
-                size="small"
-              />
-            ),
-          )}
-        </Box>
+        <Button
+          variant={filtersOpen || activeFilterCount > 0 ? 'contained' : 'outlined'}
+          color={activeFilterCount > 0 ? 'primary' : 'default'}
+          startIcon={<FilterListIcon />}
+          onClick={() => setFiltersOpen(prev => !prev)}
+          className={classes.filterToggle}
+          size="small"
+        >
+          Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
+        </Button>
+        <Box style={{ flex: 1 }} />
         <Button
           variant="contained"
           color="primary"
@@ -262,6 +408,77 @@ const ProjectsCatalogTable = ({
           Create Project
         </Button>
       </Box>
+
+      <Collapse in={filtersOpen}>
+        <Box className={classes.filterBar}>
+          <FormControl variant="outlined" size="small" className={classes.filterSelect}>
+            <InputLabel>Pipeline</InputLabel>
+            <Select
+              value={filters.pipeline}
+              onChange={e => setFilters(prev => ({ ...prev, pipeline: e.target.value as PipelineFilter }))}
+              label="Pipeline"
+            >
+              <MenuItem value="all">All</MenuItem>
+              <MenuItem value="passed">Passed</MenuItem>
+              <MenuItem value="failed">Failed</MenuItem>
+              <MenuItem value="running">Running</MenuItem>
+            </Select>
+          </FormControl>
+          <FormControl variant="outlined" size="small" className={classes.filterSelect}>
+            <InputLabel>AAP Status</InputLabel>
+            <Select
+              value={filters.aap}
+              onChange={e => setFilters(prev => ({ ...prev, aap: e.target.value as AapFilter }))}
+              label="AAP Status"
+            >
+              <MenuItem value="all">All</MenuItem>
+              <MenuItem value="published">Published</MenuItem>
+              <MenuItem value="pending">Pending</MenuItem>
+            </Select>
+          </FormControl>
+          <FormControl variant="outlined" size="small" className={classes.filterSelect}>
+            <InputLabel>Last Job Run</InputLabel>
+            <Select
+              value={filters.jobRun}
+              onChange={e => setFilters(prev => ({ ...prev, jobRun: e.target.value as JobRunFilter }))}
+              label="Last Job Run"
+            >
+              <MenuItem value="all">All</MenuItem>
+              <MenuItem value="success">Success</MenuItem>
+              <MenuItem value="failed">Failed</MenuItem>
+              <MenuItem value="running">Running</MenuItem>
+            </Select>
+          </FormControl>
+        </Box>
+      </Collapse>
+
+      {hasActiveFilters(filters) && (
+        <Box className={classes.activeFiltersRow}>
+          <Typography variant="body2" color="textSecondary" style={{ fontSize: 12 }}>
+            Active filters:
+          </Typography>
+          {filterLabels.map(f => (
+            <Chip
+              key={f.key}
+              label={`${f.label}: ${f.value}`}
+              size="small"
+              onDelete={() => clearFilter(f.key)}
+              deleteIcon={<CancelIcon style={{ fontSize: 16 }} />}
+              className={classes.activeChip}
+              color="primary"
+              variant="outlined"
+            />
+          ))}
+          <Button
+            size="small"
+            onClick={clearAllFilters}
+            style={{ textTransform: 'none', fontSize: 12 }}
+          >
+            Clear all
+          </Button>
+        </Box>
+      )}
+
       <Table<DemoProject>
         columns={columns}
         data={filteredProjects}
