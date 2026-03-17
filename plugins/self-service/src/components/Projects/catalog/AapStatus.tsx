@@ -56,8 +56,8 @@ const useStyles = makeStyles(theme => ({
   },
 }));
 
-const StatusIcon = ({ status }: { status: 'published' | 'pending' | 'error' }) => {
-  if (status === 'published') {
+const StatusIcon = ({ status }: { status: 'pushed' | 'not-pushed' | 'error' }) => {
+  if (status === 'pushed') {
     return <CheckCircleIcon style={{ color: '#4caf50', fontSize: 18 }} />;
   }
   if (status === 'error') {
@@ -66,17 +66,17 @@ const StatusIcon = ({ status }: { status: 'published' | 'pending' | 'error' }) =
   return <RadioButtonUncheckedIcon style={{ color: '#bdbdbd', fontSize: 18 }} />;
 };
 
-const statusText = (status: 'published' | 'pending' | 'error') => {
-  if (status === 'published') return 'Published';
+const statusText = (status: 'pushed' | 'not-pushed' | 'error') => {
+  if (status === 'pushed') return 'Pushed';
   if (status === 'error') return 'Error';
-  return 'Pending';
+  return 'Not pushed';
 };
 
 const getOverallLabel = (aap: AapStatusType) => {
-  if (aap.project === 'published' && aap.jobTemplate === 'published')
-    return 'Published';
+  if (aap.project === 'pushed' && aap.jobTemplate === 'pushed')
+    return 'Pushed';
   if (aap.project === 'error' || aap.jobTemplate === 'error') return 'Error';
-  return 'Pending';
+  return 'Not pushed';
 };
 
 export const AapStatusIcons = ({ aap }: { aap: AapStatusType }) => {
@@ -124,10 +124,10 @@ export const AapStatusIcons = ({ aap }: { aap: AapStatusType }) => {
           <Box className={classes.popoverHeader}>
             <Box>
               <Typography className={classes.popoverTitle}>
-                AAP Promotion: {overallLabel}
+                AAP: {overallLabel}
               </Typography>
               <Typography className={classes.popoverDescription}>
-                Publishing creates or updates the AAP project and job template
+                Pushing to AAP creates or updates the project and job template
                 in your Ansible Controller based on the manifest in your
                 repository. This is a manual action.
               </Typography>
@@ -141,14 +141,14 @@ export const AapStatusIcons = ({ aap }: { aap: AapStatusType }) => {
             <Typography className={classes.statusLabel}>
               AAP Project: {statusText(aap.project)}
             </Typography>
-            {aap.project === 'pending' && (
+            {aap.project === 'not-pushed' && (
               <Button
                 variant="contained"
                 color="primary"
                 size="small"
                 className={classes.actionButton}
               >
-                Publish to AAP...
+                Push to AAP
               </Button>
             )}
           </Box>
@@ -157,14 +157,14 @@ export const AapStatusIcons = ({ aap }: { aap: AapStatusType }) => {
             <Typography className={classes.statusLabel}>
               Job Template: {statusText(aap.jobTemplate)}
             </Typography>
-            {aap.jobTemplate === 'pending' && (
+            {aap.jobTemplate === 'not-pushed' && (
               <Button
                 variant="contained"
                 color="primary"
                 size="small"
                 className={classes.actionButton}
               >
-                Publish Job Template
+                Push Job Template
               </Button>
             )}
           </Box>
@@ -217,7 +217,7 @@ export const LastJobRunCell = ({ jobRun }: { jobRun: LastJobRun }) => {
 export const AapColumnHeader = () => (
   <Box display="flex" alignItems="center" style={{ gap: 4 }}>
     AAP
-    <Tooltip title="Whether the AAP project and job template have been published to your Ansible Controller. Push to AAP is a manual action.">
+    <Tooltip title="Whether the AAP project and job template have been pushed to your Ansible Controller. Push to AAP is a manual action.">
       <HelpOutlineIcon style={{ fontSize: 14, color: '#999' }} />
     </Tooltip>
   </Box>

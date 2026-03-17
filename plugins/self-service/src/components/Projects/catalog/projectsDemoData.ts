@@ -6,8 +6,8 @@ export type PipelineStage = {
 };
 
 export type AapStatus = {
-  project: 'published' | 'pending' | 'error';
-  jobTemplate: 'published' | 'pending' | 'error';
+  project: 'pushed' | 'not-pushed' | 'error';
+  jobTemplate: 'pushed' | 'not-pushed' | 'error';
 };
 
 export type LastJobRun = {
@@ -38,7 +38,7 @@ export const DEMO_PROJECTS: DemoProject[] = [
       { name: 'Integration Test', status: 'passed', timestamp: '2026-03-14 09:22' },
       { name: 'Pushed to AAP', status: 'passed', timestamp: '2026-03-14 09:23' },
     ],
-    aap: { project: 'published', jobTemplate: 'published' },
+    aap: { project: 'pushed', jobTemplate: 'pushed' },
     lastJobRun: { status: 'success', timestamp: '2026-03-15 14:30' },
     starred: false,
   },
@@ -54,7 +54,7 @@ export const DEMO_PROJECTS: DemoProject[] = [
       { name: 'Integration Test', status: 'pending' },
       { name: 'Pushed to AAP', status: 'pending' },
     ],
-    aap: { project: 'published', jobTemplate: 'published' },
+    aap: { project: 'pushed', jobTemplate: 'pushed' },
     lastJobRun: { status: 'none' },
     starred: false,
   },
@@ -69,7 +69,7 @@ export const DEMO_PROJECTS: DemoProject[] = [
       { name: 'EE Compatibility', status: 'passed', timestamp: '2026-03-15 16:06' },
       { name: 'Pushed to AAP', status: 'passed', timestamp: '2026-03-15 16:07' },
     ],
-    aap: { project: 'published', jobTemplate: 'published' },
+    aap: { project: 'pushed', jobTemplate: 'pushed' },
     lastJobRun: { status: 'success', timestamp: '2026-03-16 02:00' },
     starred: true,
   },
@@ -84,7 +84,7 @@ export const DEMO_PROJECTS: DemoProject[] = [
       { name: 'EE Compatibility', status: 'pending' },
       { name: 'Pushed to AAP', status: 'pending' },
     ],
-    aap: { project: 'published', jobTemplate: 'pending' },
+    aap: { project: 'pushed', jobTemplate: 'not-pushed' },
     lastJobRun: { status: 'failed', timestamp: '2026-03-15 22:15' },
     starred: false,
   },
@@ -100,7 +100,7 @@ export const DEMO_PROJECTS: DemoProject[] = [
       { name: 'Integration Test', status: 'passed', timestamp: '2026-03-13 11:32' },
       { name: 'Pushed to AAP', status: 'passed', timestamp: '2026-03-13 11:33' },
     ],
-    aap: { project: 'published', jobTemplate: 'published' },
+    aap: { project: 'pushed', jobTemplate: 'pushed' },
     lastJobRun: { status: 'success', timestamp: '2026-03-16 06:00' },
     starred: true,
   },
@@ -116,7 +116,7 @@ export const DEMO_PROJECTS: DemoProject[] = [
       { name: 'Integration Test', status: 'running' },
       { name: 'Pushed to AAP', status: 'pending' },
     ],
-    aap: { project: 'published', jobTemplate: 'pending' },
+    aap: { project: 'pushed', jobTemplate: 'not-pushed' },
     lastJobRun: { status: 'success', timestamp: '2026-03-14 18:45' },
     starred: false,
   },

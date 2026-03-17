@@ -61,7 +61,16 @@ const SidebarLogo = () => {
   );
 };
 
-export const Root = ({ children }: PropsWithChildren<{}>) => (
+const useRootStyles = makeStyles({
+  fixedHeaderOffset: {
+    paddingTop: 64,
+  },
+});
+
+export const Root = ({ children }: PropsWithChildren<{}>) => {
+  const rootClasses = useRootStyles();
+  return (
+  <div className={rootClasses.fixedHeaderOffset}>
   <SidebarPage>
     <Sidebar>
       <SidebarLogo />
@@ -124,4 +133,6 @@ export const Root = ({ children }: PropsWithChildren<{}>) => (
     </Sidebar>
     {children}
   </SidebarPage>
-);
+  </div>
+  );
+};

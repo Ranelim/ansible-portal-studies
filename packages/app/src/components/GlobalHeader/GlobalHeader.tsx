@@ -143,7 +143,7 @@ export const GlobalHeader = () => {
   };
 
   return (
-    <AppBar position="sticky" className={classes.appBar}>
+    <AppBar position="fixed" className={classes.appBar}>
       <Toolbar className={classes.toolbar}>
         <Typography variant="h6" className={classes.title}>
           <Link to="/" className={classes.title}>

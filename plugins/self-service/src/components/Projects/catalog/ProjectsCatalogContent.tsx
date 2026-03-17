@@ -28,6 +28,8 @@ import CodeIcon from '@material-ui/icons/Code';
 import VisibilityIcon from '@material-ui/icons/Visibility';
 import DeleteOutlineIcon from '@material-ui/icons/DeleteOutline';
 import CancelIcon from '@material-ui/icons/Cancel';
+import CloudUploadIcon from '@material-ui/icons/CloudUpload';
+import OpenInNewIcon from '@material-ui/icons/OpenInNew';
 import { PipelineStatusIcons, PipelineColumnHeader } from './PipelineStatus';
 import {
   AapStatusIcons,
@@ -38,7 +40,7 @@ import {
 import { DEMO_PROJECTS, DemoProject } from './projectsDemoData';
 
 type PipelineFilter = 'all' | 'passed' | 'failed' | 'running';
-type AapFilter = 'all' | 'published' | 'pending';
+type AapFilter = 'all' | 'pushed' | 'not-pushed';
 type JobRunFilter = 'all' | 'success' | 'failed' | 'running';
 
 type ActiveFilters = {
@@ -182,8 +184,9 @@ const ProjectsEmptyState = ({
   );
 };
 
-const RowActionsMenu = ({ projectName }: { projectName: string }) => {
+const RowActionsMenu = ({ project }: { project: DemoProject }) => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const isPushed = project.aap.project === 'pushed' && project.aap.jobTemplate === 'pushed';
 
   const handleOpen = (event: React.MouseEvent<HTMLElement>) => {
     event.stopPropagation();
@@ -194,7 +197,7 @@ const RowActionsMenu = ({ projectName }: { projectName: string }) => {
 
   const handleAction = (action: string) => {
     // eslint-disable-next-line no-console
-    console.log(`${action}: ${projectName}`);
+    console.log(`${action}: ${project.name}`);
     handleClose();
   };
 
@@ -219,6 +222,18 @@ const RowActionsMenu = ({ projectName }: { projectName: string }) => {
           <ListItemIcon><VisibilityIcon fontSize="small" /></ListItemIcon>
           <ListItemText primary="View Source" />
         </MenuItem>
+        <Divider />
+        {isPushed ? (
+          <MenuItem onClick={() => handleAction('view-in-aap')}>
+            <ListItemIcon><OpenInNewIcon fontSize="small" /></ListItemIcon>
+            <ListItemText primary="View in AAP" />
+          </MenuItem>
+        ) : (
+          <MenuItem onClick={() => handleAction('push-to-aap')}>
+            <ListItemIcon><CloudUploadIcon fontSize="small" /></ListItemIcon>
+            <ListItemText primary="Push to AAP" />
+          </MenuItem>
+        )}
         <Divider />
         <MenuItem onClick={() => handleAction('delete')}>
           <ListItemIcon><DeleteOutlineIcon fontSize="small" style={{ color: '#f44336' }} /></ListItemIcon>
@@ -284,10 +299,10 @@ const ProjectsCatalogTable = ({
 
     if (filters.aap !== 'all') {
       result = result.filter(p => {
-        if (filters.aap === 'published')
-          return p.aap.project === 'published' && p.aap.jobTemplate === 'published';
-        if (filters.aap === 'pending')
-          return p.aap.project === 'pending' || p.aap.jobTemplate === 'pending';
+        if (filters.aap === 'pushed')
+          return p.aap.project === 'pushed' && p.aap.jobTemplate === 'pushed';
+        if (filters.aap === 'not-pushed')
+          return p.aap.project === 'not-pushed' || p.aap.jobTemplate === 'not-pushed';
         return true;
       });
     }
@@ -342,7 +357,7 @@ const ProjectsCatalogTable = ({
               <StarBorderIcon />
             )}
           </IconButton>
-          <RowActionsMenu projectName={row.name} />
+          <RowActionsMenu project={row} />
         </Box>
       ),
     },
@@ -364,7 +379,7 @@ const ProjectsCatalogTable = ({
     filterLabels.push({
       key: 'aap',
       label: 'AAP',
-      value: filters.aap.charAt(0).toUpperCase() + filters.aap.slice(1),
+      value: filters.aap === 'pushed' ? 'Pushed' : 'Not pushed',
     });
   }
   if (filters.jobRun !== 'all') {
@@ -432,8 +447,8 @@ const ProjectsCatalogTable = ({
               label="AAP Status"
             >
               <MenuItem value="all">All</MenuItem>
-              <MenuItem value="published">Published</MenuItem>
-              <MenuItem value="pending">Pending</MenuItem>
+              <MenuItem value="pushed">Pushed</MenuItem>
+              <MenuItem value="not-pushed">Not pushed</MenuItem>
             </Select>
           </FormControl>
           <FormControl variant="outlined" size="small" className={classes.filterSelect}>
