@@ -73,7 +73,6 @@ export const Root = ({ children }: PropsWithChildren<{}>) => {
           <SidebarGroup label="Search" icon={<SearchIcon />} to="/search">
             <SidebarSearchModal />
           </SidebarGroup>
-          <SidebarDivider />
           <SidebarGroup label="Menu" icon={<MenuIcon />}>
             <SidebarItem
               icon={HomeIcon}

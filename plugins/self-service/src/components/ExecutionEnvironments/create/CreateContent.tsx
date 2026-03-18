@@ -1,5 +1,4 @@
 import {
-  Typography,
   makeStyles,
   Box,
   IconButton,
@@ -31,21 +30,9 @@ import { TagFilterPicker } from '../../utils/TagFilterPicker';
 const useStyles = makeStyles(theme => ({
   headerRow: {
     display: 'flex',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     alignItems: 'flex-start',
-    marginBottom: '16px',
-  },
-  description: {
-    color: theme.palette.text.secondary,
-    fontSize: 16,
-    lineHeight: 1.6,
-    flex: 1,
-  },
-  layoutContainer: {
-    borderRadius: theme.shape.borderRadius,
-    border: `1px solid ${theme.palette.divider}`,
-    padding: theme.spacing(2),
-    backgroundColor: theme.palette.background.paper,
+    marginBottom: theme.spacing(1),
   },
 }));
 
@@ -128,12 +115,6 @@ export const CreateContent = () => {
   return (
     <div data-testid="create-content">
       <Box className={classes.headerRow}>
-        <Typography variant="body1" className={classes.description}>
-          Create an Execution Environment (EE) definition to ensure your
-          playbooks run the same way, every time. Choose a recommended preset or
-          start from scratch for full control. After saving your definition,
-          follow our guide to create your EE image.
-        </Typography>
         {allowed && (
           <>
             <IconButton
@@ -173,7 +154,6 @@ export const CreateContent = () => {
       </Box>
       <EntityListProvider>
         <ExecutionEnvironmentTypeFilter />
-        <Box className={classes.layoutContainer}>
           <CatalogFilterLayout>
             <CatalogFilterLayout.Filters>
               <div data-testid="search-bar-container">
@@ -208,7 +188,6 @@ export const CreateContent = () => {
               </div>
             </CatalogFilterLayout.Content>
           </CatalogFilterLayout>
-        </Box>
       </EntityListProvider>
     </div>
   );

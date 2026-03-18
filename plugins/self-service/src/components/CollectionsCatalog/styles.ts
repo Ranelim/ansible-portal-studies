@@ -41,6 +41,11 @@ export const useCollectionsStyles = makeStyles(theme => ({
   searchInput: {
     marginBottom: theme.spacing(2),
   },
+  filterLabel: {
+    marginTop: theme.spacing(2),
+    fontWeight: 600,
+    fontSize: '0.875rem',
+  },
   catalogLayout: {
     '& [class*="CatalogFilterLayout-root"]': {
       alignItems: 'flex-start',
@@ -94,29 +99,34 @@ export const useCollectionsStyles = makeStyles(theme => ({
   },
   emptyState: {
     textAlign: 'center',
-    padding: theme.spacing(8),
+    minHeight: '50vh',
+    padding: theme.spacing(4),
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
   },
   emptyStateIcon: {
-    fontSize: '5rem',
+    fontSize: '4rem',
     color: theme.palette.text.disabled,
     marginBottom: theme.spacing(3),
   },
   emptyStateTitle: {
+    fontWeight: 300,
+    fontSize: '2rem',
     marginBottom: theme.spacing(2),
-    fontWeight: 600,
   },
   emptyStateDescription: {
     color: theme.palette.text.secondary,
+    fontSize: 16,
+    lineHeight: 1.6,
     marginBottom: theme.spacing(3),
     maxWidth: 500,
   },
   emptyStateSyncButton: {
-    marginTop: theme.spacing(1),
     textTransform: 'none',
+    fontWeight: 600,
+    borderRadius: 20,
   },
   emptyStateDocsLink: {
     display: 'inline-flex',

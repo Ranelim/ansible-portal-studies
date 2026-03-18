@@ -3,14 +3,17 @@ import { Progress } from '@backstage/core-components';
 import {
   Box,
   Checkbox,
+  FormControl,
   FormControlLabel,
   IconButton,
+  Input,
   InputAdornment,
+  MenuItem,
   Paper,
+  Select,
   TextField,
   Typography,
 } from '@material-ui/core';
-import Autocomplete from '@material-ui/lab/Autocomplete';
 import SearchIcon from '@material-ui/icons/Search';
 import ClearIcon from '@material-ui/icons/Clear';
 import NavigateBeforeIcon from '@material-ui/icons/NavigateBefore';
@@ -266,7 +269,7 @@ export const CollectionsListPage = ({
             <CatalogFilterLayout.Filters>
               <TextField
                 className={classes.searchInput}
-                placeholder="Search"
+                placeholder="Search collections..."
                 variant="standard"
                 fullWidth
                 value={searchQuery}
@@ -292,66 +295,42 @@ export const CollectionsListPage = ({
               />
               <UserListPicker availableFilters={['starred', 'all']} />
 
-              <Typography
-                style={{ marginTop: 16, fontWeight: 600, fontSize: '0.875rem' }}
-              >
+              <Typography className={classes.filterLabel}>
                 Source Type
               </Typography>
               <Paper className={classes.paper}>
-                <Autocomplete
-                  options={allSources}
-                  value={sourceFilter}
-                  onChange={(_event, newValue) =>
-                    setSourceFilter(newValue || 'All')
-                  }
-                  openOnFocus
-                  renderInput={params => (
-                    <TextField
-                      {...params}
-                      placeholder="Search sources..."
-                      variant="standard"
-                      InputProps={{
-                        ...params.InputProps,
-                        disableUnderline: true,
-                        style: { fontSize: '0.875rem' },
-                      }}
-                    />
-                  )}
-                  disableClearable={sourceFilter === 'All'}
-                  size="small"
-                  fullWidth
-                />
+                <FormControl fullWidth>
+                  <Select
+                    value={sourceFilter}
+                    onChange={e => setSourceFilter(e.target.value as string)}
+                    input={<Input disableUnderline />}
+                  >
+                    {allSources.map(s => (
+                      <MenuItem key={s} value={s}>
+                        {s}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
               </Paper>
 
-              <Typography
-                style={{ marginTop: 16, fontWeight: 600, fontSize: '0.875rem' }}
-              >
+              <Typography className={classes.filterLabel}>
                 Tags
               </Typography>
               <Paper className={classes.paper}>
-                <Autocomplete
-                  options={allTags}
-                  value={tagFilter}
-                  onChange={(_event, newValue) =>
-                    setTagFilter(newValue || 'All')
-                  }
-                  openOnFocus
-                  renderInput={params => (
-                    <TextField
-                      {...params}
-                      placeholder="Search tags..."
-                      variant="standard"
-                      InputProps={{
-                        ...params.InputProps,
-                        disableUnderline: true,
-                        style: { fontSize: '0.875rem' },
-                      }}
-                    />
-                  )}
-                  disableClearable={tagFilter === 'All'}
-                  size="small"
-                  fullWidth
-                />
+                <FormControl fullWidth>
+                  <Select
+                    value={tagFilter}
+                    onChange={e => setTagFilter(e.target.value as string)}
+                    input={<Input disableUnderline />}
+                  >
+                    {allTags.map(t => (
+                      <MenuItem key={t} value={t}>
+                        {t}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
               </Paper>
 
               <FormControlLabel

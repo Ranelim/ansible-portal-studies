@@ -1,78 +1,117 @@
-import { useEffect, useCallback, useMemo } from 'react';
+import { useEffect, useCallback, useMemo, useState } from 'react';
 import { Header, Page, HeaderTabs, Content } from '@backstage/core-components';
-import { Typography, Box, makeStyles } from '@material-ui/core';
+import {
+  Typography,
+  Box,
+  makeStyles,
+  Popover,
+  IconButton,
+  Tooltip,
+} from '@material-ui/core';
 import { useLocation, useNavigate } from 'react-router-dom';
-import CategoryOutlinedIcon from '@material-ui/icons/CategoryOutlined';
-import CreateComponentIcon from '@material-ui/icons/AddCircleOutline';
+import HelpOutlineIcon from '@material-ui/icons/HelpOutline';
+import CloseIcon from '@material-ui/icons/Close';
 import { CreateContent } from './create/CreateContent';
 import { EntityCatalogContent } from './catalog/CatalogContent';
 
-const useStyles = makeStyles(() => ({
-  tabContainer: {
-    '& .MuiTab-root': {
-      minWidth: '200px',
-      padding: '12px 40px',
-      fontSize: '16px',
+const useStyles = makeStyles(theme => ({
+  helpIcon: {
+    color: theme.palette.common.white,
+    opacity: 0.7,
+    fontSize: 20,
+    cursor: 'pointer',
+    marginLeft: theme.spacing(1),
+    '&:hover': {
+      opacity: 1,
     },
   },
-  tabWithIcon: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
+  helpPopover: {
+    padding: theme.spacing(2.5),
+    maxWidth: 380,
+  },
+  helpTitle: {
+    fontWeight: 600,
+    fontSize: 14,
+    marginBottom: theme.spacing(1),
+  },
+  helpDescription: {
+    fontSize: 13,
+    lineHeight: 1.6,
+    color: theme.palette.text.secondary,
   },
 }));
+
+const PageHelpIcon = () => {
+  const classes = useStyles();
+  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
+
+  return (
+    <>
+      <Tooltip title="What are Execution Environments?" arrow>
+        <span
+          style={{ display: 'inline-flex', cursor: 'pointer' }}
+          onClick={e => setAnchorEl(e.currentTarget)}
+          role="button"
+          tabIndex={0}
+        >
+          <HelpOutlineIcon className={classes.helpIcon} />
+        </span>
+      </Tooltip>
+      <Popover
+        open={Boolean(anchorEl)}
+        anchorEl={anchorEl}
+        onClose={() => setAnchorEl(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+      >
+        <Box className={classes.helpPopover}>
+          <Box display="flex" justifyContent="space-between" alignItems="flex-start">
+            <Typography className={classes.helpTitle}>
+              What are Execution Environments?
+            </Typography>
+            <IconButton size="small" onClick={() => setAnchorEl(null)}>
+              <CloseIcon fontSize="small" />
+            </IconButton>
+          </Box>
+          <Typography className={classes.helpDescription}>
+            Execution Environment (EE) definition files describe the container
+            images used to run your Ansible automation. They ensure your
+            playbooks run consistently by packaging all dependencies, collections,
+            and Python libraries into a reproducible container image.
+          </Typography>
+        </Box>
+      </Popover>
+    </>
+  );
+};
 
 export const EEHeader = () => {
   const headerTitle = (
     <Box style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-      <Typography
-        variant="h4"
-        component="h1"
-        style={{ fontWeight: 'bold', fontSize: '2rem' }}
-      >
-        Execution Environments definition files
-      </Typography>
-      <Box
-        style={{
-          backgroundColor: 'transparent',
-          color: 'inherit',
-          padding: '4px 12px',
-          borderRadius: '20px',
-          fontSize: '12px',
-          border: '1px solid #1976d2',
-        }}
-      >
-        Technology Preview
-      </Box>
+      Execution Environments
+      <PageHelpIcon />
     </Box>
   );
 
   return (
     <Header
       title={headerTitle}
-      pageTitleOverride="Execution Environments Definition Files"
-      style={{
-        fontFamily: 'Red Hat Text',
-        color: 'white',
-        paddingBottom: '16px',
-      }}
+      pageTitleOverride="Execution Environments"
     />
   );
 };
 
 const tabs = [
-  { id: 0, label: 'Catalog', icon: <CategoryOutlinedIcon />, path: 'catalog' },
-  { id: 1, label: 'Create', icon: <CreateComponentIcon />, path: 'create' },
+  { id: 0, label: 'Catalog', path: 'catalog' },
+  { id: 1, label: 'Templates', path: 'create' },
 ];
 
 const getTabIndexFromPath = (pathname: string): number => {
   if (pathname.includes('/ee/create')) return 1;
-  if (pathname.includes('/ee/docs')) return 2;
   return 0;
 };
 
 export const EETabs: React.FC = () => {
-  const classes = useStyles();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -124,17 +163,10 @@ export const EETabs: React.FC = () => {
       <HeaderTabs
         selectedIndex={selectedTab}
         onChange={onTabSelect}
-        tabs={
-          tabs.map(({ label, icon }) => ({
-            id: label.toLowerCase(),
-            label: (
-              <Box className={classes.tabWithIcon}>
-                {icon}
-                {label}
-              </Box>
-            ),
-          })) as any
-        }
+        tabs={tabs.map(({ label }) => ({
+          id: label.toLowerCase(),
+          label,
+        }))}
       />
       <Content>{content}</Content>
     </Page>

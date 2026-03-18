@@ -17,12 +17,6 @@ import { DEMO_TEMPLATES, DemoTemplate } from './templatesDemoData';
 import { ProjectCreateWizard } from './ProjectCreateWizard';
 
 const useStyles = makeStyles(theme => ({
-  description: {
-    color: theme.palette.text.secondary,
-    fontSize: 15,
-    lineHeight: 1.6,
-    marginBottom: theme.spacing(2),
-  },
   searchBox: {
     display: 'flex',
     alignItems: 'center',
@@ -134,7 +128,7 @@ const TemplateCard = ({
           className={classes.createButton}
           onClick={() => onStart(template)}
         >
-          Create project
+          Create Project
         </Button>
       </CardActions>
     </Card>
@@ -176,11 +170,6 @@ export const ProjectsCreateContent = () => {
 
   return (
     <Box>
-      <Typography variant="body1" className={classes.description}>
-        Choose a template to create a new automation project. Each template
-        scaffolds a Git repository with the right structure, CI/CD pipeline, and
-        AAP integration for your use case.
-      </Typography>
       <Box className={classes.searchBox}>
         <SearchIcon style={{ color: '#999', marginRight: 8 }} />
         <InputBase

@@ -2,19 +2,12 @@ import { useCallback, useMemo, useState } from 'react';
 import { Header, Page, HeaderTabs, Content } from '@backstage/core-components';
 import { Box, Tooltip, Popover, Typography, IconButton, makeStyles } from '@material-ui/core';
 import { useLocation, useNavigate } from 'react-router-dom';
-import CategoryOutlinedIcon from '@material-ui/icons/CategoryOutlined';
-import DescriptionOutlinedIcon from '@material-ui/icons/DescriptionOutlined';
 import HelpOutlineIcon from '@material-ui/icons/HelpOutline';
 import CloseIcon from '@material-ui/icons/Close';
 import { ProjectsCatalogContent } from './catalog/ProjectsCatalogContent';
 import { ProjectsCreateContent } from './create/ProjectsCreateContent';
 
 const useStyles = makeStyles(theme => ({
-  tabWithIcon: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-  },
   helpIcon: {
     color: theme.palette.common.white,
     opacity: 0.7,
@@ -42,18 +35,8 @@ const useStyles = makeStyles(theme => ({
 }));
 
 const tabs = [
-  {
-    id: 0,
-    label: 'Catalog',
-    icon: <CategoryOutlinedIcon />,
-    path: 'catalog',
-  },
-  {
-    id: 1,
-    label: 'Templates',
-    icon: <DescriptionOutlinedIcon />,
-    path: 'create',
-  },
+  { id: 0, label: 'Catalog', path: 'catalog' },
+  { id: 1, label: 'Templates', path: 'create' },
 ];
 
 const getTabIndexFromPath = (pathname: string): number => {
@@ -105,7 +88,6 @@ const PageHelpIcon = () => {
 };
 
 export const ProjectsTabs: React.FC = () => {
-  const classes = useStyles();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -154,17 +136,10 @@ export const ProjectsTabs: React.FC = () => {
       <HeaderTabs
         selectedIndex={selectedTab}
         onChange={onTabSelect}
-        tabs={
-          tabs.map(({ label, icon }) => ({
-            id: label.toLowerCase(),
-            label: (
-              <Box className={classes.tabWithIcon}>
-                {icon}
-                {label}
-              </Box>
-            ),
-          })) as any
-        }
+        tabs={tabs.map(({ label }) => ({
+          id: label.toLowerCase(),
+          label,
+        }))}
       />
       <Content>{content}</Content>
     </Page>

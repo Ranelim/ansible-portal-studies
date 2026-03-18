@@ -1,12 +1,14 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { Progress } from '@backstage/core-components';
 import {
   FormControl,
   Grid,
   Input,
+  InputAdornment,
   MenuItem,
   Paper,
   Select,
+  TextField,
   Typography,
 } from '@material-ui/core';
 import { makeStyles } from '@material-ui/core/styles';
@@ -26,6 +28,8 @@ import Edit from '@material-ui/icons/Edit';
 import { Tooltip } from '@material-ui/core';
 import { ANNOTATION_EDIT_URL, Entity } from '@backstage/catalog-model';
 import StarBorder from '@material-ui/icons/StarBorder';
+import SearchIcon from '@material-ui/icons/Search';
+import ClearIcon from '@material-ui/icons/Clear';
 import { useApi } from '@backstage/core-plugin-api';
 import { useNavigate } from 'react-router-dom';
 import { YellowStar } from './Favourites';
@@ -48,22 +52,11 @@ const useStyles = makeStyles(theme => ({
   flex: {
     display: 'flex',
   },
-  ml_16: {
-    marginLeft: '16px',
-  },
   tagsContainer: {
     display: 'flex',
     flexWrap: 'wrap',
     gap: theme.spacing(1),
     alignItems: 'center',
-  },
-  linkButtonRoot: {
-    '&.MuiButton-root': {
-      color: '#1976d2',
-      textTransform: 'none',
-      fontSize: '1rem',
-      fontWeight: 500,
-    },
   },
   actionButton: {
     cursor: 'pointer',
@@ -85,7 +78,7 @@ const useStyles = makeStyles(theme => ({
     border: 'none',
     padding: 0,
     font: 'inherit',
-    fontWeight: 'normal',
+    fontWeight: 500,
     textAlign: 'left',
     position: 'relative',
     zIndex: 10,
@@ -93,23 +86,14 @@ const useStyles = makeStyles(theme => ({
       textDecoration: 'underline',
     },
   },
-  description: {
-    color: theme.palette.text.secondary,
-    fontSize: 16,
-    lineHeight: 1.6,
-    padding: '16px 0',
-    width: '100%',
-    marginBottom: '16px',
+  filterLabel: {
+    marginTop: theme.spacing(2),
+    fontWeight: 600,
+    fontSize: '0.875rem',
   },
   paper: {
-    padding: theme.spacing(1.5, 1.5),
+    padding: theme.spacing(1.5),
     borderRadius: 3,
-  },
-  filter: {
-    padding: theme.spacing(1.5, 1.5),
-    borderRadius: 5,
-    border: `1px solid ${theme.palette.divider}`,
-    backgroundColor: 'red',
   },
 }));
 
@@ -315,6 +299,18 @@ export const EEListPage = ({
     else if (filters.user?.value === 'all') setAnsibleComponents(allEntities);
   }, [filters.user, allEntities, isStarredEntity]);
 
+  const [searchText, setSearchText] = useState('');
+
+  const searchFilteredComponents = useMemo(() => {
+    if (!searchText) return ansibleComponents;
+    const lower = searchText.toLowerCase();
+    return ansibleComponents.filter(
+      e =>
+        e.metadata?.name?.toLowerCase().includes(lower) ||
+        e.metadata?.description?.toLowerCase().includes(lower),
+    );
+  }, [ansibleComponents, searchText]);
+
   if (loading) {
     return (
       <div>
@@ -480,75 +476,93 @@ export const EEListPage = ({
   return (
     <div style={{ flexDirection: 'column', width: '100%' }}>
       {filtered || (allEntities && allEntities.length > 0) ? (
-        <Typography variant="body1" className={classes.description}>
-          Create an Execution Environment (EE) definition to ensure your
-          playbooks run the same way, every time. Choose a recommended preset or
-          start from scratch for full control. After saving your definition,
-          follow our guide to create your EE image.
-        </Typography>
-      ) : null}
-      <>
-        {filtered || (allEntities && allEntities.length > 0) ? (
-          <CatalogFilterLayout>
-            <ExecutionEnvironmentTypeFilter />
-            <CatalogFilterLayout.Filters>
-              <UserListPicker availableFilters={['starred', 'all']} />
-              <Typography>Owner</Typography>
+        <CatalogFilterLayout>
+          <ExecutionEnvironmentTypeFilter />
+          <CatalogFilterLayout.Filters>
+            <TextField
+              placeholder="Search EE definitions..."
+              variant="standard"
+              fullWidth
+              value={searchText}
+              onChange={e => setSearchText(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon color="disabled" />
+                  </InputAdornment>
+                ),
+                endAdornment: searchText ? (
+                  <InputAdornment position="end">
+                    <IconButton size="small" onClick={() => setSearchText('')} aria-label="Clear search">
+                      <ClearIcon fontSize="small" />
+                    </IconButton>
+                  </InputAdornment>
+                ) : null,
+              }}
+            />
+            <UserListPicker availableFilters={['starred', 'all']} />
 
-              <Paper className={classes.paper}>
-                <FormControl fullWidth>
-                  <Select
-                    value={ownerFilter}
-                    onChange={e => setOwnerFilter(e.target.value as any)}
-                    displayEmpty
-                    input={<Input disableUnderline />}
-                  >
-                    {allOwners.map(o => (
-                      <MenuItem key={o} value={o}>
-                        {o}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Paper>
+            <Typography className={classes.filterLabel}>Owner</Typography>
+            <Paper className={classes.paper}>
+              <FormControl fullWidth>
+                <Select
+                  value={ownerFilter}
+                  onChange={e => setOwnerFilter(e.target.value as any)}
+                  displayEmpty
+                  input={<Input disableUnderline />}
+                >
+                  {allOwners.map(o => (
+                    <MenuItem key={o} value={o}>
+                      {o}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Paper>
 
-              <Typography style={{ marginTop: 10 }}>Tags</Typography>
-              <Paper className={classes.paper}>
-                <FormControl fullWidth variant="outlined">
-                  <Select
-                    value={tagFilter}
-                    onChange={e => setTagFilter(e.target.value as any)}
-                    input={<Input disableUnderline />}
-                    MenuProps={{
-                      getContentAnchorEl: null,
-                      anchorOrigin: { vertical: 'bottom', horizontal: 'left' },
-                    }}
-                  >
-                    {allTags.map(t => (
-                      <MenuItem key={t} value={t}>
-                        {t}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Paper>
-            </CatalogFilterLayout.Filters>
-            <CatalogFilterLayout.Content>
-              <Table
-                title={`Execution Environments definition files (${ansibleComponents?.length})`}
-                options={{
-                  search: true,
-                  rowStyle: { cursor: 'default' },
-                }}
-                columns={columns}
-                data={ansibleComponents || []}
-              />
-            </CatalogFilterLayout.Content>
-          </CatalogFilterLayout>
-        ) : (
-          <CreateCatalog onTabSwitch={onTabSwitch} />
-        )}
-      </>
+            <Typography className={classes.filterLabel}>Tags</Typography>
+            <Paper className={classes.paper}>
+              <FormControl fullWidth>
+                <Select
+                  value={tagFilter}
+                  onChange={e => setTagFilter(e.target.value as any)}
+                  input={<Input disableUnderline />}
+                  MenuProps={{
+                    getContentAnchorEl: null,
+                    anchorOrigin: { vertical: 'bottom', horizontal: 'left' },
+                  }}
+                >
+                  {allTags.map(t => (
+                    <MenuItem key={t} value={t}>
+                      {t}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Paper>
+          </CatalogFilterLayout.Filters>
+          <CatalogFilterLayout.Content>
+            <Table
+              title={`${searchFilteredComponents?.length ?? 0} EE definitions`}
+              options={{
+                paging: true,
+                pageSize: 10,
+                pageSizeOptions: [5, 10, 20],
+                emptyRowsWhenPaging: false,
+                search: false,
+                sorting: true,
+                padding: 'dense',
+                rowStyle: { cursor: 'default' },
+              }}
+              columns={columns}
+              data={searchFilteredComponents || []}
+              style={{ width: '100%', overflowX: 'hidden' }}
+            />
+          </CatalogFilterLayout.Content>
+        </CatalogFilterLayout>
+      ) : (
+        <CreateCatalog onTabSwitch={onTabSwitch} />
+      )}
     </div>
   );
 };

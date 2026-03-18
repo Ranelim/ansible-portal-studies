@@ -23,17 +23,16 @@ export const EmptyState = ({
     permission: catalogEntityCreatePermission,
   });
 
-  // No content sources configured
   if (hasConfiguredSources === false) {
     return (
       <Box className={classes.emptyState}>
         <SettingsIcon className={classes.emptyStateIcon} />
-        <Typography variant="h5" className={classes.emptyStateTitle}>
+        <Typography variant="h4" className={classes.emptyStateTitle}>
           No content sources configured
         </Typography>
-        <Typography variant="body1" className={classes.emptyStateDescription}>
+        <Typography className={classes.emptyStateDescription}>
           {allowed
-            ? 'No content sources are not defined in the application configuration. To view collections, configure a provider in the app-config.yaml file.'
+            ? 'Content sources are not defined in the application configuration. To view collections, configure a provider in the app-config.yaml file.'
             : 'Content sources are not currently configured for this environment. Contact your organization administrator to add content providers.'}
         </Typography>
         {allowed && (
@@ -51,25 +50,24 @@ export const EmptyState = ({
     );
   }
 
-  // Sources configured but no collections found
   return (
     <Box className={classes.emptyState}>
       <SearchIcon className={classes.emptyStateIcon} />
-      <Typography variant="h5" className={classes.emptyStateTitle}>
-        No Collections Found
+      <Typography variant="h4" className={classes.emptyStateTitle}>
+        No collections found
       </Typography>
-      <Typography variant="body1" className={classes.emptyStateDescription}>
+      <Typography className={classes.emptyStateDescription}>
         {allowed
           ? 'No collections were retrieved from the configured sources. Sync the catalog to fetch the latest contents.'
           : 'No collections are available in the catalog. Contact your organization administrator to sync the content sources.'}
       </Typography>
       {allowed && onSyncClick && (
         <Button
-          variant="outlined"
+          variant="contained"
           color="primary"
           startIcon={<SyncIcon />}
           onClick={onSyncClick}
-          className={classes.syncButton}
+          className={classes.emptyStateSyncButton}
         >
           Sync Now
         </Button>

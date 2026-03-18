@@ -182,7 +182,5 @@ describe('EEHeader', () => {
     expect(
       screen.getByText(/Execution Environments definition files/i),
     ).toBeInTheDocument();
-    // The Technology Preview badge text should be present
-    expect(screen.getByText(/Technology Preview/i)).toBeInTheDocument();
   });
 });

@@ -6,23 +6,24 @@ import {
   Typography,
   makeStyles,
   IconButton,
-  InputBase,
   Chip,
   FormControl,
-  InputLabel,
   Select,
   MenuItem,
   Menu,
   ListItemIcon,
   ListItemText,
-  Collapse,
   Divider,
+  Input,
+  Paper,
+  TextField,
+  InputAdornment,
 } from '@material-ui/core';
 import SearchIcon from '@material-ui/icons/Search';
+import ClearIcon from '@material-ui/icons/Clear';
 import StarIcon from '@material-ui/icons/Star';
 import StarBorderIcon from '@material-ui/icons/StarBorder';
 import AddIcon from '@material-ui/icons/Add';
-import FilterListIcon from '@material-ui/icons/FilterList';
 import MoreVertIcon from '@material-ui/icons/MoreVert';
 import CodeIcon from '@material-ui/icons/Code';
 import VisibilityIcon from '@material-ui/icons/Visibility';
@@ -30,6 +31,8 @@ import DeleteOutlineIcon from '@material-ui/icons/DeleteOutline';
 import CancelIcon from '@material-ui/icons/Cancel';
 import CloudUploadIcon from '@material-ui/icons/CloudUpload';
 import OpenInNewIcon from '@material-ui/icons/OpenInNew';
+import FolderOpenIcon from '@material-ui/icons/FolderOpen';
+import { CatalogFilterLayout } from '@backstage/plugin-catalog-react';
 import { PipelineStatusIcons, PipelineColumnHeader } from './PipelineStatus';
 import {
   AapStatusIcons,
@@ -68,6 +71,11 @@ const useStyles = makeStyles(theme => ({
     textAlign: 'center',
     padding: theme.spacing(4),
   },
+  emptyIcon: {
+    fontSize: '4rem',
+    color: theme.palette.text.disabled,
+    marginBottom: theme.spacing(3),
+  },
   emptyTitle: {
     fontWeight: 300,
     fontSize: '2rem',
@@ -81,64 +89,35 @@ const useStyles = makeStyles(theme => ({
     maxWidth: 500,
   },
   createButton: {
-    backgroundColor: theme.palette.primary.main,
-    color: theme.palette.primary.contrastText,
     textTransform: 'none',
     fontWeight: 600,
-    padding: '10px 24px',
     borderRadius: 20,
-    '&:hover': {
-      backgroundColor: theme.palette.primary.dark,
-    },
   },
-  toolbarRow: {
+  filterLabel: {
+    marginTop: theme.spacing(2),
+    fontWeight: 600,
+    fontSize: '0.875rem',
+  },
+  filterPaper: {
+    padding: theme.spacing(1.5),
+    borderRadius: 3,
+  },
+  contentHeader: {
     display: 'flex',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: theme.spacing(1.5),
-    marginBottom: theme.spacing(1),
-    flexWrap: 'wrap',
-  },
-  searchBox: {
-    display: 'flex',
-    alignItems: 'center',
-    border: `1px solid ${theme.palette.divider}`,
-    borderRadius: theme.shape.borderRadius,
-    padding: '2px 8px',
-    minWidth: 260,
-    backgroundColor: theme.palette.background.paper,
-  },
-  filterToggle: {
-    textTransform: 'none',
-    fontWeight: 500,
-    borderRadius: theme.shape.borderRadius,
-  },
-  filterBar: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: theme.spacing(2),
-    padding: theme.spacing(1.5, 0),
-    flexWrap: 'wrap',
-  },
-  filterSelect: {
-    minWidth: 150,
-    '& .MuiSelect-select': {
-      padding: '8px 12px',
-      fontSize: 13,
-    },
-    '& .MuiInputLabel-root': {
-      fontSize: 13,
-    },
+    marginBottom: theme.spacing(1.5),
   },
   activeFiltersRow: {
     display: 'flex',
     alignItems: 'center',
     gap: theme.spacing(1),
     paddingBottom: theme.spacing(1.5),
-    flexWrap: 'wrap',
+    flexWrap: 'wrap' as const,
   },
   activeChip: {
     borderRadius: 16,
-    textTransform: 'none',
+    textTransform: 'none' as const,
     fontSize: 12,
   },
   projectLink: {
@@ -164,6 +143,7 @@ const ProjectsEmptyState = ({
   const classes = useStyles();
   return (
     <Box className={classes.emptyContainer}>
+      <FolderOpenIcon className={classes.emptyIcon} />
       <Typography variant="h4" className={classes.emptyTitle}>
         No projects yet
       </Typography>
@@ -174,9 +154,11 @@ const ProjectsEmptyState = ({
       </Typography>
       <Button
         variant="contained"
+        color="primary"
         size="large"
         onClick={() => onTabSwitch(1)}
         className={classes.createButton}
+        startIcon={<AddIcon />}
       >
         Create Project
       </Button>
@@ -184,7 +166,13 @@ const ProjectsEmptyState = ({
   );
 };
 
-const RowActionsMenu = ({ project }: { project: DemoProject }) => {
+const RowActionsMenu = ({
+  project,
+  onDelete,
+}: {
+  project: DemoProject;
+  onDelete: (name: string) => void;
+}) => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const isPushed = project.aap.project === 'pushed' && project.aap.jobTemplate === 'pushed';
 
@@ -235,7 +223,7 @@ const RowActionsMenu = ({ project }: { project: DemoProject }) => {
           </MenuItem>
         )}
         <Divider />
-        <MenuItem onClick={() => handleAction('delete')}>
+        <MenuItem onClick={() => { onDelete(project.name); handleClose(); }}>
           <ListItemIcon><DeleteOutlineIcon fontSize="small" style={{ color: '#f44336' }} /></ListItemIcon>
           <ListItemText primary="Delete" primaryTypographyProps={{ style: { color: '#f44336' } }} />
         </MenuItem>
@@ -252,7 +240,6 @@ const ProjectsCatalogTable = ({
   const classes = useStyles();
   const [projects, setProjects] = useState<DemoProject[]>(DEMO_PROJECTS);
   const [searchText, setSearchText] = useState('');
-  const [filtersOpen, setFiltersOpen] = useState(false);
   const [filters, setFilters] = useState<ActiveFilters>({ ...DEFAULT_FILTERS });
 
   const toggleStar = useCallback((name: string) => {
@@ -261,13 +248,9 @@ const ProjectsCatalogTable = ({
     );
   }, []);
 
-  const activeFilterCount = useMemo(() => {
-    let count = 0;
-    if (filters.pipeline !== 'all') count++;
-    if (filters.aap !== 'all') count++;
-    if (filters.jobRun !== 'all') count++;
-    return count;
-  }, [filters]);
+  const deleteProject = useCallback((name: string) => {
+    setProjects(prev => prev.filter(p => p.name !== name));
+  }, []);
 
   const clearFilter = useCallback((key: keyof ActiveFilters) => {
     setFilters(prev => ({ ...prev, [key]: 'all' }));
@@ -357,7 +340,7 @@ const ProjectsCatalogTable = ({
               <StarBorderIcon />
             )}
           </IconButton>
-          <RowActionsMenu project={row} />
+          <RowActionsMenu project={row} onDelete={deleteProject} />
         </Box>
       ),
     },
@@ -391,47 +374,37 @@ const ProjectsCatalogTable = ({
   }
 
   return (
-    <Box>
-      <Box className={classes.toolbarRow}>
-        <Box className={classes.searchBox}>
-          <SearchIcon style={{ color: '#999', marginRight: 4 }} />
-          <InputBase
-            placeholder="Search projects..."
-            value={searchText}
-            onChange={e => setSearchText(e.target.value)}
-            fullWidth
-          />
-        </Box>
-        <Button
-          variant={filtersOpen || activeFilterCount > 0 ? 'contained' : 'outlined'}
-          color={activeFilterCount > 0 ? 'primary' : 'default'}
-          startIcon={<FilterListIcon />}
-          onClick={() => setFiltersOpen(prev => !prev)}
-          className={classes.filterToggle}
-          size="small"
-        >
-          Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
-        </Button>
-        <Box style={{ flex: 1 }} />
-        <Button
-          variant="contained"
-          color="primary"
-          startIcon={<AddIcon />}
-          onClick={() => onTabSwitch(1)}
-          style={{ textTransform: 'none', fontWeight: 600, whiteSpace: 'nowrap' }}
-        >
-          Create Project
-        </Button>
-      </Box>
+    <CatalogFilterLayout>
+      <CatalogFilterLayout.Filters>
+        <TextField
+          placeholder="Search projects..."
+          variant="standard"
+          fullWidth
+          value={searchText}
+          onChange={e => setSearchText(e.target.value)}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon color="disabled" />
+              </InputAdornment>
+            ),
+            endAdornment: searchText ? (
+              <InputAdornment position="end">
+                <IconButton size="small" onClick={() => setSearchText('')} aria-label="Clear search">
+                  <ClearIcon fontSize="small" />
+                </IconButton>
+              </InputAdornment>
+            ) : null,
+          }}
+        />
 
-      <Collapse in={filtersOpen}>
-        <Box className={classes.filterBar}>
-          <FormControl variant="outlined" size="small" className={classes.filterSelect}>
-            <InputLabel>Pipeline</InputLabel>
+        <Typography className={classes.filterLabel}>Pipeline Status</Typography>
+        <Paper className={classes.filterPaper}>
+          <FormControl fullWidth>
             <Select
               value={filters.pipeline}
               onChange={e => setFilters(prev => ({ ...prev, pipeline: e.target.value as PipelineFilter }))}
-              label="Pipeline"
+              input={<Input disableUnderline />}
             >
               <MenuItem value="all">All</MenuItem>
               <MenuItem value="passed">Passed</MenuItem>
@@ -439,24 +412,30 @@ const ProjectsCatalogTable = ({
               <MenuItem value="running">Running</MenuItem>
             </Select>
           </FormControl>
-          <FormControl variant="outlined" size="small" className={classes.filterSelect}>
-            <InputLabel>AAP Status</InputLabel>
+        </Paper>
+
+        <Typography className={classes.filterLabel}>AAP Status</Typography>
+        <Paper className={classes.filterPaper}>
+          <FormControl fullWidth>
             <Select
               value={filters.aap}
               onChange={e => setFilters(prev => ({ ...prev, aap: e.target.value as AapFilter }))}
-              label="AAP Status"
+              input={<Input disableUnderline />}
             >
               <MenuItem value="all">All</MenuItem>
               <MenuItem value="pushed">Pushed</MenuItem>
               <MenuItem value="not-pushed">Not pushed</MenuItem>
             </Select>
           </FormControl>
-          <FormControl variant="outlined" size="small" className={classes.filterSelect}>
-            <InputLabel>Last Job Run</InputLabel>
+        </Paper>
+
+        <Typography className={classes.filterLabel}>Last Job Run</Typography>
+        <Paper className={classes.filterPaper}>
+          <FormControl fullWidth>
             <Select
               value={filters.jobRun}
               onChange={e => setFilters(prev => ({ ...prev, jobRun: e.target.value as JobRunFilter }))}
-              label="Last Job Run"
+              input={<Input disableUnderline />}
             >
               <MenuItem value="all">All</MenuItem>
               <MenuItem value="success">Success</MenuItem>
@@ -464,52 +443,69 @@ const ProjectsCatalogTable = ({
               <MenuItem value="running">Running</MenuItem>
             </Select>
           </FormControl>
-        </Box>
-      </Collapse>
+        </Paper>
+      </CatalogFilterLayout.Filters>
 
-      {hasActiveFilters(filters) && (
-        <Box className={classes.activeFiltersRow}>
-          <Typography variant="body2" color="textSecondary" style={{ fontSize: 12 }}>
-            Active filters:
+      <CatalogFilterLayout.Content>
+        <Box className={classes.contentHeader}>
+          <Typography variant="h6" style={{ fontWeight: 600 }}>
+            {filteredProjects.length} {filteredProjects.length === 1 ? 'project' : 'projects'}
           </Typography>
-          {filterLabels.map(f => (
-            <Chip
-              key={f.key}
-              label={`${f.label}: ${f.value}`}
-              size="small"
-              onDelete={() => clearFilter(f.key)}
-              deleteIcon={<CancelIcon style={{ fontSize: 16 }} />}
-              className={classes.activeChip}
-              color="primary"
-              variant="outlined"
-            />
-          ))}
           <Button
-            size="small"
-            onClick={clearAllFilters}
-            style={{ textTransform: 'none', fontSize: 12 }}
+            variant="contained"
+            color="primary"
+            startIcon={<AddIcon />}
+            onClick={() => onTabSwitch(1)}
+            className={classes.createButton}
           >
-            Clear all
+            Create Project
           </Button>
         </Box>
-      )}
 
-      <Table<DemoProject>
-        columns={columns}
-        data={filteredProjects}
-        title={`${filteredProjects.length} projects`}
-        options={{
-          paging: true,
-          pageSize: 10,
-          pageSizeOptions: [5, 10, 20],
-          emptyRowsWhenPaging: false,
-          search: false,
-          sorting: true,
-          padding: 'dense',
-        }}
-        style={{ width: '100%', overflowX: 'hidden' }}
-      />
-    </Box>
+        {hasActiveFilters(filters) && (
+          <Box className={classes.activeFiltersRow}>
+            <Typography variant="body2" color="textSecondary" style={{ fontSize: 12 }}>
+              Active filters:
+            </Typography>
+            {filterLabels.map(f => (
+              <Chip
+                key={f.key}
+                label={`${f.label}: ${f.value}`}
+                size="small"
+                onDelete={() => clearFilter(f.key)}
+                deleteIcon={<CancelIcon style={{ fontSize: 16 }} />}
+                className={classes.activeChip}
+                color="primary"
+                variant="outlined"
+              />
+            ))}
+            <Button
+              size="small"
+              onClick={clearAllFilters}
+              style={{ textTransform: 'none', fontSize: 12 }}
+            >
+              Clear all
+            </Button>
+          </Box>
+        )}
+
+        <Table<DemoProject>
+          columns={columns}
+          data={filteredProjects}
+          title=""
+          options={{
+            paging: true,
+            pageSize: 10,
+            pageSizeOptions: [5, 10, 20],
+            emptyRowsWhenPaging: false,
+            search: false,
+            sorting: true,
+            padding: 'dense',
+          }}
+          style={{ width: '100%', overflowX: 'hidden' }}
+        />
+      </CatalogFilterLayout.Content>
+    </CatalogFilterLayout>
   );
 };
 
