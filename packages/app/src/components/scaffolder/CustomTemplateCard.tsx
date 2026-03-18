@@ -159,7 +159,7 @@ export const CustomTemplateCard = ({
             aria-label={starred ? 'Unstar template' : 'Star template'}
           >
             {starred ? (
-              <StarIcon fontSize="small" style={{ color: '#ffc107' }} />
+              <StarIcon fontSize="small" style={{ color: '#faaf00' }} />
             ) : (
               <StarBorderIcon fontSize="small" />
             )}

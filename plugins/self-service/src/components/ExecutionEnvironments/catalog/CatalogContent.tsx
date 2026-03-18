@@ -24,31 +24,17 @@ import {
   useStarredEntities,
 } from '@backstage/plugin-catalog-react';
 import { Table, TableColumn } from '@backstage/core-components';
-import { Chip, IconButton } from '@material-ui/core';
-import Edit from '@material-ui/icons/Edit';
-import { Tooltip } from '@material-ui/core';
+import { Chip, IconButton, Menu, MenuItem as MuiMenuItem, ListItemText } from '@material-ui/core';
+import MoreVertIcon from '@material-ui/icons/MoreVert';
+import StarIcon from '@material-ui/icons/Star';
 import { ANNOTATION_EDIT_URL, Entity } from '@backstage/catalog-model';
 import StarBorder from '@material-ui/icons/StarBorder';
 import SearchIcon from '@material-ui/icons/Search';
 import ClearIcon from '@material-ui/icons/Clear';
 import { useApi } from '@backstage/core-plugin-api';
 import { useNavigate } from 'react-router-dom';
-import { YellowStar } from './Favourites';
 import { CreateCatalog } from './CreateCatalog';
 import { LastSyncedIndicator } from '../../Admin/LastSyncedIndicator';
-
-const visuallyHidden: React.CSSProperties = {
-  border: 0,
-  clip: 'rect(0 0 0 0)',
-  height: 1,
-  margin: -1,
-  overflow: 'hidden',
-  padding: 0,
-  position: 'absolute',
-  top: 20,
-  width: 1,
-  whiteSpace: 'nowrap',
-};
 
 const useStyles = makeStyles(theme => ({
   flex: {
@@ -92,6 +78,9 @@ const useStyles = makeStyles(theme => ({
     marginTop: theme.spacing(2),
     fontWeight: 600,
     fontSize: '0.875rem',
+    '&:first-child': {
+      marginTop: 0,
+    },
   },
   paper: {
     padding: theme.spacing(1.5),
@@ -114,6 +103,37 @@ const ExecutionEnvironmentTypeFilter = () => {
   }, [type, updateFilters]);
 
   return null;
+};
+
+const EERowActions = ({ entity }: { entity: any }) => {
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const navigate = useNavigate();
+  const editUrl = entity.metadata.annotations?.[ANNOTATION_EDIT_URL];
+
+  return (
+    <>
+      <IconButton size="small" onClick={(e: React.MouseEvent<HTMLButtonElement>) => { e.stopPropagation(); setAnchorEl(e.currentTarget); }}>
+        <MoreVertIcon fontSize="small" />
+      </IconButton>
+      <Menu
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
+        onClose={() => setAnchorEl(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+        getContentAnchorEl={null}
+      >
+        <MuiMenuItem onClick={() => { setAnchorEl(null); navigate(`/self-service/catalog/${entity.metadata.name}`); }}>
+          <ListItemText primary="View details" />
+        </MuiMenuItem>
+        {editUrl && (
+          <MuiMenuItem onClick={() => { setAnchorEl(null); window.open(editUrl, '_blank', 'noopener,noreferrer'); }}>
+            <ListItemText primary="View source" />
+          </MuiMenuItem>
+        )}
+      </Menu>
+    </>
+  );
 };
 
 export const EEListPage = ({
@@ -322,7 +342,7 @@ export const EEListPage = ({
   }
 
   if (showError)
-    return <div>Error: {errorMessage ?? 'Unable to retrieve data'}</div>;
+    return <div>{errorMessage ?? 'Unable to load execution environments'}</div>;
   const columns: TableColumn[] = [
     {
       title: 'Name',
@@ -391,85 +411,30 @@ export const EEListPage = ({
       cellStyle: { padding: '16px 16px 0px 20px' },
     },
     {
-      title: 'Actions',
-      id: 'actions',
+      title: '',
+      width: '80px',
+      sorting: false,
       render: (entity: any) => {
-        const editUrl = entity.metadata.annotations?.[ANNOTATION_EDIT_URL];
-        const title = 'Edit';
         const isStarred = isStarredEntity(entity);
-        const starredTitle = isStarred
-          ? 'Remove from favorites'
-          : 'Add to favorites';
 
         return (
-          <div
-            className={classes.flex}
-            style={{ position: 'relative', zIndex: 1 }}
-          >
-            <Tooltip title={starredTitle}>
-              <IconButton
-                size="small"
-                onClick={(e: React.MouseEvent) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  toggleStarredEntity(entity);
-                }}
-                onMouseDown={(e: React.MouseEvent) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  toggleStarredEntity(entity);
-                }}
-                onMouseUp={(e: React.MouseEvent) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                }}
-                className={classes.actionButton}
-                aria-label={starredTitle}
-              >
-                <Typography style={visuallyHidden}>{starredTitle}</Typography>
-                {isStarred ? <YellowStar /> : <StarBorder />}
-              </IconButton>
-            </Tooltip>
-            {!(
-              entity &&
-              entity.metadata &&
-              entity.metadata.annotations &&
-              entity.metadata.annotations['ansible.io/download-experience']
-                ?.toString()
-                .toLowerCase()
-                .trim() === 'true'
-            ) && (
-              <Tooltip title="Edit">
-                <IconButton
-                  size="small"
-                  onClick={(e: React.MouseEvent) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    if (editUrl) {
-                      window.open(editUrl, '_blank', 'noopener,noreferrer');
-                    }
-                  }}
-                  onMouseDown={(e: React.MouseEvent) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    if (editUrl) {
-                      window.open(editUrl, '_blank', 'noopener,noreferrer');
-                    }
-                  }}
-                  onMouseUp={(e: React.MouseEvent) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                  }}
-                  className={classes.actionButton}
-                  aria-label={title}
-                  disabled={!editUrl}
-                >
-                  <Typography style={visuallyHidden}>{title}</Typography>
-                  <Edit fontSize="small" />
-                </IconButton>
-              </Tooltip>
-            )}
-          </div>
+          <Box className={classes.flex} style={{ alignItems: 'center', gap: 4 }}>
+            <IconButton
+              size="small"
+              onClick={(e: React.MouseEvent) => {
+                e.stopPropagation();
+                toggleStarredEntity(entity);
+              }}
+              aria-label={isStarred ? 'Remove from favorites' : 'Add to favorites'}
+            >
+              {isStarred ? (
+                <StarIcon style={{ color: '#faaf00' }} />
+              ) : (
+                <StarBorder />
+              )}
+            </IconButton>
+            <EERowActions entity={entity} />
+          </Box>
         );
       },
     },
@@ -482,7 +447,7 @@ export const EEListPage = ({
           <ExecutionEnvironmentTypeFilter />
           <CatalogFilterLayout.Filters>
             <TextField
-              placeholder="Search EE definitions..."
+              placeholder="Search execution environments..."
               variant="standard"
               fullWidth
               value={searchText}
@@ -548,7 +513,7 @@ export const EEListPage = ({
               <LastSyncedIndicator source="Private Automation Hub" timeAgo="8 minutes ago" />
             </Box>
             <Table
-              title={`${searchFilteredComponents?.length ?? 0} EE definitions`}
+              title={`${searchFilteredComponents?.length ?? 0} ${(searchFilteredComponents?.length ?? 0) === 1 ? 'execution environment' : 'execution environments'}`}
               options={{
                 paging: true,
                 pageSize: 10,
@@ -557,11 +522,17 @@ export const EEListPage = ({
                 search: false,
                 sorting: true,
                 padding: 'dense',
-                rowStyle: { cursor: 'default' },
+                rowStyle: { cursor: 'pointer' },
               }}
               columns={columns}
               data={searchFilteredComponents || []}
               style={{ width: '100%', overflowX: 'hidden' }}
+              onRowClick={(_event, rowData) => {
+                if (rowData) {
+                  const entityName = (rowData as any).metadata?.name;
+                  if (entityName) navigate(`/self-service/catalog/${entityName}`);
+                }
+              }}
             />
           </CatalogFilterLayout.Content>
         </CatalogFilterLayout>

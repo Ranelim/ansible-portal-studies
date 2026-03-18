@@ -101,6 +101,7 @@ const CollectionsCatalogPageInner = () => {
           </Box>
         }
         pageTitleOverride="Collections"
+        subtitle="Reusable Ansible content packages including modules, roles, and plugins"
       />
       <Content>
         <CollectionsContent />

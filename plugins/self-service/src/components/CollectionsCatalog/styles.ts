@@ -45,6 +45,9 @@ export const useCollectionsStyles = makeStyles(theme => ({
     marginTop: theme.spacing(2),
     fontWeight: 600,
     fontSize: '0.875rem',
+    '&:first-child': {
+      marginTop: 0,
+    },
   },
   catalogLayout: {
     '& [class*="CatalogFilterLayout-root"]': {
@@ -64,7 +67,7 @@ export const useCollectionsStyles = makeStyles(theme => ({
     alignItems: 'center',
   },
   paper: {
-    padding: theme.spacing(0.75, 1.5),
+    padding: theme.spacing(1.5),
     borderRadius: 3,
   },
   entityLink: {
@@ -193,14 +196,14 @@ export const useCollectionsStyles = makeStyles(theme => ({
     marginRight: -4,
   },
   starIcon: {
-    color: '#f5a623',
+    color: '#faaf00',
     fontSize: '1.25rem',
   },
   starIconEmpty: {
     color: theme.palette.text.secondary,
     fontSize: '1.25rem',
     '&:hover': {
-      color: '#f5a623',
+      color: '#faaf00',
     },
   },
   cardVersion: {

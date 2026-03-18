@@ -78,7 +78,7 @@ const useStyles = makeStyles(theme => ({
   createButton: {
     textTransform: 'none',
     fontWeight: 600,
-    borderRadius: 16,
+    borderRadius: 20,
   },
 }));
 
@@ -92,7 +92,7 @@ const TemplateCard = ({
   const classes = useStyles();
 
   return (
-    <Card className={classes.card}>
+    <Card className={classes.card} variant="outlined">
       <Box className={classes.cardTitleArea}>
         <Typography className={classes.cardTitle}>
           {template.title}

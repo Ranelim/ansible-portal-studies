@@ -1,4 +1,4 @@
-import { Box, IconButton, Tabs, Tab } from '@material-ui/core';
+import { Box, IconButton } from '@material-ui/core';
 import MoreVertIcon from '@material-ui/icons/MoreVert';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useEffect, useState, useCallback } from 'react';
@@ -23,7 +23,6 @@ import { createTarArchive } from '../../utils/tarArchiveUtils';
 export const EEDetailsPage: React.FC = () => {
   const { templateName } = useParams<{ templateName: string }>();
   const navigate = useNavigate();
-  const [tab, setTab] = useState(0);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const handleMenuOpen = (event: React.MouseEvent<HTMLButtonElement>) => {
     setAnchorEl(event.currentTarget);
@@ -307,49 +306,37 @@ export const EEDetailsPage: React.FC = () => {
         {' '}
         {entity ? (
           <>
-            {/* Tabs */}
-            <Tabs
-              value={tab}
-              onChange={(_, v) => setTab(v)}
-              style={{ marginTop: 16, marginBottom: 24 }}
-            >
-              <Tab label="Overview" />
-            </Tabs>
-
             {/* Overview */}
-            {tab === 0 && (
-              <Box display="flex" gridGap={24}>
-                {/* Left Column */}
-                <Box
-                  flex={1}
-                  maxWidth={320}
-                  display="flex"
-                  flexDirection="column"
-                  gridGap={24}
-                >
-                  {/* Links Card */}
-                  {isDownloadExperience && (
-                    <LinksCard onDownloadArchive={handleDownloadArchive} />
-                  )}
-
-                  {/* About Card */}
-                  <AboutCard
-                    entity={entity}
-                    ownerName={ownerName}
-                    isRefreshing={isRefreshing}
-                    isDownloadExperience={isDownloadExperience}
-                    onRefresh={handleRefresh}
-                    onViewTechdocs={handleViewTechdocs}
-                    onOpenSourceLocation={openSourceLocationUrl}
-                  />
-                </Box>
-
-                {/* Right Column */}
+            <Box display="flex" gridGap={24} style={{ marginTop: 24 }}>
+              {/* Left Column — README */}
+              <Box flex={1} minWidth={0}>
                 <ReadmeCard
                   readmeContent={entity?.spec.readme || defaultReadme}
                 />
               </Box>
-            )}
+
+              {/* Right Column — About & Links */}
+              <Box
+                width={320}
+                flexShrink={0}
+                display="flex"
+                flexDirection="column"
+                gridGap={24}
+              >
+                {isDownloadExperience && (
+                  <LinksCard onDownloadArchive={handleDownloadArchive} />
+                )}
+                <AboutCard
+                  entity={entity}
+                  ownerName={ownerName}
+                  isRefreshing={isRefreshing}
+                  isDownloadExperience={isDownloadExperience}
+                  onRefresh={handleRefresh}
+                  onViewTechdocs={handleViewTechdocs}
+                  onOpenSourceLocation={openSourceLocationUrl}
+                />
+              </Box>
+            </Box>
           </>
         ) : (
           <> {entity !== false && <EntityNotFound />}</>

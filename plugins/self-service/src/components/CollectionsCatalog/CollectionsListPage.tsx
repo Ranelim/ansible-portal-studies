@@ -251,7 +251,7 @@ export const CollectionsListPage = ({
   }
 
   if (showError) {
-    return <div>Error: {errorMessage ?? 'Unable to retrieve collections'}</div>;
+    return <div>{errorMessage ?? 'Unable to load collections'}</div>;
   }
 
   return (
@@ -350,7 +350,7 @@ export const CollectionsListPage = ({
                 <Box className={classes.contentHeader}>
                   <Box>
                     <Typography variant="h6" className={classes.contentTitle}>
-                      Ansible Collections ({filteredEntities.length})
+                      {filteredEntities.length} {filteredEntities.length === 1 ? 'collection' : 'collections'}
                     </Typography>
                     <LastSyncedIndicator source="Private Automation Hub" timeAgo="8 minutes ago" />
                   </Box>

@@ -97,6 +97,7 @@ export const EEHeader = () => {
     <Header
       title={headerTitle}
       pageTitleOverride="Execution Environments"
+      subtitle="Container images that package dependencies for running Ansible automation"
     />
   );
 };

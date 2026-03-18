@@ -25,7 +25,7 @@ const useStyles = makeStyles(theme => ({
 
 export const YellowStar: React.ComponentType = withStyles({
   root: {
-    color: '#f3ba37',
+    color: '#faaf00',
   },
 })(Star);
 

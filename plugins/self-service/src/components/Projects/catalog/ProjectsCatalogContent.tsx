@@ -32,6 +32,7 @@ import CancelIcon from '@material-ui/icons/Cancel';
 import CloudUploadIcon from '@material-ui/icons/CloudUpload';
 import OpenInNewIcon from '@material-ui/icons/OpenInNew';
 import FolderOpenIcon from '@material-ui/icons/FolderOpen';
+import { useNavigate } from 'react-router-dom';
 import { CatalogFilterLayout } from '@backstage/plugin-catalog-react';
 import { LastSyncedIndicator } from '../../Admin/LastSyncedIndicator';
 import { PipelineStatusIcons, PipelineColumnHeader } from './PipelineStatus';
@@ -98,6 +99,9 @@ const useStyles = makeStyles(theme => ({
     marginTop: theme.spacing(2),
     fontWeight: 600,
     fontSize: '0.875rem',
+    '&:first-child': {
+      marginTop: 0,
+    },
   },
   filterPaper: {
     padding: theme.spacing(1.5),
@@ -239,6 +243,7 @@ const ProjectsCatalogTable = ({
   onTabSwitch: (index: number) => void;
 }) => {
   const classes = useStyles();
+  const navigate = useNavigate();
   const [projects, setProjects] = useState<DemoProject[]>(DEMO_PROJECTS);
   const [searchText, setSearchText] = useState('');
   const [filters, setFilters] = useState<ActiveFilters>({ ...DEFAULT_FILTERS });
@@ -505,8 +510,14 @@ const ProjectsCatalogTable = ({
             search: false,
             sorting: true,
             padding: 'dense',
+            rowStyle: { cursor: 'pointer' },
           }}
           style={{ width: '100%', overflowX: 'hidden' }}
+          onRowClick={(_event, rowData) => {
+            if (rowData) {
+              navigate(`/self-service/projects/${(rowData as DemoProject).name}`);
+            }
+          }}
         />
       </CatalogFilterLayout.Content>
     </CatalogFilterLayout>

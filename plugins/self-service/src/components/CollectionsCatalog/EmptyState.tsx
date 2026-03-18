@@ -1,5 +1,5 @@
 import { Box, Link, Typography } from '@material-ui/core';
-import SearchIcon from '@material-ui/icons/Search';
+import FolderOpenIcon from '@material-ui/icons/FolderOpen';
 import SettingsIcon from '@material-ui/icons/Settings';
 import OpenInNewIcon from '@material-ui/icons/OpenInNew';
 import { usePermission } from '@backstage/plugin-permission-react';
@@ -49,9 +49,9 @@ export const EmptyState = ({
 
   return (
     <Box className={classes.emptyState}>
-      <SearchIcon className={classes.emptyStateIcon} />
+      <FolderOpenIcon className={classes.emptyStateIcon} />
       <Typography variant="h4" className={classes.emptyStateTitle}>
-        No collections found
+        No collections yet
       </Typography>
       <Typography className={classes.emptyStateDescription}>
         {allowed

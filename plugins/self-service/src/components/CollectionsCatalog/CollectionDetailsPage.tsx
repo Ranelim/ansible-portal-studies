@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Box, Button, Typography, Tab, Tabs } from '@material-ui/core';
+import { Box, Button, Typography } from '@material-ui/core';
 import OpenInNewIcon from '@material-ui/icons/OpenInNew';
 import { Entity } from '@backstage/catalog-model';
 import { catalogApiRef } from '@backstage/plugin-catalog-react';
@@ -34,7 +34,6 @@ export const CollectionDetailsPage = () => {
   const [lastSync, setLastSync] = useState<string | null>(null);
   const [lastFailedSync, setLastFailedSync] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [tab, setTab] = useState(0);
 
   const fetchEntity = useCallback(() => {
     if (!collectionName) return;
@@ -313,42 +312,32 @@ export const CollectionDetailsPage = () => {
             onClick={handleViewSource}
             className={classes.syncButton}
           >
-            View Source
+            View source
           </Button>
         )}
       </Box>
 
-      <Tabs
-        value={tab}
-        onChange={(_, v) => setTab(v)}
-        className={classes.detailsTabs}
-      >
-        <Tab label="Overview" />
-      </Tabs>
-
-      {tab === 0 && (
-        <Box className={classes.detailsContent}>
-          <Box className={classes.detailsLeftColumn}>
-            <CollectionReadmeCard
-              readmeContent={readmeContent}
-              isLoading={readmeLoading}
-              isHtml={isHtmlReadme}
-            />
-          </Box>
-
-          <Box className={classes.detailsRightColumn}>
-            <CollectionAboutCard
-              entity={entity}
-              lastSync={lastSync}
-              lastFailedSync={lastFailedSync}
-              onViewSource={handleViewSource}
-              onRefresh={handleRefresh}
-              isRefreshing={isRefreshing}
-            />
-            <CollectionResourcesCard entity={entity} />
-          </Box>
+      <Box className={classes.detailsContent}>
+        <Box className={classes.detailsLeftColumn}>
+          <CollectionReadmeCard
+            readmeContent={readmeContent}
+            isLoading={readmeLoading}
+            isHtml={isHtmlReadme}
+          />
         </Box>
-      )}
+
+        <Box className={classes.detailsRightColumn}>
+          <CollectionAboutCard
+            entity={entity}
+            lastSync={lastSync}
+            lastFailedSync={lastFailedSync}
+            onViewSource={handleViewSource}
+            onRefresh={handleRefresh}
+            isRefreshing={isRefreshing}
+          />
+          <CollectionResourcesCard entity={entity} />
+        </Box>
+      </Box>
     </Box>
   );
 };

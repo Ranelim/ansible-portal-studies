@@ -132,6 +132,7 @@ export const ProjectsTabs: React.FC = () => {
           </Box>
         }
         pageTitleOverride="Projects"
+        subtitle="Manage automation projects connected to Git and deployed to AAP"
       />
       <HeaderTabs
         selectedIndex={selectedTab}

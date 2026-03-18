@@ -232,7 +232,7 @@ const AboutCard = ({ entity }: { entity: Entity }) => {
                 rel="noopener noreferrer"
                 className={classes.aboutLink}
               >
-                View in source
+                View source
                 <OpenInNewIcon style={{ fontSize: 14 }} />
               </Link>
             </Box>
@@ -564,7 +564,7 @@ export const CatalogItemsDetails = () => {
                   window.open(sourceUrl, '_blank', 'noopener,noreferrer');
                 }}
               >
-                <ListItemText primary="View in source" />
+                <ListItemText primary="View source" />
               </MenuItem>
             )}
             <Divider />

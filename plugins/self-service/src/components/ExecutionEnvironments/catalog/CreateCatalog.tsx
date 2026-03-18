@@ -6,7 +6,7 @@ import {
 } from '@material-ui/core';
 import { makeStyles } from '@material-ui/core/styles';
 import AddIcon from '@material-ui/icons/Add';
-import DescriptionOutlinedIcon from '@material-ui/icons/DescriptionOutlined';
+import FolderOpenIcon from '@material-ui/icons/FolderOpen';
 
 const useStyles = makeStyles(theme => ({
   emptyContainer: {
@@ -58,9 +58,9 @@ export const CreateCatalog = ({
   return (
     <div data-testid="catalog-content">
       <Box className={classes.emptyContainer}>
-        <DescriptionOutlinedIcon className={classes.emptyIcon} />
+        <FolderOpenIcon className={classes.emptyIcon} />
         <Typography variant="h4" className={classes.emptyTitle}>
-          No EE definitions yet
+          No execution environments yet
         </Typography>
         <Typography className={classes.emptyDescription}>
           Get started with Execution Environments (EE) to ensure your playbooks
@@ -75,7 +75,7 @@ export const CreateCatalog = ({
           className={classes.createButton}
           startIcon={<AddIcon />}
         >
-          Create EE Definition
+          Create execution environment
         </Button>
         <MuiLink
           href="https://red.ht/self-service_build_and_use_ee_definition"

@@ -354,14 +354,14 @@ export const GlobalHeader = () => {
             className={classes.menuItem}
           >
             <ListItemIcon><FolderOpenIcon fontSize="small" /></ListItemIcon>
-            <ListItemText primary="New Project" secondary="From a project template" />
+            <ListItemText primary="Create project" secondary="From a project template" />
           </MenuItem>
           <MenuItem
             onClick={() => { setCreateAnchor(null); navigate('/self-service/ee/create'); }}
             className={classes.menuItem}
           >
             <ListItemIcon><MemoryIcon fontSize="small" /></ListItemIcon>
-            <ListItemText primary="New Execution Environment" secondary="Build a custom EE" />
+            <ListItemText primary="Create execution environment" secondary="Build a custom EE" />
           </MenuItem>
           <Divider />
           <MenuItem

@@ -15,7 +15,6 @@ import {
   Button,
   Paper,
 } from '@material-ui/core';
-import ArrowBackIcon from '@material-ui/icons/ArrowBack';
 import CheckCircleOutlineIcon from '@material-ui/icons/CheckCircleOutline';
 import ErrorOutlineIcon from '@material-ui/icons/ErrorOutline';
 import LoopIcon from '@material-ui/icons/Loop';
@@ -25,7 +24,9 @@ import AddCircleOutlineIcon from '@material-ui/icons/AddCircleOutline';
 import EditOutlinedIcon from '@material-ui/icons/EditOutlined';
 import RemoveCircleOutlineIcon from '@material-ui/icons/RemoveCircleOutline';
 import BlockIcon from '@material-ui/icons/Block';
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, Link as RouterLink } from 'react-router-dom';
+import Breadcrumbs from '@material-ui/core/Breadcrumbs';
+import NavigateNextIcon from '@material-ui/icons/NavigateNext';
 import {
   DEMO_SYNC_HISTORY,
   SyncHistoryEntry,
@@ -34,10 +35,23 @@ import {
 } from './syncDemoData';
 
 const useStyles = makeStyles(theme => ({
-  backButton: {
-    textTransform: 'none',
-    fontWeight: 500,
-    marginBottom: theme.spacing(2),
+  breadcrumbs: {
+    marginBottom: theme.spacing(1),
+    '& a': {
+      color: theme.palette.primary.main,
+      textDecoration: 'none',
+      fontSize: 14,
+      '&:hover': {
+        textDecoration: 'underline',
+      },
+    },
+    '& .MuiBreadcrumbs-separator': {
+      fontSize: 14,
+    },
+  },
+  breadcrumbCurrent: {
+    fontSize: 14,
+    color: theme.palette.text.secondary,
   },
   summaryGrid: {
     display: 'grid',
@@ -365,16 +379,14 @@ export const SyncJobDetailPage = () => {
         <Header title="Sync Job Not Found" />
         <Content>
           <Box textAlign="center" py={6}>
-            <Typography variant="h5" gutterBottom>Sync event not found</Typography>
+            <Typography variant="h5" gutterBottom>Sync job not found</Typography>
             <Typography color="textSecondary" gutterBottom>
-              The sync event &ldquo;{syncId}&rdquo; does not exist or has been purged from history.
+              The sync job &ldquo;{syncId}&rdquo; does not exist or has been purged from history.
             </Typography>
             <Button
               variant="outlined"
-              startIcon={<ArrowBackIcon />}
-              className={classes.backButton}
               onClick={() => navigate('/self-service/admin/sync-activity')}
-              style={{ marginTop: 16 }}
+              style={{ marginTop: 16, textTransform: 'none' }}
             >
               Back to Sync Activity
             </Button>
@@ -396,13 +408,15 @@ export const SyncJobDetailPage = () => {
         tabs={tabs.map(t => ({ id: t.id, label: t.label }))}
       />
       <Content>
-        <Button
-          startIcon={<ArrowBackIcon />}
-          className={classes.backButton}
-          onClick={() => navigate('/self-service/admin/sync-activity')}
+        <Breadcrumbs
+          separator={<NavigateNextIcon fontSize="small" />}
+          className={classes.breadcrumbs}
         >
-          Back to Sync Activity
-        </Button>
+          <RouterLink to="/self-service/admin/sync-activity">Sync Activity</RouterLink>
+          <Typography className={classes.breadcrumbCurrent}>
+            {entry.source} — {entry.contentType}
+          </Typography>
+        </Breadcrumbs>
 
         {selectedTab === 0 ? (
           <OverviewTab entry={entry} />
