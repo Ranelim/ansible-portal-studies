@@ -12,7 +12,6 @@ import {
 import { ScaffolderPage, scaffolderPlugin } from '@backstage/plugin-scaffolder';
 import { ScaffolderFieldExtensions } from '@backstage/plugin-scaffolder-react';
 import { orgPlugin } from '@backstage/plugin-org';
-import { SearchPage } from '@backstage/plugin-search';
 import {
   TechDocsIndexPage,
   techdocsPlugin,
@@ -23,7 +22,7 @@ import { ReportIssue } from '@backstage/plugin-techdocs-module-addons-contrib';
 import { UserSettingsPage } from '@backstage/plugin-user-settings';
 import { apis } from './apis';
 import { entityPage } from './components/catalog/EntityPage';
-import { searchPage } from './components/search/SearchPage';
+import { SearchPage } from './components/search/SearchPage';
 import { Root } from './components/Root';
 import { GlobalHeader } from './components/GlobalHeader';
 import { LightspeedProvider, LightspeedPanel } from './components/Lightspeed';
@@ -42,6 +41,7 @@ import { catalogEntityCreatePermission } from '@backstage/plugin-catalog-common/
 import { providers } from './identityProviders';
 import { AnsiblePage } from '@ansible/plugin-backstage-rhaap';
 import { DelayingComponentFieldExtension } from './components/scaffolder/customScaffolderExtensions';
+import { CustomTemplateCard } from './components/scaffolder/CustomTemplateCard';
 import {
   AAPTokenFieldExtension,
   AAPResourcePickerExtension,
@@ -107,7 +107,25 @@ const routes = (
         <ReportIssue />
       </TechDocsAddons>
     </Route>
-    <Route path="/create" element={<ScaffolderPage />}>
+    <Route
+      path="/create"
+      element={
+        <ScaffolderPage
+          headerOptions={{
+            title: 'Software Templates',
+            subtitle:
+              'Create new projects and automation content from curated templates',
+          }}
+          components={{
+            TemplateCardComponent: CustomTemplateCard,
+          }}
+          contextMenu={{
+            editor: false,
+            actions: false,
+          }}
+        />
+      }
+    >
       <ScaffolderFieldExtensions>
         <DelayingComponentFieldExtension />
         <AAPTokenFieldExtension />
@@ -130,9 +148,7 @@ const routes = (
         </RequirePermission>
       }
     />
-    <Route path="/search" element={<SearchPage />}>
-      {searchPage}
-    </Route>
+    <Route path="/search" element={<SearchPage />} />
     <Route path="/rbac" element={<RbacPage />} />
     <Route path="/settings" element={<UserSettingsPage />} />
     <Route path="/catalog-graph" element={<CatalogGraphPage />} />

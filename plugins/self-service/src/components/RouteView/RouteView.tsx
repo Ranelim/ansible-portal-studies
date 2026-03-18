@@ -15,6 +15,9 @@ import { EEDetailsPage } from '../ExecutionEnvironments/catalog/EEDetailsPage';
 import { ProjectsTabs } from '../Projects';
 import { CollectionsCatalogPage } from '../CollectionsCatalog';
 import { CollectionDetailsPage } from '../CollectionsCatalog/CollectionDetailsPage';
+import { ConnectionsPage } from '../Admin/ConnectionsPage';
+import { SyncActivityPage } from '../Admin/SyncActivityPage';
+import { SyncJobDetailPage } from '../Admin/SyncJobDetailPage';
 
 export const RouteView = () => {
   return (
@@ -78,6 +81,9 @@ export const RouteView = () => {
           path="collections/:collectionName"
           element={<CollectionDetailsPage />}
         />
+        <Route path="admin/connections" element={<ConnectionsPage />} />
+        <Route path="admin/sync-activity" element={<SyncActivityPage />} />
+        <Route path="admin/sync-activity/:syncId" element={<SyncJobDetailPage />} />
         {/* Default redirects */}
         <Route
           path="/catalog/*"

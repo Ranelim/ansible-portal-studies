@@ -41,6 +41,7 @@ import { useCollectionsStyles } from './styles';
 import { PAGE_SIZE } from './constants';
 import { sortEntities, filterLatestVersions, getUniqueFilters } from './utils';
 import { CollectionCard } from './CollectionCard';
+import { LastSyncedIndicator } from '../Admin/LastSyncedIndicator';
 import { EmptyState } from './EmptyState';
 
 export const CollectionsTypeFilter = () => {
@@ -58,12 +59,10 @@ export const CollectionsTypeFilter = () => {
 };
 
 interface CollectionsListPageProps {
-  onSyncClick?: () => void;
   onSourcesStatusChange?: (hasConfiguredSources: boolean | null) => void;
 }
 
 export const CollectionsListPage = ({
-  onSyncClick,
   onSourcesStatusChange,
 }: CollectionsListPageProps) => {
   const classes = useCollectionsStyles();
@@ -260,7 +259,6 @@ export const CollectionsListPage = ({
       <CollectionsTypeFilter />
       {allEntities.length === 0 ? (
         <EmptyState
-          onSyncClick={onSyncClick}
           hasConfiguredSources={hasConfiguredSources}
         />
       ) : (
@@ -350,9 +348,12 @@ export const CollectionsListPage = ({
             <CatalogFilterLayout.Content>
               <Box>
                 <Box className={classes.contentHeader}>
-                  <Typography variant="h6" className={classes.contentTitle}>
-                    Ansible Collections ({filteredEntities.length})
-                  </Typography>
+                  <Box>
+                    <Typography variant="h6" className={classes.contentTitle}>
+                      Ansible Collections ({filteredEntities.length})
+                    </Typography>
+                    <LastSyncedIndicator source="Private Automation Hub" timeAgo="8 minutes ago" />
+                  </Box>
                 </Box>
 
                 <Box className={classes.cardsContainer}>
@@ -407,25 +408,14 @@ export const CollectionsListPage = ({
   );
 };
 
-interface CollectionsContentProps {
-  onSyncClick?: () => void;
-  onSourcesStatusChange?: (hasConfiguredSources: boolean | null) => void;
-}
-
-export const CollectionsContent = ({
-  onSyncClick,
-  onSourcesStatusChange,
-}: CollectionsContentProps) => {
+export const CollectionsContent = () => {
   const classes = useCollectionsStyles();
 
   return (
     <Box display="flex" justifyContent="space-between" width="100%">
       <Box className={classes.flex} width="100%">
         <EntityListProvider>
-          <CollectionsListPage
-            onSyncClick={onSyncClick}
-            onSourcesStatusChange={onSourcesStatusChange}
-          />
+          <CollectionsListPage />
         </EntityListProvider>
       </Box>
     </Box>

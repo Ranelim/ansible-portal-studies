@@ -33,6 +33,7 @@ import CloudUploadIcon from '@material-ui/icons/CloudUpload';
 import OpenInNewIcon from '@material-ui/icons/OpenInNew';
 import FolderOpenIcon from '@material-ui/icons/FolderOpen';
 import { CatalogFilterLayout } from '@backstage/plugin-catalog-react';
+import { LastSyncedIndicator } from '../../Admin/LastSyncedIndicator';
 import { PipelineStatusIcons, PipelineColumnHeader } from './PipelineStatus';
 import {
   AapStatusIcons,
@@ -448,9 +449,12 @@ const ProjectsCatalogTable = ({
 
       <CatalogFilterLayout.Content>
         <Box className={classes.contentHeader}>
-          <Typography variant="h6" style={{ fontWeight: 600 }}>
-            {filteredProjects.length} {filteredProjects.length === 1 ? 'project' : 'projects'}
-          </Typography>
+          <Box>
+            <Typography variant="h6" style={{ fontWeight: 600 }}>
+              {filteredProjects.length} {filteredProjects.length === 1 ? 'project' : 'projects'}
+            </Typography>
+            <LastSyncedIndicator source="GitHub and AAP" timeAgo="3 minutes ago" />
+          </Box>
           <Button
             variant="contained"
             color="primary"

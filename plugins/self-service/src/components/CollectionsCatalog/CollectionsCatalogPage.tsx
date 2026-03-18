@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { Page, Header, Content } from '@backstage/core-components';
 import {
   Box,
@@ -6,24 +6,17 @@ import {
   Popover,
   IconButton,
   Tooltip,
-  Button,
 } from '@material-ui/core';
 import { makeStyles } from '@material-ui/core/styles';
 import HelpOutlineIcon from '@material-ui/icons/HelpOutline';
 import CloseIcon from '@material-ui/icons/Close';
-import SyncIcon from '@material-ui/icons/Sync';
-import { usePermission } from '@backstage/plugin-permission-react';
-import { catalogEntityCreatePermission } from '@backstage/plugin-catalog-common/alpha';
 
-import { SyncDialog } from './SyncDialog';
 import { CollectionsContent } from './CollectionsListPage';
 import {
   NotificationProvider,
   NotificationStack,
   useNotifications,
 } from '../notifications';
-import { useSyncStatusPolling } from './useSyncStatusPolling';
-import { StartedSyncInfo } from './types';
 
 const useStyles = makeStyles(theme => ({
   helpIcon: {
@@ -49,12 +42,6 @@ const useStyles = makeStyles(theme => ({
     fontSize: 13,
     lineHeight: 1.6,
     color: theme.palette.text.secondary,
-  },
-  syncButton: {
-    textTransform: 'none',
-    fontWeight: 500,
-    whiteSpace: 'nowrap',
-    flexShrink: 0,
   },
 }));
 
@@ -102,38 +89,7 @@ const PageHelpIcon = () => {
 };
 
 const CollectionsCatalogPageInner = () => {
-  const classes = useStyles();
-  const [syncDialogOpen, setSyncDialogOpen] = useState(false);
-  const [hasConfiguredSources, setHasConfiguredSources] = useState<
-    boolean | null
-  >(null);
   const { notifications, removeNotification } = useNotifications();
-  const { isSyncInProgress, startTracking } = useSyncStatusPolling();
-  const { allowed } = usePermission({
-    permission: catalogEntityCreatePermission,
-  });
-
-  const handleSyncClick = () => setSyncDialogOpen(true);
-
-  const handleSourcesStatusChange = useCallback((status: boolean | null) => {
-    setHasConfiguredSources(status);
-  }, []);
-
-  const handleSyncsStarted = useCallback(
-    (syncs: StartedSyncInfo[]) => {
-      startTracking(syncs);
-    },
-    [startTracking],
-  );
-
-  const syncDisabled = hasConfiguredSources === false || isSyncInProgress;
-
-  let syncDisabledReason: string | undefined;
-  if (hasConfiguredSources === false) {
-    syncDisabledReason = 'No content sources configured';
-  } else if (isSyncInProgress) {
-    syncDisabledReason = 'Sync in progress';
-  }
 
   return (
     <Page themeId="app">
@@ -147,36 +103,7 @@ const CollectionsCatalogPageInner = () => {
         pageTitleOverride="Collections"
       />
       <Content>
-        {allowed && (
-          <Box display="flex" justifyContent="flex-end" mb={2}>
-            <Tooltip
-              title={syncDisabled && syncDisabledReason ? syncDisabledReason : ''}
-              arrow
-            >
-              <span>
-                <Button
-                  variant="outlined"
-                  color="primary"
-                  startIcon={<SyncIcon />}
-                  onClick={handleSyncClick}
-                  className={classes.syncButton}
-                  disabled={syncDisabled}
-                >
-                  Sync Now
-                </Button>
-              </span>
-            </Tooltip>
-          </Box>
-        )}
-        <CollectionsContent
-          onSyncClick={handleSyncClick}
-          onSourcesStatusChange={handleSourcesStatusChange}
-        />
-        <SyncDialog
-          open={syncDialogOpen}
-          onClose={() => setSyncDialogOpen(false)}
-          onSyncsStarted={handleSyncsStarted}
-        />
+        <CollectionsContent />
       </Content>
       <NotificationStack
         notifications={notifications}

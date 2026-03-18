@@ -3,7 +3,6 @@ import {
   Toolbar,
   Typography,
   IconButton,
-  InputBase,
   Box,
   Menu,
   MenuItem,
@@ -16,8 +15,10 @@ import {
   ListItem,
 } from '@material-ui/core';
 import MenuIcon from '@material-ui/icons/Menu';
-import SearchIcon from '@material-ui/icons/Search';
 import AddIcon from '@material-ui/icons/Add';
+import FolderOpenIcon from '@material-ui/icons/FolderOpen';
+import MemoryIcon from '@material-ui/icons/Memory';
+import ViewListIcon from '@material-ui/icons/ViewList';
 import StarBorderIcon from '@material-ui/icons/StarBorder';
 import NotificationsNoneIcon from '@material-ui/icons/NotificationsNone';
 import HelpOutlineIcon from '@material-ui/icons/HelpOutline';
@@ -30,6 +31,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useApi, identityApiRef } from '@backstage/core-plugin-api';
 import { useState } from 'react';
 import { useLightspeed } from '../Lightspeed';
+import { OmniSearch } from '../search/OmniSearch';
 import redHatLogo from '../../assets/redhat-logo.png';
 
 const useStyles = makeStyles(theme => ({
@@ -88,44 +90,9 @@ const useStyles = makeStyles(theme => ({
     margin: theme.spacing(0, 1),
     alignSelf: 'center',
   },
-  search: {
-    position: 'relative',
-    borderRadius: 20,
-    backgroundColor: alpha(theme.palette.common.white, 0.1),
-    '&:hover': {
-      backgroundColor: alpha(theme.palette.common.white, 0.16),
-    },
+  omniSearchWrapper: {
     marginLeft: theme.spacing(0.5),
-    width: 'auto',
     flexShrink: 1,
-    transition: theme.transitions.create(['background-color']),
-  },
-  searchIconWrapper: {
-    padding: theme.spacing(0, 1.5),
-    height: '100%',
-    position: 'absolute',
-    pointerEvents: 'none',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    opacity: 0.6,
-  },
-  inputRoot: {
-    color: 'inherit',
-  },
-  inputInput: {
-    padding: theme.spacing(1, 2, 1, 0),
-    paddingLeft: `calc(1em + ${theme.spacing(3)}px)`,
-    transition: theme.transitions.create('width'),
-    width: '26ch',
-    fontSize: 13,
-    color: 'inherit',
-    '&:focus': {
-      width: '38ch',
-    },
-    '&::placeholder': {
-      opacity: 0.5,
-    },
   },
   spacer: {
     flexGrow: 1,
@@ -261,15 +228,8 @@ export const GlobalHeader = () => {
   const [profileAnchor, setProfileAnchor] = useState<null | HTMLElement>(null);
   const [notifAnchor, setNotifAnchor] = useState<null | HTMLElement>(null);
   const [helpAnchor, setHelpAnchor] = useState<null | HTMLElement>(null);
+  const [createAnchor, setCreateAnchor] = useState<null | HTMLElement>(null);
   const [favAnchor, setFavAnchor] = useState<null | HTMLElement>(null);
-  const [searchValue, setSearchValue] = useState('');
-
-  const handleSearchSubmit = (event: React.FormEvent) => {
-    event.preventDefault();
-    if (searchValue.trim()) {
-      navigate(`/search?query=${encodeURIComponent(searchValue.trim())}`);
-    }
-  };
 
   const handleLogout = async () => {
     await identityApi.signOut();
@@ -302,26 +262,17 @@ export const GlobalHeader = () => {
         <Divider orientation="vertical" flexItem className={classes.brandDivider} />
 
         {/* Search */}
-        <Box component="form" onSubmit={handleSearchSubmit} className={classes.search}>
-          <div className={classes.searchIconWrapper}>
-            <SearchIcon fontSize="small" />
-          </div>
-          <InputBase
-            placeholder="Search projects, templates, docs..."
-            classes={{ root: classes.inputRoot, input: classes.inputInput }}
-            inputProps={{ 'aria-label': 'search' }}
-            value={searchValue}
-            onChange={e => setSearchValue(e.target.value)}
-          />
+        <Box className={classes.omniSearchWrapper}>
+          <OmniSearch />
         </Box>
 
         <div className={classes.spacer} />
 
-        {/* Create - goes to all software templates */}
+        {/* Create quick actions */}
         <Tooltip title="Create..." arrow>
           <IconButton
             className={classes.iconButton}
-            onClick={() => navigate('/create')}
+            onClick={e => setCreateAnchor(e.currentTarget)}
             aria-label="Create"
           >
             <AddIcon />
@@ -387,6 +338,40 @@ export const GlobalHeader = () => {
         </IconButton>
 
         {/* === Popovers & Menus === */}
+
+        {/* Create quick actions menu */}
+        <Menu
+          anchorEl={createAnchor}
+          open={Boolean(createAnchor)}
+          onClose={() => setCreateAnchor(null)}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+          transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+          getContentAnchorEl={null}
+          className={classes.menu}
+        >
+          <MenuItem
+            onClick={() => { setCreateAnchor(null); navigate('/self-service/projects/create'); }}
+            className={classes.menuItem}
+          >
+            <ListItemIcon><FolderOpenIcon fontSize="small" /></ListItemIcon>
+            <ListItemText primary="New Project" secondary="From a project template" />
+          </MenuItem>
+          <MenuItem
+            onClick={() => { setCreateAnchor(null); navigate('/self-service/ee/create'); }}
+            className={classes.menuItem}
+          >
+            <ListItemIcon><MemoryIcon fontSize="small" /></ListItemIcon>
+            <ListItemText primary="New Execution Environment" secondary="Build a custom EE" />
+          </MenuItem>
+          <Divider />
+          <MenuItem
+            onClick={() => { setCreateAnchor(null); navigate('/create'); }}
+            className={classes.menuItem}
+          >
+            <ListItemIcon><ViewListIcon fontSize="small" /></ListItemIcon>
+            <ListItemText primary="Browse all templates" secondary="View all software templates" />
+          </MenuItem>
+        </Menu>
 
         {/* Favorites popover */}
         <Popover

@@ -128,7 +128,7 @@ const TemplateCard = ({
           className={classes.createButton}
           onClick={() => onStart(template)}
         >
-          Create Project
+          Use template
         </Button>
       </CardActions>
     </Card>

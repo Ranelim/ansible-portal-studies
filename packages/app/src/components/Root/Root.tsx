@@ -1,7 +1,6 @@
 import { PropsWithChildren } from 'react';
 import { makeStyles } from '@material-ui/core';
 import HomeIcon from '@material-ui/icons/Home';
-import ExtensionIcon from '@material-ui/icons/Extension';
 import LibraryBooks from '@material-ui/icons/LibraryBooks';
 import CategoryIcon from '@material-ui/icons/Category';
 import { SidebarSectionLabel } from '@ansible/plugin-backstage-rhaap';
@@ -27,6 +26,8 @@ import WebAssetIcon from '@material-ui/icons/WebAsset';
 import MemoryIcon from '@material-ui/icons/Memory';
 import SchoolIcon from '@material-ui/icons/School';
 import SettingsIcon from '@material-ui/icons/Settings';
+import SyncIcon from '@material-ui/icons/Sync';
+import LinkIcon from '@material-ui/icons/Link';
 import VpnKeyIcon from '@material-ui/icons/VpnKey';
 
 const useSidebarLogoStyles = makeStyles({
@@ -55,6 +56,16 @@ const useRootStyles = makeStyles(theme => ({
     'body, html': {
       backgroundColor: `${theme.palette.background.default} !important`,
     },
+    'a[href*="catalog-import"]': {
+      display: 'none !important',
+    },
+    '.BackstageHeader-header': {
+      position: 'relative',
+      zIndex: 0,
+    },
+    '.BackstagePage-root': {
+      overflow: 'hidden',
+    },
   },
   fixedHeaderOffset: {
     paddingTop: HEADER_HEIGHT,
@@ -81,7 +92,7 @@ export const Root = ({ children }: PropsWithChildren<{}>) => {
             />
             <SidebarItem
               icon={DescriptionOutlinedIcon}
-              to="/self-service/catalog"
+              to="/create"
               text="Templates"
             />
             <SidebarItem
@@ -114,9 +125,14 @@ export const Root = ({ children }: PropsWithChildren<{}>) => {
                 text="General"
               />
               <SidebarItem
-                icon={ExtensionIcon}
-                to="settings"
-                text="Integrations"
+                icon={LinkIcon}
+                to="/self-service/admin/connections"
+                text="Connections"
+              />
+              <SidebarItem
+                icon={SyncIcon}
+                to="/self-service/admin/sync-activity"
+                text="Sync Activity"
               />
               <SidebarItem
                 icon={VpnKeyIcon}

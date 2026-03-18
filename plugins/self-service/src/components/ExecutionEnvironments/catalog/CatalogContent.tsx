@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { Progress } from '@backstage/core-components';
 import {
+  Box,
   FormControl,
   Grid,
   Input,
@@ -34,6 +35,7 @@ import { useApi } from '@backstage/core-plugin-api';
 import { useNavigate } from 'react-router-dom';
 import { YellowStar } from './Favourites';
 import { CreateCatalog } from './CreateCatalog';
+import { LastSyncedIndicator } from '../../Admin/LastSyncedIndicator';
 
 const visuallyHidden: React.CSSProperties = {
   border: 0,
@@ -542,6 +544,9 @@ export const EEListPage = ({
             </Paper>
           </CatalogFilterLayout.Filters>
           <CatalogFilterLayout.Content>
+            <Box mb={1}>
+              <LastSyncedIndicator source="Private Automation Hub" timeAgo="8 minutes ago" />
+            </Box>
             <Table
               title={`${searchFilteredComponents?.length ?? 0} EE definitions`}
               options={{

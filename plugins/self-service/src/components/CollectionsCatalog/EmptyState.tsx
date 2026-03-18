@@ -1,6 +1,5 @@
-import { Box, Button, Link, Typography } from '@material-ui/core';
+import { Box, Link, Typography } from '@material-ui/core';
 import SearchIcon from '@material-ui/icons/Search';
-import SyncIcon from '@material-ui/icons/Sync';
 import SettingsIcon from '@material-ui/icons/Settings';
 import OpenInNewIcon from '@material-ui/icons/OpenInNew';
 import { usePermission } from '@backstage/plugin-permission-react';
@@ -10,12 +9,10 @@ import { useCollectionsStyles } from './styles';
 import { CONFIGURATION_DOCS_URL } from './constants';
 
 export interface EmptyStateProps {
-  onSyncClick?: () => void;
   hasConfiguredSources?: boolean | null;
 }
 
 export const EmptyState = ({
-  onSyncClick,
   hasConfiguredSources,
 }: EmptyStateProps) => {
   const classes = useCollectionsStyles();
@@ -58,20 +55,9 @@ export const EmptyState = ({
       </Typography>
       <Typography className={classes.emptyStateDescription}>
         {allowed
-          ? 'No collections were retrieved from the configured sources. Sync the catalog to fetch the latest contents.'
+          ? 'No collections were retrieved from the configured sources. Use Administration > Connections to trigger a sync.'
           : 'No collections are available in the catalog. Contact your organization administrator to sync the content sources.'}
       </Typography>
-      {allowed && onSyncClick && (
-        <Button
-          variant="contained"
-          color="primary"
-          startIcon={<SyncIcon />}
-          onClick={onSyncClick}
-          className={classes.emptyStateSyncButton}
-        >
-          Sync Now
-        </Button>
-      )}
     </Box>
   );
 };
