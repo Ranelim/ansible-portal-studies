@@ -1,0 +1,252 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: create-network-automation-project
+  title: Network Automation Project
+  description: >
+    Scaffold an automation project for network device configuration and
+    compliance management. Pre-configured with network collections for Cisco,
+    Juniper, or Arista platforms, and includes NETCONF/RESTCONF/SSH connection
+    profiles. Ideal for configuration drift detection and remediation.
+  tags: [ansible, network, cisco, juniper, arista, project]
+  annotations:
+    backstage.io/icon: network
+spec:
+  owner: group:default/network-operations
+  type: project
+  defaultPipeline: comprehensive
+  parameters:
+    # Step 1: Details & AI Jumpstart
+    - title: Details & AI Jumpstart
+      description: Describe your network automation needs or fill in the details manually.
+      required:
+        - project_name
+        - description
+        - owner
+      properties:
+        ai_prompt:
+          title: Lightspeed AI Jumpstart
+          type: string
+          description: Describe the service you want to build (e.g., "Automate VLAN provisioning across Cisco Nexus switches in our data centers").
+          ui:widget: textarea
+          ui:options:
+            rows: 3
+          ui:placeholder: Describe your network automation use case and we'll generate the settings...
+        project_name:
+          title: Service Name
+          type: string
+          description: A unique name for your network automation project
+          ui:autofocus: true
+          pattern: '^[a-z0-9][a-z0-9-]*$'
+          ui:help: Lowercase letters, numbers, and hyphens only
+        description:
+          title: Service Description
+          type: string
+          description: What network automation will this project handle?
+        owner:
+          title: Owner
+          type: string
+          description: The team responsible for this project
+          ui:field: OwnerPicker
+          ui:options:
+            catalogFilter:
+              kind: Group
+        network_platform:
+          title: Network Platforms
+          type: array
+          items:
+            type: string
+            enum: [cisco_ios, cisco_nxos, cisco_asa, juniper_junos, arista_eos, paloalto_panos, fortinet_fortios, vyos]
+            enumNames: [Cisco IOS/IOS-XE, Cisco NX-OS, Cisco ASA, Juniper Junos, Arista EOS, Palo Alto PAN-OS, Fortinet FortiOS, VyOS]
+          uniqueItems: true
+          description: Which network platforms will this project manage?
+        connection_type:
+          title: Primary Connection Type
+          type: string
+          enum: [network_cli, netconf, httpapi]
+          enumNames: [SSH (network_cli), NETCONF, REST API (httpapi)]
+          default: network_cli
+          description: Primary connection method for device management
+        automation_scope:
+          title: Automation Scope
+          type: array
+          items:
+            type: string
+            enum:
+              - Interface Configuration
+              - VLAN Management
+              - Routing Protocols (BGP / OSPF)
+              - ACL / Firewall Rules
+              - Device Backup & Restore
+              - Compliance Auditing
+              - Configuration Drift Detection
+              - OS Upgrade / Patch
+          uniqueItems: true
+          description: What aspects of network management will this project automate?
+
+    # Step 2: Source Code (Git)
+    - title: Source Code (Git)
+      description: Configure the Git repository for your project's source code.
+      required:
+        - repo_url
+      properties:
+        repo_url:
+          title: Repository Location
+          type: string
+          ui:field: RepoUrlPicker
+          ui:options:
+            allowedHosts:
+              - github.com
+              - gitlab.com
+        repo_visibility:
+          title: Repository Visibility
+          type: string
+          enum: [public, private, internal]
+          default: private
+          description: Who can see this repository?
+        default_branch:
+          title: Default Branch
+          type: string
+          default: main
+        include_batfish:
+          title: Include Batfish Validation
+          type: boolean
+          default: false
+          description: Add Batfish network configuration validation pre-checks
+        include_napalm:
+          title: Include NAPALM Getters
+          type: boolean
+          default: false
+          description: Add NAPALM facts gathering and diff capabilities
+
+    # Step 3: Pipeline & Governance
+    - title: Pipeline & Governance
+      description: >
+        Select the governance pipeline for your automation code. These automated
+        validation steps ensure that only safe, tested, and compliant network
+        configurations are promoted to your Ansible Controller.
+      required:
+        - pipeline_type
+      properties:
+        pipeline_type:
+          title: Development Pipeline
+          type: string
+          enum: [comprehensive, standard, custom]
+          enumNames:
+            - Comprehensive pipeline (recommended)
+            - Standard pipeline
+            - Custom pipeline
+          default: comprehensive
+          description: Choose how your code is validated before reaching AAP
+          ui:widget: radio
+        custom_steps:
+          title: Custom Pipeline Steps
+          type: array
+          items:
+            type: string
+            enum:
+              - Syntax Check
+              - Ansible Lint
+              - YAML Lint
+              - Policy Check (OPA)
+              - EE Compatibility
+              - Network Config Validation (Batfish)
+              - Molecule Integration Test
+              - Security Scan (SAST)
+              - Change Window Check
+          uniqueItems: true
+          description: Select which validation steps to include in your custom pipeline
+          ui:options:
+            visible:
+              pipeline_type: custom
+
+    # Step 4: Destination (AAP)
+    - title: Destination (AAP)
+      description: Configure how this project connects to your Ansible Automation Platform.
+      required:
+        - aap_controller
+        - aap_organization
+      properties:
+        aap_controller:
+          title: AAP Controller
+          type: string
+          description: Select the Ansible Controller instance to deploy to
+          ui:field: EntityPicker
+          ui:options:
+            catalogFilter:
+              kind: Resource
+              spec.type: aap-controller
+        aap_organization:
+          title: AAP Organization
+          type: string
+          description: The AAP organization to create the project under
+        create_job_template:
+          title: Auto-create Job Template
+          type: boolean
+          default: true
+          description: Automatically create a Job Template in AAP linked to this project
+        execution_environment:
+          title: Execution Environment
+          type: string
+          description: Select the Execution Environment (should include network SDKs)
+          ui:field: EntityPicker
+          ui:options:
+            catalogFilter:
+              kind: Component
+              spec.type: execution-environment
+        credential_type:
+          title: Network Credential Type
+          type: string
+          enum: [machine, network, scm]
+          default: network
+          description: The credential type to associate with the Job Template
+
+  steps:
+    - id: fetch-template
+      name: Fetch Network Project Template
+      action: fetch:template
+      input:
+        url: ./skeleton
+        values:
+          name: ${{ parameters.project_name }}
+          description: ${{ parameters.description }}
+          owner: ${{ parameters.owner }}
+          network_platform: ${{ parameters.network_platform }}
+          connection_type: ${{ parameters.connection_type }}
+          pipeline_type: ${{ parameters.pipeline_type }}
+    - id: publish
+      name: Create Repository
+      action: publish:github
+      input:
+        repoUrl: ${{ parameters.repo_url }}
+        description: ${{ parameters.description }}
+        defaultBranch: ${{ parameters.default_branch }}
+        repoVisibility: ${{ parameters.repo_visibility }}
+    - id: create-aap-project
+      name: Create AAP Project
+      action: aap:project:create
+      input:
+        controller: ${{ parameters.aap_controller }}
+        organization: ${{ parameters.aap_organization }}
+        scmUrl: ${{ steps['publish'].output.remoteUrl }}
+    - id: create-job-template
+      name: Create Job Template
+      action: aap:job-template:create
+      if: ${{ parameters.create_job_template }}
+      input:
+        controller: ${{ parameters.aap_controller }}
+        project: ${{ steps['create-aap-project'].output.projectName }}
+        executionEnvironment: ${{ parameters.execution_environment }}
+    - id: register
+      name: Register in Catalog
+      action: catalog:register
+      input:
+        repoContentsUrl: ${{ steps['publish'].output.repoContentsUrl }}
+        catalogInfoPath: /catalog-info.yaml
+  output:
+    links:
+      - title: Open Repository
+        url: ${{ steps['publish'].output.remoteUrl }}
+      - title: View in Catalog
+        icon: catalog
+        entityRef: ${{ steps['register'].output.entityRef }}

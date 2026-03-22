@@ -1,90 +1,22 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 import { Header, Page, HeaderTabs, Content } from '@backstage/core-components';
-import { Box, Tooltip, Popover, Typography, IconButton, makeStyles } from '@material-ui/core';
+import { Box } from '@material-ui/core';
 import { useLocation, useNavigate } from 'react-router-dom';
-import HelpOutlineIcon from '@material-ui/icons/HelpOutline';
-import CloseIcon from '@material-ui/icons/Close';
+import { PageHelpIcon } from '../common/PageHelpIcon';
 import { ProjectsCatalogContent } from './catalog/ProjectsCatalogContent';
+import { RepositoriesContent } from './repositories/RepositoriesContent';
 import { ProjectsCreateContent } from './create/ProjectsCreateContent';
-
-const useStyles = makeStyles(theme => ({
-  helpIcon: {
-    color: theme.palette.common.white,
-    opacity: 0.7,
-    fontSize: 20,
-    cursor: 'pointer',
-    marginLeft: theme.spacing(1),
-    '&:hover': {
-      opacity: 1,
-    },
-  },
-  helpPopover: {
-    padding: theme.spacing(2.5),
-    maxWidth: 380,
-  },
-  helpTitle: {
-    fontWeight: 600,
-    fontSize: 14,
-    marginBottom: theme.spacing(1),
-  },
-  helpDescription: {
-    fontSize: 13,
-    lineHeight: 1.6,
-    color: theme.palette.text.secondary,
-  },
-}));
 
 const tabs = [
   { id: 0, label: 'Catalog', path: 'catalog' },
-  { id: 1, label: 'Templates', path: 'create' },
+  { id: 1, label: 'Repositories', path: 'repositories' },
+  { id: 2, label: 'Templates', path: 'create' },
 ];
 
 const getTabIndexFromPath = (pathname: string): number => {
-  if (pathname.includes('/projects/create')) return 1;
+  if (pathname.includes('/projects/repositories')) return 1;
+  if (pathname.includes('/projects/create')) return 2;
   return 0;
-};
-
-const PageHelpIcon = () => {
-  const classes = useStyles();
-  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
-
-  return (
-    <>
-      <Tooltip title="What are projects?" arrow>
-        <span
-          style={{ display: 'inline-flex', cursor: 'pointer' }}
-          onClick={e => setAnchorEl(e.currentTarget)}
-          role="button"
-          tabIndex={0}
-        >
-          <HelpOutlineIcon className={classes.helpIcon} />
-        </span>
-      </Tooltip>
-      <Popover
-        open={Boolean(anchorEl)}
-        anchorEl={anchorEl}
-        onClose={() => setAnchorEl(null)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
-        transformOrigin={{ vertical: 'top', horizontal: 'left' }}
-      >
-        <Box className={classes.helpPopover}>
-          <Box display="flex" justifyContent="space-between" alignItems="flex-start">
-            <Typography className={classes.helpTitle}>What are Projects?</Typography>
-            <IconButton size="small" onClick={() => setAnchorEl(null)}>
-              <CloseIcon fontSize="small" />
-            </IconButton>
-          </Box>
-          <Typography className={classes.helpDescription}>
-            Projects are automation codebases linked to a Git repository and
-            deployed to Ansible Automation Platform (AAP). Each project goes
-            through a governed CI/CD pipeline that validates content quality,
-            policy compliance, and EE compatibility before it can be pushed
-            to your Ansible Controller.
-          </Typography>
-        </Box>
-      </Popover>
-    </>
-  );
 };
 
 export const ProjectsTabs: React.FC = () => {
@@ -114,8 +46,11 @@ export const ProjectsTabs: React.FC = () => {
   );
 
   const content = useMemo(() => {
-    if (selectedTab === 1) {
+    if (selectedTab === 2) {
       return <ProjectsCreateContent key="create" />;
+    }
+    if (selectedTab === 1) {
+      return <RepositoriesContent key="repositories" />;
     }
     return (
       <ProjectsCatalogContent key="catalog" onTabSwitch={handleTabSwitch} />
@@ -128,7 +63,11 @@ export const ProjectsTabs: React.FC = () => {
         title={
           <Box display="flex" alignItems="center">
             Projects
-            <PageHelpIcon />
+            <PageHelpIcon
+              tooltipLabel="What are projects?"
+              title="What are Projects?"
+              description="Projects are automation codebases linked to a Git repository and deployed to Ansible Automation Platform (AAP). Each project goes through a governed CI/CD pipeline that validates content quality, policy compliance, and EE compatibility before it can be pushed to your Ansible Controller."
+            />
           </Box>
         }
         pageTitleOverride="Projects"

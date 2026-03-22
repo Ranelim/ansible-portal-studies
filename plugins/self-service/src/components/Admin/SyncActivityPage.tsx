@@ -35,6 +35,9 @@ import {
   SyncScheduleEntry,
   SyncStatus,
 } from './syncDemoData';
+import { DismissibleBanner } from '../common/DismissibleBanner';
+import { PageHelpIcon } from '../common/PageHelpIcon';
+import { statusColors } from '../common/statusColors';
 
 const useStyles = makeStyles(theme => ({
   filterLabel: {
@@ -142,13 +145,13 @@ const useStyles = makeStyles(theme => ({
 const StatusIcon = ({ status }: { status: SyncStatus }) => {
   switch (status) {
     case 'Completed':
-      return <CheckCircleOutlineIcon style={{ color: '#4caf50', fontSize: 18 }} />;
+      return <CheckCircleOutlineIcon style={{ color: statusColors.success, fontSize: 18 }} />;
     case 'Failed':
-      return <ErrorOutlineIcon style={{ color: '#f44336', fontSize: 18 }} />;
+      return <ErrorOutlineIcon style={{ color: statusColors.error, fontSize: 18 }} />;
     case 'In Progress':
-      return <LoopIcon style={{ color: '#1976d2', fontSize: 18 }} />;
+      return <LoopIcon style={{ color: statusColors.info, fontSize: 18 }} />;
     case 'Partial':
-      return <WarningIcon style={{ color: '#ff9800', fontSize: 18 }} />;
+      return <WarningIcon style={{ color: statusColors.warning, fontSize: 18 }} />;
     default:
       return null;
   }
@@ -194,7 +197,7 @@ const HistoryRowActions = ({ entry }: { entry: SyncHistoryEntry }) => {
         )}
         {entry.status === 'In Progress' && (
           <MuiMenuItem onClick={() => { setAnchorEl(null); console.log('Stop:', entry.id); }}>{/* eslint-disable-line no-console */}
-            <ListItemText primary="Stop sync" primaryTypographyProps={{ style: { color: '#f44336' } }} />
+            <ListItemText primary="Stop sync" primaryTypographyProps={{ style: { color: statusColors.error } }} />
           </MuiMenuItem>
         )}
         <Divider />
@@ -506,7 +509,7 @@ const EditScheduleDialog = ({
       <DialogActions>
         <Button onClick={onClose} style={{ textTransform: 'none' }}>Cancel</Button>
         <Button variant="contained" color="primary" onClick={onClose} style={{ textTransform: 'none' }}>
-          Save
+          Save changes
         </Button>
       </DialogActions>
     </Dialog>
@@ -541,7 +544,7 @@ const ScheduleRowActions = ({ entry }: { entry: SyncScheduleEntry }) => {
         <MuiMenuItem onClick={() => { setAnchorEl(null); console.log(entry.enabled ? 'Disable' : 'Enable', entry.syncJob); }}>{/* eslint-disable-line no-console */}
           <ListItemText
             primary={entry.enabled ? 'Disable' : 'Enable'}
-            primaryTypographyProps={entry.enabled ? { style: { color: '#f44336' } } : undefined}
+            primaryTypographyProps={entry.enabled ? { style: { color: statusColors.error } } : undefined}
           />
         </MuiMenuItem>
         <Divider />
@@ -585,9 +588,9 @@ const SchedulesTab = () => {
       render: (row: SyncScheduleEntry) => (
         <Box display="flex" alignItems="center" style={{ gap: 6 }}>
           {row.lastStatus === 'Failed' ? (
-            <ErrorOutlineIcon style={{ color: '#f44336', fontSize: 16 }} />
+            <ErrorOutlineIcon style={{ color: statusColors.error, fontSize: 16 }} />
           ) : (
-            <CheckCircleOutlineIcon style={{ color: '#4caf50', fontSize: 16 }} />
+            <CheckCircleOutlineIcon style={{ color: statusColors.success, fontSize: 16 }} />
           )}
           <Typography variant="body2" color="textSecondary">{row.lastRun}</Typography>
         </Box>
@@ -610,8 +613,8 @@ const SchedulesTab = () => {
           variant="outlined"
           className={classes.enabledChip}
           style={{
-            color: row.enabled ? '#4caf50' : undefined,
-            borderColor: row.enabled ? '#4caf50' : undefined,
+            color: row.enabled ? statusColors.success : undefined,
+            borderColor: row.enabled ? statusColors.success : undefined,
           }}
         />
       ),
@@ -651,7 +654,17 @@ export const SyncActivityPage = () => {
   return (
     <Page themeId="app">
       <Header
-        title="Sync Activity"
+        title={
+          <Box display="flex" alignItems="center">
+            Sync Activity
+            <PageHelpIcon
+              tooltipLabel="What is sync activity?"
+              title="What is Sync Activity?"
+              description="Sync activity tracks background operations that keep your portal content up to date with connected platforms. Each sync pulls the latest data from a source into the portal."
+            />
+          </Box>
+        }
+        pageTitleOverride="Sync Activity"
         subtitle="Monitor background sync operations across all connected platforms"
       />
       <HeaderTabs
@@ -660,6 +673,10 @@ export const SyncActivityPage = () => {
         tabs={pageTabs.map(t => ({ id: t.label.toLowerCase(), label: t.label }))}
       />
       <Content>
+        <DismissibleBanner
+          storageKey="admin-sync-activity"
+          message="Review the status of background sync operations that keep your portal content up to date with connected platforms. Use the History tab to inspect individual runs, or the Schedules tab to manage sync intervals."
+        />
         {selectedTab === 0 ? <HistoryTab /> : <SchedulesTab />}
       </Content>
     </Page>

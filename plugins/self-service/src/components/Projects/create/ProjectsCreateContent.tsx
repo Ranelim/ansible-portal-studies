@@ -15,6 +15,7 @@ import SearchIcon from '@material-ui/icons/Search';
 import PersonIcon from '@material-ui/icons/Person';
 import { DEMO_TEMPLATES, DemoTemplate } from './templatesDemoData';
 import { ProjectCreateWizard } from './ProjectCreateWizard';
+import { DismissibleBanner } from '../../common/DismissibleBanner';
 
 const useStyles = makeStyles(theme => ({
   searchBox: {
@@ -170,6 +171,10 @@ export const ProjectsCreateContent = () => {
 
   return (
     <Box>
+      <DismissibleBanner
+        storageKey="projects-templates"
+        message="Templates are pre-configured blueprints for creating new automation projects. Each template scaffolds a Git repository with best-practice directory structure, CI/CD pipeline, and Ansible content."
+      />
       <Box className={classes.searchBox}>
         <SearchIcon style={{ color: '#999', marginRight: 8 }} />
         <InputBase
@@ -188,9 +193,19 @@ export const ProjectsCreateContent = () => {
       </Grid>
       {filteredTemplates.length === 0 && (
         <Box textAlign="center" py={6}>
-          <Typography variant="h6" color="textSecondary">
+          <Typography variant="h6" color="textSecondary" gutterBottom>
             No templates match your search
           </Typography>
+          <Typography variant="body2" color="textSecondary">
+            Try adjusting your search terms or browse all available templates.
+          </Typography>
+          <Button
+            size="small"
+            onClick={() => setSearchText('')}
+            style={{ textTransform: 'none', marginTop: 16 }}
+          >
+            Clear search
+          </Button>
         </Box>
       )}
     </Box>

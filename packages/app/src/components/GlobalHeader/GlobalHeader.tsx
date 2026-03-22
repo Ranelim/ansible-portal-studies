@@ -20,6 +20,7 @@ import FolderOpenIcon from '@material-ui/icons/FolderOpen';
 import MemoryIcon from '@material-ui/icons/Memory';
 import ViewListIcon from '@material-ui/icons/ViewList';
 import StarBorderIcon from '@material-ui/icons/StarBorder';
+import StarIcon from '@material-ui/icons/Star';
 import NotificationsNoneIcon from '@material-ui/icons/NotificationsNone';
 import HelpOutlineIcon from '@material-ui/icons/HelpOutline';
 import AccountCircle from '@material-ui/icons/AccountCircle';
@@ -29,7 +30,8 @@ import OpenInNewIcon from '@material-ui/icons/OpenInNew';
 import { makeStyles, alpha } from '@material-ui/core/styles';
 import { Link, useNavigate } from 'react-router-dom';
 import { useApi, identityApiRef } from '@backstage/core-plugin-api';
-import { useState } from 'react';
+import { useStarredEntities } from '@backstage/plugin-catalog-react';
+import { useState, useMemo } from 'react';
 import { useLightspeed } from '../Lightspeed';
 import { OmniSearch } from '../search/OmniSearch';
 import redHatLogo from '../../assets/redhat-logo.png';
@@ -220,11 +222,103 @@ const LightspeedStarIcon = ({ size = 18 }: { size?: number }) => (
   </svg>
 );
 
+const STARRED_PROJECTS_KEY = 'portal-starred-projects';
+
+const getStarredProjectNames = (): string[] => {
+  try {
+    return JSON.parse(localStorage.getItem(STARRED_PROJECTS_KEY) || '[]');
+  } catch {
+    return [];
+  }
+};
+
+const entityKindRoute: Record<string, string> = {
+  component: '/self-service/catalog',
+  template: '/self-service/catalog',
+};
+
+const StarredItemsList = ({ onClose }: { onClose: () => void }) => {
+  const classes = useStyles();
+  const navigate = useNavigate();
+  const { starredEntities } = useStarredEntities();
+
+  const starredProjects = useMemo(() => getStarredProjectNames(), []);
+
+  const backstageItems = useMemo(() => {
+    const items: { name: string; kind: string; ref: string }[] = [];
+    starredEntities.forEach(ref => {
+      const parts = ref.split('/');
+      const kind = parts[0]?.replace(':', '') || 'component';
+      const name = parts[parts.length - 1] || ref;
+      items.push({ name, kind: kind.toLowerCase(), ref });
+    });
+    return items;
+  }, [starredEntities]);
+
+  const allItems = [
+    ...starredProjects.map(name => ({ name, kind: 'project', ref: name })),
+    ...backstageItems,
+  ];
+
+  if (allItems.length === 0) {
+    return (
+      <Box className={classes.emptyState}>
+        <StarBorderIcon className={classes.emptyIcon} />
+        <Typography variant="body2">No starred items yet</Typography>
+        <Typography variant="caption" color="textSecondary" style={{ marginTop: 4, display: 'block' }}>
+          Star projects, collections, or execution environments for quick access
+        </Typography>
+      </Box>
+    );
+  }
+
+  return (
+    <List dense style={{ minWidth: 260, maxHeight: 320, overflow: 'auto', padding: 0 }}>
+      {allItems.map(item => {
+        const kindLabel = item.kind === 'project' ? 'Project'
+          : item.kind === 'template' ? 'Template'
+          : item.kind === 'component' ? 'Component'
+          : item.kind;
+
+        return (
+          <ListItem
+            key={item.ref}
+            button
+            onClick={() => {
+              onClose();
+              if (item.kind === 'project') {
+                navigate(`/self-service/projects/${item.name}`);
+              } else {
+                const base = entityKindRoute[item.kind] || '/self-service/catalog';
+                navigate(`${base}/${item.name}`);
+              }
+            }}
+            style={{ padding: '8px 16px' }}
+          >
+            <ListItemIcon style={{ minWidth: 32 }}>
+              <StarIcon style={{ color: '#faaf00', fontSize: 18 }} />
+            </ListItemIcon>
+            <ListItemText
+              primary={item.name.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+              secondary={kindLabel}
+              primaryTypographyProps={{ style: { fontSize: 13, fontWeight: 500 } }}
+              secondaryTypographyProps={{ style: { fontSize: 11 } }}
+            />
+          </ListItem>
+        );
+      })}
+    </List>
+  );
+};
+
 export const GlobalHeader = () => {
   const classes = useStyles();
   const navigate = useNavigate();
   const identityApi = useApi(identityApiRef);
   const { isOpen: isLightspeedOpen, toggle: toggleLightspeed } = useLightspeed();
+  const { starredEntities } = useStarredEntities();
+  const starredProjectNames = useMemo(() => getStarredProjectNames(), []);
+  const hasStarred = starredEntities.size > 0 || starredProjectNames.length > 0;
   const [profileAnchor, setProfileAnchor] = useState<null | HTMLElement>(null);
   const [notifAnchor, setNotifAnchor] = useState<null | HTMLElement>(null);
   const [helpAnchor, setHelpAnchor] = useState<null | HTMLElement>(null);
@@ -297,7 +391,7 @@ export const GlobalHeader = () => {
             onClick={e => setFavAnchor(e.currentTarget)}
             aria-label="Starred items"
           >
-            <StarBorderIcon />
+            {hasStarred ? <StarIcon style={{ color: '#faaf00' }} /> : <StarBorderIcon />}
           </IconButton>
         </Tooltip>
 
@@ -385,13 +479,7 @@ export const GlobalHeader = () => {
           <Box className={classes.popoverHeader}>
             <Typography className={classes.popoverTitle}>Starred Items</Typography>
           </Box>
-          <Box className={classes.emptyState}>
-            <StarBorderIcon className={classes.emptyIcon} />
-            <Typography variant="body2">No starred items yet</Typography>
-            <Typography variant="caption" color="textSecondary" style={{ marginTop: 4, display: 'block' }}>
-              Star projects and templates for quick access
-            </Typography>
-          </Box>
+          <StarredItemsList onClose={() => setFavAnchor(null)} />
         </Popover>
 
         {/* Notifications popover */}

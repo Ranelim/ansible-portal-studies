@@ -21,6 +21,7 @@ import CategoryOutlinedIcon from '@material-ui/icons/CategoryOutlined';
 import DescriptionOutlinedIcon from '@material-ui/icons/DescriptionOutlined';
 import { CatalogFilterLayout } from '@backstage/plugin-catalog-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { DismissibleBanner } from '../common/DismissibleBanner';
 import {
   SEARCH_CATALOG,
   KIND_LABELS,
@@ -371,6 +372,10 @@ export const SearchPage = () => {
           </CatalogFilterLayout.Filters>
 
           <CatalogFilterLayout.Content>
+            <DismissibleBanner
+              storageKey="search"
+              message="Search across all portal content — projects, collections, execution environments, templates, and documentation. Use the filters to narrow results by type."
+            />
             {filtered.length > 0 ? (
               <>
                 <Box className={classes.summaryStrip}>

@@ -1,0 +1,96 @@
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: aws-cloud-provisioner
+  title: AWS Cloud Provisioner
+  description: >
+    Automated provisioning of AWS infrastructure including VPCs, EC2 instances,
+    RDS databases, and IAM roles. Uses the amazon.aws collection.
+  tags: [ansible, aws, cloud, provisioning, project]
+  annotations:
+    backstage.io/source-location: url:https://gitlab.example.com/platform/aws-cloud-provisioner
+spec:
+  type: service
+  lifecycle: production
+  owner: group:default/platform-engineering
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: azure-infra-automation
+  title: Azure Infrastructure Automation
+  description: >
+    Automated provisioning of Azure resources including virtual networks,
+    VMs, managed databases, and AKS clusters. Uses the azure.azcollection collection.
+  tags: [ansible, azure, cloud, provisioning, project]
+  annotations:
+    backstage.io/source-location: url:https://gitlab.example.com/platform/azure-infra-automation
+spec:
+  type: service
+  lifecycle: production
+  owner: group:default/platform-engineering
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: network-config-manager
+  title: Network Config Manager
+  description: >
+    Manage and enforce network device configurations across Cisco IOS and
+    NX-OS switches. Handles VLANs, interfaces, ACLs, and routing protocols.
+  tags: [ansible, network, cisco, project]
+  annotations:
+    backstage.io/source-location: url:https://gitlab.example.com/netops/network-config-manager
+spec:
+  type: service
+  lifecycle: production
+  owner: group:default/network-operations
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: firewall-policy-engine
+  title: Firewall Policy Engine
+  description: >
+    Automated firewall rule management and policy enforcement across
+    Palo Alto and Fortinet appliances. Includes compliance validation.
+  tags: [ansible, network, firewall, security, project]
+  annotations:
+    backstage.io/source-location: url:https://gitlab.example.com/netops/firewall-policy-engine
+spec:
+  type: service
+  lifecycle: production
+  owner: group:default/network-operations
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: rhel-patch-automation
+  title: RHEL Patch Automation
+  description: >
+    Automated OS patching for RHEL hosts with rolling update support,
+    pre-patch validation, and automatic rollback on failure.
+  tags: [ansible, patching, rhel, security, project]
+  annotations:
+    backstage.io/source-location: url:https://gitlab.example.com/security/rhel-patch-automation
+spec:
+  type: service
+  lifecycle: production
+  owner: group:default/security-team
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: cis-compliance-scanner
+  title: CIS Compliance Scanner
+  description: >
+    Automated CIS benchmark scanning and remediation for Linux systems.
+    Generates compliance reports and tracks drift over time.
+  tags: [ansible, compliance, cis, security, project]
+  annotations:
+    backstage.io/source-location: url:https://gitlab.example.com/security/cis-compliance-scanner
+spec:
+  type: service
+  lifecycle: production
+  owner: group:default/security-team

@@ -31,9 +31,10 @@ import DeleteOutlineIcon from '@material-ui/icons/DeleteOutline';
 import CancelIcon from '@material-ui/icons/Cancel';
 import CloudUploadIcon from '@material-ui/icons/CloudUpload';
 import OpenInNewIcon from '@material-ui/icons/OpenInNew';
-import FolderOpenIcon from '@material-ui/icons/FolderOpen';
 import { useNavigate } from 'react-router-dom';
 import { CatalogFilterLayout } from '@backstage/plugin-catalog-react';
+import { DismissibleBanner } from '../../common/DismissibleBanner';
+import { EmptyStateLayout, ProjectsIllustration } from '../../common/EmptyStateLayout';
 import { LastSyncedIndicator } from '../../Admin/LastSyncedIndicator';
 import { PipelineStatusIcons, PipelineColumnHeader } from './PipelineStatus';
 import {
@@ -43,6 +44,7 @@ import {
   LastJobRunColumnHeader,
 } from './AapStatus';
 import { DEMO_PROJECTS, DemoProject } from './projectsDemoData';
+import { statusColors } from '../../common/statusColors';
 
 type PipelineFilter = 'all' | 'passed' | 'failed' | 'running';
 type AapFilter = 'all' | 'pushed' | 'not-pushed';
@@ -64,32 +66,6 @@ const hasActiveFilters = (filters: ActiveFilters) =>
   filters.pipeline !== 'all' || filters.aap !== 'all' || filters.jobRun !== 'all';
 
 const useStyles = makeStyles(theme => ({
-  emptyContainer: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: '50vh',
-    textAlign: 'center',
-    padding: theme.spacing(4),
-  },
-  emptyIcon: {
-    fontSize: '4rem',
-    color: theme.palette.text.disabled,
-    marginBottom: theme.spacing(3),
-  },
-  emptyTitle: {
-    fontWeight: 300,
-    fontSize: '2rem',
-    marginBottom: theme.spacing(2),
-  },
-  emptyDescription: {
-    color: theme.palette.text.secondary,
-    fontSize: 16,
-    lineHeight: 1.6,
-    marginBottom: theme.spacing(3),
-    maxWidth: 500,
-  },
   createButton: {
     textTransform: 'none',
     fontWeight: 600,
@@ -144,32 +120,15 @@ const ProjectsEmptyState = ({
   onTabSwitch,
 }: {
   onTabSwitch: (index: number) => void;
-}) => {
-  const classes = useStyles();
-  return (
-    <Box className={classes.emptyContainer}>
-      <FolderOpenIcon className={classes.emptyIcon} />
-      <Typography variant="h4" className={classes.emptyTitle}>
-        No projects yet
-      </Typography>
-      <Typography className={classes.emptyDescription}>
-        Create your first automation project from a template. Projects connect
-        your Git repository to AAP and provide governed CI/CD pipelines for your
-        Ansible content.
-      </Typography>
-      <Button
-        variant="contained"
-        color="primary"
-        size="large"
-        onClick={() => onTabSwitch(1)}
-        className={classes.createButton}
-        startIcon={<AddIcon />}
-      >
-        Create Project
-      </Button>
-    </Box>
-  );
-};
+}) => (
+  <EmptyStateLayout
+    title="No projects yet"
+    description="Create your first automation project from a template. Projects connect your Git repository to Ansible Automation Platform and provide governed CI/CD pipelines that validate content quality and compliance before publishing."
+    illustration={<ProjectsIllustration />}
+    actionLabel="Create project"
+    onAction={() => onTabSwitch(1)}
+  />
+);
 
 const RowActionsMenu = ({
   project,
@@ -213,7 +172,7 @@ const RowActionsMenu = ({
         </MenuItem>
         <MenuItem onClick={() => handleAction('view-source')}>
           <ListItemIcon><VisibilityIcon fontSize="small" /></ListItemIcon>
-          <ListItemText primary="View Source" />
+          <ListItemText primary="View source" />
         </MenuItem>
         <Divider />
         {isPushed ? (
@@ -229,12 +188,31 @@ const RowActionsMenu = ({
         )}
         <Divider />
         <MenuItem onClick={() => { onDelete(project.name); handleClose(); }}>
-          <ListItemIcon><DeleteOutlineIcon fontSize="small" style={{ color: '#f44336' }} /></ListItemIcon>
-          <ListItemText primary="Delete" primaryTypographyProps={{ style: { color: '#f44336' } }} />
+          <ListItemIcon><DeleteOutlineIcon fontSize="small" style={{ color: statusColors.error }} /></ListItemIcon>
+          <ListItemText primary="Delete" primaryTypographyProps={{ style: { color: statusColors.error } }} />
         </MenuItem>
       </Menu>
     </>
   );
+};
+
+const STARRED_PROJECTS_KEY = 'portal-starred-projects';
+
+const loadStarredProjects = (): Set<string> => {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(STARRED_PROJECTS_KEY) || '[]'));
+  } catch {
+    return new Set();
+  }
+};
+
+const saveStarredProjects = (names: Set<string>) => {
+  localStorage.setItem(STARRED_PROJECTS_KEY, JSON.stringify([...names]));
+};
+
+const applyStoredStars = (projects: DemoProject[]): DemoProject[] => {
+  const stored = loadStarredProjects();
+  return projects.map(p => ({ ...p, starred: stored.has(p.name) }));
 };
 
 const ProjectsCatalogTable = ({
@@ -244,14 +222,17 @@ const ProjectsCatalogTable = ({
 }) => {
   const classes = useStyles();
   const navigate = useNavigate();
-  const [projects, setProjects] = useState<DemoProject[]>(DEMO_PROJECTS);
+  const [projects, setProjects] = useState<DemoProject[]>(() => applyStoredStars(DEMO_PROJECTS));
   const [searchText, setSearchText] = useState('');
   const [filters, setFilters] = useState<ActiveFilters>({ ...DEFAULT_FILTERS });
 
   const toggleStar = useCallback((name: string) => {
-    setProjects(prev =>
-      prev.map(p => (p.name === name ? { ...p, starred: !p.starred } : p)),
-    );
+    setProjects(prev => {
+      const updated = prev.map(p => (p.name === name ? { ...p, starred: !p.starred } : p));
+      const starredNames = new Set(updated.filter(p => p.starred).map(p => p.name));
+      saveStarredProjects(starredNames);
+      return updated;
+    });
   }, []);
 
   const deleteProject = useCallback((name: string) => {
@@ -341,7 +322,7 @@ const ProjectsCatalogTable = ({
         <Box className={classes.actionsCell}>
           <IconButton size="small" onClick={() => toggleStar(row.name)}>
             {row.starred ? (
-              <StarIcon style={{ color: '#faaf00' }} />
+              <StarIcon style={{ color: statusColors.star }} />
             ) : (
               <StarBorderIcon />
             )}
@@ -453,6 +434,12 @@ const ProjectsCatalogTable = ({
       </CatalogFilterLayout.Filters>
 
       <CatalogFilterLayout.Content>
+        <DismissibleBanner
+          storageKey="projects-catalog"
+          message="Projects are automation codebases synced from Git and deployed to Ansible Automation Platform. Each project goes through a governed CI/CD pipeline that validates quality and compliance before publishing to your controller."
+          ctaText="New here? Follow the getting started guide →"
+          ctaHref="/self-service/learning"
+        />
         <Box className={classes.contentHeader}>
           <Box>
             <Typography variant="h6" style={{ fontWeight: 600 }}>
@@ -467,7 +454,7 @@ const ProjectsCatalogTable = ({
             onClick={() => onTabSwitch(1)}
             className={classes.createButton}
           >
-            Create Project
+            Create project
           </Button>
         </Box>
 

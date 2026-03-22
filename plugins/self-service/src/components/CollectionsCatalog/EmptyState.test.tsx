@@ -28,12 +28,12 @@ describe('EmptyState', () => {
     ).toBeInTheDocument();
   });
 
-  it('shows "No collections found" when hasConfiguredSources is true and no collections', () => {
+  it('shows "No collections yet" when hasConfiguredSources is true and no collections', () => {
     renderWithTheme(
       <EmptyState hasConfiguredSources />,
     );
 
-    expect(screen.getByText('No collections found')).toBeInTheDocument();
+    expect(screen.getByText('No collections yet')).toBeInTheDocument();
     expect(
       screen.getByText(
         /No collections were retrieved|No collections are available/,
@@ -41,10 +41,10 @@ describe('EmptyState', () => {
     ).toBeInTheDocument();
   });
 
-  it('shows "No collections found" when hasConfiguredSources is null (default)', () => {
+  it('shows "No collections yet" when hasConfiguredSources is null (default)', () => {
     renderWithTheme(<EmptyState />);
 
-    expect(screen.getByText('No collections found')).toBeInTheDocument();
+    expect(screen.getByText('No collections yet')).toBeInTheDocument();
   });
 
   it('directs admin users to Administration > Connections for sync', () => {
@@ -57,12 +57,12 @@ describe('EmptyState', () => {
     ).toBeInTheDocument();
   });
 
-  it('renders View Documentation link when hasConfiguredSources is false and allowed', () => {
+  it('renders View documentation link when hasConfiguredSources is false and allowed', () => {
     renderWithTheme(
       <EmptyState hasConfiguredSources={false} />,
     );
 
-    expect(screen.getByText('View Documentation')).toBeInTheDocument();
+    expect(screen.getByText('View documentation')).toBeInTheDocument();
   });
 
   it('shows admin message when allowed is false and hasConfiguredSources is false', () => {
@@ -75,7 +75,7 @@ describe('EmptyState', () => {
     expect(
       screen.getByText(/Content sources are not currently configured/),
     ).toBeInTheDocument();
-    expect(screen.queryByText('View Documentation')).not.toBeInTheDocument();
+    expect(screen.queryByText('View documentation')).not.toBeInTheDocument();
   });
 
   it('shows admin message when allowed is false and sources configured', () => {

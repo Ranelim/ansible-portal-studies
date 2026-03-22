@@ -16,9 +16,11 @@ import {
 import StarBorderIcon from '@material-ui/icons/StarBorder';
 import StarIcon from '@material-ui/icons/Star';
 import MoreVertIcon from '@material-ui/icons/MoreVert';
-import { useState, useCallback } from 'react';
+import { useCallback } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { TemplateEntityV1beta3 } from '@backstage/plugin-scaffolder-common';
+import { useStarredEntities } from '@backstage/plugin-catalog-react';
 
 const useStyles = makeStyles(theme => ({
   card: {
@@ -114,7 +116,8 @@ export const CustomTemplateCard = ({
 }) => {
   const classes = useStyles();
   const navigate = useNavigate();
-  const [starred, setStarred] = useState(false);
+  const { isStarredEntity, toggleStarredEntity } = useStarredEntities();
+  const starred = isStarredEntity(template);
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
 
   const name = template.metadata.name;
@@ -155,7 +158,7 @@ export const CustomTemplateCard = ({
           <IconButton
             className={classes.smallIconBtn}
             size="small"
-            onClick={() => setStarred(s => !s)}
+            onClick={() => toggleStarredEntity(template)}
             aria-label={starred ? 'Unstar template' : 'Star template'}
           >
             {starred ? (
@@ -238,7 +241,7 @@ export const CustomTemplateCard = ({
           <ListItemText primary="View details" />
         </MenuItem>
         <Divider />
-        <MenuItem onClick={() => { setMenuAnchor(null); setStarred(s => !s); }}>
+        <MenuItem onClick={() => { setMenuAnchor(null); toggleStarredEntity(template); }}>
           <ListItemText primary={starred ? 'Remove from favorites' : 'Add to favorites'} />
         </MenuItem>
       </Menu>

@@ -1,0 +1,53 @@
+# Ansible Portal Prototype — Local Configuration
+#
+# Copy this file to app-config.local.yaml and fill in the values.
+# NEVER commit app-config.local.yaml — it contains credentials.
+
+signInPage: guest
+
+auth:
+  environment: development
+  providers:
+    guest:
+      dangerouslyAllowOutsideDevelopment: false
+    rhaap:
+      development:
+        host: https://<YOUR_AAP_CONTROLLER_HOST>
+        checkSSL: false
+        clientId: <YOUR_AAP_OAUTH_CLIENT_ID>
+        clientSecret: <YOUR_AAP_OAUTH_CLIENT_SECRET>
+        signIn:
+          resolvers:
+            - resolver: allowNewAAPUserSignIn
+
+ansible:
+  rhaap:
+    baseUrl: https://<YOUR_AAP_CONTROLLER_HOST>
+    token: <YOUR_AAP_PERSONAL_ACCESS_TOKEN>
+    checkSSL: false
+
+permission:
+  enabled: false
+
+catalog:
+  locations:
+    - type: file
+      target: ./demo/templates/playbook-project.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: ./demo/templates/cloud-provisioning-project.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: ./demo/templates/network-automation-project.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: ./demo/catalog/projects.yaml
+      rules:
+        - allow: [Component]
+  providers:
+    rhaap:
+      development:
+        orgs: Default

@@ -13,11 +13,16 @@ import { CatalogItemsDetails } from '../CatalogItemDetails';
 import { EETabs } from '../ExecutionEnvironments';
 import { EEDetailsPage } from '../ExecutionEnvironments/catalog/EEDetailsPage';
 import { ProjectsTabs } from '../Projects';
+import { ProjectDetailsPage } from '../Projects/detail/ProjectDetailsPage';
+import { RepositoryDetailPage } from '../Projects/repositories/RepositoryDetailPage';
 import { CollectionsCatalogPage } from '../CollectionsCatalog';
 import { CollectionDetailsPage } from '../CollectionsCatalog/CollectionDetailsPage';
 import { ConnectionsPage } from '../Admin/ConnectionsPage';
 import { SyncActivityPage } from '../Admin/SyncActivityPage';
 import { SyncJobDetailPage } from '../Admin/SyncJobDetailPage';
+import { LearningPage } from '../Learning/LearningPage';
+import { WorkspacesPage } from '../Workspaces/WorkspacesPage';
+import { WorkspaceIDEPage } from '../Workspaces/WorkspaceIDEPage';
 
 export const RouteView = () => {
   return (
@@ -74,13 +79,19 @@ export const RouteView = () => {
         <Route path="projects">
           <Route index element={<Navigate to="catalog" replace />} />
           <Route path="catalog" element={<ProjectsTabs />} />
+          <Route path="repositories" element={<ProjectsTabs />} />
           <Route path="create" element={<ProjectsTabs />} />
+          <Route path="repositories/:repoName" element={<RepositoryDetailPage />} />
+          <Route path=":projectName" element={<ProjectDetailsPage />} />
         </Route>
         <Route path="collections" element={<CollectionsCatalogPage />} />
         <Route
           path="collections/:collectionName"
           element={<CollectionDetailsPage />}
         />
+        <Route path="learning" element={<LearningPage />} />
+        <Route path="workspaces" element={<WorkspacesPage />} />
+        <Route path="workspaces/:workspaceId/ide" element={<WorkspaceIDEPage />} />
         <Route path="admin/connections" element={<ConnectionsPage />} />
         <Route path="admin/sync-activity" element={<SyncActivityPage />} />
         <Route path="admin/sync-activity/:syncId" element={<SyncJobDetailPage />} />

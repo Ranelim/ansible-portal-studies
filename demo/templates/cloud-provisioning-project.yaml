@@ -1,0 +1,247 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: create-cloud-provisioning-project
+  title: Cloud Provisioning Project
+  description: >
+    Scaffold an automation project pre-configured for cloud infrastructure
+    provisioning. Includes the relevant cloud collections, credential structure,
+    and dynamic inventory plugins for AWS, Azure, or GCP. Recommended with the
+    Comprehensive pipeline for production cloud workloads.
+  tags: [ansible, cloud, aws, azure, gcp, project]
+  annotations:
+    backstage.io/icon: cloud
+spec:
+  owner: group:default/platform-engineering
+  type: project
+  defaultPipeline: comprehensive
+  parameters:
+    # Step 1: Details & AI Jumpstart
+    - title: Details & AI Jumpstart
+      description: Describe your cloud provisioning needs or fill in the details manually.
+      required:
+        - project_name
+        - description
+        - owner
+      properties:
+        ai_prompt:
+          title: Lightspeed AI Jumpstart
+          type: string
+          description: Describe the service you want to build (e.g., "Provision a 3-tier web application on AWS with VPC, ALB, and RDS").
+          ui:widget: textarea
+          ui:options:
+            rows: 3
+          ui:placeholder: Describe your cloud infrastructure and we'll generate the settings...
+        project_name:
+          title: Service Name
+          type: string
+          description: A unique name for your cloud provisioning project
+          ui:autofocus: true
+          pattern: '^[a-z0-9][a-z0-9-]*$'
+          ui:help: Lowercase letters, numbers, and hyphens only
+        description:
+          title: Service Description
+          type: string
+          description: What cloud resources will this project manage?
+        owner:
+          title: Owner
+          type: string
+          description: The team responsible for this project
+          ui:field: OwnerPicker
+          ui:options:
+            catalogFilter:
+              kind: Group
+        cloud_provider:
+          title: Cloud Provider
+          type: string
+          enum: [aws, azure, gcp, multi-cloud]
+          enumNames: [Amazon Web Services, Microsoft Azure, Google Cloud Platform, Multi-Cloud]
+          description: Primary cloud provider for this project
+        regions:
+          title: Target Regions
+          type: array
+          items:
+            type: string
+          description: Cloud regions this automation will operate in
+          ui:help: e.g. us-east-1, westeurope, us-central1
+        resource_types:
+          title: Resource Types
+          type: array
+          items:
+            type: string
+            enum:
+              - Compute (VMs / Instances)
+              - Networking (VPC / VNet)
+              - Storage (S3 / Blob)
+              - Database (RDS / SQL)
+              - IAM / Identity
+              - Containers (EKS / AKS / GKE)
+              - DNS / Load Balancer
+              - Monitoring / Logging
+          uniqueItems: true
+          description: What types of cloud resources will this project manage?
+
+    # Step 2: Source Code (Git)
+    - title: Source Code (Git)
+      description: Configure the Git repository for your project's source code.
+      required:
+        - repo_url
+      properties:
+        repo_url:
+          title: Repository Location
+          type: string
+          ui:field: RepoUrlPicker
+          ui:options:
+            allowedHosts:
+              - github.com
+              - gitlab.com
+        repo_visibility:
+          title: Repository Visibility
+          type: string
+          enum: [public, private, internal]
+          default: private
+          description: Who can see this repository?
+        default_branch:
+          title: Default Branch
+          type: string
+          default: main
+        include_terraform:
+          title: Include Terraform Integration
+          type: boolean
+          default: false
+          description: Add Terraform provider configuration for hybrid IaC workflows
+        include_cost_estimation:
+          title: Include Cost Estimation
+          type: boolean
+          default: false
+          description: Add Infracost configuration for cloud cost estimation in CI
+
+    # Step 3: Pipeline & Governance
+    - title: Pipeline & Governance
+      description: >
+        Select the governance pipeline for your automation code. These automated
+        validation steps ensure that only safe, tested, and compliant playbooks
+        are promoted to your Ansible Controller.
+      required:
+        - pipeline_type
+      properties:
+        pipeline_type:
+          title: Development Pipeline
+          type: string
+          enum: [comprehensive, standard, custom]
+          enumNames:
+            - Comprehensive pipeline (recommended)
+            - Standard pipeline
+            - Custom pipeline
+          default: comprehensive
+          description: Choose how your code is validated before reaching AAP
+          ui:widget: radio
+        custom_steps:
+          title: Custom Pipeline Steps
+          type: array
+          items:
+            type: string
+            enum:
+              - Syntax Check
+              - Ansible Lint
+              - YAML Lint
+              - Policy Check (OPA)
+              - EE Compatibility
+              - Cloud Credential Scan
+              - Cost Estimation
+              - Molecule Integration Test
+              - Security Scan (SAST)
+          uniqueItems: true
+          description: Select which validation steps to include in your custom pipeline
+          ui:options:
+            visible:
+              pipeline_type: custom
+
+    # Step 4: Destination (AAP)
+    - title: Destination (AAP)
+      description: Configure how this project connects to your Ansible Automation Platform.
+      required:
+        - aap_controller
+        - aap_organization
+      properties:
+        aap_controller:
+          title: AAP Controller
+          type: string
+          description: Select the Ansible Controller instance to deploy to
+          ui:field: EntityPicker
+          ui:options:
+            catalogFilter:
+              kind: Resource
+              spec.type: aap-controller
+        aap_organization:
+          title: AAP Organization
+          type: string
+          description: The AAP organization to create the project under
+        create_job_template:
+          title: Auto-create Job Template
+          type: boolean
+          default: true
+          description: Automatically create a Job Template in AAP linked to this project
+        create_workflow:
+          title: Auto-create Workflow
+          type: boolean
+          default: false
+          description: Create a Workflow Job Template for multi-step provisioning
+        execution_environment:
+          title: Execution Environment
+          type: string
+          description: Select the Execution Environment (should include cloud SDKs)
+          ui:field: EntityPicker
+          ui:options:
+            catalogFilter:
+              kind: Component
+              spec.type: execution-environment
+
+  steps:
+    - id: fetch-template
+      name: Fetch Cloud Project Template
+      action: fetch:template
+      input:
+        url: ./skeleton
+        values:
+          name: ${{ parameters.project_name }}
+          description: ${{ parameters.description }}
+          owner: ${{ parameters.owner }}
+          cloud_provider: ${{ parameters.cloud_provider }}
+          pipeline_type: ${{ parameters.pipeline_type }}
+    - id: publish
+      name: Create Repository
+      action: publish:github
+      input:
+        repoUrl: ${{ parameters.repo_url }}
+        description: ${{ parameters.description }}
+        defaultBranch: ${{ parameters.default_branch }}
+        repoVisibility: ${{ parameters.repo_visibility }}
+    - id: create-aap-project
+      name: Create AAP Project
+      action: aap:project:create
+      input:
+        controller: ${{ parameters.aap_controller }}
+        organization: ${{ parameters.aap_organization }}
+        scmUrl: ${{ steps['publish'].output.remoteUrl }}
+    - id: create-job-template
+      name: Create Job Template
+      action: aap:job-template:create
+      if: ${{ parameters.create_job_template }}
+      input:
+        controller: ${{ parameters.aap_controller }}
+        project: ${{ steps['create-aap-project'].output.projectName }}
+        executionEnvironment: ${{ parameters.execution_environment }}
+    - id: register
+      name: Register in Catalog
+      action: catalog:register
+      input:
+        repoContentsUrl: ${{ steps['publish'].output.repoContentsUrl }}
+        catalogInfoPath: /catalog-info.yaml
+  output:
+    links:
+      - title: Open Repository
+        url: ${{ steps['publish'].output.remoteUrl }}
+      - title: View in Catalog
+        icon: catalog
+        entityRef: ${{ steps['register'].output.entityRef }}

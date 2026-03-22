@@ -1,0 +1,219 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: create-playbook-project
+  title: Ansible Playbook Project
+  description: >
+    Scaffold a general-purpose Ansible playbook project with a standard directory
+    structure, role scaffolding, inventory layout, and CI linting pipeline.
+    The most common starting point for configuration management and server
+    provisioning automation.
+  tags: [ansible, playbook, project, starter]
+  annotations:
+    backstage.io/icon: ansible
+spec:
+  owner: group:default/platform-engineering
+  type: project
+  defaultPipeline: standard
+  parameters:
+    # Step 1: Details & AI Jumpstart
+    - title: Details & AI Jumpstart
+      description: Describe what you want to automate or fill in the details manually.
+      required:
+        - project_name
+        - description
+        - owner
+      properties:
+        ai_prompt:
+          title: Lightspeed AI Jumpstart
+          type: string
+          description: Describe the service you want to build (e.g., "Create an Ansible project to configure RHEL servers with CIS benchmarks").
+          ui:widget: textarea
+          ui:options:
+            rows: 3
+          ui:placeholder: Describe what you want to automate and we'll generate the settings...
+        project_name:
+          title: Service Name
+          type: string
+          description: A unique name for your playbook project (used as the Git repository name)
+          ui:autofocus: true
+          pattern: '^[a-z0-9][a-z0-9-]*$'
+          ui:help: Lowercase letters, numbers, and hyphens only
+        description:
+          title: Service Description
+          type: string
+          description: A brief description of what this automation project does
+        owner:
+          title: Owner
+          type: string
+          description: The team responsible for this project
+          ui:field: OwnerPicker
+          ui:options:
+            catalogFilter:
+              kind: Group
+        target_environments:
+          title: Target Environments
+          type: array
+          items:
+            type: string
+            enum: [development, staging, production]
+          uniqueItems: true
+          description: Which environments will this automation target?
+
+    # Step 2: Source Code (Git)
+    - title: Source Code (Git)
+      description: Configure the Git repository for your project's source code.
+      required:
+        - repo_url
+      properties:
+        repo_url:
+          title: Repository Location
+          type: string
+          ui:field: RepoUrlPicker
+          ui:options:
+            allowedHosts:
+              - github.com
+              - gitlab.com
+        repo_visibility:
+          title: Repository Visibility
+          type: string
+          enum: [public, private, internal]
+          default: private
+          description: Who can see this repository?
+        default_branch:
+          title: Default Branch
+          type: string
+          default: main
+          description: The default branch name for the new repository
+        include_molecule:
+          title: Include Molecule Testing
+          type: boolean
+          default: true
+          description: Add Molecule test scaffolding for role testing
+        include_lint:
+          title: Include Ansible Lint Config
+          type: boolean
+          default: true
+          description: Add ansible-lint configuration to the repository
+
+    # Step 3: Pipeline & Governance
+    - title: Pipeline & Governance
+      description: >
+        Select the governance pipeline for your automation code. These automated
+        validation steps ensure that only safe, tested, and compliant playbooks
+        are promoted to your Ansible Controller.
+      required:
+        - pipeline_type
+      properties:
+        pipeline_type:
+          title: Development Pipeline
+          type: string
+          enum: [comprehensive, standard, custom]
+          enumNames:
+            - Comprehensive pipeline (recommended)
+            - Standard pipeline
+            - Custom pipeline
+          default: standard
+          description: Choose how your code is validated before reaching AAP
+          ui:widget: radio
+        custom_steps:
+          title: Custom Pipeline Steps
+          type: array
+          items:
+            type: string
+            enum:
+              - Syntax Check
+              - Ansible Lint
+              - YAML Lint
+              - Policy Check (OPA)
+              - EE Compatibility
+              - Molecule Integration Test
+              - Security Scan (SAST)
+          uniqueItems: true
+          description: Select which validation steps to include in your custom pipeline
+          ui:options:
+            visible:
+              pipeline_type: custom
+
+    # Step 4: Destination (AAP)
+    - title: Destination (AAP)
+      description: Configure how this project connects to your Ansible Automation Platform.
+      required:
+        - aap_controller
+        - aap_organization
+      properties:
+        aap_controller:
+          title: AAP Controller
+          type: string
+          description: Select the Ansible Controller instance to deploy to
+          ui:field: EntityPicker
+          ui:options:
+            catalogFilter:
+              kind: Resource
+              spec.type: aap-controller
+        aap_organization:
+          title: AAP Organization
+          type: string
+          description: The AAP organization to create the project under
+        create_job_template:
+          title: Auto-create Job Template
+          type: boolean
+          default: true
+          description: Automatically create a Job Template in AAP linked to this project
+        execution_environment:
+          title: Execution Environment
+          type: string
+          description: Select the Execution Environment to run this project with
+          ui:field: EntityPicker
+          ui:options:
+            catalogFilter:
+              kind: Component
+              spec.type: execution-environment
+
+  steps:
+    - id: fetch-template
+      name: Fetch Project Template
+      action: fetch:template
+      input:
+        url: ./skeleton
+        values:
+          name: ${{ parameters.project_name }}
+          description: ${{ parameters.description }}
+          owner: ${{ parameters.owner }}
+          pipeline_type: ${{ parameters.pipeline_type }}
+    - id: publish
+      name: Create Repository
+      action: publish:github
+      input:
+        repoUrl: ${{ parameters.repo_url }}
+        description: ${{ parameters.description }}
+        defaultBranch: ${{ parameters.default_branch }}
+        repoVisibility: ${{ parameters.repo_visibility }}
+    - id: create-aap-project
+      name: Create AAP Project
+      action: aap:project:create
+      input:
+        controller: ${{ parameters.aap_controller }}
+        organization: ${{ parameters.aap_organization }}
+        scmUrl: ${{ steps['publish'].output.remoteUrl }}
+    - id: create-job-template
+      name: Create Job Template
+      action: aap:job-template:create
+      if: ${{ parameters.create_job_template }}
+      input:
+        controller: ${{ parameters.aap_controller }}
+        project: ${{ steps['create-aap-project'].output.projectName }}
+        executionEnvironment: ${{ parameters.execution_environment }}
+    - id: register
+      name: Register in Catalog
+      action: catalog:register
+      input:
+        repoContentsUrl: ${{ steps['publish'].output.repoContentsUrl }}
+        catalogInfoPath: /catalog-info.yaml
+  output:
+    links:
+      - title: Open Repository
+        url: ${{ steps['publish'].output.remoteUrl }}
+      - title: View in Catalog
+        icon: catalog
+        entityRef: ${{ steps['register'].output.entityRef }}

@@ -55,6 +55,7 @@ import {
   SelfServicePage,
 } from '@ansible/plugin-backstage-self-service';
 import { RbacPage } from '@backstage-community/plugin-rbac';
+import { TechDocsWrapper } from './components/docs/TechDocsWrapper';
 
 const app = createApp({
   apis,
@@ -98,7 +99,7 @@ const routes = (
     >
       {entityPage}
     </Route>
-    <Route path="/docs" element={<TechDocsIndexPage />} />
+    <Route path="/docs" element={<TechDocsWrapper />} />
     <Route
       path="/docs/:namespace/:kind/:name/*"
       element={<TechDocsReaderPage />}

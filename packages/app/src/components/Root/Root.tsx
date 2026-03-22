@@ -4,10 +4,6 @@ import HomeIcon from '@material-ui/icons/Home';
 import LibraryBooks from '@material-ui/icons/LibraryBooks';
 import CategoryIcon from '@material-ui/icons/Category';
 import { SidebarSectionLabel } from '@ansible/plugin-backstage-rhaap';
-import {
-  Settings as SidebarSettings,
-  UserSettingsSignInAvatar,
-} from '@backstage/plugin-user-settings';
 import { SidebarSearchModal } from '@backstage/plugin-search';
 import {
   Sidebar,
@@ -25,7 +21,6 @@ import DescriptionOutlinedIcon from '@material-ui/icons/DescriptionOutlined';
 import WebAssetIcon from '@material-ui/icons/WebAsset';
 import MemoryIcon from '@material-ui/icons/Memory';
 import SchoolIcon from '@material-ui/icons/School';
-import SettingsIcon from '@material-ui/icons/Settings';
 import SyncIcon from '@material-ui/icons/Sync';
 import LinkIcon from '@material-ui/icons/Link';
 import VpnKeyIcon from '@material-ui/icons/VpnKey';
@@ -97,7 +92,7 @@ export const Root = ({ children }: PropsWithChildren<{}>) => {
             />
             <SidebarItem
               icon={WebAssetIcon}
-              to="ansible/overview"
+              to="/self-service/workspaces"
               text="Workspaces"
             />
             <SidebarDivider />
@@ -115,15 +110,10 @@ export const Root = ({ children }: PropsWithChildren<{}>) => {
             <SidebarDivider />
             <SidebarSectionLabel text="Learn" />
             <SidebarItem icon={LibraryBooks} to="docs" text="Documentation" />
-            <SidebarItem icon={SchoolIcon} to="docs" text="Training" />
+            <SidebarItem icon={SchoolIcon} to="/self-service/learning" text="Getting started" />
             <SidebarDivider />
             <SidebarScrollWrapper>
               <SidebarSectionLabel text="Administration" />
-              <SidebarItem
-                icon={SettingsIcon}
-                to="settings"
-                text="General"
-              />
               <SidebarItem
                 icon={LinkIcon}
                 to="/self-service/admin/connections"
@@ -142,13 +132,6 @@ export const Root = ({ children }: PropsWithChildren<{}>) => {
             </SidebarScrollWrapper>
           </SidebarGroup>
           <SidebarSpace />
-          <SidebarGroup
-            label="Settings"
-            icon={<UserSettingsSignInAvatar />}
-            to="/settings"
-          >
-            <SidebarSettings />
-          </SidebarGroup>
         </Sidebar>
         {children}
       </SidebarPage>

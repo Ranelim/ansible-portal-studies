@@ -41,6 +41,7 @@ import { useCollectionsStyles } from './styles';
 import { PAGE_SIZE } from './constants';
 import { sortEntities, filterLatestVersions, getUniqueFilters } from './utils';
 import { CollectionCard } from './CollectionCard';
+import { DismissibleBanner } from '../common/DismissibleBanner';
 import { LastSyncedIndicator } from '../Admin/LastSyncedIndicator';
 import { EmptyState } from './EmptyState';
 
@@ -346,6 +347,10 @@ export const CollectionsListPage = ({
             </CatalogFilterLayout.Filters>
 
             <CatalogFilterLayout.Content>
+              <DismissibleBanner
+                storageKey="collections-catalog"
+                message="Collections are reusable Ansible content packages that bundle modules, roles, and plugins. Browse and discover content synced from your Private Automation Hub to use in your automation projects."
+              />
               <Box>
                 <Box className={classes.contentHeader}>
                   <Box>

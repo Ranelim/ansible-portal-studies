@@ -34,6 +34,7 @@ import ClearIcon from '@material-ui/icons/Clear';
 import { useApi } from '@backstage/core-plugin-api';
 import { useNavigate } from 'react-router-dom';
 import { CreateCatalog } from './CreateCatalog';
+import { DismissibleBanner } from '../../common/DismissibleBanner';
 import { LastSyncedIndicator } from '../../Admin/LastSyncedIndicator';
 
 const useStyles = makeStyles(theme => ({
@@ -509,6 +510,10 @@ export const EEListPage = ({
             </Paper>
           </CatalogFilterLayout.Filters>
           <CatalogFilterLayout.Content>
+            <DismissibleBanner
+              storageKey="ee-catalog"
+              message="Execution environments are container images that package Ansible runtimes, Python dependencies, and collections into a portable, consistent automation runtime. They ensure your automation runs the same way everywhere."
+            />
             <Box mb={1}>
               <LastSyncedIndicator source="Private Automation Hub" timeAgo="8 minutes ago" />
             </Box>

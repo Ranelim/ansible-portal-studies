@@ -29,6 +29,9 @@ import LinkOffIcon from '@material-ui/icons/LinkOff';
 import DeleteOutlineIcon from '@material-ui/icons/DeleteOutline';
 import SettingsIcon from '@material-ui/icons/Settings';
 import { DEMO_CONNECTIONS, ConnectionProvider } from './syncDemoData';
+import { DismissibleBanner } from '../common/DismissibleBanner';
+import { PageHelpIcon } from '../common/PageHelpIcon';
+import { statusColors } from '../common/statusColors';
 
 const useStyles = makeStyles(theme => ({
   sectionTitle: {
@@ -69,7 +72,7 @@ const useStyles = makeStyles(theme => ({
     fontSize: 13,
   },
   statusActive: {
-    color: '#4caf50',
+    color: statusColors.success,
   },
   statusInactive: {
     color: theme.palette.text.disabled,
@@ -213,7 +216,7 @@ const ProviderCard = ({ provider }: { provider: ConnectionProvider }) => {
                 {isActive ? (
                   <CheckCircleOutlineIcon className={classes.statusActive} style={{ fontSize: 16 }} />
                 ) : (
-                  <ErrorOutlineIcon style={{ fontSize: 16, color: '#f44336' }} />
+                  <ErrorOutlineIcon style={{ fontSize: 16, color: statusColors.error }} />
                 )}
                 <Typography variant="body2" style={{ fontSize: 13 }}>
                   Content discovery: {provider.status}
@@ -294,16 +297,16 @@ const ProviderCard = ({ provider }: { provider: ConnectionProvider }) => {
       >
         <MenuItem onClick={() => { setEditOpen(true); setMenuAnchor(null); }}>
           <ListItemIcon><SettingsIcon fontSize="small" /></ListItemIcon>
-          <ListItemText primary="Edit Connection" />
+          <ListItemText primary="Edit connection" />
         </MenuItem>
         <MenuItem onClick={() => { handleSync(); setMenuAnchor(null); }}>
           <ListItemIcon><SyncIcon fontSize="small" /></ListItemIcon>
-          <ListItemText primary="Sync Now" />
+          <ListItemText primary="Sync now" />
         </MenuItem>
         <Divider />
         <MenuItem onClick={() => setMenuAnchor(null)}>
-          <ListItemIcon><DeleteOutlineIcon fontSize="small" style={{ color: '#f44336' }} /></ListItemIcon>
-          <ListItemText primary="Disconnect" primaryTypographyProps={{ style: { color: '#f44336' } }} />
+          <ListItemIcon><DeleteOutlineIcon fontSize="small" style={{ color: statusColors.error }} /></ListItemIcon>
+          <ListItemText primary="Disconnect" primaryTypographyProps={{ style: { color: statusColors.error } }} />
         </MenuItem>
       </Menu>
 
@@ -393,10 +396,24 @@ export const ConnectionsPage = () => {
   return (
     <Page themeId="app">
       <Header
-        title="Connections"
+        title={
+          <Box display="flex" alignItems="center">
+            Connections
+            <PageHelpIcon
+              tooltipLabel="What are connections?"
+              title="What are Connections?"
+              description="Connections are integrations with external platforms like Ansible Automation Platform, Git providers, and content registries. They enable content discovery, sync, and project deployment."
+            />
+          </Box>
+        }
+        pageTitleOverride="Connections"
         subtitle="Manage integrations with external platforms for content discovery and user authentication (SSO)"
       />
       <Content>
+        <DismissibleBanner
+          storageKey="admin-connections"
+          message="Connect the portal to your automation infrastructure. Add Ansible Automation Platform controllers, Git providers, and content registries to enable content discovery, sync, and project deployment."
+        />
         <Typography className={classes.sectionTitle}>
           Automation & Content Platforms
         </Typography>
