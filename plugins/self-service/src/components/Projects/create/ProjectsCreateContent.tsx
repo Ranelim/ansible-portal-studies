@@ -173,7 +173,7 @@ export const ProjectsCreateContent = () => {
     <Box>
       <DismissibleBanner
         storageKey="projects-templates"
-        message="Templates are pre-configured blueprints for creating new automation projects. Each template scaffolds a Git repository with best-practice directory structure, CI/CD pipeline, and Ansible content."
+        message="Templates are pre-configured blueprints for scaffolding new automation repositories. Each template creates a Git repository with best-practice directory structure, CI/CD pipeline, and Ansible content."
       />
       <Box className={classes.searchBox}>
         <SearchIcon style={{ color: '#999', marginRight: 8 }} />

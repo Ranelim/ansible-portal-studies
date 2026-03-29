@@ -35,9 +35,8 @@ import type { DemoTemplate } from './templatesDemoData';
 import {
   SYNCED_REPOS,
   CUSTOM_PIPELINE_STAGES,
-  COMPREHENSIVE_STAGES,
-  STANDARD_STAGES,
 } from './templatesDemoData';
+import { PIPELINE_PROFILES } from '../catalog/unifiedDemoData';
 
 // ─── Shared wizard form state ─────────────────────────────────────────────────
 
@@ -55,7 +54,7 @@ type WizardFormState = {
   branch: string;
   createNewBranch: boolean;
   newBranchName: string;
-  pipelineType: string;
+  pipelineProfileId: string;
   customStages: string[];
   aapController: string;
   aapOrganization: string;
@@ -80,7 +79,7 @@ const createInitialState = (template: DemoTemplate): WizardFormState => ({
   branch: 'main',
   createNewBranch: false,
   newBranchName: '',
-  pipelineType: template.defaultPipeline,
+  pipelineProfileId: template.defaultPipeline === 'comprehensive' ? 'stig-rhel9' : 'org-default',
   customStages: ['syntax', 'lint', 'policy'],
   aapController: 'prod-controller',
   aapOrganization: 'Default',
@@ -370,7 +369,7 @@ const DetailsStep = ({
     setForm(prev => ({
       ...prev,
       aiGenerated: true,
-      serviceName: 'ai-generated-project',
+      serviceName: 'ai-generated-repo',
       serviceDescription: `Auto-generated: ${prev.aiPrompt.slice(0, 80)}`,
     }));
   };
@@ -415,7 +414,7 @@ const DetailsStep = ({
       </Box>
 
       <TextField
-        label="Project name"
+        label="Repository name"
         variant="outlined"
         fullWidth
         required
@@ -426,7 +425,7 @@ const DetailsStep = ({
         style={{ marginBottom: 16 }}
       />
       <TextField
-        label="Project description"
+        label="Description"
         variant="outlined"
         fullWidth
         required
@@ -591,7 +590,7 @@ const SourceCodeStep = ({
                   repositoryName: e.target.value,
                 }))
               }
-              placeholder="my-automation-project"
+              placeholder="my-automation-repo"
               helperText="The name of the new repository to create"
             />
           </Box>
@@ -725,65 +724,51 @@ const PipelineStep = ({
         </Typography>
       </Box>
 
-      {/* Comprehensive */}
-      <Box
-        className={`${classes.pipelineOption} ${form.pipelineType === 'comprehensive' ? classes.pipelineOptionSelected : ''}`}
-        onClick={() => setForm(prev => ({ ...prev, pipelineType: 'comprehensive' }))}
-      >
-        <Box display="flex" alignItems="center">
-          <Radio
-            checked={form.pipelineType === 'comprehensive'}
-            color="primary"
-            style={{ padding: '4px 8px 4px 0' }}
-          />
-          <Typography className={classes.pipelineTitle}>
-            Comprehensive pipeline (recommended)
+      {PIPELINE_PROFILES.map(profile => (
+        <Box
+          key={profile.id}
+          className={`${classes.pipelineOption} ${form.pipelineProfileId === profile.id ? classes.pipelineOptionSelected : ''}`}
+          onClick={() => setForm(prev => ({ ...prev, pipelineProfileId: profile.id }))}
+        >
+          <Box display="flex" alignItems="center">
+            <Radio
+              checked={form.pipelineProfileId === profile.id}
+              color="primary"
+              style={{ padding: '4px 8px 4px 0' }}
+            />
+            <Typography className={classes.pipelineTitle}>
+              {profile.name}
+            </Typography>
+            <Chip
+              label={profile.source === 'built-in' ? 'Built-in' : profile.source === 'organization' ? 'Organization' : 'Custom'}
+              size="small"
+              variant="outlined"
+              style={{ fontSize: 10, height: 18, marginLeft: 8 }}
+            />
+          </Box>
+          <Typography className={classes.pipelineDescription}>
+            {profile.description}
           </Typography>
-        </Box>
-        <Typography className={classes.pipelineDescription}>
-          The safest path to production. Enforces all code quality and security
-          policies, plus live integration testing on temporary infrastructure
-          before final deployment.
-        </Typography>
-        <StageIconRow stages={COMPREHENSIVE_STAGES} tooltips />
-        <Typography className={classes.stageLabels}>
-          {COMPREHENSIVE_STAGES.join(' > ')}
-        </Typography>
-      </Box>
-
-      {/* Standard */}
-      <Box
-        className={`${classes.pipelineOption} ${form.pipelineType === 'standard' ? classes.pipelineOptionSelected : ''}`}
-        onClick={() => setForm(prev => ({ ...prev, pipelineType: 'standard' }))}
-      >
-        <Box display="flex" alignItems="center">
-          <Radio
-            checked={form.pipelineType === 'standard'}
-            color="primary"
-            style={{ padding: '4px 8px 4px 0' }}
-          />
-          <Typography className={classes.pipelineTitle}>
-            Standard pipeline
+          <StageIconRow stages={profile.stages} tooltips />
+          <Typography className={classes.stageLabels}>
+            {profile.stages.join(' > ')}
           </Typography>
+          {profile.policies.length > 0 && (
+            <Typography className={classes.pipelineDescription} style={{ marginTop: 4 }}>
+              {profile.policies.length} policy {profile.policies.length === 1 ? 'check' : 'checks'}
+            </Typography>
+          )}
         </Box>
-        <Typography className={classes.pipelineDescription}>
-          A faster, streamlined pipeline. Enforces mandatory syntax, policy, and
-          Execution Environment checks, but bypasses live integration testing.
-        </Typography>
-        <StageIconRow stages={STANDARD_STAGES} tooltips />
-        <Typography className={classes.stageLabels}>
-          {STANDARD_STAGES.join(' > ')}
-        </Typography>
-      </Box>
+      ))}
 
       {/* Custom */}
       <Box
-        className={`${classes.pipelineOption} ${form.pipelineType === 'custom' ? classes.pipelineOptionSelected : ''}`}
-        onClick={() => setForm(prev => ({ ...prev, pipelineType: 'custom' }))}
+        className={`${classes.pipelineOption} ${form.pipelineProfileId === 'custom' ? classes.pipelineOptionSelected : ''}`}
+        onClick={() => setForm(prev => ({ ...prev, pipelineProfileId: 'custom' }))}
       >
         <Box display="flex" alignItems="center">
           <Radio
-            checked={form.pipelineType === 'custom'}
+            checked={form.pipelineProfileId === 'custom'}
             color="primary"
             style={{ padding: '4px 8px 4px 0' }}
           />
@@ -793,10 +778,10 @@ const PipelineStep = ({
         </Box>
         <Typography className={classes.pipelineDescription}>
           Build a tailored pipeline. Manually configure the specific linting,
-          governance, and testing gates that apply to this project.
+          governance, and testing gates that apply to this repository.
         </Typography>
 
-        <Collapse in={form.pipelineType === 'custom'}>
+        <Collapse in={form.pipelineProfileId === 'custom'}>
           <Divider style={{ margin: '12px 0' }} />
           <Typography
             variant="subtitle2"
@@ -851,14 +836,13 @@ const PipelineStep = ({
                       CUSTOM_PIPELINE_STAGES.find(s => s.id === id)?.label,
                   )
                   .filter(Boolean)
-                  .join(' > ')}{' '}
-                {'>'} Pushed to AAP
+                  .join(' > ')}
               </Typography>
             </Box>
           )}
         </Collapse>
 
-        {form.pipelineType !== 'custom' && (
+        {form.pipelineProfileId !== 'custom' && (
           <>
             <Box display="flex" alignItems="center" style={{ gap: 3 }}>
               {[1, 2, 3].map(i => (
@@ -959,7 +943,7 @@ const DestinationStep = ({
               color="primary"
             />
           }
-          label="Auto-create AAP Project from Git repository"
+          label="Auto-create AAP project from this repository"
         />
         <FormControlLabel
           control={
@@ -994,12 +978,12 @@ const ReviewStep = ({
 }) => {
   const classes = useStyles();
 
-  const pipelineLabel =
-    form.pipelineType === 'comprehensive'
-      ? 'Comprehensive pipeline'
-      : form.pipelineType === 'standard'
-        ? 'Standard pipeline'
-        : `Custom (${form.customStages.length} stages)`;
+  const matchedProfile = PIPELINE_PROFILES.find(p => p.id === form.pipelineProfileId);
+  const pipelineLabel = matchedProfile
+    ? matchedProfile.name
+    : form.pipelineProfileId === 'custom'
+      ? `Custom (${form.customStages.length} stages)`
+      : form.pipelineProfileId;
 
   const repoLabel = form.createNewRepository
     ? `${form.repositoryOwner}/${form.repositoryName || '(not set)'} (new)`
@@ -1035,7 +1019,7 @@ const ReviewStep = ({
     <Box>
       <Box className={classes.reviewSection}>
         <Typography className={classes.reviewSectionTitle}>
-          Project Details
+          Repository Details
           <EditButton step={0} />
         </Typography>
         <Box className={classes.reviewRow}>
@@ -1045,7 +1029,7 @@ const ReviewStep = ({
           </Typography>
         </Box>
         <Box className={classes.reviewRow}>
-          <Typography className={classes.reviewLabel}>Project name</Typography>
+          <Typography className={classes.reviewLabel}>Repository name</Typography>
           <Typography className={classes.reviewValue}>
             {form.serviceName || '(not set)'}
           </Typography>
@@ -1110,7 +1094,7 @@ const ReviewStep = ({
             {pipelineLabel}
           </Typography>
         </Box>
-        {form.pipelineType === 'custom' && (
+        {form.pipelineProfileId === 'custom' && (
           <Box className={classes.reviewRow}>
             <Typography className={classes.reviewLabel}>Stages</Typography>
             <Typography className={classes.reviewValue}>
@@ -1120,8 +1104,7 @@ const ReviewStep = ({
                   id => CUSTOM_PIPELINE_STAGES.find(s => s.id === id)?.label,
                 )
                 .filter(Boolean)
-                .join(' > ')}{' '}
-              {'>'} Pushed to AAP
+                .join(' > ')}
             </Typography>
           </Box>
         )}
@@ -1152,7 +1135,7 @@ const ReviewStep = ({
         </Box>
         <Box className={classes.reviewRow}>
           <Typography className={classes.reviewLabel}>
-            Auto-create Project
+            Auto-create AAP project
           </Typography>
           <Typography className={classes.reviewValue}>
             {form.autoCreateProject ? 'Yes' : 'No'}
@@ -1185,12 +1168,12 @@ const SuccessScreen = ({
     <Box className={classes.successContainer}>
       <CheckCircleIcon className={classes.successIcon} />
       <Typography variant="h5" style={{ fontWeight: 600, marginBottom: 8 }}>
-        Project created successfully!
+        Repository created successfully!
       </Typography>
       <Typography color="textSecondary" style={{ marginBottom: 24 }}>
         Your <strong>{template.title}</strong> has been scaffolded. The Git
         repository has been created, the CI/CD pipeline configured, and the
-        project registered in AAP.
+        AAP project registered.
       </Typography>
       <Typography
         variant="body2"
@@ -1204,7 +1187,7 @@ const SuccessScreen = ({
           Back to Templates
         </Button>
         <Button variant="contained" color="primary" onClick={onClose}>
-          View Project
+          View repository
         </Button>
       </Box>
     </Box>
@@ -1226,7 +1209,7 @@ const isStepValid = (step: number, form: WizardFormState): boolean => {
       if (form.createNewBranch) return Boolean(form.newBranchName.trim());
       return true;
     case 2:
-      if (form.pipelineType === 'custom') return form.customStages.length > 0;
+      if (form.pipelineProfileId === 'custom') return form.customStages.length > 0;
       return true;
     case 3:
       return true;
@@ -1291,7 +1274,7 @@ export const ProjectCreateWizard = ({
       </Box>
       <Box className={classes.titleRow}>
         <Typography variant="h5" style={{ fontWeight: 600 }}>
-          Create Project
+          Create repository
         </Typography>
         <Chip
           label="Template"
@@ -1300,9 +1283,9 @@ export const ProjectCreateWizard = ({
         />
       </Box>
       <Typography className={classes.subtitle}>
-        Create a governed automation repository and pipeline from this template.
-        This setup automatically generates your project structure and connects it
-        to the Ansible Automation Platform, enforcing quality, security, and
+        Scaffold a governed automation repository with a CI/CD pipeline from this
+        template. This generates your repository structure and connects it to
+        Ansible Automation Platform, enforcing quality, security, and
         compatibility checks before any code is promoted to an active Job
         Template.
       </Typography>

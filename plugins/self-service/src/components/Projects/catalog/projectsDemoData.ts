@@ -48,6 +48,7 @@ export type JobRunEntry = {
 export type PipelineRun = {
   id: number;
   trigger: string;
+  commitMessage?: string;
   status: 'passed' | 'failed' | 'running';
   startedAt: string;
   duration: string;
@@ -121,9 +122,9 @@ export const DEMO_PROJECTS: DemoProject[] = [
       { id: 4756, status: 'failed', startedAt: '2026-03-13 14:30', duration: '1m 42s', launchedBy: 'sarah.chen' },
     ],
     pipelineHistory: [
-      { id: 312, trigger: 'lab482683', status: 'passed', startedAt: '2026-03-14 09:12', duration: '8m 26s', stages: [] },
-      { id: 308, trigger: 'e7f3b21', status: 'passed', startedAt: '2026-03-12 15:44', duration: '8m 10s', stages: [] },
-      { id: 301, trigger: '9ab12c4', status: 'failed', startedAt: '2026-03-10 11:20', duration: '3m 52s', stages: [] },
+      { id: 312, trigger: 'lab482683', commitMessage: 'fix: adjust scaling thresholds for peak traffic', status: 'passed', startedAt: '2026-03-14 09:12', duration: '8m 26s', stages: [] },
+      { id: 308, trigger: 'e7f3b21', commitMessage: 'chore: update cloud.aws_ops collection to 2.1', status: 'passed', startedAt: '2026-03-12 15:44', duration: '8m 10s', stages: [] },
+      { id: 301, trigger: '9ab12c4', commitMessage: 'feat: add auto-scaling rules for db replicas', status: 'failed', startedAt: '2026-03-10 11:20', duration: '3m 52s', stages: [] },
     ],
   },
   {
@@ -163,8 +164,8 @@ export const DEMO_PROJECTS: DemoProject[] = [
     starred: false,
     jobHistory: [],
     pipelineHistory: [
-      { id: 315, trigger: 'f9a21c7', status: 'running', startedAt: '2026-03-16 08:45', duration: '—', stages: [] },
-      { id: 310, trigger: 'c4b2e19', status: 'passed', startedAt: '2026-03-14 09:30', duration: '10m 44s', stages: [] },
+      { id: 315, trigger: 'f9a21c7', commitMessage: 'feat: add Arista EOS compliance rules', status: 'running', startedAt: '2026-03-16 08:45', duration: '—', stages: [] },
+      { id: 310, trigger: 'c4b2e19', commitMessage: 'fix: VLAN validation for trunk ports', status: 'passed', startedAt: '2026-03-14 09:30', duration: '10m 44s', stages: [] },
     ],
   },
   {
@@ -206,8 +207,8 @@ export const DEMO_PROJECTS: DemoProject[] = [
       { id: 4778, status: 'failed', startedAt: '2026-03-12 14:22', duration: '2m 01s', launchedBy: 'maria.garcia' },
     ],
     pipelineHistory: [
-      { id: 314, trigger: '3e8b1a4', status: 'passed', startedAt: '2026-03-15 16:02', duration: '3m 40s', stages: [] },
-      { id: 309, trigger: 'b1a3d5e', status: 'passed', startedAt: '2026-03-13 10:15', duration: '3m 22s', stages: [] },
+      { id: 314, trigger: '3e8b1a4', commitMessage: 'chore: update instance type defaults to m6i', status: 'passed', startedAt: '2026-03-15 16:02', duration: '3m 40s', stages: [] },
+      { id: 309, trigger: 'b1a3d5e', commitMessage: 'feat: add spot instance support for dev envs', status: 'passed', startedAt: '2026-03-13 10:15', duration: '3m 22s', stages: [] },
     ],
   },
   {
@@ -246,8 +247,8 @@ export const DEMO_PROJECTS: DemoProject[] = [
       { id: 4810, status: 'success', startedAt: '2026-03-14 16:00', duration: '1m 35s', launchedBy: 'alex.kim' },
     ],
     pipelineHistory: [
-      { id: 316, trigger: '7d4e5f2', status: 'failed', startedAt: '2026-03-16 10:30', duration: '0m 26s', stages: [] },
-      { id: 311, trigger: '2c8a1f0', status: 'passed', startedAt: '2026-03-14 15:10', duration: '3m 18s', stages: [] },
+      { id: 316, trigger: '7d4e5f2', commitMessage: 'feat: add zone-based policy rules', status: 'failed', startedAt: '2026-03-16 10:30', duration: '0m 26s', stages: [] },
+      { id: 311, trigger: '2c8a1f0', commitMessage: 'fix: update iptables flush sequence', status: 'passed', startedAt: '2026-03-14 15:10', duration: '3m 18s', stages: [] },
     ],
   },
   {
@@ -293,9 +294,9 @@ export const DEMO_PROJECTS: DemoProject[] = [
       { id: 4780, status: 'failed', startedAt: '2026-03-12 06:00', duration: '8m 22s', launchedBy: 'scheduler' },
     ],
     pipelineHistory: [
-      { id: 307, trigger: 'a1c9d83', status: 'passed', startedAt: '2026-03-13 11:20', duration: '10m 57s', stages: [] },
-      { id: 299, trigger: '4fe2a11', status: 'passed', startedAt: '2026-03-10 09:05', duration: '10m 30s', stages: [] },
-      { id: 290, trigger: 'c312bb9', status: 'passed', startedAt: '2026-03-06 14:18', duration: '10m 22s', stages: [] },
+      { id: 307, trigger: 'a1c9d83', commitMessage: 'fix: handle RHEL 9.4 kernel dependency', status: 'passed', startedAt: '2026-03-13 11:20', duration: '10m 57s', stages: [] },
+      { id: 299, trigger: '4fe2a11', commitMessage: 'chore: update satellite credentials rotation', status: 'passed', startedAt: '2026-03-10 09:05', duration: '10m 30s', stages: [] },
+      { id: 290, trigger: 'c312bb9', commitMessage: 'feat: add rollback on failed smoke test', status: 'passed', startedAt: '2026-03-06 14:18', duration: '10m 22s', stages: [] },
     ],
   },
   {
@@ -337,8 +338,8 @@ export const DEMO_PROJECTS: DemoProject[] = [
       { id: 4805, status: 'success', startedAt: '2026-03-13 18:00', duration: '6m 05s', launchedBy: 'scheduler' },
     ],
     pipelineHistory: [
-      { id: 317, trigger: '5fb3e91', status: 'running', startedAt: '2026-03-16 07:00', duration: '—', stages: [] },
-      { id: 306, trigger: 'b22d4e8', status: 'passed', startedAt: '2026-03-13 16:40', duration: '11m 15s', stages: [] },
+      { id: 317, trigger: '5fb3e91', commitMessage: 'feat: add CIS Level 2 checks for RHEL 9', status: 'running', startedAt: '2026-03-16 07:00', duration: '—', stages: [] },
+      { id: 306, trigger: 'b22d4e8', commitMessage: 'fix: correct auditd rule ordering', status: 'passed', startedAt: '2026-03-13 16:40', duration: '11m 15s', stages: [] },
     ],
   },
 ];

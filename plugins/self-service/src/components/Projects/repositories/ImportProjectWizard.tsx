@@ -27,12 +27,13 @@ import FolderOutlinedIcon from '@material-ui/icons/FolderOutlined';
 import CategoryIcon from '@material-ui/icons/Category';
 import MemoryIcon from '@material-ui/icons/Memory';
 import type { DiscoveredRepo } from './repositoriesDemoData';
+import { PIPELINE_PROFILES, type PipelineProfile } from '../catalog/unifiedDemoData';
 
 type WizardState = {
   projectName: string;
   description: string;
   owner: string;
-  pipelineType: 'comprehensive' | 'standard' | 'none';
+  pipelineProfileId: string;
   executionEnvironment: string;
   aapController: string;
   aapOrganization: string;
@@ -42,8 +43,8 @@ type WizardState = {
 
 const STEPS = [
   {
-    label: 'Project details',
-    description: 'Name your project and review what was discovered in this repository.',
+    label: 'Repository details',
+    description: 'Review what was discovered in this repository and configure governance settings.',
   },
   {
     label: 'Pipeline & governance',
@@ -51,7 +52,7 @@ const STEPS = [
   },
   {
     label: 'Destination (AAP)',
-    description: 'Connect this project to your Ansible Automation Platform.',
+    description: 'Connect this repository to your Ansible Automation Platform.',
   },
 ];
 
@@ -238,7 +239,7 @@ export const ImportProjectWizard = ({
     projectName: repo.name,
     description: '',
     owner: 'platform-engineering',
-    pipelineType: 'standard',
+    pipelineProfileId: 'org-default',
     executionEnvironment: 'ee-supported',
     aapController: 'prod-controller',
     aapOrganization: 'Default',
@@ -296,7 +297,7 @@ export const ImportProjectWizard = ({
       {renderRepoSummary()}
 
       <Box className={classes.fieldGroup}>
-        <Typography className={classes.fieldLabel}>Project name</Typography>
+        <Typography className={classes.fieldLabel}>Display name</Typography>
         <TextField
           fullWidth
           variant="outlined"
@@ -305,7 +306,7 @@ export const ImportProjectWizard = ({
           onChange={e => updateField('projectName', e.target.value)}
         />
         <Typography className={classes.fieldHint}>
-          This will be the display name for your project in the Portal.
+          This will be the display name for this repository in the portal.
         </Typography>
       </Box>
 
@@ -346,68 +347,50 @@ export const ImportProjectWizard = ({
     </Box>
   );
 
-  const pipelineOptions = [
-    {
-      value: 'standard' as const,
-      title: 'Standard Pipeline',
-      description:
-        'Lint, policy check, and EE compatibility verification on every commit. Recommended for most automation projects.',
-      stages: ['Commit', 'Lint', 'Policy Check', 'EE Compatibility', 'Push to AAP'],
-    },
-    {
-      value: 'comprehensive' as const,
-      title: 'Comprehensive Pipeline',
-      description:
-        'Full pipeline including integration tests and security scans. Recommended for production infrastructure and network changes.',
-      stages: [
-        'Commit',
-        'Lint',
-        'Policy Check',
-        'EE Compatibility',
-        'Integration Test',
-        'Push to AAP',
-      ],
-    },
-    {
-      value: 'none' as const,
-      title: 'No pipeline (configure later)',
-      description:
-        'Skip pipeline setup for now. You can add a governance pipeline later from the project settings.',
-      stages: [],
-    },
-  ];
+  const profileOptions: (PipelineProfile & { value: string })[] = PIPELINE_PROFILES.map(p => ({
+    ...p,
+    value: p.id,
+  }));
+
+  const selectedProfile = PIPELINE_PROFILES.find(p => p.id === form.pipelineProfileId);
 
   const renderStep1 = () => (
     <Box className={classes.stepContent}>
       <Typography className={classes.sectionTitle}>
-        Choose a governance pipeline
+        Choose a pipeline profile
       </Typography>
       <Typography className={classes.sectionDescription}>
-        Pipelines run automated checks on every commit so only validated,
-        compliant automation content reaches production. Choose the right level
-        of governance for this project.
+        Pipeline profiles define which governance stages and policy checks run on
+        every commit. Choose a profile that matches the security and compliance
+        requirements for this repository.
       </Typography>
 
-      {pipelineOptions.map(opt => (
+      {profileOptions.map(opt => (
         <Box
           key={opt.value}
           className={`${classes.pipelineOption} ${
-            form.pipelineType === opt.value
+            form.pipelineProfileId === opt.value
               ? classes.pipelineOptionSelected
               : ''
           }`}
-          onClick={() => updateField('pipelineType', opt.value)}
+          onClick={() => updateField('pipelineProfileId', opt.value)}
         >
           <Box display="flex" alignItems="center" style={{ gap: 8 }}>
             <Radio
-              checked={form.pipelineType === opt.value}
+              checked={form.pipelineProfileId === opt.value}
               color="primary"
               size="small"
               style={{ padding: 0 }}
             />
             <Typography className={classes.pipelineTitle}>
-              {opt.title}
+              {opt.name}
             </Typography>
+            <Chip
+              label={opt.source === 'built-in' ? 'Built-in' : opt.source === 'organization' ? 'Organization' : 'Custom'}
+              size="small"
+              variant="outlined"
+              style={{ fontSize: 10, height: 18, marginLeft: 4 }}
+            />
           </Box>
           <Typography className={classes.pipelineDescription}>
             {opt.description}
@@ -424,6 +407,11 @@ export const ImportProjectWizard = ({
                 />
               ))}
             </Box>
+          )}
+          {opt.policies.length > 0 && (
+            <Typography className={classes.pipelineDescription} style={{ marginTop: 8 }}>
+              {opt.policies.length} policy {opt.policies.length === 1 ? 'check' : 'checks'}: {opt.policies.map(p => p.name).join(', ')}
+            </Typography>
           )}
         </Box>
       ))}
@@ -474,7 +462,7 @@ export const ImportProjectWizard = ({
         Connect to Ansible Automation Platform
       </Typography>
       <Typography className={classes.sectionDescription}>
-        Configure how this project is published to your AAP Controller. The
+        Configure how this repository is published to your AAP Controller. The
         portal will create the AAP project and job template automatically.
       </Typography>
 
@@ -522,10 +510,10 @@ export const ImportProjectWizard = ({
       <Box className={classes.settingsRow}>
         <Box>
           <Typography className={classes.fieldLabel}>
-            Auto-create AAP Project
+            Auto-create AAP project
           </Typography>
           <Typography className={classes.fieldHint} style={{ marginTop: 0 }}>
-            Create a project resource in your AAP Controller
+            Create an AAP project resource in your controller
           </Typography>
         </Box>
         <Switch
@@ -563,13 +551,13 @@ export const ImportProjectWizard = ({
         Review and create
       </Typography>
       <Typography className={classes.sectionDescription}>
-        Review your project configuration before creating.
+        Review your governance configuration before enabling.
       </Typography>
 
       {renderRepoSummary()}
 
       <Box className={classes.reviewSection}>
-        <Typography className={classes.reviewLabel}>Project name</Typography>
+        <Typography className={classes.reviewLabel}>Display name</Typography>
         <Typography className={classes.reviewValue}>
           {form.projectName}
         </Typography>
@@ -592,14 +580,15 @@ export const ImportProjectWizard = ({
       <Divider style={{ margin: '12px 0' }} />
 
       <Box className={classes.reviewSection}>
-        <Typography className={classes.reviewLabel}>Pipeline</Typography>
+        <Typography className={classes.reviewLabel}>Pipeline profile</Typography>
         <Typography className={classes.reviewValue}>
-          {form.pipelineType === 'none'
-            ? 'No pipeline (will configure later)'
-            : form.pipelineType === 'comprehensive'
-              ? 'Comprehensive Pipeline'
-              : 'Standard Pipeline'}
+          {selectedProfile?.name ?? form.pipelineProfileId}
         </Typography>
+        {selectedProfile && (
+          <Typography variant="body2" color="textSecondary" style={{ fontSize: 12, marginTop: 2 }}>
+            {selectedProfile.stages.length} stages · {selectedProfile.policies.length} policy checks
+          </Typography>
+        )}
       </Box>
 
       <Box className={classes.reviewSection}>
@@ -659,15 +648,15 @@ export const ImportProjectWizard = ({
           className={classes.backButton}
           style={{ textTransform: 'none' }}
         >
-          Back to Repositories
+          Back to Git repositories
         </Button>
       </Box>
 
       <Typography className={classes.headerTitle}>
-        Create project from repository
+        Enable governance
       </Typography>
       <Typography className={classes.headerSubtitle}>
-        Configure a governed automation project from your discovered
+        Add CI/CD pipelines, policy checks, and AAP integration to this
         repository.
       </Typography>
 
@@ -701,7 +690,7 @@ export const ImportProjectWizard = ({
             startIcon={<CheckCircleIcon />}
             style={{ textTransform: 'none', fontWeight: 600, borderRadius: 20 }}
           >
-            Create Project
+            Enable governance
           </Button>
         ) : (
           <Button

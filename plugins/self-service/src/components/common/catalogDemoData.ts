@@ -1,0 +1,263 @@
+import type { Entity } from '@backstage/catalog-model';
+
+export const DEMO_EE_ENTITIES: Entity[] = [
+  {
+    apiVersion: 'backstage.io/v1alpha1',
+    kind: 'Component',
+    metadata: {
+      name: 'rhel-security-ee',
+      uid: 'ee-1',
+      description: 'Hardened execution environment for RHEL security automation with STIG and CIS compliance collections pre-installed.',
+      tags: ['ansible', 'security', 'rhel', 'stig'],
+      annotations: { 'backstage.io/managed-by-location': 'url:https://github.com/acme-org/rhel-security-ee' },
+    },
+    spec: { type: 'execution-environment', owner: 'platform-team', lifecycle: 'production' },
+  },
+  {
+    apiVersion: 'backstage.io/v1alpha1',
+    kind: 'Component',
+    metadata: {
+      name: 'network-automation-ee',
+      uid: 'ee-2',
+      description: 'Execution environment for network device automation. Includes cisco.ios, arista.eos, and junipernetworks.junos collections.',
+      tags: ['ansible', 'network', 'cisco', 'arista'],
+      annotations: { 'backstage.io/managed-by-location': 'url:https://github.com/acme-org/network-automation-ee' },
+    },
+    spec: { type: 'execution-environment', owner: 'network-team', lifecycle: 'production' },
+  },
+  {
+    apiVersion: 'backstage.io/v1alpha1',
+    kind: 'Component',
+    metadata: {
+      name: 'cloud-provisioning-ee',
+      uid: 'ee-3',
+      description: 'Multi-cloud provisioning environment with AWS, Azure, and GCP collections. Includes Terraform provider for hybrid workflows.',
+      tags: ['ansible', 'cloud', 'aws', 'azure', 'gcp'],
+      annotations: { 'backstage.io/managed-by-location': 'url:https://github.com/acme-org/cloud-provisioning-ee' },
+    },
+    spec: { type: 'execution-environment', owner: 'cloud-team', lifecycle: 'production' },
+  },
+  {
+    apiVersion: 'backstage.io/v1alpha1',
+    kind: 'Component',
+    metadata: {
+      name: 'minimal-ee',
+      uid: 'ee-4',
+      description: 'Lightweight execution environment with ansible-core only. Use as a base for custom builds.',
+      tags: ['ansible', 'minimal', 'base'],
+      annotations: { 'backstage.io/managed-by-location': 'url:https://github.com/acme-org/minimal-ee' },
+    },
+    spec: { type: 'execution-environment', owner: 'platform-team', lifecycle: 'production' },
+  },
+  {
+    apiVersion: 'backstage.io/v1alpha1',
+    kind: 'Component',
+    metadata: {
+      name: 'windows-automation-ee',
+      uid: 'ee-5',
+      description: 'Windows Server automation environment with community.windows, microsoft.ad, and chocolatey.chocolatey collections.',
+      tags: ['ansible', 'windows', 'active-directory'],
+      annotations: { 'backstage.io/managed-by-location': 'url:https://github.com/acme-org/windows-automation-ee' },
+    },
+    spec: { type: 'execution-environment', owner: 'windows-team', lifecycle: 'production' },
+  },
+  {
+    apiVersion: 'backstage.io/v1alpha1',
+    kind: 'Component',
+    metadata: {
+      name: 'satellite-patching-ee',
+      uid: 'ee-6',
+      description: 'Patching and content management environment integrated with Red Hat Satellite. Includes redhat.satellite and redhat.rhel_system_roles.',
+      tags: ['ansible', 'satellite', 'patching', 'rhel'],
+      annotations: { 'backstage.io/managed-by-location': 'url:https://github.com/acme-org/satellite-patching-ee' },
+    },
+    spec: { type: 'execution-environment', owner: 'platform-team', lifecycle: 'production' },
+  },
+];
+
+export const DEMO_COLLECTION_ENTITIES: Entity[] = [
+  {
+    apiVersion: 'backstage.io/v1alpha1',
+    kind: 'Component',
+    metadata: {
+      name: 'redhat-rhel_system_roles',
+      uid: 'col-1',
+      description: 'Red Hat Enterprise Linux certified system roles for consistent system configuration.',
+      tags: ['certified', 'rhel', 'system-roles'],
+      annotations: {
+        'backstage.io/managed-by-location': 'url:https://console.redhat.com/ansible/automation-hub',
+        'ansible.io/discovery-source-id': 'automation-hub',
+      },
+    },
+    spec: {
+      type: 'ansible-collection',
+      owner: 'red-hat',
+      lifecycle: 'production',
+      collection_namespace: 'redhat',
+      collection_name: 'rhel_system_roles',
+      collection_full_name: 'redhat.rhel_system_roles',
+      collection_version: '1.23.0',
+    },
+  },
+  {
+    apiVersion: 'backstage.io/v1alpha1',
+    kind: 'Component',
+    metadata: {
+      name: 'ansible-netcommon',
+      uid: 'col-2',
+      description: 'Network automation base collection with connection plugins and filters for multi-vendor support.',
+      tags: ['certified', 'network'],
+      annotations: {
+        'backstage.io/managed-by-location': 'url:https://console.redhat.com/ansible/automation-hub',
+        'ansible.io/discovery-source-id': 'automation-hub',
+      },
+    },
+    spec: {
+      type: 'ansible-collection',
+      owner: 'red-hat',
+      lifecycle: 'production',
+      collection_namespace: 'ansible',
+      collection_name: 'netcommon',
+      collection_full_name: 'ansible.netcommon',
+      collection_version: '6.1.3',
+    },
+  },
+  {
+    apiVersion: 'backstage.io/v1alpha1',
+    kind: 'Component',
+    metadata: {
+      name: 'cisco-ios',
+      uid: 'col-3',
+      description: 'Cisco IOS network device automation including configuration management, fact gathering, and compliance.',
+      tags: ['certified', 'network', 'cisco'],
+      annotations: {
+        'backstage.io/managed-by-location': 'url:https://console.redhat.com/ansible/automation-hub',
+        'ansible.io/discovery-source-id': 'automation-hub',
+      },
+    },
+    spec: {
+      type: 'ansible-collection',
+      owner: 'cisco',
+      lifecycle: 'production',
+      collection_namespace: 'cisco',
+      collection_name: 'ios',
+      collection_full_name: 'cisco.ios',
+      collection_version: '8.0.0',
+    },
+  },
+  {
+    apiVersion: 'backstage.io/v1alpha1',
+    kind: 'Component',
+    metadata: {
+      name: 'amazon-aws',
+      uid: 'col-4',
+      description: 'Amazon Web Services automation including EC2, S3, IAM, Lambda, and 200+ other AWS services.',
+      tags: ['certified', 'cloud', 'aws'],
+      annotations: {
+        'backstage.io/managed-by-location': 'url:https://console.redhat.com/ansible/automation-hub',
+        'ansible.io/discovery-source-id': 'automation-hub',
+      },
+    },
+    spec: {
+      type: 'ansible-collection',
+      owner: 'amazon',
+      lifecycle: 'production',
+      collection_namespace: 'amazon',
+      collection_name: 'aws',
+      collection_full_name: 'amazon.aws',
+      collection_version: '8.2.1',
+    },
+  },
+  {
+    apiVersion: 'backstage.io/v1alpha1',
+    kind: 'Component',
+    metadata: {
+      name: 'community-general',
+      uid: 'col-5',
+      description: 'Community-maintained general-purpose modules including system, packaging, database, and cloud utilities.',
+      tags: ['community', 'general'],
+      annotations: {
+        'backstage.io/managed-by-location': 'url:https://galaxy.ansible.com',
+        'ansible.io/discovery-source-id': 'galaxy',
+      },
+    },
+    spec: {
+      type: 'ansible-collection',
+      owner: 'community',
+      lifecycle: 'production',
+      collection_namespace: 'community',
+      collection_name: 'general',
+      collection_full_name: 'community.general',
+      collection_version: '9.4.0',
+    },
+  },
+  {
+    apiVersion: 'backstage.io/v1alpha1',
+    kind: 'Component',
+    metadata: {
+      name: 'acme-internal-compliance',
+      uid: 'col-6',
+      description: 'Organization-internal compliance roles and modules for STIG and CIS benchmarks on RHEL 8/9.',
+      tags: ['internal', 'compliance', 'stig'],
+      annotations: {
+        'backstage.io/managed-by-location': 'url:https://pah.acme.internal',
+        'ansible.io/discovery-source-id': 'private-hub',
+      },
+    },
+    spec: {
+      type: 'ansible-collection',
+      owner: 'security-team',
+      lifecycle: 'production',
+      collection_namespace: 'acme',
+      collection_name: 'internal_compliance',
+      collection_full_name: 'acme.internal_compliance',
+      collection_version: '2.1.0',
+    },
+  },
+  {
+    apiVersion: 'backstage.io/v1alpha1',
+    kind: 'Component',
+    metadata: {
+      name: 'redhat-satellite',
+      uid: 'col-7',
+      description: 'Red Hat Satellite content management and patching automation. Manage hosts, content views, and subscriptions.',
+      tags: ['certified', 'satellite', 'patching'],
+      annotations: {
+        'backstage.io/managed-by-location': 'url:https://console.redhat.com/ansible/automation-hub',
+        'ansible.io/discovery-source-id': 'automation-hub',
+      },
+    },
+    spec: {
+      type: 'ansible-collection',
+      owner: 'red-hat',
+      lifecycle: 'production',
+      collection_namespace: 'redhat',
+      collection_name: 'satellite',
+      collection_full_name: 'redhat.satellite',
+      collection_version: '4.1.0',
+    },
+  },
+  {
+    apiVersion: 'backstage.io/v1alpha1',
+    kind: 'Component',
+    metadata: {
+      name: 'ansible-posix',
+      uid: 'col-8',
+      description: 'POSIX-compliant system automation including SELinux, ACLs, authorized keys, and sysctl management.',
+      tags: ['certified', 'system', 'posix'],
+      annotations: {
+        'backstage.io/managed-by-location': 'url:https://console.redhat.com/ansible/automation-hub',
+        'ansible.io/discovery-source-id': 'automation-hub',
+      },
+    },
+    spec: {
+      type: 'ansible-collection',
+      owner: 'red-hat',
+      lifecycle: 'production',
+      collection_namespace: 'ansible',
+      collection_name: 'posix',
+      collection_full_name: 'ansible.posix',
+      collection_version: '1.6.2',
+    },
+  },
+];

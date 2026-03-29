@@ -1,8 +1,9 @@
 import { PropsWithChildren } from 'react';
 import { makeStyles } from '@material-ui/core';
-import HomeIcon from '@material-ui/icons/Home';
 import LibraryBooks from '@material-ui/icons/LibraryBooks';
 import CategoryIcon from '@material-ui/icons/Category';
+import CodeIcon from '@material-ui/icons/Code';
+import BuildIcon from '@material-ui/icons/Build';
 import { SidebarSectionLabel } from '@ansible/plugin-backstage-rhaap';
 import { SidebarSearchModal } from '@backstage/plugin-search';
 import {
@@ -17,13 +18,13 @@ import {
 } from '@backstage/core-components';
 import MenuIcon from '@material-ui/icons/Menu';
 import SearchIcon from '@material-ui/icons/Search';
-import DescriptionOutlinedIcon from '@material-ui/icons/DescriptionOutlined';
-import WebAssetIcon from '@material-ui/icons/WebAsset';
+import AddCircleOutlineIcon from '@material-ui/icons/AddCircleOutline';
 import MemoryIcon from '@material-ui/icons/Memory';
 import SchoolIcon from '@material-ui/icons/School';
 import SyncIcon from '@material-ui/icons/Sync';
 import LinkIcon from '@material-ui/icons/Link';
 import VpnKeyIcon from '@material-ui/icons/VpnKey';
+import SecurityIcon from '@material-ui/icons/Security';
 
 const useSidebarLogoStyles = makeStyles({
   root: {
@@ -80,23 +81,17 @@ export const Root = ({ children }: PropsWithChildren<{}>) => {
             <SidebarSearchModal />
           </SidebarGroup>
           <SidebarGroup label="Menu" icon={<MenuIcon />}>
+            <SidebarSectionLabel text="Catalog" />
             <SidebarItem
-              icon={HomeIcon}
+              icon={CodeIcon}
               to="/self-service/projects"
-              text="Projects"
+              text="Git repositories"
             />
             <SidebarItem
-              icon={DescriptionOutlinedIcon}
+              icon={AddCircleOutlineIcon}
               to="/create"
               text="Templates"
             />
-            <SidebarItem
-              icon={WebAssetIcon}
-              to="/self-service/workspaces"
-              text="Workspaces"
-            />
-            <SidebarDivider />
-            <SidebarSectionLabel text="Shared Assets" />
             <SidebarItem
               icon={MemoryIcon}
               to="/self-service/ee"
@@ -106,6 +101,13 @@ export const Root = ({ children }: PropsWithChildren<{}>) => {
               icon={CategoryIcon}
               to="/self-service/collections"
               text="Collections"
+            />
+            <SidebarDivider />
+            <SidebarSectionLabel text="Tools" />
+            <SidebarItem
+              icon={BuildIcon}
+              to="/self-service/workspaces"
+              text="Workspaces"
             />
             <SidebarDivider />
             <SidebarSectionLabel text="Learn" />
@@ -123,6 +125,11 @@ export const Root = ({ children }: PropsWithChildren<{}>) => {
                 icon={SyncIcon}
                 to="/self-service/admin/sync-activity"
                 text="Sync Activity"
+              />
+              <SidebarItem
+                icon={SecurityIcon}
+                to="/self-service/admin/pipeline-policies"
+                text="Pipeline Policies"
               />
               <SidebarItem
                 icon={VpnKeyIcon}

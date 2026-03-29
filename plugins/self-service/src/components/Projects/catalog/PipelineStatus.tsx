@@ -22,6 +22,7 @@ import ExpandLessIcon from '@material-ui/icons/ExpandLess';
 import DescriptionOutlinedIcon from '@material-ui/icons/DescriptionOutlined';
 import OpenInNewIcon from '@material-ui/icons/OpenInNew';
 import type { PipelineStage } from './projectsDemoData';
+import { PIPELINE_PROFILES } from './unifiedDemoData';
 
 const useStyles = makeStyles(theme => ({
   '@keyframes spin': {
@@ -150,12 +151,12 @@ const StageIconSimple = ({
 }) => {
   const classes = useStyles();
   const colorMap: Record<string, string> = {
-    passed: '#4caf50',
-    failed: '#f44336',
-    running: '#2196f3',
-    pending: '#bdbdbd',
+    passed: '#63993D',
+    failed: '#C9190B',
+    running: '#0066CC',
+    pending: '#A3A3A3',
   };
-  const color = colorMap[status] || '#bdbdbd';
+  const color = colorMap[status] || '#A3A3A3';
 
   if (status === 'pending') {
     return <RadioButtonUncheckedIcon style={{ color, fontSize: size }} />;
@@ -192,16 +193,29 @@ const LightspeedIcon = ({ size = 14 }: { size?: number }) => (
   </svg>
 );
 
+const COMPLIANCE_STAGE_NAMES = new Set(['STIG Compliance', 'CIS Compliance', 'Policy Check']);
+
+const severityColor: Record<string, string> = {
+  critical: '#C9190B',
+  high: '#F0561D',
+  medium: '#F0AB00',
+  low: '#A3A3A3',
+};
+
 export const PipelineStatusIcons = ({
   stages,
   pipelineType,
+  profileId,
 }: {
   stages: PipelineStage[];
   pipelineType: string;
+  profileId?: string;
 }) => {
   const classes = useStyles();
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   const [expandedStage, setExpandedStage] = useState<number | null>(null);
+
+  const profile = profileId ? PIPELINE_PROFILES.find(p => p.id === profileId) : undefined;
 
   const handleStageClick = (event: React.MouseEvent<HTMLElement>, stageIndex: number) => {
     event.stopPropagation();
@@ -233,10 +247,7 @@ export const PipelineStatusIcons = ({
 
   const open = Boolean(anchorEl);
   const overallStatus = getPipelineOverallStatus(stages);
-  const pipelineName =
-    pipelineType === 'comprehensive'
-      ? 'Comprehensive Pipeline'
-      : 'Standard Pipeline';
+  const pipelineName = pipelineType;
 
   return (
     <>
@@ -274,7 +285,7 @@ export const PipelineStatusIcons = ({
               </Typography>
               <Typography className={classes.popoverDescription}>
                 This automated pipeline validates your code against
-                organizational standards before it can be pushed to AAP.
+                organizational standards on every commit.
               </Typography>
             </Box>
             <IconButton size="small" onClick={handleClose}>
@@ -310,6 +321,45 @@ export const PipelineStatusIcons = ({
                     <Typography className={classes.stageDescription} style={{ fontStyle: 'italic' }}>
                       {stage.detail}
                     </Typography>
+                  )}
+                  {profile && COMPLIANCE_STAGE_NAMES.has(stage.name) && profile.policies.length > 0 && (
+                    <Box style={{ marginTop: 4, marginBottom: 6 }}>
+                      <Typography variant="caption" style={{ fontWeight: 600, fontSize: 11, color: '#666' }}>
+                        Policy checks ({profile.policies.length})
+                      </Typography>
+                      {profile.policies.map(policy => (
+                        <Box
+                          key={policy.id}
+                          display="flex"
+                          alignItems="center"
+                          style={{ gap: 6, padding: '3px 0' }}
+                        >
+                          {stage.status === 'passed' ? (
+                            <CheckCircleIcon style={{ fontSize: 12, color: '#63993D' }} />
+                          ) : stage.status === 'failed' ? (
+                            <ErrorIcon style={{ fontSize: 12, color: '#C9190B' }} />
+                          ) : (
+                            <RadioButtonUncheckedIcon style={{ fontSize: 12, color: '#A3A3A3' }} />
+                          )}
+                          <Typography variant="caption" style={{ fontSize: 11, flex: 1 }}>
+                            {policy.name}
+                            {policy.standard && (
+                              <span style={{ color: '#999', marginLeft: 4 }}>({policy.standard})</span>
+                            )}
+                          </Typography>
+                          <Box
+                            style={{
+                              width: 6,
+                              height: 6,
+                              borderRadius: '50%',
+                              backgroundColor: severityColor[policy.severity] ?? '#bdbdbd',
+                              flexShrink: 0,
+                            }}
+                            title={`${policy.severity} severity`}
+                          />
+                        </Box>
+                      ))}
+                    </Box>
                   )}
                   <Box className={classes.stageMeta}>
                     {stage.timestamp && (
@@ -360,7 +410,7 @@ export const PipelineStatusIcons = ({
 export const PipelineColumnHeader = () => (
   <Box display="flex" alignItems="center" style={{ gap: 4 }}>
     Pipeline
-    <Tooltip title="CI/CD pipeline status for this project. Click any stage icon to see details." arrow>
+    <Tooltip title="CI/CD pipeline status and last commit. Click any stage icon to see details. The commit hash and message show what the pipeline ran against." arrow>
       <span style={{ display: 'inline-flex', cursor: 'help' }}>
         <HelpOutlineIcon style={{ fontSize: 14, color: '#999' }} />
       </span>

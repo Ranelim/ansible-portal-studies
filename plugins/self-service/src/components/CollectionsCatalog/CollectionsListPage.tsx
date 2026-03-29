@@ -34,6 +34,7 @@ import {
   fetchApiRef,
 } from '@backstage/core-plugin-api';
 import { Entity } from '@backstage/catalog-model';
+import { DEMO_COLLECTION_ENTITIES } from '../common/catalogDemoData';
 import { useNavigate } from 'react-router-dom';
 
 import { SyncStatusMap } from './types';
@@ -41,7 +42,6 @@ import { useCollectionsStyles } from './styles';
 import { PAGE_SIZE } from './constants';
 import { sortEntities, filterLatestVersions, getUniqueFilters } from './utils';
 import { CollectionCard } from './CollectionCard';
-import { DismissibleBanner } from '../common/DismissibleBanner';
 import { LastSyncedIndicator } from '../Admin/LastSyncedIndicator';
 import { EmptyState } from './EmptyState';
 
@@ -74,7 +74,7 @@ export const CollectionsListPage = ({
   const { isStarredEntity, toggleStarredEntity } = useStarredEntities();
   const [loading, setLoading] = useState<boolean>(true);
   const [showError, setShowError] = useState<boolean>(false);
-  const [errorMessage, setErrorMessage] = useState<string>('');
+  const [errorMessage] = useState<string>('');
   const [allEntities, setAllEntities] = useState<Entity[]>([]);
   const [filteredEntities, setFilteredEntities] = useState<Entity[]>([]);
   const [sourceFilter, setSourceFilter] = useState<string>('All');
@@ -100,9 +100,11 @@ export const CollectionsListPage = ({
       .then(response => {
         if (!isMountedRef.current) return;
 
-        const items = Array.isArray(response)
+        let items = Array.isArray(response)
           ? response
           : response?.items || [];
+
+        if (items.length === 0) items = DEMO_COLLECTION_ENTITIES;
 
         setAllEntities(items);
         setFilteredEntities(items);
@@ -116,11 +118,18 @@ export const CollectionsListPage = ({
         setLoading(false);
         setShowError(false);
       })
-      .catch(error => {
+      .catch(() => {
         if (!isMountedRef.current) return;
-        setErrorMessage(error.message);
-        setShowError(true);
+        const items = DEMO_COLLECTION_ENTITIES;
+        setAllEntities(items);
+        setFilteredEntities(items);
+        if (items.length > 0) {
+          const { sources, tags } = getUniqueFilters(items);
+          setAllSources(['All', ...sources]);
+          setAllTags(['All', ...tags]);
+        }
         setLoading(false);
+        setShowError(false);
       });
   }, [catalogApi]);
 
@@ -347,10 +356,6 @@ export const CollectionsListPage = ({
             </CatalogFilterLayout.Filters>
 
             <CatalogFilterLayout.Content>
-              <DismissibleBanner
-                storageKey="collections-catalog"
-                message="Collections are reusable Ansible content packages that bundle modules, roles, and plugins. Browse and discover content synced from your Private Automation Hub to use in your automation projects."
-              />
               <Box>
                 <Box className={classes.contentHeader}>
                   <Box>

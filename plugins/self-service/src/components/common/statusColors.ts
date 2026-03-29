@@ -1,8 +1,9 @@
 export const statusColors = {
-  success: '#4caf50',
-  error: '#f44336',
-  warning: '#ff9800',
-  info: '#2196f3',
-  pending: '#bdbdbd',
-  star: '#faaf00',
+  success: '#63993D',
+  error: '#C9190B',
+  warning: '#F0AB00',
+  info: '#0066CC',
+  pending: '#A3A3A3',
+  star: '#F0AB00',
+  custom: '#37A3A3',
 };

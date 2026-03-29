@@ -20,6 +20,7 @@ import { CollectionDetailsPage } from '../CollectionsCatalog/CollectionDetailsPa
 import { ConnectionsPage } from '../Admin/ConnectionsPage';
 import { SyncActivityPage } from '../Admin/SyncActivityPage';
 import { SyncJobDetailPage } from '../Admin/SyncJobDetailPage';
+import { PipelinePoliciesPage } from '../Admin/PipelinePoliciesPage';
 import { LearningPage } from '../Learning/LearningPage';
 import { WorkspacesPage } from '../Workspaces/WorkspacesPage';
 import { WorkspaceIDEPage } from '../Workspaces/WorkspaceIDEPage';
@@ -77,7 +78,7 @@ export const RouteView = () => {
         </Route>
         <Route path="catalog/:templateName" element={<EEDetailsPage />} />
         <Route path="projects">
-          <Route index element={<Navigate to="catalog" replace />} />
+          <Route index element={<ProjectsTabs />} />
           <Route path="catalog" element={<ProjectsTabs />} />
           <Route path="repositories" element={<ProjectsTabs />} />
           <Route path="create" element={<ProjectsTabs />} />
@@ -95,12 +96,13 @@ export const RouteView = () => {
         <Route path="admin/connections" element={<ConnectionsPage />} />
         <Route path="admin/sync-activity" element={<SyncActivityPage />} />
         <Route path="admin/sync-activity/:syncId" element={<SyncJobDetailPage />} />
+        <Route path="admin/pipeline-policies" element={<PipelinePoliciesPage />} />
         {/* Default redirects */}
         <Route
           path="/catalog/*"
           element={<Navigate to="/self-service/catalog" />}
         />
-        <Route path="*" element={<Navigate to="/self-service/catalog" />} />
+        <Route path="*" element={<Navigate to="/self-service/projects" />} />
       </Routes>
       <FeedbackFooter />
     </>

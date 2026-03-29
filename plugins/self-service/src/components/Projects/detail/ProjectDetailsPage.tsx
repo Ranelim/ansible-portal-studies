@@ -41,7 +41,6 @@ import CheckCircleIcon from '@material-ui/icons/CheckCircle';
 import ErrorIcon from '@material-ui/icons/Error';
 import AutorenewIcon from '@material-ui/icons/Autorenew';
 import RadioButtonUncheckedIcon from '@material-ui/icons/RadioButtonUnchecked';
-import RemoveCircleOutlineIcon from '@material-ui/icons/RemoveCircleOutline';
 import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
 import ExpandLessIcon from '@material-ui/icons/ExpandLess';
 import DescriptionOutlinedIcon from '@material-ui/icons/DescriptionOutlined';
@@ -51,6 +50,7 @@ import MemoryIcon from '@material-ui/icons/Memory';
 import CategoryIcon from '@material-ui/icons/Category';
 import InsertDriveFileOutlinedIcon from '@material-ui/icons/InsertDriveFileOutlined';
 import FolderOutlinedIcon from '@material-ui/icons/FolderOutlined';
+import SecurityIcon from '@material-ui/icons/Security';
 import {
   DEMO_PROJECTS,
   DemoProject,
@@ -58,8 +58,29 @@ import {
   JobRunEntry,
   PipelineRun,
 } from '../catalog/projectsDemoData';
+import { PIPELINE_PROFILES, STAGE_DESCRIPTIONS as UNIFIED_STAGE_DESCS } from '../catalog/unifiedDemoData';
+import { GovernanceStatusBadge } from '../../common/GovernanceStatusBadge';
 import { useProjectDetailStyles } from './styles';
 import { statusColors } from '../../common/statusColors';
+
+const PROFILE_BY_REPO: Record<string, string> = {
+  'rhel-patch-automation': 'stig-rhel9',
+  'cis-compliance-scanner': 'stig-rhel9',
+  'firewall-policy-engine': 'org-default',
+  'aws-provisioner': 'minimal',
+  'web-app-scaling-suite': 'org-default',
+  'network-compliance-checker': 'org-default',
+};
+
+const getProfileForProject = (projectName: string) => {
+  const profileId = PROFILE_BY_REPO[projectName] ?? 'org-default';
+  return PIPELINE_PROFILES.find(p => p.id === profileId) ?? PIPELINE_PROFILES[1];
+};
+
+const getProfileStageNames = (projectName: string): string[] => {
+  const profile = getProfileForProject(projectName);
+  return profile.stages;
+};
 
 const tabs = [
   { id: 'overview', label: 'Overview' },
@@ -206,7 +227,7 @@ const StageIcon = ({
     running: statusColors.info,
     pending: statusColors.pending,
   };
-  const color = colorMap[status] || '#bdbdbd';
+  const color = colorMap[status] || statusColors.pending;
 
   if (status === 'pending')
     return <RadioButtonUncheckedIcon style={{ color, fontSize: size }} />;
@@ -254,47 +275,6 @@ const statusColor = (status: string) => {
   }
 };
 
-type MaturityStep = {
-  label: string;
-  done: boolean;
-  na?: boolean;
-  hint: string;
-};
-
-const getMaturitySteps = (project: DemoProject): MaturityStep[] => {
-  const allPassed = project.pipeline.every(s => s.status === 'passed');
-  const lintPassed =
-    project.pipeline.find(s => s.name === 'Lint')?.status === 'passed';
-  const policyPassed =
-    project.pipeline.find(s => s.name === 'Policy Check')?.status === 'passed';
-  const eePassed =
-    project.pipeline.find(s => s.name === 'EE Compatibility')?.status ===
-    'passed';
-  const integrationPassed =
-    project.pipeline.find(s => s.name === 'Integration Test')?.status ===
-    'passed';
-  const pushedToAap =
-    project.aap.project === 'pushed' &&
-    project.aap.jobTemplate === 'pushed';
-  const hasJobRuns =
-    project.lastJobRun.status === 'success' ||
-    project.lastJobRun.status === 'running';
-
-  return [
-    { label: 'Created', done: true, hint: 'Project was created successfully.' },
-    { label: 'Linted', done: !!lintPassed, hint: lintPassed ? 'Lint check passed.' : 'Push a commit to trigger the lint pipeline stage.' },
-    { label: 'Policy compliant', done: !!policyPassed, hint: policyPassed ? 'Policy check passed.' : 'Fix any policy violations flagged in the Pipeline tab.' },
-    { label: 'EE verified', done: !!eePassed, hint: eePassed ? 'EE compatibility verified.' : 'Ensure your content runs in the target Execution Environment.' },
-    {
-      label: 'Integration tested',
-      done: !!(integrationPassed || project.pipelineType === 'standard'),
-      na: project.pipelineType === 'standard',
-      hint: project.pipelineType === 'standard' ? 'Not applicable for standard pipeline.' : integrationPassed ? 'Integration tests passed.' : 'Add integration tests to complete this step.',
-    },
-    { label: 'Pushed to AAP', done: !!(pushedToAap && allPassed), hint: pushedToAap ? 'Project and job template pushed to AAP.' : 'Pass all pipeline stages, then push to AAP from the AAP Activity tab.' },
-    { label: 'In production', done: !!(hasJobRuns && pushedToAap), hint: hasJobRuns && pushedToAap ? 'Running in production.' : 'Launch a job from AAP to complete this step.' },
-  ];
-};
 
 // ---------------------------------------------------------------------------
 // Overview Tab
@@ -349,33 +329,31 @@ const OverviewTab = ({
               />
             </Box>
             {latestRun && (
-              <Typography variant="body2" color="textSecondary" style={{ marginBottom: 12 }}>
-                Run #{latestRun.id} · triggered by{' '}
-                <code style={{ fontSize: 12 }}>
-                  {latestRun.trigger.substring(0, 7)}
-                </code>
-                {' · '}{latestRun.startedAt}
-                {latestRun.duration !== '—' && ` · ${latestRun.duration}`}
-              </Typography>
+              <Box style={{ marginBottom: 12 }}>
+                <Typography variant="body2" color="textSecondary">
+                  Run #{latestRun.id} · triggered by{' '}
+                  <code style={{ fontSize: 12 }}>
+                    {latestRun.trigger.substring(0, 7)}
+                  </code>
+                  {' · '}{latestRun.startedAt}
+                  {latestRun.duration !== '—' && ` · ${latestRun.duration}`}
+                </Typography>
+                {latestRun.commitMessage && (
+                  <Typography variant="caption" color="textSecondary" style={{ display: 'block', marginTop: 2, fontStyle: 'italic' }}>
+                    {latestRun.commitMessage}
+                  </Typography>
+                )}
+              </Box>
             )}
-            <Box display="flex" alignItems="center" style={{ gap: 2 }}>
-              {project.pipeline.map(stage => (
-                <Tooltip key={stage.name} title={`${stage.name}: ${statusLabel(stage.status)}`} arrow>
-                  <Box
-                    style={{
-                      flex: 1,
-                      height: 8,
-                      borderRadius: 4,
-                      backgroundColor: statusColor(stage.status),
-                    }}
-                  />
-                </Tooltip>
-              ))}
-            </Box>
-            <Box display="flex" alignItems="center" style={{ gap: 12, marginTop: 12 }}>
-              {project.pipeline.map(stage => (
+            <Box display="flex" alignItems="center" style={{ gap: 4, flexWrap: 'wrap' }}>
+              {project.pipeline
+                .filter(stage => stage.name !== 'Pushed to AAP')
+                .map((stage, i) => (
                 <Box key={stage.name} display="flex" alignItems="center" style={{ gap: 4 }}>
-                  <StageIcon status={stage.status} size={14} />
+                  {i > 0 && (
+                    <Typography variant="caption" style={{ color: statusColors.pending, marginLeft: 2, marginRight: 2 }}>›</Typography>
+                  )}
+                  <StageIcon status={stage.status} size={16} />
                   <Typography variant="caption" color="textSecondary">
                     {stage.name}
                   </Typography>
@@ -421,18 +399,25 @@ const OverviewTab = ({
                 <PlayArrowIcon
                   style={{ fontSize: 18, color: '#666', marginTop: 2 }}
                 />
-                <Typography className={classes.activityText}>
-                  Pipeline run #{project.pipelineHistory[0].id}{' '}
-                  <strong>
-                    {project.pipelineHistory[0].status === 'running'
-                      ? 'is running'
-                      : project.pipelineHistory[0].status}
-                  </strong>{' '}
-                  — triggered by{' '}
-                  <code style={{ fontSize: 12 }}>
-                    {project.pipelineHistory[0].trigger.substring(0, 7)}
-                  </code>
-                </Typography>
+                <Box style={{ flex: 1 }}>
+                  <Typography className={classes.activityText}>
+                    Pipeline run #{project.pipelineHistory[0].id}{' '}
+                    <strong>
+                      {project.pipelineHistory[0].status === 'running'
+                        ? 'is running'
+                        : project.pipelineHistory[0].status}
+                    </strong>{' '}
+                    — triggered by{' '}
+                    <code style={{ fontSize: 12 }}>
+                      {project.pipelineHistory[0].trigger.substring(0, 7)}
+                    </code>
+                  </Typography>
+                  {project.pipelineHistory[0].commitMessage && (
+                    <Typography variant="caption" color="textSecondary" style={{ fontStyle: 'italic' }}>
+                      {project.pipelineHistory[0].commitMessage}
+                    </Typography>
+                  )}
+                </Box>
                 <Typography className={classes.activityTime}>
                   {project.pipelineHistory[0].startedAt}
                 </Typography>
@@ -459,7 +444,7 @@ const OverviewTab = ({
 
       {/* Sidebar */}
       <Box className={classes.sidebarColumn}>
-        <MaturityCard project={project} />
+        <AapConnectionCard project={project} />
         <AboutCard project={project} />
         <SourceCard project={project} />
         <LinksCard project={project} />
@@ -471,90 +456,93 @@ const OverviewTab = ({
 // ---------------------------------------------------------------------------
 // Sidebar Cards
 // ---------------------------------------------------------------------------
-const MaturityCard = ({ project }: { project: DemoProject }) => {
+const AapConnectionCard = ({ project }: { project: DemoProject }) => {
   const classes = useProjectDetailStyles();
-  const steps = getMaturitySteps(project);
-  const completed = steps.filter(s => s.done).length;
-  const total = steps.filter(s => !s.na).length;
-  const pct = Math.round((completed / total) * 100);
-  const nextStep = steps.find(s => !s.done && !s.na);
+  const isProjectPushed = project.aap.project === 'pushed';
+  const isTemplatePushed = project.aap.jobTemplate === 'pushed';
+  const isConnected = isProjectPushed && isTemplatePushed;
+  const hasJobRuns =
+    project.lastJobRun.status === 'success' ||
+    project.lastJobRun.status === 'running';
+  const lastRunStatus = project.lastJobRun.status;
+
+  const statusRow = (label: string, connected: boolean, detail?: string) => (
+    <Box display="flex" alignItems="center" style={{ gap: 8, padding: '6px 0' }}>
+      {connected ? (
+        <CheckCircleIcon style={{ fontSize: 18, color: statusColors.success }} />
+      ) : (
+        <RadioButtonUncheckedIcon style={{ fontSize: 18, color: statusColors.pending }} />
+      )}
+      <Box flex={1}>
+        <Typography variant="body2" style={{ fontSize: 13, fontWeight: connected ? 500 : 400, color: connected ? 'inherit' : '#888' }}>
+          {label}
+        </Typography>
+        {detail && (
+          <Typography variant="caption" color="textSecondary" style={{ fontSize: 11 }}>
+            {detail}
+          </Typography>
+        )}
+      </Box>
+    </Box>
+  );
 
   return (
     <Card className={classes.card} variant="outlined">
       <CardContent className={classes.cardContent}>
-        <Box display="flex" alignItems="center" justifyContent="space-between" mb={0.5}>
-          <Typography className={classes.cardTitle} style={{ marginBottom: 0 }}>
-            Project maturity
-          </Typography>
-          <Typography variant="caption" style={{ color: statusColors.success, fontWeight: 600 }}>
-            {pct}%
-          </Typography>
-        </Box>
-        <Box
-          style={{
-            height: 4,
-            borderRadius: 2,
-            backgroundColor: '#e0e0e0',
-            marginBottom: 12,
-          }}
-        >
-          <Box
-            style={{
-              width: `${pct}%`,
-              height: '100%',
-              borderRadius: 2,
-              backgroundColor: statusColors.success,
-              transition: 'width 0.3s ease',
-            }}
-          />
-        </Box>
-        {steps.map(step => (
-          <Tooltip key={step.label} title={step.hint} arrow placement="left">
-            <Box
-              display="flex"
-              alignItems="center"
-              style={{
-                gap: 8,
-                padding: '5px 0',
-                cursor: 'default',
-              }}
+        <Typography className={classes.cardTitle}>AAP connection</Typography>
+        {statusRow(
+          'AAP project',
+          isProjectPushed,
+          isProjectPushed ? `Syncing from ${project.repo.url.split('/').pop()}` : undefined,
+        )}
+        {statusRow(
+          'Job template',
+          isTemplatePushed,
+          isTemplatePushed ? `Template: ${project.title}` : undefined,
+        )}
+        {isConnected && (
+          <>
+            <Divider style={{ margin: '8px 0' }} />
+            {statusRow(
+              'Last job run',
+              hasJobRuns,
+              hasJobRuns
+                ? `${lastRunStatus === 'success' ? 'Succeeded' : 'Running'} · ${project.lastJobRun.timestamp ?? ''}`
+                : 'No jobs have run yet',
+            )}
+          </>
+        )}
+        {!isConnected && (
+          <Box style={{
+            marginTop: 10,
+            padding: '8px 10px',
+            backgroundColor: 'rgba(43, 154, 243, 0.08)',
+            borderRadius: 6,
+            borderLeft: `3px solid ${statusColors.info}`,
+          }}>
+            <Typography variant="body2" style={{ fontSize: 12, lineHeight: 1.5 }}>
+              {!isProjectPushed
+                ? 'Connect this repository to AAP to create a project and enable automatic syncing.'
+                : 'Create a job template to run automation from this repository in AAP.'}
+            </Typography>
+            <Button
+              variant="outlined"
+              color="primary"
+              size="small"
+              style={{ textTransform: 'none', marginTop: 8, fontSize: 12, borderRadius: 16 }}
             >
-              {step.na ? (
-                <RemoveCircleOutlineIcon style={{ fontSize: 18, color: statusColors.pending }} />
-              ) : step.done ? (
-                <CheckCircleIcon style={{ fontSize: 18, color: statusColors.success }} />
-              ) : (
-                <RadioButtonUncheckedIcon style={{ fontSize: 18, color: statusColors.pending }} />
-              )}
-              <Typography
-                variant="body2"
-                style={{
-                  color: step.done ? 'inherit' : '#888',
-                  textDecoration: step.na ? 'line-through' : 'none',
-                  fontSize: 13,
-                }}
-              >
-                {step.label}
-              </Typography>
-            </Box>
-          </Tooltip>
-        ))}
-        {nextStep && pct < 100 && (
-          <Box
-            style={{
-              marginTop: 10,
-              padding: '8px 10px',
-              backgroundColor: 'rgba(43, 154, 243, 0.08)',
-              borderRadius: 6,
-              borderLeft: `3px solid ${statusColors.info}`,
-            }}
-          >
-            <Typography variant="caption" style={{ fontWeight: 600, fontSize: 11, color: statusColors.info, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-              Next step
-            </Typography>
-            <Typography variant="body2" style={{ fontSize: 12, marginTop: 2, lineHeight: 1.5 }}>
-              {nextStep.hint}
-            </Typography>
+              {!isProjectPushed ? 'Connect to AAP' : 'Create job template'}
+            </Button>
+          </Box>
+        )}
+        {isConnected && (
+          <Box style={{ marginTop: 8 }}>
+            <Link
+              style={{ fontSize: 12, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+            >
+              View in AAP
+              <OpenInNewIcon style={{ fontSize: 12 }} />
+            </Link>
           </Box>
         )}
       </CardContent>
@@ -593,14 +581,10 @@ const AboutCard = ({ project }: { project: DemoProject }) => {
           </Typography>
         </Box>
         <Box className={classes.cardSection}>
-          <Typography className={classes.cardLabel}>Pipeline type</Typography>
+          <Typography className={classes.cardLabel}>Pipeline profile</Typography>
           <Chip
             size="small"
-            label={
-              project.pipelineType === 'comprehensive'
-                ? 'Comprehensive'
-                : 'Standard'
-            }
+            label={getProfileForProject(project.name).name}
             variant="outlined"
             style={{ fontSize: 12, height: 24 }}
           />
@@ -742,30 +726,7 @@ const LinksCard = ({ project }: { project: DemoProject }) => {
 // Pipeline Tab (master-detail)
 // ---------------------------------------------------------------------------
 
-const STAGE_NAMES_COMPREHENSIVE = [
-  'Commit',
-  'Lint',
-  'Policy Check',
-  'EE Compatibility',
-  'Integration Test',
-  'Pushed to AAP',
-];
-const STAGE_NAMES_STANDARD = [
-  'Commit',
-  'Lint',
-  'Policy Check',
-  'EE Compatibility',
-  'Pushed to AAP',
-];
-
-const STAGE_DESCS: Record<string, string> = {
-  Commit: 'Detects and validates the latest code change pushed to the repository.',
-  Lint: 'Checks playbook structure, YAML syntax, and best practices using ansible-lint.',
-  'Policy Check': 'Validates content against organizational governance policies and security standards.',
-  'EE Compatibility': 'Verifies that the automation content runs correctly inside the target Execution Environment.',
-  'Integration Test': 'Runs end-to-end tests against a sandboxed environment to catch regressions.',
-  'Pushed to AAP': 'Syncs the validated content to Ansible Automation Platform for deployment.',
-};
+const STAGE_DESCS: Record<string, string> = UNIFIED_STAGE_DESCS;
 
 const buildStagesForRun = (
   run: PipelineRun,
@@ -774,10 +735,7 @@ const buildStagesForRun = (
   const isLatest = project.pipelineHistory[0]?.id === run.id;
   if (isLatest) return project.pipeline;
 
-  const names =
-    project.pipelineType === 'comprehensive'
-      ? STAGE_NAMES_COMPREHENSIVE
-      : STAGE_NAMES_STANDARD;
+  const names = getProfileStageNames(project.name);
 
   if (run.status === 'passed') {
     return names.map(name => ({
@@ -872,38 +830,41 @@ const PipelineRunDetail = ({
             </Box>
             <Chip
               size="small"
-              label={
-                project.pipelineType === 'comprehensive'
-                  ? 'Comprehensive'
-                  : 'Standard'
-              }
+              label={getProfileForProject(project.name).name}
               variant="outlined"
               style={{ fontSize: 12, height: 24 }}
             />
           </Box>
 
-          <Box
-            display="flex"
-            alignItems="center"
-            style={{ gap: 16, marginBottom: 16 }}
-          >
-            <Typography variant="body2" color="textSecondary">
-              Triggered by{' '}
-              <code style={{ fontSize: 12 }}>
-                {run.trigger.substring(0, 7)}
-              </code>
-            </Typography>
-            <Typography variant="body2" color="textSecondary">
-              Started {run.startedAt}
-            </Typography>
-            {run.duration !== '—' && (
+          <Box style={{ marginBottom: 16 }}>
+            <Box
+              display="flex"
+              alignItems="center"
+              style={{ gap: 16 }}
+            >
               <Typography variant="body2" color="textSecondary">
-                Duration: {run.duration}
+                Triggered by{' '}
+                <code style={{ fontSize: 12 }}>
+                  {run.trigger.substring(0, 7)}
+                </code>
+              </Typography>
+              <Typography variant="body2" color="textSecondary">
+                Started {run.startedAt}
+              </Typography>
+              {run.duration !== '—' && (
+                <Typography variant="body2" color="textSecondary">
+                  Duration: {run.duration}
+                </Typography>
+              )}
+            </Box>
+            {run.commitMessage && (
+              <Typography variant="body2" color="textSecondary" style={{ marginTop: 4, fontStyle: 'italic' }}>
+                {run.commitMessage}
               </Typography>
             )}
           </Box>
 
-          {stages.map((stage, i) => (
+          {stages.filter(s => s.name !== 'Pushed to AAP').map((stage, i) => (
             <Box key={stage.name}>
               <Box
                 className={`${classes.pipelineStageRow} ${expandedStage === i ? classes.pipelineStageExpanded : ''}`}
@@ -971,24 +932,35 @@ const PipelineTab = ({ project, initialRunId }: { project: DemoProject; initialR
     ? project.pipelineHistory.find(r => r.id === selectedRunId) || null
     : null;
 
+  const [statusFilter, setStatusFilter] = useState<'all' | 'passed' | 'failed' | 'running'>('all');
+
+  const filteredRuns = statusFilter === 'all'
+    ? project.pipelineHistory
+    : project.pipelineHistory.filter(r => r.status === statusFilter);
+
   const columns: TableColumn<PipelineRun>[] = [
     {
       title: 'Run',
       field: 'id',
       render: (row: PipelineRun) => (
-        <Typography
-          variant="body2"
-          style={{ fontWeight: 500, color: '#1976d2' }}
-        >
-          #{row.id}
-        </Typography>
-      ),
-    },
-    {
-      title: 'Trigger',
-      field: 'trigger',
-      render: (row: PipelineRun) => (
-        <code style={{ fontSize: 12 }}>{row.trigger.substring(0, 7)}</code>
+        <Box>
+          <Box display="flex" alignItems="center" style={{ gap: 6 }}>
+            <Typography
+              variant="body2"
+              style={{ fontWeight: 500, color: statusColors.info }}
+            >
+              #{row.id}
+            </Typography>
+            <code style={{ fontSize: 11, color: 'inherit', opacity: 0.7 }}>
+              {row.trigger.substring(0, 7)}
+            </code>
+          </Box>
+          {row.commitMessage && (
+            <Typography variant="caption" color="textSecondary" style={{ display: 'block', marginTop: 2, maxWidth: 260 }} noWrap>
+              {row.commitMessage}
+            </Typography>
+          )}
+        </Box>
       ),
     },
     {
@@ -1014,17 +986,12 @@ const PipelineTab = ({ project, initialRunId }: { project: DemoProject; initialR
       render: (row: PipelineRun) => {
         const stages = buildStagesForRun(row, project);
         return (
-          <Box display="flex" alignItems="center" style={{ gap: 2 }}>
+          <Box display="flex" alignItems="center" style={{ gap: 3 }}>
             {stages.map(s => (
               <Tooltip key={s.name} title={`${s.name}: ${statusLabel(s.status)}`} arrow>
-                <Box
-                  style={{
-                    width: 16,
-                    height: 6,
-                    borderRadius: 3,
-                    backgroundColor: statusColor(s.status),
-                  }}
-                />
+                <span style={{ display: 'flex' }}>
+                  <StageIcon status={s.status} size={18} />
+                </span>
               </Tooltip>
             ))}
           </Box>
@@ -1064,18 +1031,30 @@ const PipelineTab = ({ project, initialRunId }: { project: DemoProject; initialR
             </Typography>
             <Chip
               size="small"
-              label={
-                project.pipelineType === 'comprehensive'
-                  ? 'Comprehensive Pipeline'
-                  : 'Standard Pipeline'
-              }
+              label={getProfileForProject(project.name).name}
               variant="outlined"
               style={{ fontSize: 12, height: 24 }}
             />
           </Box>
+          <Box display="flex" style={{ gap: 6, marginBottom: 12 }}>
+            {(['all', 'passed', 'failed', 'running'] as const).map(f => (
+              <Chip
+                key={f}
+                size="small"
+                label={f === 'all' ? `All (${project.pipelineHistory.length})` : `${statusLabel(f)} (${project.pipelineHistory.filter(r => r.status === f).length})`}
+                onClick={() => setStatusFilter(f)}
+                variant={statusFilter === f ? 'default' : 'outlined'}
+                style={{
+                  fontSize: 12,
+                  height: 24,
+                  ...(statusFilter === f ? { backgroundColor: `${statusColor(f === 'all' ? 'passed' : f)}20`, color: f === 'all' ? undefined : statusColor(f) } : {}),
+                }}
+              />
+            ))}
+          </Box>
           <Table<PipelineRun>
             columns={columns}
-            data={project.pipelineHistory}
+            data={filteredRuns}
             title=""
             options={{
               paging: false,
@@ -1708,7 +1687,7 @@ export const ProjectDetailsPage = () => {
               onClick={() => navigate('/self-service/projects/catalog')}
               style={{ textTransform: 'none', marginTop: 16 }}
             >
-              Back to Projects
+              Back to Git repositories
             </Button>
           </Box>
         </Content>
@@ -1738,7 +1717,7 @@ export const ProjectDetailsPage = () => {
           separator={<NavigateNextIcon fontSize="small" />}
           className={classes.breadcrumbs}
         >
-          <RouterLink to="/self-service/projects/catalog">Projects</RouterLink>
+          <RouterLink to="/self-service/projects">Git repositories</RouterLink>
           <Typography className={classes.breadcrumbCurrent}>
             {project.title}
           </Typography>
@@ -1781,38 +1760,62 @@ export const ProjectDetailsPage = () => {
         </Typography>
 
         <Box className={classes.chipsRow}>
-          <Chip
-            size="small"
-            label={
-              project.pipelineType === 'comprehensive'
-                ? 'Comprehensive Pipeline'
-                : 'Standard Pipeline'
+          <GovernanceStatusBadge
+            status={isPushed ? 'pushed-to-aap' : 'governed'}
+            variant="header"
+          />
+          <Tooltip
+            title={
+              <Box>
+                <Typography style={{ fontWeight: 600, fontSize: 12, marginBottom: 4 }}>Pipeline profile</Typography>
+                <Typography style={{ fontSize: 11 }}>
+                  {getProfileForProject(project.name).description}
+                </Typography>
+                <Typography style={{ fontSize: 11, marginTop: 4, opacity: 0.8 }}>
+                  Source: {getProfileForProject(project.name).source === 'built-in' ? 'Built-in' : getProfileForProject(project.name).source === 'organization' ? 'Organization' : 'Custom'}
+                </Typography>
+              </Box>
             }
-            variant="outlined"
-            style={{ fontSize: 12 }}
-          />
-          <Chip
-            size="small"
-            label={`Pipeline: ${statusLabel(overallPipelineStatus)}`}
-            style={{
-              backgroundColor: `${statusColor(overallPipelineStatus)}20`,
-              color: statusColor(overallPipelineStatus),
-              fontSize: 12,
-              fontWeight: 500,
-            }}
-          />
-          {isPushed && (
+            arrow
+          >
             <Chip
               size="small"
-              label="Pushed to AAP"
+              label={getProfileForProject(project.name).name}
+              variant="outlined"
+              icon={<SecurityIcon style={{ fontSize: 14 }} />}
+              style={{ fontSize: 12, cursor: 'default' }}
+            />
+          </Tooltip>
+          <Tooltip
+            title={
+              <Box>
+                <Typography style={{ fontWeight: 600, fontSize: 12, marginBottom: 4 }}>Latest pipeline run</Typography>
+                {project.pipeline
+                  .filter(s => s.name !== 'Pushed to AAP')
+                  .map(s => (
+                    <Typography key={s.name} style={{ fontSize: 11 }}>
+                      {s.name}: {statusLabel(s.status)}
+                    </Typography>
+                  ))
+                }
+              </Box>
+            }
+            arrow
+          >
+            <Chip
+              size="small"
+              label={`Pipeline: ${statusLabel(overallPipelineStatus)}`}
+              variant="outlined"
               style={{
-                backgroundColor: `${statusColors.success}20`,
-                color: statusColors.success,
                 fontSize: 12,
                 fontWeight: 500,
+                cursor: 'pointer',
+                color: statusColor(overallPipelineStatus),
+                borderColor: statusColor(overallPipelineStatus),
               }}
+              onClick={() => handleTabChange(3)}
             />
-          )}
+          </Tooltip>
         </Box>
 
         {/* Tabs */}

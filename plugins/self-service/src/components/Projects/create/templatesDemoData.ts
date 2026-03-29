@@ -44,23 +44,23 @@ export const CUSTOM_PIPELINE_STAGES = [
 ];
 
 export const COMPREHENSIVE_STAGES = [
-  'Commit', 'Lint', 'Policy Check', 'EE Compatibility', 'Integration Test', 'Pushed to AAP',
+  'Commit', 'Lint', 'Policy Check', 'EE Compatibility', 'Integration Test',
 ];
 
 export const STANDARD_STAGES = [
-  'Commit', 'Lint', 'Policy Check', 'EE Compatibility', 'Pushed to AAP',
+  'Commit', 'Lint', 'Policy Check', 'EE Compatibility',
 ];
 
 const WIZARD_STEPS: WizardStep[] = [
   {
     title: 'Details & AI Jumpstart',
     description: 'Describe what you want to automate, or fill in the details manually.',
-    why: 'Naming and describing your project up front helps your team discover and understand it. AI Jumpstart can save time by pre-filling the remaining steps based on your intent.',
+    why: 'Naming and describing your repository up front helps your team discover and understand it. AI Jumpstart can save time by pre-filling the remaining steps based on your intent.',
   },
   {
     title: 'Source Code (Git)',
     description: 'Create a new repository or select an existing synced repo.',
-    why: 'Every automation project is backed by a Git repository. This is where your playbooks, roles, and inventory live — and it enables version control, collaboration, and auditability.',
+    why: 'Every automation repository is backed by Git. This is where your playbooks, roles, and inventory live — and it enables version control, collaboration, and auditability.',
   },
   {
     title: 'Pipeline & Governance',
@@ -69,12 +69,12 @@ const WIZARD_STEPS: WizardStep[] = [
   },
   {
     title: 'Destination (AAP)',
-    description: 'Configure how this project connects to your Ansible Automation Platform.',
-    why: 'Connecting to AAP lets your automation be executed, scheduled, and monitored centrally. This step ensures your project and job templates are registered and ready to run.',
+    description: 'Configure how this repository connects to your Ansible Automation Platform.',
+    why: 'Connecting to AAP lets your automation be executed, scheduled, and monitored centrally. This step ensures your AAP project and job templates are registered and ready to run.',
   },
   {
     title: 'Review & Create',
-    description: 'Review your selections before creating the project.',
+    description: 'Review your selections before creating the repository.',
     why: 'A final review prevents misconfiguration. Once created, the repository, pipeline, and AAP resources are provisioned automatically.',
   },
 ];
@@ -82,19 +82,19 @@ const WIZARD_STEPS: WizardStep[] = [
 export const DEMO_TEMPLATES: DemoTemplate[] = [
   {
     name: 'create-playbook-project',
-    title: 'Ansible Playbook Project',
+    title: 'Ansible Playbook Repository',
     description:
-      'General-purpose playbook project with a standard directory structure, role scaffolding, inventory layout, and CI linting pipeline. The most common starting point for configuration management and server provisioning.',
+      'General-purpose playbook repository with a standard directory structure, role scaffolding, inventory layout, and CI linting pipeline. The most common starting point for configuration management and server provisioning.',
     tags: ['playbook', 'starter', 'config-management'],
     owner: 'group:default/platform-engineering',
     type: 'project',
     defaultPipeline: 'standard',
-    pipelineHint: 'Lint + policy check + EE compatibility. Good for most automation projects.',
+    pipelineHint: 'Lint + policy check + EE compatibility. Good for most automation repositories.',
     steps: WIZARD_STEPS,
   },
   {
     name: 'create-cloud-provisioning-project',
-    title: 'Cloud Provisioning Project',
+    title: 'Cloud Provisioning Repository',
     description:
       'Pre-configured for cloud infrastructure provisioning with relevant cloud collections, credential structure, and dynamic inventory plugins for AWS, Azure, or GCP.',
     tags: ['cloud', 'aws', 'azure', 'gcp', 'provisioning'],
@@ -106,7 +106,7 @@ export const DEMO_TEMPLATES: DemoTemplate[] = [
   },
   {
     name: 'create-network-automation-project',
-    title: 'Network Automation Project',
+    title: 'Network Automation Repository',
     description:
       'Network device configuration and compliance management with collections for Cisco, Juniper, or Arista platforms. Includes NETCONF/RESTCONF/SSH connection profiles.',
     tags: ['network', 'cisco', 'juniper', 'arista', 'compliance'],

@@ -28,13 +28,13 @@ import { Chip, IconButton, Menu, MenuItem as MuiMenuItem, ListItemText } from '@
 import MoreVertIcon from '@material-ui/icons/MoreVert';
 import StarIcon from '@material-ui/icons/Star';
 import { ANNOTATION_EDIT_URL, Entity } from '@backstage/catalog-model';
+import { DEMO_EE_ENTITIES } from '../../common/catalogDemoData';
 import StarBorder from '@material-ui/icons/StarBorder';
 import SearchIcon from '@material-ui/icons/Search';
 import ClearIcon from '@material-ui/icons/Clear';
 import { useApi } from '@backstage/core-plugin-api';
 import { useNavigate } from 'react-router-dom';
 import { CreateCatalog } from './CreateCatalog';
-import { DismissibleBanner } from '../../common/DismissibleBanner';
 import { LastSyncedIndicator } from '../../Admin/LastSyncedIndicator';
 
 const useStyles = makeStyles(theme => ({
@@ -148,7 +148,7 @@ export const EEListPage = ({
   const { isStarredEntity, toggleStarredEntity } = useStarredEntities();
   const [loading, setLoading] = useState<boolean>(true);
   const [showError, setShowError] = useState<boolean>(false);
-  const [errorMessage, setErrorMessage] = useState<string>('');
+  const [errorMessage] = useState<string>('');
   const [allEntities, setAllEntities] = useState<Entity[]>([]);
   const [ansibleComponents, setAnsibleComponents] = useState<Entity[]>([]);
   const [ownerFilter, setOwnerFilter] = useState<'All' | string>('All');
@@ -236,6 +236,7 @@ export const EEListPage = ({
         if (!isMountedRef.current) return;
 
         let items = Array.isArray(entities) ? entities : entities?.items || [];
+        if (items.length === 0) items = DEMO_EE_ENTITIES;
         const sortedData = sortByMetadataTitleAsc(items);
         items = sortedData;
         setAllEntities(items);
@@ -255,14 +256,17 @@ export const EEListPage = ({
         setShowError(false);
       })
 
-      .catch(error => {
+      .catch(() => {
         if (!isMountedRef.current) return;
-
-        if (error) {
-          setErrorMessage(error.message);
-          setShowError(true);
-          setLoading(false);
-        }
+        const items = DEMO_EE_ENTITIES;
+        setAllEntities(items);
+        setFiltered(true);
+        const { owners, tags } = getUniqueOwnersAndTags(items);
+        setAllOwners(['All', ...owners]);
+        setAllTags(['All', ...tags]);
+        fetchOwnerNames(items);
+        setLoading(false);
+        setShowError(false);
       });
   }, [catalogApi, getUniqueOwnersAndTags, fetchOwnerNames]);
 
@@ -510,10 +514,6 @@ export const EEListPage = ({
             </Paper>
           </CatalogFilterLayout.Filters>
           <CatalogFilterLayout.Content>
-            <DismissibleBanner
-              storageKey="ee-catalog"
-              message="Execution environments are container images that package Ansible runtimes, Python dependencies, and collections into a portable, consistent automation runtime. They ensure your automation runs the same way everywhere."
-            />
             <Box mb={1}>
               <LastSyncedIndicator source="Private Automation Hub" timeAgo="8 minutes ago" />
             </Box>
