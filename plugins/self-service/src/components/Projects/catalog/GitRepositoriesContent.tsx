@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { Table, TableColumn } from '@backstage/core-components';
 import {
   Box,
@@ -47,7 +47,7 @@ import Radio from '@material-ui/core/Radio';
 import RadioGroup from '@material-ui/core/RadioGroup';
 import FormControlLabel from '@material-ui/core/FormControlLabel';
 import CloseIcon from '@material-ui/icons/Close';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { CatalogFilterLayout } from '@backstage/plugin-catalog-react';
 import { DismissibleBanner } from '../../common/DismissibleBanner';
 import { EmptyStateLayout, RepositoriesIllustration } from '../../common/EmptyStateLayout';
@@ -58,12 +58,12 @@ import { statusColors } from '../../common/statusColors';
 import {
   GIT_REPOSITORIES,
   PIPELINE_PROFILES,
+  STAGE_DESCRIPTIONS,
   type GitRepository,
   type GovernanceStatus,
   type DiscoveredResourceSummary,
 } from './unifiedDemoData';
-import { DISCOVERED_REPOS, type DiscoveredRepo } from '../repositories/repositoriesDemoData';
-import { ImportProjectWizard } from '../repositories/ImportProjectWizard';
+import { GOVERNANCE_TEMPLATE } from '../create/templatesDemoData';
 
 type GovernanceFilter = 'all' | 'discovered' | 'governed' | 'pushed-to-aap';
 type ProviderFilter = 'all' | 'github' | 'gitlab';
@@ -135,6 +135,8 @@ const useStyles = makeStyles(theme => ({
     display: 'flex',
     alignItems: 'center',
     gap: 4,
+    flexWrap: 'nowrap',
+    justifyContent: 'flex-end',
   },
   resourceBadges: {
     display: 'flex',
@@ -398,10 +400,17 @@ const RowActionsMenu = ({
 };
 
 const STARRED_REPOS_KEY = 'portal-starred-repos';
+const AAP_PUSH_KEY = 'portal-aap-pushed-repos';
 
 const loadStarredRepos = (): Set<string> => {
   try {
     return new Set(JSON.parse(localStorage.getItem(STARRED_REPOS_KEY) || '[]'));
+  } catch { return new Set(); }
+};
+
+const loadAapPushedRepos = (): Set<string> => {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(AAP_PUSH_KEY) || '[]'));
   } catch { return new Set(); }
 };
 
@@ -412,13 +421,42 @@ const saveStarredRepos = (names: Set<string>) => {
 export const GitRepositoriesContent = () => {
   const classes = useStyles();
   const navigate = useNavigate();
+  const location = useLocation();
   const [repos, setRepos] = useState<GitRepository[]>(() => {
     const stored = loadStarredRepos();
-    return GIT_REPOSITORIES.map(r => ({ ...r, starred: stored.has(r.name) ? true : r.starred }));
+    const aapPushed = loadAapPushedRepos();
+    return GIT_REPOSITORIES.map(r => ({
+      ...r,
+      starred: stored.has(r.name) ? true : r.starred,
+      governance: aapPushed.has(r.name) ? 'pushed-to-aap' as GovernanceStatus : r.governance,
+    }));
   });
   const [searchText, setSearchText] = useState('');
   const [filters, setFilters] = useState<ActiveFilters>({ ...DEFAULT_FILTERS });
-  const [importingRepo, setImportingRepo] = useState<DiscoveredRepo | null>(null);
+
+  useEffect(() => {
+    const state = location.state as { justGoverned?: string } | null;
+    if (state?.justGoverned) {
+      const repoName = state.justGoverned;
+      const profile = PIPELINE_PROFILES.find(p => p.id === 'stig-rhel9')!;
+      setRepos(prev => prev.map(r => {
+        if (r.name !== repoName) return r;
+        return {
+          ...r,
+          governance: 'governed' as GovernanceStatus,
+          pipelineProfileId: profile.id,
+          pipeline: profile.stages.map((stageName, idx) => ({
+            name: stageName,
+            status: idx < 2 ? 'passed' as const : idx === 2 ? 'running' as const : 'pending' as const,
+            description: STAGE_DESCRIPTIONS[stageName] ?? '',
+            ...(idx < 2 ? { timestamp: new Date().toISOString(), duration: `${10 + idx * 18}s` } : {}),
+          })),
+          lastCommit: { ...r.lastCommit },
+        };
+      }));
+      window.history.replaceState({}, '');
+    }
+  }, [location.state]);
 
   const toggleStar = useCallback((name: string) => {
     setRepos(prev => {
@@ -443,23 +481,11 @@ export const GitRepositoriesContent = () => {
     setFilters({ ...DEFAULT_FILTERS });
   }, []);
 
-  const handleEnableGovernance = useCallback((repo: GitRepository) => {
-    const discoveredRepo = DISCOVERED_REPOS.find(r => r.name === repo.name);
-    if (discoveredRepo) {
-      setImportingRepo(discoveredRepo);
-    }
-  }, []);
-
-  const handleWizardClose = useCallback(() => {
-    setImportingRepo(null);
-  }, []);
-
-  const handleWizardComplete = useCallback((repoName: string) => {
-    setRepos(prev =>
-      prev.map(r => r.name === repoName ? { ...r, governance: 'governed' as GovernanceStatus } : r),
-    );
-    setImportingRepo(null);
-  }, []);
+  const handleEnableGovernance = useCallback((_repo: GitRepository) => {
+    navigate('/self-service/projects/create', {
+      state: { autoStartTemplate: GOVERNANCE_TEMPLATE.name, repoName: _repo.name },
+    });
+  }, [navigate]);
 
   const [changingProfileRepo, setChangingProfileRepo] = useState<string | null>(null);
   const [selectedProfileId, setSelectedProfileId] = useState<string>('');
@@ -497,16 +523,6 @@ export const GitRepositoriesContent = () => {
     }
     return result;
   }, [repos, searchText, filters]);
-
-  if (importingRepo) {
-    return (
-      <ImportProjectWizard
-        repo={importingRepo}
-        onClose={handleWizardClose}
-        onComplete={handleWizardComplete}
-      />
-    );
-  }
 
   if (repos.length === 0) {
     return (
@@ -621,8 +637,10 @@ export const GitRepositoriesContent = () => {
     },
     {
       title: '',
-      width: '80px',
+      width: '90px',
       sorting: false,
+      cellStyle: { textAlign: 'right' as const, paddingRight: 8 },
+      headerStyle: { textAlign: 'right' as const, paddingRight: 8 },
       render: (row: GitRepository) => (
         <Box className={classes.actionsCell}>
           {row.governance !== 'discovered' && (

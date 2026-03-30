@@ -47,7 +47,7 @@ const CTA_BY_STATUS: Record<
   { label: string; action: string } | null
 > = {
   discovered: { label: 'Enable governance', action: 'enable-governance' },
-  governed: { label: 'Connect to AAP', action: 'connect-aap' },
+  governed: { label: 'Push to AAP', action: 'push-to-aap' },
   'pushed-to-aap': null,
 };
 

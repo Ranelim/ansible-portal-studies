@@ -243,7 +243,7 @@ const useStyles = makeStyles(() => ({
     },
   },
   terminalArea: {
-    height: 140,
+    height: 200,
     backgroundColor: PANEL_BG,
     borderTop: `1px solid ${BORDER}`,
     flexShrink: 0,
@@ -283,18 +283,15 @@ const FILE_TREE = [
     name: 'playbooks',
     type: 'folder' as const,
     children: [
-      { name: 'site.yml', type: 'file' as const },
-      { name: 'patch-all.yml', type: 'file' as const },
-      { name: 'pre-check.yml', type: 'file' as const },
-      { name: 'rollback.yml', type: 'file' as const },
+      { name: 'patch-rhel.yml', type: 'file' as const },
+      { name: 'validate-patches.yml', type: 'file' as const },
     ],
   },
   {
     name: 'roles',
     type: 'folder' as const,
     children: [
-      { name: 'common/', type: 'file' as const },
-      { name: 'patching/', type: 'file' as const },
+      { name: 'patch-baseline/', type: 'file' as const },
     ],
   },
   {
@@ -309,11 +306,14 @@ const FILE_TREE = [
 ];
 
 const EDITOR_CONTENT = `---
+# playbooks/patch-rhel.yml
+# Fix: skip kernel update when reboot is not allowed
 - name: Patch RHEL servers
   hosts: rhel_servers
   become: true
   vars:
     reboot_timeout: 600
+    allow_reboot: true
     snapshot_before_patch: true
     excluded_packages:
       - kernel-debug
@@ -322,18 +322,29 @@ const EDITOR_CONTENT = `---
     - name: Validate connectivity
       ansible.builtin.ping:
 
+    - name: Check available disk space
+      ansible.builtin.shell: |
+        df -BG / | tail -1 | awk '{print $4}'
+      register: disk_space
+      changed_when: false
+
+    - name: Fail if disk space is insufficient
+      ansible.builtin.fail:
+        msg: "Insufficient disk space: {{ disk_space.stdout }}"
+      when: disk_space.stdout | regex_replace('G','') | int < 5
+
     - name: Create pre-patch snapshot
       ansible.builtin.include_role:
-        name: common
+        name: patch-baseline
         tasks_from: snapshot
       when: snapshot_before_patch | bool
 
   tasks:
-    - name: Update all packages
+    - name: Update all packages excluding kernel when reboot disallowed
       ansible.builtin.dnf:
         name: "*"
         state: latest
-        exclude: "{{ excluded_packages | join(',') }}"
+        exclude: "{{ excluded_packages + (['kernel*'] if not allow_reboot else []) | join(',') }}"
       register: patch_result
 
     - name: Check if reboot is required
@@ -341,13 +352,22 @@ const EDITOR_CONTENT = `---
         path: /var/run/reboot-required
       register: reboot_check
 
-    - name: Reboot if required
+    - name: Reboot if required and allowed
       ansible.builtin.reboot:
         reboot_timeout: "{{ reboot_timeout }}"
-      when: reboot_check.stat.exists
+      when:
+        - reboot_check.stat.exists
+        - allow_reboot | bool
+
+    - name: Skip reboot notification
+      ansible.builtin.debug:
+        msg: "Reboot required but skipped — allow_reboot is false"
+      when:
+        - reboot_check.stat.exists
+        - not (allow_reboot | bool)
 
   post_tasks:
-    - name: Verify services are running
+    - name: Verify critical services
       ansible.builtin.service:
         name: "{{ item }}"
         state: started
@@ -364,45 +384,43 @@ const EDITOR_CONTENT = `---
 const CHAT_MESSAGES = [
   {
     role: 'user' as const,
-    text: 'How do I add a pre-check task that validates disk space before patching?',
+    text: 'The pipeline Lint stage failed with "risky reboot without conditional". How do I fix this?',
   },
   {
     role: 'ai' as const,
-    text: `You can add a pre-task that checks available disk space and fails early if it's below a threshold:
+    text: `The linter flagged the \`ansible.builtin.reboot\` task because it runs unconditionally. When \`allow_reboot\` is false, the kernel update should be skipped entirely and the reboot should not execute.
+
+Update the reboot task to add a conditional:
 
 \`\`\`yaml
-- name: Check available disk space
-  ansible.builtin.shell: |
-    df -BG / | tail -1 | awk '{print $4}'
-  register: disk_space
-  changed_when: false
-
-- name: Fail if disk space is low
-  ansible.builtin.fail:
-    msg: "Insufficient disk space: {{ disk_space.stdout }}"
-  when: disk_space.stdout | regex_replace('G','') | int < 5
+- name: Reboot if required and allowed
+  ansible.builtin.reboot:
+    reboot_timeout: "{{ reboot_timeout }}"
+  when:
+    - reboot_check.stat.exists
+    - allow_reboot | bool
 \`\`\`
 
-Add this under \`pre_tasks\` before the snapshot task. It checks that at least 5 GB is free on the root partition.`,
+You should also exclude \`kernel*\` packages from the update when reboot is not allowed, so the host doesn't install a kernel it can't activate.`,
   },
   {
     role: 'user' as const,
-    text: 'Can you also add a task to check if the target is registered with Satellite?',
+    text: 'Good idea. Should I also notify the operator when a reboot was skipped?',
   },
   {
     role: 'ai' as const,
-    text: `Sure. Add this to your pre_tasks:
+    text: `Yes — add a debug task right after the reboot task so the play output clearly shows the skip reason:
 
 \`\`\`yaml
-- name: Verify Satellite registration
-  ansible.builtin.command:
-    cmd: subscription-manager identity
-  register: sat_check
-  failed_when: sat_check.rc != 0
-  changed_when: false
+- name: Skip reboot notification
+  ansible.builtin.debug:
+    msg: "Reboot required but skipped — allow_reboot is false"
+  when:
+    - reboot_check.stat.exists
+    - not (allow_reboot | bool)
 \`\`\`
 
-This will fail the play early if the host isn't registered, preventing partial patch runs on unmanaged hosts.`,
+This makes the skip visible in job logs and AAP output without failing the play.`,
   },
 ];
 
@@ -507,7 +525,7 @@ export const WorkspaceIDEPage = () => {
                     item.children?.map(child => (
                       <Box
                         key={child.name}
-                        className={`${classes.fileItem} ${child.name === 'patch-all.yml' ? classes.fileItemActive : ''}`}
+                        className={`${classes.fileItem} ${child.name === 'patch-rhel.yml' ? classes.fileItemActive : ''}`}
                         style={{ paddingLeft: 36 }}
                       >
                         <InsertDriveFileOutlinedIcon
@@ -537,13 +555,13 @@ export const WorkspaceIDEPage = () => {
               <InsertDriveFileOutlinedIcon
                 style={{ fontSize: 14 }}
               />
-              patch-all.yml
+              patch-rhel.yml
             </Box>
             <Box className={classes.tab}>
               <InsertDriveFileOutlinedIcon
                 style={{ fontSize: 14 }}
               />
-              requirements.yml
+              validate-patches.yml
             </Box>
           </Box>
 
@@ -581,34 +599,52 @@ export const WorkspaceIDEPage = () => {
               </Typography>
             </Box>
             <Box className={classes.terminalContent}>
-              <div style={{ color: COMMENT }}>
-                # Ansible workspace ready
+              <div>
+                <span style={{ color: statusColors.success }}>{projectName}</span>
+                <span style={{ color: TEXT_DIM }}> (main) </span>
+                <span style={{ color: TEXT }}>$ ansible-lint playbooks/patch-rhel.yml</span>
+              </div>
+              <div style={{ color: statusColors.error }}>
+                WARNING: risky-reboot: Reboot task without conditional (patch-rhel.yml:34)
+              </div>
+              <div style={{ color: statusColors.error }}>
+                Failed: 1 failure(s), 0 warning(s) on 1 file(s).
               </div>
               <div>
-                <span style={{ color: statusColors.success }}>
-                  {projectName}
-                </span>
+                <span style={{ color: statusColors.success }}>{projectName}</span>
                 <span style={{ color: TEXT_DIM }}> (main) </span>
-                <span style={{ color: TEXT }}>$ </span>
-                <span style={{ color: TEXT }}>
-                  ansible-lint playbooks/patch-all.yml
-                </span>
+                <span style={{ color: TEXT }}>$ ansible-lint playbooks/patch-rhel.yml</span>
               </div>
               <div style={{ color: statusColors.success }}>
                 Passed: 0 failure(s), 0 warning(s) on 1 file(s).
               </div>
               <div>
-                <span style={{ color: statusColors.success }}>
-                  {projectName}
-                </span>
+                <span style={{ color: statusColors.success }}>{projectName}</span>
+                <span style={{ color: TEXT_DIM }}> (main) </span>
+                <span style={{ color: TEXT }}>$ git commit -am &quot;fix: skip kernel update when reboot is not allowed&quot;</span>
+              </div>
+              <div style={{ color: TEXT_DIM }}>
+                [main b7c3a1f] fix: skip kernel update when reboot is not allowed
+              </div>
+              <div style={{ color: TEXT_DIM }}>
+                &nbsp;1 file changed, 12 insertions(+), 3 deletions(-)
+              </div>
+              <div>
+                <span style={{ color: statusColors.success }}>{projectName}</span>
+                <span style={{ color: TEXT_DIM }}> (main) </span>
+                <span style={{ color: TEXT }}>$ git push origin main</span>
+              </div>
+              <div style={{ color: TEXT_DIM }}>
+                To github.com:acme-corp/rhel-patching.git
+              </div>
+              <div style={{ color: TEXT_DIM }}>
+                &nbsp;&nbsp; a2d8e41..b7c3a1f  main -&gt; main
+              </div>
+              <div>
+                <span style={{ color: statusColors.success }}>{projectName}</span>
                 <span style={{ color: TEXT_DIM }}> (main) </span>
                 <span style={{ color: TEXT }}>$ </span>
-                <span
-                  style={{ color: TEXT }}
-                  className="cursor-blink"
-                >
-                  █
-                </span>
+                <span style={{ color: TEXT }} className="cursor-blink">█</span>
               </div>
             </Box>
           </Box>

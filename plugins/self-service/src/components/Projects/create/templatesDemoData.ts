@@ -79,7 +79,42 @@ const WIZARD_STEPS: WizardStep[] = [
   },
 ];
 
+export const GOVERNANCE_TEMPLATE: DemoTemplate = {
+  name: 'enable-governance',
+  title: 'Enable Governance on Existing Repository',
+  description:
+    'Add a CI/CD pipeline with policy checks, security compliance, and AAP integration to a repository that was already discovered from your connected Git sources.',
+  tags: ['governance', 'pipeline', 'existing-repo'],
+  owner: 'group:default/platform-engineering',
+  type: 'governance',
+  defaultPipeline: 'standard',
+  pipelineHint: 'Select a pipeline profile to enforce on this repository.',
+  steps: [
+    {
+      title: 'Repository details',
+      description: 'Select the discovered repository you want to govern.',
+      why: 'The portal has already discovered this repository and its automation content. This step confirms the repository and lets you set a display name and owner.',
+    },
+    {
+      title: 'Pipeline & governance',
+      description: 'Select the governance pipeline for your automation code.',
+      why: 'Pipelines run automated checks (linting, policy, testing) on every commit so only safe, tested, and compliant playbooks reach production.',
+    },
+    {
+      title: 'Destination (AAP)',
+      description: 'Configure how this repository connects to your Ansible Automation Platform.',
+      why: 'Connecting to AAP lets your automation be executed, scheduled, and monitored centrally.',
+    },
+    {
+      title: 'Review & create',
+      description: 'Review your selections before enabling governance.',
+      why: 'A final review prevents misconfiguration. Once enabled, the pipeline and AAP resources are provisioned automatically.',
+    },
+  ],
+};
+
 export const DEMO_TEMPLATES: DemoTemplate[] = [
+  GOVERNANCE_TEMPLATE,
   {
     name: 'create-playbook-project',
     title: 'Ansible Playbook Repository',

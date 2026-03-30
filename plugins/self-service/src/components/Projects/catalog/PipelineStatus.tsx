@@ -237,7 +237,8 @@ export const PipelineStatusIcons = ({
     console.log(`View log: ${stageName}`);
   };
 
-  const handleAiSummarize = () => {
+  const handleAiSummarize = (e: React.MouseEvent) => {
+    e.stopPropagation();
     const failedStages = stages.filter(s => s.status === 'failed');
     const context = failedStages.length > 0
       ? `Summarize this pipeline failure for ${pipelineName}. Failed stages: ${failedStages.map(s => `${s.name}${s.detail ? ` (${s.detail})` : ''}`).join(', ')}`
@@ -274,6 +275,7 @@ export const PipelineStatusIcons = ({
         open={open}
         anchorEl={anchorEl}
         onClose={handleClose}
+        onClick={(e: React.MouseEvent) => e.stopPropagation()}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
         transformOrigin={{ vertical: 'top', horizontal: 'left' }}
       >
@@ -387,7 +389,7 @@ export const PipelineStatusIcons = ({
 
           <Divider style={{ margin: '8px 0 0' }} />
           <Box className={classes.popoverFooter}>
-            <Link className={classes.footerLink} onClick={() => { /* eslint-disable-next-line no-console */ console.log('View full pipeline'); }}>
+            <Link className={classes.footerLink} onClick={(e: React.MouseEvent) => { e.stopPropagation(); /* eslint-disable-next-line no-console */ console.log('View full pipeline'); }}>
               View full pipeline
               <OpenInNewIcon style={{ fontSize: 12 }} />
             </Link>

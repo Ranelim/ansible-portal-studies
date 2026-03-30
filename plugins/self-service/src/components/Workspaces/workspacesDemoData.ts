@@ -19,10 +19,10 @@ export type DemoWorkspace = {
 export const DEMO_WORKSPACES: DemoWorkspace[] = [
   {
     id: 'ws-1a2b3c',
-    name: 'rhel-patch-automation-ws',
-    projectName: 'rhel-patch-automation',
-    projectTitle: 'rhel-patch-automation',
-    repoUrl: 'https://github.com/acme-corp/rhel-patch-automation',
+    name: 'rhel-patching-ws',
+    projectName: 'rhel-patching',
+    projectTitle: 'rhel-patching',
+    repoUrl: 'https://github.com/acme-corp/rhel-patching',
     branch: 'main',
     ide: 'VS Code (Ansible)',
     status: 'running',

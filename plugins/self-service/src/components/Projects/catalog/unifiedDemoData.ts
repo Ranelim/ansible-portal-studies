@@ -261,22 +261,13 @@ export type GitRepository = {
 };
 
 const DISCOVERED_ONLY_NAMES = new Set([
-  'linux-baseline-hardening',
-  'vmware-lifecycle-ops',
-  'database-backup-automation',
-  'k8s-cluster-provisioning',
-  'windows-server-patching',
-  'load-balancer-configs',
-  'ansible-ee-custom-builds',
+  'network-firewall-rules',
+  'cloud-provisioner',
+  'backup-automation',
 ]);
 
 const PIPELINE_PROFILE_BY_REPO: Record<string, string> = {
-  'rhel-patch-automation': 'stig-rhel9',
-  'cis-compliance-scanner': 'stig-rhel9',
-  'firewall-policy-engine': 'org-default',
-  'aws-provisioner': 'minimal',
-  'web-app-scaling-suite': 'org-default',
-  'network-compliance-checker': 'org-default',
+  'rhel-patching': 'stig-rhel9',
 };
 
 const discoveredByName = new Map(DISCOVERED_REPOS.map(r => [r.name, r]));
@@ -350,7 +341,7 @@ function demoProjectToGitRepository(p: DemoProject): GitRepository {
       timestamp: p.repo.lastCommit.timestamp,
     },
     resources: aggregateResources(p.resources),
-    governance: 'governed',
+    governance: 'discovered',
     pipelineProfileId: profileId,
     pipeline: mapPipelineStagesForProfile(p.pipeline, profileId),
     aap: p.aap,
@@ -366,40 +357,20 @@ function demoProjectToGitRepository(p: DemoProject): GitRepository {
 }
 
 const DISCOVERED_RESOURCE_NAMES: Record<string, Record<string, string[]>> = {
-  'linux-baseline-hardening': {
-    playbook: ['harden-sshd.yml', 'configure-firewalld.yml', 'set-password-policy.yml', 'disable-unused-services.yml', 'apply-cis-benchmarks.yml'],
-    role: ['baseline-security', 'audit-config', 'kernel-hardening'],
-    'collection-dep': ['ansible.posix', 'community.general'],
+  'network-firewall-rules': {
+    playbook: ['apply-rules.yml', 'validate-rules.yml', 'rollback.yml'],
+    role: ['firewall-base'],
+    'collection-dep': ['paloalto.panos', 'ansible.netcommon'],
   },
-  'vmware-lifecycle-ops': {
-    playbook: ['provision-vm.yml', 'snapshot-vm.yml', 'decommission-vm.yml', 'resize-vm.yml', 'migrate-vm.yml', 'clone-template.yml', 'update-vmtools.yml', 'cleanup-snapshots.yml'],
-    role: ['vmware-base', 'vmware-networking'],
-    'collection-dep': ['community.vmware', 'ansible.netcommon', 'community.general'],
-    'execution-environment': ['ee-vmware-ops.yml'],
+  'cloud-provisioner': {
+    playbook: ['provision-ec2.yml', 'teardown.yml'],
+    'collection-dep': ['amazon.aws'],
+    'execution-environment': ['ee-cloud-ops.yml'],
   },
-  'database-backup-automation': {
-    playbook: ['backup-postgres.yml', 'backup-mysql.yml', 'restore-database.yml', 'rotate-backups.yml'],
+  'backup-automation': {
+    playbook: ['backup-postgres.yml', 'backup-mysql.yml', 'restore-database.yml'],
     role: ['db-backup-agent'],
     'collection-dep': ['community.postgresql', 'community.mysql'],
-  },
-  'k8s-cluster-provisioning': {
-    playbook: ['provision-cluster.yml', 'add-worker-node.yml', 'upgrade-cluster.yml', 'configure-ingress.yml', 'setup-monitoring.yml', 'deploy-cert-manager.yml'],
-    role: ['k8s-base', 'k8s-networking', 'k8s-storage', 'k8s-monitoring'],
-    'collection-dep': ['kubernetes.core', 'cloud.common', 'amazon.aws', 'community.general', 'ansible.utils'],
-    'execution-environment': ['ee-k8s-provisioner.yml'],
-  },
-  'windows-server-patching': {
-    playbook: ['patch-windows.yml', 'pre-patch-snapshot.yml', 'validate-patches.yml'],
-    role: ['win-patch-baseline', 'win-reboot-handler'],
-    'collection-dep': ['ansible.windows'],
-  },
-  'load-balancer-configs': {
-    playbook: ['configure-f5-pool.yml', 'update-ssl-certs.yml', 'add-health-monitor.yml', 'drain-node.yml'],
-    role: ['f5-base-config'],
-    'collection-dep': ['f5networks.f5_modules', 'ansible.netcommon'],
-  },
-  'ansible-ee-custom-builds': {
-    'execution-environment': ['ee-network-tools.yml', 'ee-cloud-provisioner.yml', 'ee-security-scanner.yml', 'ee-python312-base.yml'],
   },
 };
 

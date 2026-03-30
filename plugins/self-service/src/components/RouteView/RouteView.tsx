@@ -24,6 +24,7 @@ import { PipelinePoliciesPage } from '../Admin/PipelinePoliciesPage';
 import { LearningPage } from '../Learning/LearningPage';
 import { WorkspacesPage } from '../Workspaces/WorkspacesPage';
 import { WorkspaceIDEPage } from '../Workspaces/WorkspaceIDEPage';
+import { SetupWizardPage } from '../Setup/SetupWizardPage';
 
 export const RouteView = () => {
   return (
@@ -97,6 +98,7 @@ export const RouteView = () => {
         <Route path="admin/sync-activity" element={<SyncActivityPage />} />
         <Route path="admin/sync-activity/:syncId" element={<SyncJobDetailPage />} />
         <Route path="admin/pipeline-policies" element={<PipelinePoliciesPage />} />
+        <Route path="setup" element={<SetupWizardPage />} />
         {/* Default redirects */}
         <Route
           path="/catalog/*"

@@ -31,8 +31,8 @@ import { getThemes } from '@red-hat-developer-hub/backstage-plugin-theme';
 import {
   AlertDisplay,
   OAuthRequestDialog,
-  SignInPage,
 } from '@backstage/core-components';
+import { CustomSignInPage } from './components/SignIn/CustomSignInPage';
 import { createApp } from '@backstage/app-defaults';
 import { AppRouter, FlatRoutes } from '@backstage/core-app-api';
 import { CatalogGraphPage } from '@backstage/plugin-catalog-graph';
@@ -78,10 +78,8 @@ const app = createApp({
   },
   components: {
     SignInPage: props => (
-      <SignInPage
+      <CustomSignInPage
         {...props}
-        align="center"
-        title="Select a sign-in method"
         providers={['guest', ...providers]}
       />
     ),

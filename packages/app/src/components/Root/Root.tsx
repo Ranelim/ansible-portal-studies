@@ -25,6 +25,7 @@ import SyncIcon from '@material-ui/icons/Sync';
 import LinkIcon from '@material-ui/icons/Link';
 import VpnKeyIcon from '@material-ui/icons/VpnKey';
 import SecurityIcon from '@material-ui/icons/Security';
+import SettingsIcon from '@material-ui/icons/Settings';
 
 const useSidebarLogoStyles = makeStyles({
   root: {
@@ -88,11 +89,6 @@ export const Root = ({ children }: PropsWithChildren<{}>) => {
               text="Git repositories"
             />
             <SidebarItem
-              icon={AddCircleOutlineIcon}
-              to="/create"
-              text="Templates"
-            />
-            <SidebarItem
               icon={MemoryIcon}
               to="/self-service/ee"
               text="Execution Environments"
@@ -104,6 +100,11 @@ export const Root = ({ children }: PropsWithChildren<{}>) => {
             />
             <SidebarDivider />
             <SidebarSectionLabel text="Tools" />
+            <SidebarItem
+              icon={AddCircleOutlineIcon}
+              to="/create"
+              text="Templates"
+            />
             <SidebarItem
               icon={BuildIcon}
               to="/self-service/workspaces"
@@ -130,6 +131,11 @@ export const Root = ({ children }: PropsWithChildren<{}>) => {
                 icon={SecurityIcon}
                 to="/self-service/admin/pipeline-policies"
                 text="Pipeline Policies"
+              />
+              <SidebarItem
+                icon={SettingsIcon}
+                to="/self-service/setup"
+                text="Setup Wizard"
               />
               <SidebarItem
                 icon={VpnKeyIcon}

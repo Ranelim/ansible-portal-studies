@@ -26,6 +26,19 @@ import {
   ListItemText,
   Paper,
   Snackbar,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Select,
+  FormControl,
+  InputLabel,
+  Stepper,
+  Step,
+  StepLabel,
+  LinearProgress,
+  CircularProgress,
 } from '@material-ui/core';
 import Breadcrumbs from '@material-ui/core/Breadcrumbs';
 import NavigateNextIcon from '@material-ui/icons/NavigateNext';
@@ -51,6 +64,7 @@ import CategoryIcon from '@material-ui/icons/Category';
 import InsertDriveFileOutlinedIcon from '@material-ui/icons/InsertDriveFileOutlined';
 import FolderOutlinedIcon from '@material-ui/icons/FolderOutlined';
 import SecurityIcon from '@material-ui/icons/Security';
+import CloseIcon from '@material-ui/icons/Close';
 import {
   DEMO_PROJECTS,
   DemoProject,
@@ -282,9 +296,13 @@ const statusColor = (status: string) => {
 const OverviewTab = ({
   project,
   onViewLatestRun,
+  isPushedToAap,
+  onPushToAap,
 }: {
   project: DemoProject;
   onViewLatestRun: () => void;
+  isPushedToAap: boolean;
+  onPushToAap: () => void;
 }) => {
   const classes = useProjectDetailStyles();
 
@@ -444,7 +462,7 @@ const OverviewTab = ({
 
       {/* Sidebar */}
       <Box className={classes.sidebarColumn}>
-        <AapConnectionCard project={project} />
+        <AapConnectionCard project={project} isPushedToAap={isPushedToAap} onPushToAap={onPushToAap} />
         <AboutCard project={project} />
         <SourceCard project={project} />
         <LinksCard project={project} />
@@ -456,15 +474,314 @@ const OverviewTab = ({
 // ---------------------------------------------------------------------------
 // Sidebar Cards
 // ---------------------------------------------------------------------------
-const AapConnectionCard = ({ project }: { project: DemoProject }) => {
+const AAP_PUSH_KEY = 'portal-aap-pushed-repos';
+
+function loadAapPushedRepos(): Set<string> {
+  try {
+    const raw = localStorage.getItem(AAP_PUSH_KEY);
+    return raw ? new Set(JSON.parse(raw)) : new Set();
+  } catch { return new Set(); }
+}
+
+function saveAapPushedRepos(repos: Set<string>) {
+  localStorage.setItem(AAP_PUSH_KEY, JSON.stringify([...repos]));
+}
+
+// ---------------------------------------------------------------------------
+// Push to AAP Modal
+// ---------------------------------------------------------------------------
+const PUSH_STEPS = ['AAP Project', 'Job Template', 'Review'];
+
+const PushToAapModal = ({
+  open,
+  project,
+  onClose,
+  onComplete,
+}: {
+  open: boolean;
+  project: DemoProject;
+  onClose: () => void;
+  onComplete: () => void;
+}) => {
+  const [activeStep, setActiveStep] = useState(0);
+  const [pushing, setPushing] = useState(false);
+  const [done, setDone] = useState(false);
+
+  const playbooks = project.resources.filter(r => r.type === 'playbook');
+  const defaultPlaybook = playbooks[0]?.name ?? 'site.yml';
+
+  const [form, setForm] = useState({
+    projectName: project.title,
+    projectDescription: `Automation content from ${project.repo.url.split('/').pop()}`,
+    scmBranch: project.repo.branch,
+    templateName: project.title,
+    playbook: defaultPlaybook,
+    inventory: 'RHEL Production Hosts',
+    credential: 'Machine — rhel-ssh-key',
+    executionEnvironment: 'Default EE — RHEL 9',
+  });
+
+  const updateField = (field: string, value: string) =>
+    setForm(prev => ({ ...prev, [field]: value }));
+
+  const handlePush = () => {
+    setPushing(true);
+    setTimeout(() => {
+      setPushing(false);
+      setDone(true);
+    }, 2000);
+  };
+
+  const handleDone = () => {
+    setActiveStep(0);
+    setDone(false);
+    onComplete();
+  };
+
+  const handleClose = () => {
+    if (!pushing) {
+      setActiveStep(0);
+      setDone(false);
+      onClose();
+    }
+  };
+
+  const fieldRow = (label: string, value: string, field: string, opts?: { select?: string[]; disabled?: boolean; multiline?: boolean }) => (
+    <Box style={{ marginBottom: 16 }}>
+      {opts?.select ? (
+        <FormControl fullWidth variant="outlined" size="small">
+          <InputLabel>{label}</InputLabel>
+          <Select
+            native
+            value={value}
+            onChange={e => updateField(field, e.target.value as string)}
+            label={label}
+          >
+            {opts.select.map(o => (
+              <option key={o} value={o}>{o}</option>
+            ))}
+          </Select>
+        </FormControl>
+      ) : (
+        <TextField
+          fullWidth
+          variant="outlined"
+          size="small"
+          label={label}
+          value={value}
+          disabled={opts?.disabled}
+          multiline={opts?.multiline}
+          rows={opts?.multiline ? 2 : 1}
+          onChange={e => updateField(field, e.target.value)}
+        />
+      )}
+    </Box>
+  );
+
+  const reviewRow = (label: string, value: string) => (
+    <Box display="flex" style={{ padding: '5px 0', gap: 8 }}>
+      <Typography variant="body2" color="textSecondary" style={{ fontSize: 12, minWidth: 140, flexShrink: 0 }}>
+        {label}
+      </Typography>
+      <Typography variant="body2" style={{ fontSize: 12, fontWeight: 500 }}>
+        {value}
+      </Typography>
+    </Box>
+  );
+
+  return (
+    <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
+      <DialogTitle style={{ paddingBottom: 0 }}>
+        <Box display="flex" alignItems="center" justifyContent="space-between">
+          <Box display="flex" alignItems="center" style={{ gap: 8 }}>
+            <CloudUploadIcon style={{ color: statusColors.info }} />
+            <Typography variant="h6" style={{ fontSize: 16, fontWeight: 600 }}>
+              Push to AAP
+            </Typography>
+          </Box>
+          <IconButton size="small" onClick={handleClose} disabled={pushing}>
+            <CloseIcon style={{ fontSize: 18 }} />
+          </IconButton>
+        </Box>
+      </DialogTitle>
+
+      <DialogContent style={{ paddingTop: 8 }}>
+        {!done && (
+          <Stepper activeStep={activeStep} alternativeLabel style={{ padding: '16px 0' }}>
+            {PUSH_STEPS.map(label => (
+              <Step key={label}>
+                <StepLabel>{label}</StepLabel>
+              </Step>
+            ))}
+          </Stepper>
+        )}
+
+        {/* Step 0: AAP Project */}
+        {activeStep === 0 && !done && (
+          <Box>
+            <Typography variant="body2" color="textSecondary" style={{ fontSize: 12, marginBottom: 16 }}>
+              Configure the AAP project that will sync content from your Git repository.
+            </Typography>
+            {fieldRow('Project name', form.projectName, 'projectName')}
+            {fieldRow('Description', form.projectDescription, 'projectDescription', { multiline: true })}
+            {fieldRow('Source control URL', project.repo.url, 'scmUrl', { disabled: true })}
+            {fieldRow('Source control branch', form.scmBranch, 'scmBranch')}
+          </Box>
+        )}
+
+        {/* Step 1: Job Template */}
+        {activeStep === 1 && !done && (
+          <Box>
+            <Typography variant="body2" color="textSecondary" style={{ fontSize: 12, marginBottom: 16 }}>
+              Configure the job template that will run automation from this repository.
+            </Typography>
+            {fieldRow('Template name', form.templateName, 'templateName')}
+            {fieldRow('Playbook', form.playbook, 'playbook', {
+              select: playbooks.length > 0 ? playbooks.map(p => p.name) : [defaultPlaybook],
+            })}
+            {fieldRow('Inventory', form.inventory, 'inventory', {
+              select: ['RHEL Production Hosts', 'RHEL Staging Hosts', 'All Hosts'],
+            })}
+            {fieldRow('Credential', form.credential, 'credential', {
+              select: ['Machine — rhel-ssh-key', 'Machine — root-key', 'Vault — prod-vault'],
+            })}
+            {fieldRow('Execution environment', form.executionEnvironment, 'executionEnvironment', {
+              select: ['Default EE — RHEL 9', 'Custom EE — rhel-patching-ee', 'Minimal EE'],
+            })}
+          </Box>
+        )}
+
+        {/* Step 2: Review */}
+        {activeStep === 2 && !done && !pushing && (
+          <Box>
+            <Typography variant="body2" color="textSecondary" style={{ fontSize: 12, marginBottom: 12 }}>
+              Review the resources that will be created in your AAP controller.
+            </Typography>
+            <Paper variant="outlined" style={{ padding: '12px 16px', marginBottom: 12 }}>
+              <Typography variant="subtitle2" style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
+                AAP Project
+              </Typography>
+              {reviewRow('Name', form.projectName)}
+              {reviewRow('Source', project.repo.url)}
+              {reviewRow('Branch', form.scmBranch)}
+            </Paper>
+            <Paper variant="outlined" style={{ padding: '12px 16px' }}>
+              <Typography variant="subtitle2" style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
+                Job Template
+              </Typography>
+              {reviewRow('Name', form.templateName)}
+              {reviewRow('Playbook', form.playbook)}
+              {reviewRow('Inventory', form.inventory)}
+              {reviewRow('Credential', form.credential)}
+              {reviewRow('Execution environment', form.executionEnvironment)}
+            </Paper>
+          </Box>
+        )}
+
+        {/* Pushing state */}
+        {pushing && (
+          <Box style={{ textAlign: 'center', padding: '32px 0' }}>
+            <CircularProgress size={40} style={{ marginBottom: 16 }} />
+            <Typography variant="body1" style={{ fontWeight: 500, marginBottom: 8 }}>
+              Pushing to AAP...
+            </Typography>
+            <Typography variant="body2" color="textSecondary" style={{ fontSize: 12 }}>
+              Creating AAP project and job template
+            </Typography>
+            <LinearProgress style={{ marginTop: 16, borderRadius: 4 }} />
+          </Box>
+        )}
+
+        {/* Success state */}
+        {done && (
+          <Box style={{ textAlign: 'center', padding: '24px 0' }}>
+            <CheckCircleIcon style={{ fontSize: 48, color: statusColors.success, marginBottom: 12 }} />
+            <Typography variant="h6" style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>
+              Successfully pushed to AAP
+            </Typography>
+            <Typography variant="body2" color="textSecondary" style={{ fontSize: 12, marginBottom: 16 }}>
+              Your AAP project and job template have been created. Content will sync automatically from your repository.
+            </Typography>
+            <Paper variant="outlined" style={{ padding: '10px 16px', textAlign: 'left', marginBottom: 8 }}>
+              <Box display="flex" alignItems="center" style={{ gap: 8 }}>
+                <CheckCircleIcon style={{ fontSize: 16, color: statusColors.success }} />
+                <Typography variant="body2" style={{ fontSize: 12 }}>
+                  AAP Project: <strong>{form.projectName}</strong>
+                </Typography>
+              </Box>
+            </Paper>
+            <Paper variant="outlined" style={{ padding: '10px 16px', textAlign: 'left' }}>
+              <Box display="flex" alignItems="center" style={{ gap: 8 }}>
+                <CheckCircleIcon style={{ fontSize: 16, color: statusColors.success }} />
+                <Typography variant="body2" style={{ fontSize: 12 }}>
+                  Job Template: <strong>{form.templateName}</strong>
+                </Typography>
+              </Box>
+            </Paper>
+          </Box>
+        )}
+      </DialogContent>
+
+      <DialogActions style={{ padding: '8px 24px 16px' }}>
+        {!done && !pushing && (
+          <>
+            <Button
+              onClick={activeStep === 0 ? handleClose : () => setActiveStep(prev => prev - 1)}
+              style={{ textTransform: 'none' }}
+            >
+              {activeStep === 0 ? 'Cancel' : 'Back'}
+            </Button>
+            {activeStep < 2 ? (
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={() => setActiveStep(prev => prev + 1)}
+                style={{ textTransform: 'none' }}
+              >
+                Next
+              </Button>
+            ) : (
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={handlePush}
+                startIcon={<CloudUploadIcon />}
+                style={{ textTransform: 'none' }}
+              >
+                Push to AAP
+              </Button>
+            )}
+          </>
+        )}
+        {done && (
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={handleDone}
+            style={{ textTransform: 'none' }}
+          >
+            Done
+          </Button>
+        )}
+      </DialogActions>
+    </Dialog>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// Sidebar AAP Card
+// ---------------------------------------------------------------------------
+const AapConnectionCard = ({
+  project,
+  isPushedToAap,
+  onPushToAap,
+}: {
+  project: DemoProject;
+  isPushedToAap: boolean;
+  onPushToAap: () => void;
+}) => {
   const classes = useProjectDetailStyles();
-  const isProjectPushed = project.aap.project === 'pushed';
-  const isTemplatePushed = project.aap.jobTemplate === 'pushed';
-  const isConnected = isProjectPushed && isTemplatePushed;
-  const hasJobRuns =
-    project.lastJobRun.status === 'success' ||
-    project.lastJobRun.status === 'running';
-  const lastRunStatus = project.lastJobRun.status;
+  const isConnected = isPushedToAap;
 
   const statusRow = (label: string, connected: boolean, detail?: string) => (
     <Box display="flex" alignItems="center" style={{ gap: 8, padding: '6px 0' }}>
@@ -492,24 +809,18 @@ const AapConnectionCard = ({ project }: { project: DemoProject }) => {
         <Typography className={classes.cardTitle}>AAP connection</Typography>
         {statusRow(
           'AAP project',
-          isProjectPushed,
-          isProjectPushed ? `Syncing from ${project.repo.url.split('/').pop()}` : undefined,
+          isConnected,
+          isConnected ? `Syncing from ${project.repo.url.split('/').pop()}` : undefined,
         )}
         {statusRow(
           'Job template',
-          isTemplatePushed,
-          isTemplatePushed ? `Template: ${project.title}` : undefined,
+          isConnected,
+          isConnected ? `Template: ${project.title}` : undefined,
         )}
         {isConnected && (
           <>
             <Divider style={{ margin: '8px 0' }} />
-            {statusRow(
-              'Last job run',
-              hasJobRuns,
-              hasJobRuns
-                ? `${lastRunStatus === 'success' ? 'Succeeded' : 'Running'} · ${project.lastJobRun.timestamp ?? ''}`
-                : 'No jobs have run yet',
-            )}
+            {statusRow('Last job run', false, 'No jobs have run yet')}
           </>
         )}
         {!isConnected && (
@@ -521,17 +832,16 @@ const AapConnectionCard = ({ project }: { project: DemoProject }) => {
             borderLeft: `3px solid ${statusColors.info}`,
           }}>
             <Typography variant="body2" style={{ fontSize: 12, lineHeight: 1.5 }}>
-              {!isProjectPushed
-                ? 'Connect this repository to AAP to create a project and enable automatic syncing.'
-                : 'Create a job template to run automation from this repository in AAP.'}
+              Push this repository to AAP to create an AAP project and job template. Content will sync automatically on each pipeline pass.
             </Typography>
             <Button
               variant="outlined"
               color="primary"
               size="small"
               style={{ textTransform: 'none', marginTop: 8, fontSize: 12, borderRadius: 16 }}
+              onClick={onPushToAap}
             >
-              {!isProjectPushed ? 'Connect to AAP' : 'Create job template'}
+              Push to AAP
             </Button>
           </Box>
         )}
@@ -1080,11 +1390,17 @@ const PipelineTab = ({ project, initialRunId }: { project: DemoProject; initialR
 // ---------------------------------------------------------------------------
 // AAP Activity Tab
 // ---------------------------------------------------------------------------
-const AapActivityTab = ({ project }: { project: DemoProject }) => {
+const AapActivityTab = ({
+  project,
+  isPushedToAap,
+  onPushToAap,
+}: {
+  project: DemoProject;
+  isPushedToAap: boolean;
+  onPushToAap: () => void;
+}) => {
   const classes = useProjectDetailStyles();
-  const isPushed =
-    project.aap.project === 'pushed' &&
-    project.aap.jobTemplate === 'pushed';
+  const isPushed = isPushedToAap;
 
   const jobColumns: TableColumn<JobRunEntry>[] = [
     {
@@ -1157,9 +1473,9 @@ const AapActivityTab = ({ project }: { project: DemoProject }) => {
                 AAP Project
               </Typography>
               <Box display="flex" alignItems="center" style={{ gap: 8 }}>
-                <AapStatusIcon status={project.aap.project} />
+                <AapStatusIcon status={isPushed ? 'pushed' : 'not-pushed'} />
                 <Typography className={classes.summaryValue}>
-                  {aapStatusText(project.aap.project)}
+                  {aapStatusText(isPushed ? 'pushed' : 'not-pushed')}
                 </Typography>
               </Box>
             </Paper>
@@ -1168,9 +1484,9 @@ const AapActivityTab = ({ project }: { project: DemoProject }) => {
                 Job Template
               </Typography>
               <Box display="flex" alignItems="center" style={{ gap: 8 }}>
-                <AapStatusIcon status={project.aap.jobTemplate} />
+                <AapStatusIcon status={isPushed ? 'pushed' : 'not-pushed'} />
                 <Typography className={classes.summaryValue}>
-                  {aapStatusText(project.aap.jobTemplate)}
+                  {aapStatusText(isPushed ? 'pushed' : 'not-pushed')}
                 </Typography>
               </Box>
             </Paper>
@@ -1211,6 +1527,7 @@ const AapActivityTab = ({ project }: { project: DemoProject }) => {
               color="primary"
               startIcon={<CloudUploadIcon />}
               style={{ textTransform: 'none', fontWeight: 600 }}
+              onClick={onPushToAap}
             >
               Push to AAP
             </Button>
@@ -1578,11 +1895,17 @@ const ProjectYamlTab = ({ project }: { project: DemoProject }) => {
 // ---------------------------------------------------------------------------
 // Actions Menu
 // ---------------------------------------------------------------------------
-const ActionsMenu = ({ project }: { project: DemoProject }) => {
+const ActionsMenu = ({
+  project,
+  isPushedToAap,
+  onPushToAap,
+}: {
+  project: DemoProject;
+  isPushedToAap: boolean;
+  onPushToAap: () => void;
+}) => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const isPushed =
-    project.aap.project === 'pushed' &&
-    project.aap.jobTemplate === 'pushed';
+  const isPushed = isPushedToAap;
 
   return (
     <>
@@ -1623,7 +1946,7 @@ const ActionsMenu = ({ project }: { project: DemoProject }) => {
             <ListItemText primary="View in AAP" />
           </MenuItem>
         ) : (
-          <MenuItem onClick={() => setAnchorEl(null)}>
+          <MenuItem onClick={() => { setAnchorEl(null); onPushToAap(); }}>
             <ListItemIcon>
               <CloudUploadIcon fontSize="small" />
             </ListItemIcon>
@@ -1659,6 +1982,23 @@ export const ProjectDetailsPage = () => {
   const [pipelineRunId, setPipelineRunId] = useState<number | null>(null);
   const [starred, setStarred] = useState(false);
   const [workspaceSnackbar, setWorkspaceSnackbar] = useState(false);
+  const [isPushedToAap, setIsPushedToAap] = useState(() =>
+    loadAapPushedRepos().has(projectName ?? ''),
+  );
+  const [pushSnackbar, setPushSnackbar] = useState(false);
+  const [showPushModal, setShowPushModal] = useState(false);
+
+  const handlePushToAap = useCallback(() => {
+    setIsPushedToAap(true);
+    const pushed = loadAapPushedRepos();
+    pushed.add(projectName ?? '');
+    saveAapPushedRepos(pushed);
+    setPushSnackbar(true);
+  }, [projectName]);
+
+  const openPushModal = useCallback(() => {
+    setShowPushModal(true);
+  }, []);
 
   const project = useMemo(() => {
     const found = DEMO_PROJECTS.find(p => p.name === projectName);
@@ -1705,10 +2045,6 @@ export const ProjectDetailsPage = () => {
         ? 'passed'
         : 'pending';
 
-  const isPushed =
-    project.aap.project === 'pushed' &&
-    project.aap.jobTemplate === 'pushed';
-
   return (
     <Page themeId="app">
       <Content>
@@ -1751,7 +2087,7 @@ export const ProjectDetailsPage = () => {
             >
               Edit in Workspace
             </Button>
-            <ActionsMenu project={project} />
+            <ActionsMenu project={project} isPushedToAap={isPushedToAap} onPushToAap={openPushModal} />
           </Box>
         </Box>
 
@@ -1761,8 +2097,11 @@ export const ProjectDetailsPage = () => {
 
         <Box className={classes.chipsRow}>
           <GovernanceStatusBadge
-            status={isPushed ? 'pushed-to-aap' : 'governed'}
+            status={isPushedToAap ? 'pushed-to-aap' : 'governed'}
             variant="header"
+            onAction={(action) => {
+              if (action === 'push-to-aap') openPushModal();
+            }}
           />
           <Tooltip
             title={
@@ -1829,6 +2168,8 @@ export const ProjectDetailsPage = () => {
         {selectedTab === 0 && (
           <OverviewTab
             project={project}
+            isPushedToAap={isPushedToAap}
+            onPushToAap={openPushModal}
             onViewLatestRun={() => {
               const latestId = project.pipelineHistory[0]?.id ?? null;
               setPipelineRunId(latestId);
@@ -1839,7 +2180,7 @@ export const ProjectDetailsPage = () => {
         {selectedTab === 1 && <ReadmeTab project={project} />}
         {selectedTab === 2 && <ProjectYamlTab project={project} />}
         {selectedTab === 3 && <PipelineTab project={project} initialRunId={pipelineRunId} />}
-        {selectedTab === 4 && <AapActivityTab project={project} />}
+        {selectedTab === 4 && <AapActivityTab project={project} isPushedToAap={isPushedToAap} onPushToAap={openPushModal} />}
         {selectedTab === 5 && <ResourcesTab project={project} />}
       </Content>
       <Snackbar
@@ -1848,6 +2189,22 @@ export const ProjectDetailsPage = () => {
         onClose={() => setWorkspaceSnackbar(false)}
         message={`Opening workspace for ${project.title}...`}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      />
+      <Snackbar
+        open={pushSnackbar}
+        autoHideDuration={4000}
+        onClose={() => setPushSnackbar(false)}
+        message={`Successfully connected ${project.title} to AAP. Project and job template created.`}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      />
+      <PushToAapModal
+        open={showPushModal}
+        project={project}
+        onClose={() => setShowPushModal(false)}
+        onComplete={() => {
+          setShowPushModal(false);
+          handlePushToAap();
+        }}
       />
     </Page>
   );
