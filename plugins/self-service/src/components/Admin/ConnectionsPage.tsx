@@ -28,6 +28,7 @@ import ErrorOutlineIcon from '@material-ui/icons/ErrorOutline';
 import LinkOffIcon from '@material-ui/icons/LinkOff';
 import DeleteOutlineIcon from '@material-ui/icons/DeleteOutline';
 import SettingsIcon from '@material-ui/icons/Settings';
+import PlaylistAddCheckIcon from '@material-ui/icons/PlaylistAddCheck';
 import { DEMO_CONNECTIONS, ConnectionProvider } from './syncDemoData';
 import { DismissibleBanner } from '../common/DismissibleBanner';
 import { PageHelpIcon } from '../common/PageHelpIcon';
@@ -148,7 +149,56 @@ const useStyles = makeStyles(theme => ({
     color: theme.palette.text.secondary,
     marginBottom: theme.spacing(1),
   },
+  setupBanner: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: theme.spacing(2),
+    padding: theme.spacing(2, 2.5),
+    borderRadius: 8,
+    border: `1px solid ${theme.palette.type === 'dark' ? 'rgba(0,102,204,0.3)' : '#BEE1F4'}`,
+    backgroundColor: theme.palette.type === 'dark' ? 'rgba(0,102,204,0.08)' : '#E7F1FA',
+    marginBottom: theme.spacing(3),
+  },
+  setupBannerIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: theme.palette.type === 'dark' ? 'rgba(0,102,204,0.2)' : '#BEE1F4',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+    color: '#0066CC',
+  },
+  setupBannerText: {
+    flex: 1,
+  },
+  setupBannerTitle: {
+    fontWeight: 600,
+    fontSize: 14,
+    marginBottom: 2,
+  },
+  setupBannerDescription: {
+    fontSize: 13,
+    lineHeight: 1.5,
+    color: theme.palette.text.secondary,
+  },
 }));
+
+const getEmptyStateDescription = (type: ConnectionProvider['type']): string => {
+  switch (type) {
+    case 'aap':
+      return 'Connect your AAP Controller to enable user authentication, job template discovery, and content synchronization.';
+    case 'pah':
+      return 'Connect your Private Automation Hub to discover curated collections and execution environments from your organization.';
+    case 'git':
+      return 'Connect to discover automation content in Git repositories, enable dev workspaces, and create new projects.';
+    case 'registry':
+      return 'Enable public content sources like Red Hat Certified Content, Validated Content, or Ansible Galaxy.';
+    default:
+      return 'Connect this integration to extend portal capabilities.';
+  }
+};
 
 const providerColor = (type: ConnectionProvider['type']): string => {
   switch (type) {
@@ -272,14 +322,26 @@ const ProviderCard = ({ provider }: { provider: ConnectionProvider }) => {
                   Not configured
                 </Typography>
               </Box>
-              <Box className={classes.cardActions} style={{ marginTop: 16 }}>
+              <Typography
+                variant="body2"
+                style={{
+                  fontSize: 12,
+                  color: '#9e9e9e',
+                  lineHeight: 1.5,
+                  marginTop: 4,
+                  marginBottom: 8,
+                }}
+              >
+                {getEmptyStateDescription(provider.type)}
+              </Typography>
+              <Box className={classes.cardActions} style={{ marginTop: 8 }}>
                 <Button
-                  variant="outlined"
+                  variant="contained"
                   color="primary"
                   size="small"
                   className={classes.actionButton}
                 >
-                  Connect
+                  Connect {provider.name.split(' ')[0]}
                 </Button>
               </Box>
             </>
@@ -393,6 +455,12 @@ export const ConnectionsPage = () => {
   );
   const sourceControlProviders = DEMO_CONNECTIONS.filter(c => c.type === 'git');
 
+  const unconfiguredCount = DEMO_CONNECTIONS.filter(
+    c => c.status === 'Not configured',
+  ).length;
+  const totalCount = DEMO_CONNECTIONS.length;
+  const configuredCount = totalCount - unconfiguredCount;
+
   return (
     <Page themeId="app">
       <Header
@@ -414,6 +482,23 @@ export const ConnectionsPage = () => {
           storageKey="admin-connections"
           message="Connect the portal to your automation infrastructure. Add Ansible Automation Platform controllers, Git providers, and content registries to enable content discovery, sync, and project deployment."
         />
+
+        {unconfiguredCount > 0 && (
+          <Box className={classes.setupBanner}>
+            <Box className={classes.setupBannerIcon}>
+              <PlaylistAddCheckIcon style={{ fontSize: 20 }} />
+            </Box>
+            <Box className={classes.setupBannerText}>
+              <Typography className={classes.setupBannerTitle}>
+                {configuredCount} of {totalCount} integrations connected
+              </Typography>
+              <Typography className={classes.setupBannerDescription}>
+                Connect additional integrations to unlock content discovery, project creation, and team collaboration.
+                Use the Quick start guide from the Help menu (?) for step-by-step instructions.
+              </Typography>
+            </Box>
+          </Box>
+        )}
         <Typography className={classes.sectionTitle}>
           Automation & Content Platforms
         </Typography>

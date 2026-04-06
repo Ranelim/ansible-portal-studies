@@ -135,7 +135,7 @@ export const Root = ({ children }: PropsWithChildren<{}>) => {
               <SidebarItem
                 icon={SettingsIcon}
                 to="/self-service/setup"
-                text="Setup Wizard"
+                text="Initial Setup"
               />
               <SidebarItem
                 icon={VpnKeyIcon}

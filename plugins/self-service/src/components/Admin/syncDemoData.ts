@@ -67,7 +67,7 @@ export const DEMO_CONNECTIONS: ConnectionProvider[] = [
     status: 'Active',
     lastSync: '3 minutes ago',
     host: 'aap-controller.example.com',
-    auth: 'Client Credentials & OAuth',
+    auth: 'OAuth (configured during setup)',
     syncJobs: [
       { name: 'Job Templates', interval: 'Every 30 minutes', enabled: true },
       { name: 'Teams & Users', interval: 'Every 1 hour', enabled: true },
@@ -78,25 +78,15 @@ export const DEMO_CONNECTIONS: ConnectionProvider[] = [
     id: 'pah',
     name: 'Private Automation Hub (PAH)',
     type: 'pah',
-    status: 'Active',
-    lastSync: '8 minutes ago',
-    host: 'Credentials inherited from AAP',
-    syncJobs: [
-      { name: 'Collections', interval: 'Every 1 hour', enabled: true },
-      { name: 'EE Base Images', interval: 'Every 6 hours', enabled: true },
-    ],
+    status: 'Not configured',
+    syncJobs: [],
   },
   {
     id: 'github',
     name: 'GitHub',
     type: 'git',
-    status: 'Active',
-    lastSync: '12 minutes ago',
-    host: 'github.internal.com',
-    auth: 'Personal Access Token',
-    syncJobs: [
-      { name: 'Repository Content', interval: 'Every 30 minutes', enabled: true },
-    ],
+    status: 'Not configured',
+    syncJobs: [],
   },
   {
     id: 'gitlab',
@@ -109,13 +99,8 @@ export const DEMO_CONNECTIONS: ConnectionProvider[] = [
     id: 'registries',
     name: 'Public Registries (internet required)',
     type: 'registry',
-    status: 'Active',
-    lastSync: '2 hours ago',
-    syncJobs: [
-      { name: 'Certified Content', interval: 'Daily', enabled: true },
-      { name: 'Validated Content', interval: 'Daily', enabled: true },
-      { name: 'Community Content (Galaxy)', interval: 'Daily', enabled: false },
-    ],
+    status: 'Not configured',
+    syncJobs: [],
   },
 ];
 

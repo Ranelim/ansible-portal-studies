@@ -4,17 +4,8 @@ import {
   Typography,
   Button,
   TextField,
-  Switch,
-  FormControlLabel,
-  Checkbox,
   Card,
   CardContent,
-  IconButton,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Divider,
   CircularProgress,
   Link,
   makeStyles,
@@ -25,9 +16,6 @@ import {
 } from '@material-ui/core';
 import CheckCircleIcon from '@material-ui/icons/CheckCircle';
 import SettingsIcon from '@material-ui/icons/Settings';
-import CloseIcon from '@material-ui/icons/Close';
-import EditIcon from '@material-ui/icons/Edit';
-import GitHubIcon from '@material-ui/icons/GitHub';
 import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
 import ExpandLessIcon from '@material-ui/icons/ExpandLess';
 
@@ -179,52 +167,6 @@ const useStyles = makeStyles(theme => ({
     marginTop: 24,
     marginBottom: 12,
   },
-  providerCard: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: '16px 20px',
-    border: `1px solid ${theme.palette.divider}`,
-    borderRadius: 8,
-    marginBottom: 12,
-  },
-  providerInfo: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 12,
-  },
-  providerName: {
-    fontSize: 14,
-    fontWeight: 600,
-  },
-  providerDescription: {
-    fontSize: 12,
-    color: theme.palette.text.secondary,
-  },
-  connectedBadge: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 4,
-    fontSize: 12,
-    color: '#63993D',
-    fontWeight: 500,
-  },
-  toggleRow: {
-    display: 'flex',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    padding: '12px 0',
-    borderBottom: `1px solid ${theme.palette.divider}`,
-  },
-  toggleLabel: {
-    fontSize: 14,
-    fontWeight: 500,
-  },
-  toggleDescription: {
-    fontSize: 12,
-    color: theme.palette.text.secondary,
-    marginTop: 2,
-  },
   reviewSection: {
     border: `1px solid ${theme.palette.divider}`,
     borderRadius: 8,
@@ -288,25 +230,11 @@ const useStyles = makeStyles(theme => ({
       lineHeight: 1.8,
     },
   },
-  gitlabIcon: {
-    width: 24,
-    height: 24,
-    borderRadius: 4,
-    backgroundColor: '#FC6D26',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    color: '#fff',
-    fontSize: 11,
-    fontWeight: 700,
-  },
 }));
 
 const STEPS = [
   { label: 'Overview', key: 'overview' },
   { label: 'Connect AAP', key: 'aap' },
-  { label: 'Connect Registries', key: 'registries' },
-  { label: 'Connect Source Control', key: 'source-control' },
   { label: 'Review', key: 'review' },
 ];
 
@@ -315,31 +243,13 @@ type WizardPhase = 'login' | 'wizard' | 'applying' | 'success';
 type DiscoveryStep = {
   label: string;
   status: 'pending' | 'running' | 'done';
-  detail?: string;
-};
-
-type DiscoveredRepo = {
-  name: string;
-  org: string;
-  playbooks: number;
-  roles: number;
-  collections: number;
-  ees: number;
 };
 
 const DISCOVERY_STEPS: DiscoveryStep[] = [
   { label: 'Writing configuration to app-config.yaml', status: 'pending' },
   { label: 'Connecting to AAP Controller', status: 'pending' },
-  { label: 'Syncing content registries', status: 'pending' },
-  { label: 'Connecting to GitHub', status: 'pending' },
-  { label: 'Scanning repositories for automation content', status: 'pending' },
-];
-
-const DISCOVERED_REPOS_FEED: DiscoveredRepo[] = [
-  { name: 'rhel-patching', org: 'acme-corp', playbooks: 2, roles: 1, collections: 1, ees: 0 },
-  { name: 'network-firewall-rules', org: 'acme-corp', playbooks: 3, roles: 1, collections: 2, ees: 0 },
-  { name: 'cloud-provisioner', org: 'acme-corp', playbooks: 2, roles: 0, collections: 1, ees: 1 },
-  { name: 'backup-automation', org: 'acme-corp', playbooks: 3, roles: 1, collections: 2, ees: 0 },
+  { label: 'Validating OAuth credentials', status: 'pending' },
+  { label: 'Syncing initial data from AAP', status: 'pending' },
 ];
 
 const ApplyingAndDiscoveryScreen = ({ onDone, isDone }: { onDone: () => void; isDone: boolean }) => {
@@ -347,13 +257,11 @@ const ApplyingAndDiscoveryScreen = ({ onDone, isDone }: { onDone: () => void; is
   const [steps, setSteps] = useState<DiscoveryStep[]>(
     DISCOVERY_STEPS.map(s => ({ ...s })),
   );
-  const [visibleRepos, setVisibleRepos] = useState<DiscoveredRepo[]>([]);
   const [allDone, setAllDone] = useState(isDone);
 
   useEffect(() => {
     if (isDone) {
       setSteps(DISCOVERY_STEPS.map(s => ({ ...s, status: 'done' })));
-      setVisibleRepos([...DISCOVERED_REPOS_FEED]);
       setAllDone(true);
       return;
     }
@@ -365,20 +273,12 @@ const ApplyingAndDiscoveryScreen = ({ onDone, isDone }: { onDone: () => void; is
         setSteps(prev => prev.map((s, idx) =>
           idx === i ? { ...s, status: 'running' } : idx < i ? { ...s, status: 'done' } : s,
         ));
-        const delay = i === 4 ? 800 : 600 + Math.random() * 400;
+        const delay = 600 + Math.random() * 400;
         await new Promise(r => setTimeout(r, delay));
         if (cancelled) return;
         setSteps(prev => prev.map((s, idx) =>
           idx === i ? { ...s, status: 'done' } : s,
         ));
-
-        if (i === 4) {
-          for (let j = 0; j < DISCOVERED_REPOS_FEED.length; j++) {
-            if (cancelled) return;
-            await new Promise(r => setTimeout(r, 400 + Math.random() * 300));
-            setVisibleRepos(prev => [...prev, DISCOVERED_REPOS_FEED[j]]);
-          }
-        }
       }
       if (!cancelled) {
         await new Promise(r => setTimeout(r, 600));
@@ -389,11 +289,6 @@ const ApplyingAndDiscoveryScreen = ({ onDone, isDone }: { onDone: () => void; is
     run();
     return () => { cancelled = true; };
   }, [isDone, onDone]);
-
-  const totalPlaybooks = visibleRepos.reduce((s, r) => s + r.playbooks, 0);
-  const totalRoles = visibleRepos.reduce((s, r) => s + r.roles, 0);
-  const totalCollections = visibleRepos.reduce((s, r) => s + r.collections, 0);
-  const totalEes = visibleRepos.reduce((s, r) => s + r.ees, 0);
 
   return (
     <Box className={classes.root}>
@@ -417,7 +312,7 @@ const ApplyingAndDiscoveryScreen = ({ onDone, isDone }: { onDone: () => void; is
           <CircularProgress size={40} />
         )}
         <Typography variant="h5" style={{ fontWeight: 600 }}>
-          {allDone ? 'System Configured & Ready' : 'Applying configuration...'}
+          {allDone ? 'Portal Configured & Ready' : 'Applying configuration...'}
         </Typography>
 
         <Box style={{
@@ -451,94 +346,32 @@ const ApplyingAndDiscoveryScreen = ({ onDone, isDone }: { onDone: () => void; is
           ))}
         </Box>
 
-        {visibleRepos.length > 0 && (
-          <Box style={{ width: '100%', maxWidth: 560 }}>
-            <Typography style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
-              Discovered repositories ({visibleRepos.length})
-            </Typography>
-            <Box style={{
-              border: '1px solid rgba(255,255,255,0.12)',
-              borderRadius: 8,
-              overflow: 'hidden',
-            }}>
-              {visibleRepos.map((repo, i) => (
-                <Box key={repo.name} style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '10px 16px',
-                  borderBottom: i < visibleRepos.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none',
-                  animation: 'fadeIn 0.3s ease-in',
-                }}>
-                  <Box style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <CheckCircleIcon style={{ fontSize: 16, color: '#63993D' }} />
-                    <Box>
-                      <Typography style={{ fontSize: 13, fontWeight: 500 }}>
-                        {repo.org}/{repo.name}
-                      </Typography>
-                    </Box>
-                  </Box>
-                  <Typography style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>
-                    {repo.playbooks} playbooks · {repo.roles} roles · {repo.collections} collections
-                    {repo.ees > 0 ? ` · ${repo.ees} EE` : ''}
-                  </Typography>
-                </Box>
-              ))}
-            </Box>
-
-            {allDone && (
-              <Box style={{
-                display: 'flex',
-                gap: 12,
-                marginTop: 12,
-                flexWrap: 'wrap',
-              }}>
-                {[
-                  { label: 'Repositories', count: visibleRepos.length },
-                  { label: 'Playbooks', count: totalPlaybooks },
-                  { label: 'Roles', count: totalRoles },
-                  { label: 'Collections', count: totalCollections },
-                  ...(totalEes > 0 ? [{ label: 'EEs', count: totalEes }] : []),
-                ].map(item => (
-                  <Box key={item.label} style={{
-                    padding: '6px 12px',
-                    borderRadius: 6,
-                    border: '1px solid rgba(255,255,255,0.12)',
-                    backgroundColor: 'rgba(255,255,255,0.04)',
-                    textAlign: 'center',
-                    flex: 1,
-                    minWidth: 80,
-                  }}>
-                    <Typography style={{ fontSize: 18, fontWeight: 700, lineHeight: 1.2 }}>
-                      {item.count}
-                    </Typography>
-                    <Typography style={{ fontSize: 10, opacity: 0.6 }}>
-                      {item.label}
-                    </Typography>
-                  </Box>
-                ))}
-              </Box>
-            )}
-          </Box>
-        )}
-
         {allDone && (
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={() => { window.location.href = '/self-service/projects'; }}
-            style={{ textTransform: 'none', fontWeight: 500, marginTop: 8 }}
-          >
-            View discovered repositories
-          </Button>
+          <>
+            <Typography variant="body2" style={{ maxWidth: 460, lineHeight: 1.6, opacity: 0.7 }}>
+              AAP is connected and authentication is configured. Your team can now sign in.
+              To get the most out of the portal, connect registries and source control from the Administration area.
+            </Typography>
+            <Box style={{ display: 'flex', gap: 12, marginTop: 8 }}>
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={() => { window.location.href = '/self-service/admin/connections'; }}
+                style={{ textTransform: 'none', fontWeight: 500 }}
+              >
+                Go to Administration
+              </Button>
+              <Button
+                variant="outlined"
+                onClick={() => { window.location.href = '/self-service/projects'; }}
+                style={{ textTransform: 'none', fontWeight: 500 }}
+              >
+                Skip for now
+              </Button>
+            </Box>
+          </>
         )}
       </Box>
-      <style>{`
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(4px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
     </Box>
   );
 };
@@ -557,24 +390,6 @@ export const SetupWizardPage = () => {
   const [jobSyncInterval, setJobSyncInterval] = useState('30');
   const [userSyncInterval, setUserSyncInterval] = useState('60');
   const [showAdvancedSync, setShowAdvancedSync] = useState(false);
-
-  const [pahEnabled, setPahEnabled] = useState(true);
-  const [pahFromAap, setPahFromAap] = useState(true);
-  const [certifiedContent, setCertifiedContent] = useState(true);
-  const [validatedContent, setValidatedContent] = useState(true);
-  const [galaxyEnabled, setGalaxyEnabled] = useState(true);
-
-  const [githubConnected, setGithubConnected] = useState(false);
-  const [githubModalOpen, setGithubModalOpen] = useState(false);
-  const [ghProviderUrl, setGhProviderUrl] = useState('https://github.com');
-  const [ghPat, setGhPat] = useState('');
-  const [ghOrgs, setGhOrgs] = useState('');
-  const [ghEeFilename, setGhEeFilename] = useState('execution-environment.yml');
-  const [ghBranches, setGhBranches] = useState('main');
-  const [ghMaxDepth, setGhMaxDepth] = useState('3');
-  const [ghSsoEnabled, setGhSsoEnabled] = useState(true);
-  const [ghSsoClientId, setGhSsoClientId] = useState('');
-  const [ghSsoClientSecret, setGhSsoClientSecret] = useState('');
 
   const handleLogin = useCallback(() => {
     if (password.trim()) {
@@ -596,11 +411,6 @@ export const SetupWizardPage = () => {
   const handleApply = useCallback(() => {
     setPhase('applying');
     setTimeout(() => setPhase('success'), 3000);
-  }, []);
-
-  const handleGithubSave = useCallback(() => {
-    setGithubConnected(true);
-    setGithubModalOpen(false);
   }, []);
 
   if (phase === 'login') {
@@ -711,9 +521,7 @@ export const SetupWizardPage = () => {
     switch (step) {
       case 0: return renderOverview();
       case 1: return renderConnectAAP();
-      case 2: return renderConnectRegistries();
-      case 3: return renderSourceControl();
-      case 4: return renderReview();
+      case 2: return renderReview();
       default: return null;
     }
   };
@@ -733,10 +541,28 @@ export const SetupWizardPage = () => {
           What you'll need:
         </Typography>
         <ul className={classes.prerequisiteList}>
-          <li>AAP Controller URL and OAuth credentials (Client ID & Secret).</li>
+          <li>AAP Controller URL (e.g. https://aap.example.com)</li>
           <li>AAP Personal Access Token (requires System Administrator privileges)</li>
-          <li>Git Provider App ID, Private Key and Client ID/Secret for content discovery and SSO</li>
+          <li>OAuth Client ID & Secret from your AAP application settings</li>
         </ul>
+        <Box
+          style={{
+            marginTop: 24,
+            padding: '12px 16px',
+            backgroundColor: 'rgba(0,102,204,0.08)',
+            border: '1px solid rgba(0,102,204,0.2)',
+            borderRadius: 8,
+          }}
+        >
+          <Typography style={{ fontSize: 13, fontWeight: 500, marginBottom: 4 }}>
+            What about registries and source control?
+          </Typography>
+          <Typography style={{ fontSize: 12, lineHeight: 1.6, opacity: 0.8 }}>
+            This wizard configures only the essentials needed to get the portal running.
+            You can connect content registries (PAH, Galaxy) and source control providers
+            (GitHub, GitLab) from the Administration area after setup is complete.
+          </Typography>
+        </Box>
       </>
     );
   }
@@ -848,334 +674,75 @@ export const SetupWizardPage = () => {
     );
   }
 
-  function renderConnectRegistries() {
-    return (
-      <>
-        <Typography className={classes.sectionTitle}>Connect Registries</Typography>
-        <Typography className={classes.sectionDescription}>
-          Enable the sources where your team discovers automation content (Execution Environments,
-          Collections etc.)
-        </Typography>
-
-        <Typography className={classes.subsectionTitle}>Private Registries (Private Automation Hub)</Typography>
-
-        <Box className={classes.toggleRow}>
-          <Box>
-            <Typography className={classes.toggleLabel}>Private Automation Hub (PAH): {pahEnabled ? 'On' : 'Off'}</Typography>
-            <Typography className={classes.toggleDescription}>
-              Connect your organization's private hub to discover secure execution environments and custom collections.
-            </Typography>
-          </Box>
-          <Switch checked={pahEnabled} onChange={e => setPahEnabled(e.target.checked)} color="primary" />
-        </Box>
-        {pahEnabled && (
-          <FormControlLabel
-            control={<Checkbox checked={pahFromAap} onChange={e => setPahFromAap(e.target.checked)} color="primary" size="small" />}
-            label={
-              <Box>
-                <Typography style={{ fontSize: 13, fontWeight: 500 }}>Use connection details from AAP (Step 2)</Typography>
-                <Typography style={{ fontSize: 11, color: '#888' }}>
-                  When checked, the Private Automation Hub URL and Token will be inherited from the AAP
-                  Controller. Uncheck this box to manually enter credentials for a standalone Private Hub.
-                </Typography>
-              </Box>
-            }
-            style={{ marginTop: 8, alignItems: 'flex-start' }}
-          />
-        )}
-
-        <Divider style={{ margin: '24px 0' }} />
-
-        <Typography className={classes.subsectionTitle}>Red Hat Ansible Automation Hub (Public)</Typography>
-        <Typography variant="body2" color="textSecondary" style={{ fontSize: 12, marginBottom: 16 }}>
-          Access official, internet hosted content directly from Red Hat.
-        </Typography>
-
-        <Box className={classes.toggleRow}>
-          <Box>
-            <Typography className={classes.toggleLabel}>Certified Content: {certifiedContent ? 'On' : 'Off'}</Typography>
-            <Typography className={classes.toggleDescription}>
-              Supported collections from certified partners (e.g. AWS, Microsoft, Cisco).
-            </Typography>
-          </Box>
-          <Switch checked={certifiedContent} onChange={e => setCertifiedContent(e.target.checked)} color="primary" />
-        </Box>
-
-        <Box className={classes.toggleRow}>
-          <Box>
-            <Typography className={classes.toggleLabel}>Validated Content: {validatedContent ? 'On' : 'Off'}</Typography>
-            <Typography className={classes.toggleDescription}>
-              Trusted solutions and patterns developed by Red Hat.
-            </Typography>
-          </Box>
-          <Switch checked={validatedContent} onChange={e => setValidatedContent(e.target.checked)} color="primary" />
-        </Box>
-
-        <Divider style={{ margin: '24px 0' }} />
-
-        <Typography className={classes.subsectionTitle}>Ansible Galaxy (community)</Typography>
-
-        <Box className={classes.toggleRow} style={{ borderBottom: 'none' }}>
-          <Box>
-            <Typography className={classes.toggleLabel}>Ansible Galaxy: {galaxyEnabled ? 'On' : 'Off'}</Typography>
-            <Typography className={classes.toggleDescription}>
-              Access unsupported community-contributed content over the internet.
-            </Typography>
-          </Box>
-          <Switch checked={galaxyEnabled} onChange={e => setGalaxyEnabled(e.target.checked)} color="primary" />
-        </Box>
-      </>
-    );
-  }
-
-  function renderSourceControl() {
-    return (
-      <>
-        <Typography className={classes.sectionTitle}>Connect Source Control (Recommended)</Typography>
-        <Typography className={classes.sectionDescription}>
-          Connect to your source control provider to enable Single Sign-On (SSO), sync team memberships,
-          discover existing automation, and create new projects or contribute to existing ones.
-        </Typography>
-
-        <Typography style={{ fontSize: 14, fontWeight: 600, marginBottom: 16 }}>Configure providers</Typography>
-
-        <Box className={classes.providerCard}>
-          <Box className={classes.providerInfo}>
-            <GitHubIcon style={{ fontSize: 28 }} />
-            <Box>
-              <Typography className={classes.providerName}>GitHub</Typography>
-              {githubConnected ? (
-                <Typography className={classes.connectedBadge}>
-                  <CheckCircleIcon style={{ fontSize: 14 }} /> Connected
-                </Typography>
-              ) : (
-                <Typography className={classes.providerDescription}>
-                  Enable SSO, Team Sync, Discovery, and Write Access.
-                </Typography>
-              )}
-            </Box>
-          </Box>
-          <Button
-            variant="outlined" size="small"
-            style={{ textTransform: 'none', fontWeight: 500 }}
-            startIcon={githubConnected ? <EditIcon style={{ fontSize: 14 }} /> : undefined}
-            onClick={() => setGithubModalOpen(true)}
-          >
-            {githubConnected ? 'Edit' : 'Connect'}
-          </Button>
-        </Box>
-
-        <Box className={classes.providerCard}>
-          <Box className={classes.providerInfo}>
-            <Box className={classes.gitlabIcon}>GL</Box>
-            <Box>
-              <Typography className={classes.providerName}>GitLab</Typography>
-              <Typography className={classes.providerDescription}>
-                Enable SSO, Team Sync, Discovery, and Write Access.
-              </Typography>
-            </Box>
-          </Box>
-          <Button
-            variant="outlined" size="small"
-            style={{ textTransform: 'none', fontWeight: 500 }}
-          >
-            Connect
-          </Button>
-        </Box>
-
-        <Dialog open={githubModalOpen} onClose={() => setGithubModalOpen(false)} maxWidth="sm" fullWidth>
-          <DialogTitle>
-            <Box display="flex" justifyContent="space-between" alignItems="center">
-              Connect GitHub
-              <IconButton size="small" onClick={() => setGithubModalOpen(false)}>
-                <CloseIcon />
-              </IconButton>
-            </Box>
-          </DialogTitle>
-          <DialogContent dividers>
-            <Typography className={classes.subsectionTitle} style={{ marginTop: 0 }}>
-              Service Access (Discovery & Creation)
-            </Typography>
-            <Typography variant="body2" color="textSecondary" style={{ fontSize: 12, marginBottom: 16 }}>
-              Provide a Personal Access Token (PAT) to allow the portal to discover automation content,
-              sync team data, and create or push changes to projects on behalf of the system.
-            </Typography>
-
-            <Box className={classes.fieldGroup}>
-              <Typography className={classes.fieldLabel}>Provider URL</Typography>
-              <TextField fullWidth variant="outlined" size="small" placeholder="e.g. https://github.com"
-                value={ghProviderUrl} onChange={e => setGhProviderUrl(e.target.value)} />
-            </Box>
-            <Box className={classes.fieldGroup}>
-              <Typography className={classes.fieldLabel}>Personal Access Token (PAT) *</Typography>
-              <TextField fullWidth variant="outlined" size="small" placeholder="Enter PAT"
-                value={ghPat} onChange={e => setGhPat(e.target.value)} />
-            </Box>
-
-            <Typography className={classes.subsectionTitle}>Discovery Scope</Typography>
-            <Typography variant="body2" color="textSecondary" style={{ fontSize: 12, marginBottom: 16 }}>
-              Define which organizations the portal should scan. This portal will only import repositories
-              containing galaxy.yml (collections) or Execution Environment definitions.
-            </Typography>
-
-            <Box className={classes.fieldGroup}>
-              <Typography className={classes.fieldLabel}>Target Organization</Typography>
-              <TextField fullWidth variant="outlined" size="small" placeholder="e.g., my-company, ansible-team-a"
-                value={ghOrgs} onChange={e => setGhOrgs(e.target.value)} />
-              <Typography className={classes.helperText}>
-                Comma-separated list of organizations to scan (e.g., my-company, ansible-team-a).
-              </Typography>
-            </Box>
-            <Box className={classes.fieldGroup}>
-              <Typography className={classes.fieldLabel}>EE Definition Filename</Typography>
-              <TextField fullWidth variant="outlined" size="small"
-                value={ghEeFilename} onChange={e => setGhEeFilename(e.target.value)} />
-              <Typography className={classes.helperText}>
-                This filename used to identify Execution Environment projects within your repositories.
-              </Typography>
-            </Box>
-
-            <Box display="flex" style={{ gap: 16 }}>
-              <Box className={classes.fieldGroup} style={{ flex: 1 }}>
-                <Typography className={classes.fieldLabel}>Source Branches *</Typography>
-                <TextField fullWidth variant="outlined" size="small"
-                  value={ghBranches} onChange={e => setGhBranches(e.target.value)} />
-                <Typography className={classes.helperText}>
-                  Comma-separated list of branches or tags to scan. Defaults to main.
-                </Typography>
-              </Box>
-              <Box className={classes.fieldGroup} style={{ flex: 1 }}>
-                <Typography className={classes.fieldLabel}>Max Folder Depth</Typography>
-                <TextField fullWidth variant="outlined" size="small"
-                  value={ghMaxDepth} onChange={e => setGhMaxDepth(e.target.value)} />
-                <Typography className={classes.helperText}>
-                  Limit how deep the system crawls nested directories to find content.
-                </Typography>
-              </Box>
-            </Box>
-
-            <Divider style={{ margin: '16px 0' }} />
-
-            <Typography className={classes.subsectionTitle}>User Sign-in (SSO)</Typography>
-            <Typography variant="body2" color="textSecondary" style={{ fontSize: 12, marginBottom: 16 }}>
-              Configure OAuth credentials to allow your team to log in to the portal using their existing
-              GitHub accounts.
-            </Typography>
-
-            <FormControlLabel
-              control={<Checkbox checked={ghSsoEnabled} onChange={e => setGhSsoEnabled(e.target.checked)} color="primary" size="small" />}
-              label={<Typography style={{ fontSize: 13, fontWeight: 500 }}>Enable User Login (SSO)</Typography>}
-            />
-
-            {ghSsoEnabled && (
-              <Box display="flex" style={{ gap: 16, marginTop: 12 }}>
-                <Box className={classes.fieldGroup} style={{ flex: 1 }}>
-                  <Typography className={classes.fieldLabel}>OAuth Client ID</Typography>
-                  <TextField fullWidth variant="outlined" size="small" placeholder="Enter Client ID"
-                    value={ghSsoClientId} onChange={e => setGhSsoClientId(e.target.value)} />
-                </Box>
-                <Box className={classes.fieldGroup} style={{ flex: 1 }}>
-                  <Typography className={classes.fieldLabel}>OAuth Client Secret</Typography>
-                  <TextField fullWidth variant="outlined" size="small" placeholder="Enter Client Secret" type="password"
-                    value={ghSsoClientSecret} onChange={e => setGhSsoClientSecret(e.target.value)} />
-                </Box>
-              </Box>
-            )}
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setGithubModalOpen(false)} style={{ textTransform: 'none' }}>Cancel</Button>
-            <Button variant="contained" color="primary" onClick={handleGithubSave} style={{ textTransform: 'none' }}>
-              Save changes
-            </Button>
-          </DialogActions>
-        </Dialog>
-      </>
-    );
-  }
-
   function renderReview() {
     return (
       <>
         <Typography className={classes.sectionTitle}>Review</Typography>
         <Typography className={classes.sectionDescription}>
           Review your configuration settings below. Once confirmed, click "Apply & Restart Portal" to save
-          the configuration to app-config.yaml and restart the service. This will end your temporary setup session.
+          the configuration and restart the service. This will end your temporary setup session.
         </Typography>
 
         <Box className={classes.reviewSection}>
-          <Typography className={classes.reviewTitle}>Connect AAP</Typography>
+          <Typography className={classes.reviewTitle}>AAP Connection</Typography>
           <Box className={classes.reviewRow}>
             <Typography className={classes.reviewLabel}>Controller URL:</Typography>
             <Typography className={classes.reviewValue}>{aapUrl || 'Not set'}</Typography>
           </Box>
+          <Box className={classes.reviewRow}>
+            <Typography className={classes.reviewLabel}>Admin Personal Access Token:</Typography>
+            <Typography className={classes.reviewValue}>{aapToken ? '••••••••' : 'Not set'}</Typography>
+          </Box>
+        </Box>
+
+        <Box className={classes.reviewSection}>
+          <Typography className={classes.reviewTitle}>User Authentication (OAuth)</Typography>
           <Box className={classes.reviewRow}>
             <Typography className={classes.reviewLabel}>OAuth Client ID:</Typography>
             <Typography className={classes.reviewValue}>{oauthClientId || 'Not set'}</Typography>
           </Box>
           <Box className={classes.reviewRow}>
             <Typography className={classes.reviewLabel}>OAuth Client Secret:</Typography>
-            <Typography className={classes.reviewValue}>••••••••</Typography>
-          </Box>
-          <Box className={classes.reviewRow}>
-            <Typography className={classes.reviewLabel}>Admin Personal Access Token:</Typography>
-            <Typography className={classes.reviewValue}>••••••••</Typography>
-          </Box>
-          <Box className={classes.reviewRow}>
-            <Typography className={classes.reviewLabel}>Sync Schedule:</Typography>
-            <Typography className={classes.reviewValue}>
-              Templates ({jobSyncInterval}m), Users ({userSyncInterval === '60' ? '1h' : `${userSyncInterval}m`})
-            </Typography>
+            <Typography className={classes.reviewValue}>{oauthClientSecret ? '••••••••' : 'Not set'}</Typography>
           </Box>
         </Box>
 
-        <Box className={classes.reviewSection}>
-          <Typography className={classes.reviewTitle}>Connect Registries</Typography>
-          <Box className={classes.reviewRow}>
-            <Typography className={classes.reviewLabel}>Public Registries:</Typography>
-            <Typography className={classes.reviewValue}>
-              Galaxy ({galaxyEnabled ? 'On' : 'Off'}), Cloud Hub ({certifiedContent || validatedContent ? 'On' : 'Off'})
-            </Typography>
+        {showAdvancedSync && (
+          <Box className={classes.reviewSection}>
+            <Typography className={classes.reviewTitle}>Sync Schedule</Typography>
+            <Box className={classes.reviewRow}>
+              <Typography className={classes.reviewLabel}>Job Template Sync:</Typography>
+              <Typography className={classes.reviewValue}>Every {jobSyncInterval} minutes</Typography>
+            </Box>
+            <Box className={classes.reviewRow}>
+              <Typography className={classes.reviewLabel}>User & Team Sync:</Typography>
+              <Typography className={classes.reviewValue}>
+                {userSyncInterval === '60' ? 'Every 1 hour' : `Every ${userSyncInterval} minutes`}
+              </Typography>
+            </Box>
           </Box>
-          <Box className={classes.reviewRow}>
-            <Typography className={classes.reviewLabel}>Private Automation Hub:</Typography>
-            <Typography className={classes.reviewValue}>
-              {pahEnabled ? (pahFromAap ? 'Inherited from AAP connection details.' : 'Custom configuration') : 'Disabled'}
-            </Typography>
-          </Box>
+        )}
+
+        <Box
+          style={{
+            marginTop: 16,
+            padding: '12px 16px',
+            backgroundColor: 'rgba(0,102,204,0.08)',
+            border: '1px solid rgba(0,102,204,0.2)',
+            borderRadius: 8,
+          }}
+        >
+          <Typography style={{ fontSize: 13, fontWeight: 500, marginBottom: 4 }}>
+            What happens next?
+          </Typography>
+          <Typography style={{ fontSize: 12, lineHeight: 1.6, opacity: 0.8 }}>
+            After applying, you'll be guided through optional Day 2 setup — connecting content registries,
+            source control providers, and other integrations from the Administration area.
+          </Typography>
         </Box>
 
-        <Box className={classes.reviewSection}>
-          <Typography className={classes.reviewTitle}>Connect Source Control</Typography>
-          <Box className={classes.reviewRow}>
-            <Typography className={classes.reviewLabel}>GitHub:</Typography>
-            <Typography className={classes.reviewValue}>
-              {githubConnected ? 'Configured.' : 'Not configured.'}
-            </Typography>
-          </Box>
-          {githubConnected && (
-            <>
-              <Box style={{ paddingLeft: 8, fontSize: 12, color: '#888' }}>
-                <Box className={classes.reviewRow}>
-                  <Typography className={classes.reviewLabel} style={{ fontSize: 12 }}>Discovery:</Typography>
-                  <Typography className={classes.reviewValue} style={{ fontSize: 12 }}>Orgs: {ghOrgs || 'All'}</Typography>
-                </Box>
-                <Box className={classes.reviewRow}>
-                  <Typography className={classes.reviewLabel} style={{ fontSize: 12 }}>Authentication (SSO):</Typography>
-                  <Typography className={classes.reviewValue} style={{ fontSize: 12 }}>
-                    {ghSsoEnabled ? `Enabled. Client ID: ${ghSsoClientId || 'Not set'}` : 'Disabled'}
-                  </Typography>
-                </Box>
-              </Box>
-            </>
-          )}
-          <Box className={classes.reviewRow}>
-            <Typography className={classes.reviewLabel}>GitLab:</Typography>
-            <Typography className={classes.reviewValue}>Not configured.</Typography>
-          </Box>
-        </Box>
-
-        <Typography variant="caption" color="textSecondary">
-          Note: Sensitive values like secrets, keys, and tokens are masked for security.
+        <Typography variant="caption" color="textSecondary" style={{ display: 'block', marginTop: 12 }}>
+          Sensitive values like secrets, keys, and tokens are masked for security.
         </Typography>
       </>
     );

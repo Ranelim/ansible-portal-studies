@@ -27,12 +27,14 @@ import AccountCircle from '@material-ui/icons/AccountCircle';
 import SettingsIcon from '@material-ui/icons/Settings';
 import ExitToAppIcon from '@material-ui/icons/ExitToApp';
 import OpenInNewIcon from '@material-ui/icons/OpenInNew';
+import PlaylistAddCheckIcon from '@material-ui/icons/PlaylistAddCheck';
 import { makeStyles, alpha } from '@material-ui/core/styles';
 import { Link, useNavigate } from 'react-router-dom';
 import { useApi, identityApiRef } from '@backstage/core-plugin-api';
 import { useStarredEntities } from '@backstage/plugin-catalog-react';
 import { useState, useMemo } from 'react';
 import { useLightspeed } from '../Lightspeed';
+import { useQuickstart } from '../Quickstart';
 import { OmniSearch } from '../search/OmniSearch';
 import redHatLogo from '../../assets/redhat-logo.png';
 
@@ -316,6 +318,7 @@ export const GlobalHeader = () => {
   const navigate = useNavigate();
   const identityApi = useApi(identityApiRef);
   const { isOpen: isLightspeedOpen, toggle: toggleLightspeed } = useLightspeed();
+  const { toggle: toggleQuickstart } = useQuickstart();
   const { starredEntities } = useStarredEntities();
   const starredProjectNames = useMemo(() => getStarredProjectNames(), []);
   const hasStarred = starredEntities.size > 0 || starredProjectNames.length > 0;
@@ -516,6 +519,17 @@ export const GlobalHeader = () => {
             <Typography className={classes.popoverTitle}>Help & Support</Typography>
           </Box>
           <List className={classes.helpList} dense>
+            <ListItem
+              button
+              className={classes.helpItem}
+              onClick={() => { setHelpAnchor(null); toggleQuickstart(); }}
+            >
+              <ListItemIcon className={classes.helpItemIcon}>
+                <PlaylistAddCheckIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText primary="Quick start" secondary="Set up your portal step by step" />
+            </ListItem>
+            <Divider style={{ margin: '4px 0' }} />
             <ListItem
               button
               className={classes.helpItem}

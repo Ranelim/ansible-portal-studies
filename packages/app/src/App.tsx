@@ -26,6 +26,7 @@ import { SearchPage } from './components/search/SearchPage';
 import { Root } from './components/Root';
 import { GlobalHeader } from './components/GlobalHeader';
 import { LightspeedProvider, LightspeedPanel } from './components/Lightspeed';
+import { QuickstartProvider, QuickstartPanel, WelcomeModal } from './components/Quickstart';
 import { getThemes } from '@red-hat-developer-hub/backstage-plugin-theme';
 
 import {
@@ -162,9 +163,13 @@ export default app.createRoot(
     <OAuthRequestDialog />
     <AppRouter>
       <LightspeedProvider>
-        <GlobalHeader />
-        <Root>{routes}</Root>
-        <LightspeedPanel />
+        <QuickstartProvider>
+          <GlobalHeader />
+          <Root>{routes}</Root>
+          <LightspeedPanel />
+          <QuickstartPanel />
+          <WelcomeModal />
+        </QuickstartProvider>
       </LightspeedProvider>
     </AppRouter>
   </>,
