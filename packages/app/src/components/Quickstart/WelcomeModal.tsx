@@ -7,10 +7,11 @@ import {
   makeStyles,
 } from '@material-ui/core';
 import CheckCircleOutlineIcon from '@material-ui/icons/CheckCircleOutline';
-import LinkIcon from '@material-ui/icons/Link';
 import StorageIcon from '@material-ui/icons/Storage';
 import CodeIcon from '@material-ui/icons/Code';
 import SecurityIcon from '@material-ui/icons/Security';
+import SyncIcon from '@material-ui/icons/Sync';
+import PlaylistAddCheckIcon from '@material-ui/icons/PlaylistAddCheck';
 import { useQuickstart } from './QuickstartContext';
 
 const DISMISSED_KEY = 'portal-welcome-modal-dismissed';
@@ -118,6 +119,7 @@ const useStyles = makeStyles(theme => ({
 const NEXT_STEPS = [
   { label: 'Connect content registries', icon: StorageIcon, color: '#6753AC' },
   { label: 'Connect source control', icon: CodeIcon, color: '#24292e' },
+  { label: 'Review sync schedules', icon: SyncIcon, color: '#0066CC' },
   { label: 'Configure access control', icon: SecurityIcon, color: '#C9190B' },
 ];
 
@@ -192,7 +194,7 @@ export const WelcomeModal = () => {
           color="primary"
           className={classes.primaryButton}
           onClick={handleOpenQuickstart}
-          startIcon={<LinkIcon />}
+          startIcon={<PlaylistAddCheckIcon />}
         >
           Open Quick start guide
         </Button>

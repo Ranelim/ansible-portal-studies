@@ -9,15 +9,12 @@ import {
   CircularProgress,
   Link,
   makeStyles,
-  Select,
-  MenuItem,
-  InputLabel,
-  FormControl,
+  Checkbox,
+  FormControlLabel,
+  Chip,
 } from '@material-ui/core';
 import CheckCircleIcon from '@material-ui/icons/CheckCircle';
 import SettingsIcon from '@material-ui/icons/Settings';
-import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
-import ExpandLessIcon from '@material-ui/icons/ExpandLess';
 
 const useStyles = makeStyles(theme => ({
   root: {
@@ -211,18 +208,6 @@ const useStyles = makeStyles(theme => ({
     textAlign: 'center',
     borderRadius: 12,
   },
-  advancedToggle: {
-    display: 'flex',
-    alignItems: 'center',
-    cursor: 'pointer',
-    gap: 4,
-    fontSize: 13,
-    fontWeight: 500,
-    color: theme.palette.text.secondary,
-    marginTop: 16,
-    marginBottom: 8,
-    '&:hover': { color: theme.palette.text.primary },
-  },
   prerequisiteList: {
     paddingLeft: 20,
     '& li': {
@@ -230,11 +215,54 @@ const useStyles = makeStyles(theme => ({
       lineHeight: 1.8,
     },
   },
+  autoDetectedField: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    padding: '10px 14px',
+    border: `1px solid ${theme.palette.divider}`,
+    borderRadius: 4,
+    backgroundColor: theme.palette.type === 'dark' ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)',
+    marginBottom: 8,
+  },
+  orgChip: {
+    margin: 2,
+  },
+  orgList: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: 8,
+    maxHeight: 320,
+    overflowY: 'auto' as const,
+    border: `1px solid ${theme.palette.divider}`,
+    borderRadius: 4,
+    padding: 8,
+  },
+  orgItem: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    padding: '6px 8px',
+    borderRadius: 4,
+    cursor: 'pointer',
+    '&:hover': {
+      backgroundColor: theme.palette.type === 'dark' ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
+    },
+  },
+  selectedOrgsBar: {
+    display: 'flex',
+    flexWrap: 'wrap' as const,
+    gap: 4,
+    padding: '8px 0',
+    minHeight: 32,
+  },
 }));
 
 const STEPS = [
   { label: 'Overview', key: 'overview' },
   { label: 'Connect AAP', key: 'aap' },
+  { label: 'Portal URL', key: 'portal-url' },
+  { label: 'AAP Organizations', key: 'orgs' },
   { label: 'Review', key: 'review' },
 ];
 
@@ -349,26 +377,22 @@ const ApplyingAndDiscoveryScreen = ({ onDone, isDone }: { onDone: () => void; is
         {allDone && (
           <>
             <Typography variant="body2" style={{ maxWidth: 460, lineHeight: 1.6, opacity: 0.7 }}>
-              AAP is connected and authentication is configured. Your team can now sign in.
-              To get the most out of the portal, connect registries and source control from the Administration area.
+              Configuration saved. The temporary admin session has ended.
+              Sign in with your AAP credentials to verify the setup and start using the portal.
             </Typography>
             <Box style={{ display: 'flex', gap: 12, marginTop: 8 }}>
               <Button
                 variant="contained"
                 color="primary"
-                onClick={() => { window.location.href = '/self-service/admin/connections'; }}
+                onClick={() => { window.location.href = '/'; }}
                 style={{ textTransform: 'none', fontWeight: 500 }}
               >
-                Go to Administration
-              </Button>
-              <Button
-                variant="outlined"
-                onClick={() => { window.location.href = '/self-service/projects'; }}
-                style={{ textTransform: 'none', fontWeight: 500 }}
-              >
-                Skip for now
+                Sign in with AAP
               </Button>
             </Box>
+            <Typography variant="caption" style={{ opacity: 0.5, marginTop: 8 }}>
+              After signing in, a Quick Start guide will walk you through additional setup.
+            </Typography>
           </>
         )}
       </Box>
@@ -387,9 +411,19 @@ export const SetupWizardPage = () => {
   const [aapToken, setAapToken] = useState('');
   const [oauthClientId, setOauthClientId] = useState('');
   const [oauthClientSecret, setOauthClientSecret] = useState('');
-  const [jobSyncInterval, setJobSyncInterval] = useState('30');
-  const [userSyncInterval, setUserSyncInterval] = useState('60');
-  const [showAdvancedSync, setShowAdvancedSync] = useState(false);
+  const [checkSSL, setCheckSSL] = useState(true);
+
+  const [portalBaseUrl, setPortalBaseUrl] = useState('https://portal.example.com');
+  const [portalBaseUrlEditing, setPortalBaseUrlEditing] = useState(false);
+
+  const DEMO_ORGS = [
+    { id: 'default', name: 'Default', description: 'Default organization', users: 12 },
+    { id: 'platform-eng', name: 'Platform Engineering', description: 'Infrastructure and platform team', users: 8 },
+    { id: 'app-dev', name: 'Application Development', description: 'Application development teams', users: 24 },
+    { id: 'security', name: 'Security & Compliance', description: 'Security operations team', users: 6 },
+    { id: 'network-ops', name: 'Network Operations', description: 'Network automation team', users: 10 },
+  ];
+  const [selectedOrgs, setSelectedOrgs] = useState<string[]>(['default']);
 
   const handleLogin = useCallback(() => {
     if (password.trim()) {
@@ -521,9 +555,19 @@ export const SetupWizardPage = () => {
     switch (step) {
       case 0: return renderOverview();
       case 1: return renderConnectAAP();
-      case 2: return renderReview();
+      case 2: return renderPortalUrl();
+      case 3: return renderSelectOrgs();
+      case 4: return renderReview();
       default: return null;
     }
+  };
+
+  const toggleOrg = (orgId: string) => {
+    setSelectedOrgs(prev =>
+      prev.includes(orgId)
+        ? prev.filter(id => id !== orgId)
+        : [...prev, orgId],
+    );
   };
 
   function renderOverview() {
@@ -535,16 +579,28 @@ export const SetupWizardPage = () => {
           the configuration required to connect your portal to your infrastructure.
         </Typography>
         <Typography variant="body2" style={{ fontWeight: 600, marginBottom: 8 }}>
-          Before you begin, ensure you have the following information ready:
-        </Typography>
-        <Typography variant="body2" style={{ fontWeight: 600, marginTop: 16, marginBottom: 8 }}>
           What you'll need:
         </Typography>
         <ul className={classes.prerequisiteList}>
           <li>AAP Controller URL (e.g. https://aap.example.com)</li>
-          <li>AAP Personal Access Token (requires System Administrator privileges)</li>
-          <li>OAuth Client ID & Secret from your AAP application settings</li>
+          <li>AAP Personal Access Token with admin privileges</li>
+          <li>OAuth Client ID & Secret from a pre-registered OAuth application in AAP</li>
         </ul>
+        <Box
+          style={{
+            marginTop: 12,
+            marginBottom: 16,
+            padding: '10px 16px',
+            backgroundColor: 'rgba(255,193,7,0.08)',
+            border: '1px solid rgba(255,193,7,0.2)',
+            borderRadius: 8,
+          }}
+        >
+          <Typography style={{ fontSize: 12, lineHeight: 1.6, opacity: 0.8 }}>
+            <strong>Prerequisite:</strong> You must create an OAuth application in AAP before starting this wizard.
+            The redirect URI should be set to <code>{'{your-portal-url}'}/api/auth/rhaap/handler/frame</code>.
+          </Typography>
+        </Box>
         <Box
           style={{
             marginTop: 24,
@@ -572,27 +628,46 @@ export const SetupWizardPage = () => {
       <>
         <Typography className={classes.sectionTitle}>Connect AAP</Typography>
         <Typography className={classes.sectionDescription}>
-          Connect to your Ansible Automation Platform (AAP) instance. This integration allows the portal to use
-          AAP as an Identity Provider (SSO) and enables the portal to sync data in the background.
+          Connect to your Ansible Automation Platform (AAP) instance. This enables user authentication
+          via AAP OAuth and allows the portal to sync content in the background.
         </Typography>
 
         <Box className={classes.fieldGroup}>
-          <Typography className={classes.fieldLabel}>AAP controller URL</Typography>
+          <Typography className={classes.fieldLabel}>AAP Controller URL *</Typography>
           <TextField
             fullWidth variant="outlined" size="small"
             placeholder="https://aap.example.com"
             value={aapUrl} onChange={e => setAapUrl(e.target.value)}
           />
           <Typography className={classes.helperText}>
-            Enter the URL of your Automation Controller (e.g. https://aap.example.com)
+            The URL of your Automation Controller instance (e.g. https://aap.example.com)
           </Typography>
         </Box>
 
-        <Typography className={classes.subsectionTitle}>Service Access (Discovery & Execution)</Typography>
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={checkSSL}
+              onChange={e => setCheckSSL(e.target.checked)}
+              color="primary"
+              size="small"
+            />
+          }
+          label={
+            <Box>
+              <Typography style={{ fontSize: 13, fontWeight: 500 }}>Verify TLS certificate</Typography>
+              <Typography style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>
+                Disable if your AAP instance uses a self-signed or private CA certificate
+              </Typography>
+            </Box>
+          }
+          style={{ marginBottom: 20, alignItems: 'flex-start' }}
+        />
+
+        <Typography className={classes.subsectionTitle}>Service Access</Typography>
         <Typography variant="body2" color="textSecondary" style={{ marginBottom: 16, fontSize: 13 }}>
-          The portal requires a service token to discover Job Templates and Private Automation Hub
-          content, trigger job runs from software templates, and sync execution logs automatically —
-          even when no users are logged in.
+          A personal access token with admin privileges is required for API access — content sync,
+          job template discovery, and organization data retrieval.
         </Typography>
 
         <Box className={classes.fieldGroup}>
@@ -602,19 +677,16 @@ export const SetupWizardPage = () => {
             placeholder="Enter access token"
             value={aapToken} onChange={e => setAapToken(e.target.value)}
           />
-          <Typography className={classes.helperText}>
-            Paste an Admin Token from AAP here.
-          </Typography>
         </Box>
 
         <Typography className={classes.subsectionTitle}>User Sign-in (OAuth)</Typography>
         <Typography variant="body2" color="textSecondary" style={{ marginBottom: 16, fontSize: 13 }}>
-          Configure OAuth credentials to allow your team to log in to the portal using their existing
-          AAP accounts.
+          Enter the OAuth credentials from a pre-registered application in AAP.
+          This allows your team to sign in to the portal with their existing AAP accounts.
         </Typography>
 
         <Box className={classes.fieldGroup}>
-          <Typography className={classes.fieldLabel}>Client ID</Typography>
+          <Typography className={classes.fieldLabel}>OAuth Client ID *</Typography>
           <TextField
             fullWidth variant="outlined" size="small"
             placeholder="Enter Client ID"
@@ -622,7 +694,7 @@ export const SetupWizardPage = () => {
           />
         </Box>
         <Box className={classes.fieldGroup}>
-          <Typography className={classes.fieldLabel}>Client secret</Typography>
+          <Typography className={classes.fieldLabel}>OAuth Client Secret *</Typography>
           <TextField
             fullWidth variant="outlined" size="small"
             placeholder="Enter secret" type="password"
@@ -632,44 +704,133 @@ export const SetupWizardPage = () => {
 
         <Link
           component="button" variant="body2"
-          style={{ fontSize: 12, marginBottom: 8 }}
+          style={{ fontSize: 12 }}
           onClick={() => window.open('https://docs.redhat.com', '_blank')}
         >
-          Find these under AAP application settings ↗
+          How to create an OAuth application in AAP ↗
         </Link>
+      </>
+    );
+  }
 
-        <Box
-          className={classes.advancedToggle}
-          onClick={() => setShowAdvancedSync(!showAdvancedSync)}
-        >
-          {showAdvancedSync ? <ExpandLessIcon style={{ fontSize: 18 }} /> : <ExpandMoreIcon style={{ fontSize: 18 }} />}
-          Advanced Sync Settings (Optional)
-        </Box>
-        {showAdvancedSync && (
-          <Box style={{ paddingLeft: 8 }}>
-            <Typography variant="body2" color="textSecondary" style={{ fontSize: 12, marginBottom: 12 }}>
-              Define how often the portal checks AAP for new templates and user changes.
-            </Typography>
-            <Box display="flex" style={{ gap: 16 }}>
-              <FormControl variant="outlined" size="small" style={{ flex: 1 }}>
-                <InputLabel>Job Template Sync Interval</InputLabel>
-                <Select value={jobSyncInterval} onChange={e => setJobSyncInterval(e.target.value as string)} label="Job Template Sync Interval">
-                  <MenuItem value="15">Every 15 minutes</MenuItem>
-                  <MenuItem value="30">Every 30 minutes</MenuItem>
-                  <MenuItem value="60">Every 1 hour</MenuItem>
-                </Select>
-              </FormControl>
-              <FormControl variant="outlined" size="small" style={{ flex: 1 }}>
-                <InputLabel>User & Team Sync Interval</InputLabel>
-                <Select value={userSyncInterval} onChange={e => setUserSyncInterval(e.target.value as string)} label="User & Team Sync Interval">
-                  <MenuItem value="30">Every 30 minutes</MenuItem>
-                  <MenuItem value="60">Every 1 hour</MenuItem>
-                  <MenuItem value="360">Every 6 hours</MenuItem>
-                </Select>
-              </FormControl>
+  function renderPortalUrl() {
+    return (
+      <>
+        <Typography className={classes.sectionTitle}>Confirm Portal URL</Typography>
+        <Typography className={classes.sectionDescription}>
+          Verify the URL that users will use to access this portal. The OAuth callback URL is
+          derived from this value — if it's incorrect, AAP login will fail.
+        </Typography>
+
+        <Box className={classes.fieldGroup}>
+          <Typography className={classes.fieldLabel}>Portal Base URL *</Typography>
+          {portalBaseUrlEditing ? (
+            <TextField
+              fullWidth variant="outlined" size="small"
+              value={portalBaseUrl}
+              onChange={e => setPortalBaseUrl(e.target.value)}
+              autoFocus
+            />
+          ) : (
+            <Box className={classes.autoDetectedField}>
+              <Typography style={{ fontSize: 14, fontWeight: 500, flex: 1 }}>
+                {portalBaseUrl}
+              </Typography>
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={() => setPortalBaseUrlEditing(true)}
+                style={{ textTransform: 'none', fontSize: 12 }}
+              >
+                Edit
+              </Button>
             </Box>
+          )}
+          <Typography className={classes.helperText}>
+            Auto-detected from your environment. Edit only if this URL is not how users will access the portal.
+          </Typography>
+        </Box>
+
+        <Box style={{
+          marginTop: 16,
+          padding: '12px 16px',
+          backgroundColor: 'rgba(0,102,204,0.08)',
+          border: '1px solid rgba(0,102,204,0.2)',
+          borderRadius: 8,
+        }}>
+          <Typography style={{ fontSize: 13, fontWeight: 500, marginBottom: 4 }}>
+            Derived OAuth callback URL
+          </Typography>
+          <Typography style={{ fontSize: 12, lineHeight: 1.6, opacity: 0.8, fontFamily: 'monospace' }}>
+            {portalBaseUrl}/api/auth/rhaap/handler/frame
+          </Typography>
+          <Typography style={{ fontSize: 11, lineHeight: 1.6, opacity: 0.6, marginTop: 4 }}>
+            This URL must match the redirect URI configured in your AAP OAuth application.
+          </Typography>
+        </Box>
+      </>
+    );
+  }
+
+  function renderSelectOrgs() {
+    return (
+      <>
+        <Typography className={classes.sectionTitle}>Select AAP Organizations</Typography>
+        <Typography className={classes.sectionDescription}>
+          Choose which AAP organizations to sync with the portal. At least one organization is required —
+          the login resolver uses org membership to map AAP users to portal identities.
+        </Typography>
+
+        {selectedOrgs.length > 0 && (
+          <Box className={classes.selectedOrgsBar}>
+            <Typography style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginRight: 4, alignSelf: 'center' }}>
+              Selected:
+            </Typography>
+            {selectedOrgs.map(orgId => {
+              const org = DEMO_ORGS.find(o => o.id === orgId);
+              return org ? (
+                <Chip
+                  key={orgId}
+                  label={org.name}
+                  size="small"
+                  onDelete={() => toggleOrg(orgId)}
+                  className={classes.orgChip}
+                  color="primary"
+                  variant="outlined"
+                />
+              ) : null;
+            })}
           </Box>
         )}
+
+        <Box className={classes.orgList}>
+          {DEMO_ORGS.map(org => (
+            <Box
+              key={org.id}
+              className={classes.orgItem}
+              onClick={() => toggleOrg(org.id)}
+            >
+              <Checkbox
+                checked={selectedOrgs.includes(org.id)}
+                color="primary"
+                size="small"
+                style={{ padding: 4 }}
+              />
+              <Box style={{ flex: 1 }}>
+                <Typography style={{ fontSize: 13, fontWeight: 500 }}>{org.name}</Typography>
+                <Typography style={{ fontSize: 12, opacity: 0.6 }}>{org.description}</Typography>
+              </Box>
+              <Typography style={{ fontSize: 11, opacity: 0.5 }}>
+                {org.users} users
+              </Typography>
+            </Box>
+          ))}
+        </Box>
+
+        <Typography className={classes.helperText} style={{ marginTop: 12 }}>
+          Organizations are fetched from AAP using the admin token provided in Step 2.
+          You can add or remove organizations later from Admin settings.
+        </Typography>
       </>
     );
   }
@@ -677,10 +838,11 @@ export const SetupWizardPage = () => {
   function renderReview() {
     return (
       <>
-        <Typography className={classes.sectionTitle}>Review</Typography>
+        <Typography className={classes.sectionTitle}>Review & Apply</Typography>
         <Typography className={classes.sectionDescription}>
-          Review your configuration settings below. Once confirmed, click "Apply & Restart Portal" to save
-          the configuration and restart the service. This will end your temporary setup session.
+          Review your configuration below. Clicking "Apply & Restart Portal" will save the configuration,
+          restart the service, and end this temporary admin session. You'll then log in with AAP to verify
+          the setup worked end-to-end.
         </Typography>
 
         <Box className={classes.reviewSection}>
@@ -690,7 +852,11 @@ export const SetupWizardPage = () => {
             <Typography className={classes.reviewValue}>{aapUrl || 'Not set'}</Typography>
           </Box>
           <Box className={classes.reviewRow}>
-            <Typography className={classes.reviewLabel}>Admin Personal Access Token:</Typography>
+            <Typography className={classes.reviewLabel}>TLS verification:</Typography>
+            <Typography className={classes.reviewValue}>{checkSSL ? 'Enabled' : 'Disabled'}</Typography>
+          </Box>
+          <Box className={classes.reviewRow}>
+            <Typography className={classes.reviewLabel}>Admin Token:</Typography>
             <Typography className={classes.reviewValue}>{aapToken ? '••••••••' : 'Not set'}</Typography>
           </Box>
         </Box>
@@ -707,21 +873,29 @@ export const SetupWizardPage = () => {
           </Box>
         </Box>
 
-        {showAdvancedSync && (
-          <Box className={classes.reviewSection}>
-            <Typography className={classes.reviewTitle}>Sync Schedule</Typography>
-            <Box className={classes.reviewRow}>
-              <Typography className={classes.reviewLabel}>Job Template Sync:</Typography>
-              <Typography className={classes.reviewValue}>Every {jobSyncInterval} minutes</Typography>
-            </Box>
-            <Box className={classes.reviewRow}>
-              <Typography className={classes.reviewLabel}>User & Team Sync:</Typography>
-              <Typography className={classes.reviewValue}>
-                {userSyncInterval === '60' ? 'Every 1 hour' : `Every ${userSyncInterval} minutes`}
-              </Typography>
-            </Box>
+        <Box className={classes.reviewSection}>
+          <Typography className={classes.reviewTitle}>Portal</Typography>
+          <Box className={classes.reviewRow}>
+            <Typography className={classes.reviewLabel}>Base URL:</Typography>
+            <Typography className={classes.reviewValue}>{portalBaseUrl}</Typography>
           </Box>
-        )}
+          <Box className={classes.reviewRow}>
+            <Typography className={classes.reviewLabel}>OAuth Callback:</Typography>
+            <Typography className={classes.reviewValue} style={{ fontSize: 12, fontFamily: 'monospace' }}>
+              {portalBaseUrl}/api/auth/rhaap/handler/frame
+            </Typography>
+          </Box>
+        </Box>
+
+        <Box className={classes.reviewSection}>
+          <Typography className={classes.reviewTitle}>Organizations</Typography>
+          <Box className={classes.reviewRow}>
+            <Typography className={classes.reviewLabel}>Syncing:</Typography>
+            <Typography className={classes.reviewValue}>
+              {selectedOrgs.map(id => DEMO_ORGS.find(o => o.id === id)?.name).filter(Boolean).join(', ') || 'None selected'}
+            </Typography>
+          </Box>
+        </Box>
 
         <Box
           style={{
@@ -736,13 +910,14 @@ export const SetupWizardPage = () => {
             What happens next?
           </Typography>
           <Typography style={{ fontSize: 12, lineHeight: 1.6, opacity: 0.8 }}>
-            After applying, you'll be guided through optional Day 2 setup — connecting content registries,
-            source control providers, and other integrations from the Administration area.
+            The portal will restart and redirect you to the AAP login page. Sign in with your AAP credentials
+            to verify the setup. After logging in, a Quick Start guide will help you connect registries,
+            source control, and configure access control.
           </Typography>
         </Box>
 
         <Typography variant="caption" color="textSecondary" style={{ display: 'block', marginTop: 12 }}>
-          Sensitive values like secrets, keys, and tokens are masked for security.
+          Sensitive values are masked. All settings can be changed later from Administration &gt; Connections.
         </Typography>
       </>
     );
@@ -809,7 +984,8 @@ export const SetupWizardPage = () => {
               <Button
                 variant="contained"
                 color="primary"
-                onClick={step === 0 ? handleNext : handleNext}
+                onClick={handleNext}
+                disabled={step === 3 && selectedOrgs.length === 0}
                 style={{ textTransform: 'none', fontWeight: 500 }}
               >
                 {step === 0 ? 'Start Configuration' : 'Next'}

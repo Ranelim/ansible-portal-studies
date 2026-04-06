@@ -52,32 +52,6 @@ const saveCompleted = (ids: Set<string>) => {
 
 const ADMIN_QUICKSTART_ITEMS: QuickstartItem[] = [
   {
-    id: 'connect-aap',
-    title: 'Connect to AAP',
-    description:
-      'Link your Ansible Automation Platform instance to enable user authentication, ' +
-      'content synchronization, and job template discovery.',
-    icon: 'aap',
-    roles: ['admin'],
-    cta: {
-      text: 'Go to AAP settings',
-      link: '/self-service/admin/connections',
-    },
-  },
-  {
-    id: 'configure-auth',
-    title: 'Set up authentication',
-    description:
-      'Configure OAuth so your team can sign in to the portal with their existing AAP credentials. ' +
-      'This was configured during initial setup and can be updated here.',
-    icon: 'auth',
-    roles: ['admin'],
-    cta: {
-      text: 'Manage authentication',
-      link: '/self-service/admin/connections',
-    },
-  },
-  {
     id: 'connect-registries',
     title: 'Connect content registries',
     description:
@@ -101,6 +75,19 @@ const ADMIN_QUICKSTART_ITEMS: QuickstartItem[] = [
     cta: {
       text: 'Add SCM provider',
       link: '/self-service/admin/connections',
+    },
+  },
+  {
+    id: 'configure-sync',
+    title: 'Review sync schedules',
+    description:
+      'Adjust how often the portal syncs job templates, users, and collections from AAP. ' +
+      'Defaults are set, but you can tune intervals to match your environment.',
+    icon: 'sync',
+    roles: ['admin'],
+    cta: {
+      text: 'Manage sync settings',
+      link: '/self-service/admin/sync',
     },
   },
   {
