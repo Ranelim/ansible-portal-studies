@@ -1,8 +1,12 @@
+// Canonical copy lives in plugins/self-service/src/components/common/DismissibleBanner.tsx
+// Keep these in sync. TODO: extract to a shared package.
+
 import { useState } from 'react';
 import {
   Box,
   IconButton,
   Typography,
+  Link,
   makeStyles,
 } from '@material-ui/core';
 import CloseIcon from '@material-ui/icons/Close';
@@ -39,6 +43,12 @@ const useStyles = makeStyles(theme => ({
     lineHeight: 1.6,
     color: theme.palette.text.primary,
   },
+  cta: {
+    fontSize: 13,
+    fontWeight: 600,
+    marginTop: 4,
+    display: 'inline-block',
+  },
   close: {
     marginTop: -4,
     marginRight: -8,
@@ -49,11 +59,15 @@ const useStyles = makeStyles(theme => ({
 export interface DismissibleBannerProps {
   storageKey: string;
   message: string;
+  ctaText?: string;
+  ctaHref?: string;
 }
 
 export const DismissibleBanner = ({
   storageKey,
   message,
+  ctaText,
+  ctaHref,
 }: DismissibleBannerProps) => {
   const classes = useStyles();
   const fullKey = `portal-banner-${storageKey}`;
@@ -74,6 +88,11 @@ export const DismissibleBanner = ({
       <InfoOutlinedIcon className={classes.icon} />
       <Box className={classes.content}>
         <Typography className={classes.message}>{message}</Typography>
+        {ctaText && ctaHref && (
+          <Link href={ctaHref} className={classes.cta}>
+            {ctaText}
+          </Link>
+        )}
       </Box>
       <IconButton
         size="small"

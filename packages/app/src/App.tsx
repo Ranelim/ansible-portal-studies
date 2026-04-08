@@ -40,7 +40,6 @@ import { CatalogGraphPage } from '@backstage/plugin-catalog-graph';
 import { RequirePermission } from '@backstage/plugin-permission-react';
 import { catalogEntityCreatePermission } from '@backstage/plugin-catalog-common/alpha';
 import { providers } from './identityProviders';
-import { AnsiblePage } from '@ansible/plugin-backstage-rhaap';
 import { DelayingComponentFieldExtension } from './components/scaffolder/customScaffolderExtensions';
 import { CustomTemplateCard } from './components/scaffolder/CustomTemplateCard';
 import {
@@ -112,7 +111,7 @@ const routes = (
       element={
         <ScaffolderPage
           headerOptions={{
-            title: 'Software Templates',
+            title: 'Templates',
             subtitle:
               'Create new projects and automation content from curated templates',
           }}
@@ -152,7 +151,6 @@ const routes = (
     <Route path="/rbac" element={<RbacPage />} />
     <Route path="/settings" element={<UserSettingsPage />} />
     <Route path="/catalog-graph" element={<CatalogGraphPage />} />
-    <Route path="/ansible" element={<AnsiblePage />} />
     <Route path="/self-service" element={<SelfServicePage />} />
   </FlatRoutes>
 );

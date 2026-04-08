@@ -10,7 +10,7 @@ import { GitRepositoriesContent } from './catalog/GitRepositoriesContent';
 import { ProjectsCreateContent } from './create/ProjectsCreateContent';
 
 const tabs = [
-  { id: 'repositories', label: 'Repositories', path: 'catalog' },
+  { id: 'repositories', label: 'Repositories', path: 'repositories' },
   { id: 'templates', label: 'Templates', path: 'create' },
 ];
 
@@ -71,7 +71,7 @@ export const ProjectsTabs: React.FC = () => {
                   label: 'Import existing repository',
                   description: 'Connect an existing Git repository to discover and govern its automation content.',
                   icon: <SearchIcon fontSize="small" />,
-                  onClick: () => navigate('/self-service/projects/create'),
+                  onClick: () => navigate('/self-service/catalog-import'),
                 },
               ]}
             />

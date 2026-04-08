@@ -466,7 +466,7 @@ export const GlobalHeader = () => {
             className={classes.menuItem}
           >
             <ListItemIcon><ViewListIcon fontSize="small" /></ListItemIcon>
-            <ListItemText primary="Browse all templates" secondary="View all software templates" />
+            <ListItemText primary="Browse all templates" secondary="View all available templates" />
           </MenuItem>
         </Menu>
 

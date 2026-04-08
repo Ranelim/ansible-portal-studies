@@ -568,7 +568,7 @@ const GettingStartedCourse = ({
         className={classes.breadcrumbs}
       >
         <Link component="button" onClick={onBack} style={{ border: 'none', background: 'none', padding: 0 }}>
-          Getting started
+          Learning
         </Link>
         <Typography className={classes.breadcrumbCurrent}>
           Getting started with the Ansible Portal
@@ -733,7 +733,7 @@ const ComingSoonStub = ({
         className={classes.breadcrumbs}
       >
         <Link component="button" onClick={onBack} style={{ border: 'none', background: 'none', padding: 0 }}>
-          Getting started
+          Learning
         </Link>
         <Typography className={classes.breadcrumbCurrent}>
           {course.title}
@@ -848,7 +848,7 @@ export const LearningPage = () => {
   return (
     <Page themeId="app">
       <Header
-        title="Getting started"
+        title="Learning"
         subtitle="Guided learning paths for the Ansible Portal"
       />
       <Content>

@@ -53,9 +53,6 @@ const useRootStyles = makeStyles(theme => ({
     'body, html': {
       backgroundColor: `${theme.palette.background.default} !important`,
     },
-    'a[href*="catalog-import"]': {
-      display: 'none !important',
-    },
     '.BackstageHeader-header': {
       position: 'relative',
       zIndex: 0,
@@ -113,7 +110,7 @@ export const Root = ({ children }: PropsWithChildren<{}>) => {
             <SidebarDivider />
             <SidebarSectionLabel text="Learn" />
             <SidebarItem icon={LibraryBooks} to="docs" text="Documentation" />
-            <SidebarItem icon={SchoolIcon} to="/self-service/learning" text="Getting started" />
+            <SidebarItem icon={SchoolIcon} to="/self-service/learning" text="Learning" />
             <SidebarDivider />
             <SidebarScrollWrapper>
               <SidebarSectionLabel text="Administration" />

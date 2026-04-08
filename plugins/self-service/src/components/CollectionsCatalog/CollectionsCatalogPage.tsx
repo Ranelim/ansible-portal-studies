@@ -1,6 +1,7 @@
 import { Box } from '@material-ui/core';
 import { Page, Header, Content } from '@backstage/core-components';
 import CloudDownloadIcon from '@material-ui/icons/CloudDownload';
+import { useNavigate } from 'react-router-dom';
 import { PageHelpIcon } from '../common/PageHelpIcon';
 import { DismissibleBanner } from '../common/DismissibleBanner';
 import { AddActionButton } from '../common/AddActionButton';
@@ -12,6 +13,7 @@ import {
 } from '../notifications';
 
 const CollectionsCatalogPageInner = () => {
+  const navigate = useNavigate();
   const { notifications, removeNotification } = useNotifications();
 
   return (
@@ -34,7 +36,7 @@ const CollectionsCatalogPageInner = () => {
                   label: 'Import from Automation Hub',
                   description: 'Browse and import collections from Red Hat Automation Hub or Ansible Galaxy.',
                   icon: <CloudDownloadIcon fontSize="small" />,
-                  onClick: () => {},
+                  onClick: () => navigate('/self-service/admin/connections'),
                 },
               ]}
             />

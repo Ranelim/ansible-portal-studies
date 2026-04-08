@@ -22,12 +22,11 @@ export const CatalogImport = () => {
   return (
     <Page themeId="tools">
       <Header
-        pageTitleOverride="Register Components"
-        title={<span className={classes.header_title_color}>Add Template</span>}
+        pageTitleOverride="Register Template"
+        title={<span className={classes.header_title_color}>Register Template</span>}
         subtitle={
           <span className={classes.header_subtitle}>
-            Add a new template to the catalog for users in your AAP organization
-            to use.
+            Register a template from a repository URL to make it available in the catalog.
           </span>
         }
         style={{ background: 'inherit' }}
