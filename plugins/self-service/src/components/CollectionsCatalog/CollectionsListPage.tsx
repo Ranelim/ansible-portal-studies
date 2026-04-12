@@ -1,19 +1,17 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { Progress } from '@backstage/core-components';
 import {
   Box,
   Checkbox,
-  FormControl,
+  CircularProgress,
   FormControlLabel,
   IconButton,
-  Input,
   InputAdornment,
-  MenuItem,
   Paper,
-  Select,
   TextField,
   Typography,
 } from '@material-ui/core';
+import Autocomplete from '@material-ui/lab/Autocomplete';
 import SearchIcon from '@material-ui/icons/Search';
 import ClearIcon from '@material-ui/icons/Clear';
 import NavigateBeforeIcon from '@material-ui/icons/NavigateBefore';
@@ -34,16 +32,14 @@ import {
   fetchApiRef,
 } from '@backstage/core-plugin-api';
 import { Entity } from '@backstage/catalog-model';
-import { DEMO_COLLECTION_ENTITIES } from '../common/catalogDemoData';
 import { useNavigate } from 'react-router-dom';
 
-import { SyncStatusMap } from './types';
+import { EmptyState } from '../common';
 import { useCollectionsStyles } from './styles';
 import { PAGE_SIZE } from './constants';
-import { sortEntities, filterLatestVersions, getUniqueFilters } from './utils';
+import { filterLatestVersions, sortEntities } from './utils';
 import { CollectionCard } from './CollectionCard';
-import { LastSyncedIndicator } from '../Admin/LastSyncedIndicator';
-import { EmptyState } from './EmptyState';
+import { usePaginatedCollections } from './usePaginatedCollections';
 
 export const CollectionsTypeFilter = () => {
   const { filters, updateFilters } = useEntityList();
@@ -59,12 +55,67 @@ export const CollectionsTypeFilter = () => {
   return null;
 };
 
+interface EmptyStateWrapperProps {
+  filterByRepositoryEntity: boolean;
+  onSyncClick?: () => void;
+  hasConfiguredSources?: boolean | null;
+  syncDisabled?: boolean;
+  syncDisabledReason?: string;
+}
+
+const EmptyStateWrapper = ({
+  filterByRepositoryEntity,
+  onSyncClick,
+  hasConfiguredSources,
+  syncDisabled,
+  syncDisabledReason,
+}: EmptyStateWrapperProps) => {
+  const classes = useCollectionsStyles();
+  const emptyState = (
+    <EmptyState
+      onSyncClick={onSyncClick}
+      hasConfiguredSources={hasConfiguredSources}
+      syncDisabled={syncDisabled}
+      syncDisabledReason={syncDisabledReason}
+      {...(filterByRepositoryEntity && { repositoryFilter: true })}
+    />
+  );
+  if (filterByRepositoryEntity) {
+    return <Box className={classes.emptyStateContainer}>{emptyState}</Box>;
+  }
+  return emptyState;
+};
+
 interface CollectionsListPageProps {
+  onSyncClick?: () => void;
   onSourcesStatusChange?: (hasConfiguredSources: boolean | null) => void;
+  filterByRepositoryEntity?: Entity | null;
+  syncDisabled?: boolean;
+  syncDisabledReason?: string;
+}
+
+function collectionsTitleCountSuffix(
+  initialLoading: boolean,
+  filterByRepositoryEntity: Entity | null | undefined,
+  showNoFilterMatches: boolean,
+  loadedEntityCount: number,
+  totalCount: number,
+): string {
+  if (initialLoading) {
+    return '';
+  }
+  if (!filterByRepositoryEntity && showNoFilterMatches) {
+    return ` (0 of ${loadedEntityCount})`;
+  }
+  return ` (${totalCount})`;
 }
 
 export const CollectionsListPage = ({
+  onSyncClick,
   onSourcesStatusChange,
+  filterByRepositoryEntity,
+  syncDisabled,
+  syncDisabledReason,
 }: CollectionsListPageProps) => {
   const classes = useCollectionsStyles();
   const catalogApi = useApi(catalogApiRef);
@@ -72,178 +123,39 @@ export const CollectionsListPage = ({
   const fetchApi = useApi(fetchApiRef);
   const navigate = useNavigate();
   const { isStarredEntity, toggleStarredEntity } = useStarredEntities();
-  const [loading, setLoading] = useState<boolean>(true);
-  const [showError, setShowError] = useState<boolean>(false);
-  const [errorMessage] = useState<string>('');
-  const [allEntities, setAllEntities] = useState<Entity[]>([]);
-  const [filteredEntities, setFilteredEntities] = useState<Entity[]>([]);
-  const [sourceFilter, setSourceFilter] = useState<string>('All');
-  const [tagFilter, setTagFilter] = useState<string>('All');
-  const [searchQuery, setSearchQuery] = useState<string>('');
-  const [allSources, setAllSources] = useState<string[]>(['All']);
-  const [allTags, setAllTags] = useState<string[]>(['All']);
-  const [currentPage, setCurrentPage] = useState<number>(1);
-  const [syncStatusMap, setSyncStatusMap] = useState<SyncStatusMap>({});
-  const [showLatestOnly, setShowLatestOnly] = useState<boolean>(true);
-  const [hasConfiguredSources, setHasConfiguredSources] = useState<
-    boolean | null
-  >(null);
   const { filters } = useEntityList();
 
-  const isMountedRef = useRef(true);
-
-  const fetchCollections = useCallback(() => {
-    catalogApi
-      .getEntities({
-        filter: [{ kind: 'Component', 'spec.type': 'ansible-collection' }],
-      })
-      .then(response => {
-        if (!isMountedRef.current) return;
-
-        let items = Array.isArray(response)
-          ? response
-          : response?.items || [];
-
-        if (items.length === 0) items = DEMO_COLLECTION_ENTITIES;
-
-        setAllEntities(items);
-        setFilteredEntities(items);
-
-        if (items.length > 0) {
-          const { sources, tags } = getUniqueFilters(items);
-          setAllSources(['All', ...sources]);
-          setAllTags(['All', ...tags]);
-        }
-
-        setLoading(false);
-        setShowError(false);
-      })
-      .catch(() => {
-        if (!isMountedRef.current) return;
-        const items = DEMO_COLLECTION_ENTITIES;
-        setAllEntities(items);
-        setFilteredEntities(items);
-        if (items.length > 0) {
-          const { sources, tags } = getUniqueFilters(items);
-          setAllSources(['All', ...sources]);
-          setAllTags(['All', ...tags]);
-        }
-        setLoading(false);
-        setShowError(false);
-      });
-  }, [catalogApi]);
-
-  const fetchSyncStatus = useCallback(async () => {
-    try {
-      const baseUrl = await discoveryApi.getBaseUrl('catalog');
-      const response = await fetchApi.fetch(
-        `${baseUrl}/ansible/sync/status?ansible_contents=true`,
-      );
-
-      if (!response.ok) {
-        if (isMountedRef.current) {
-          setHasConfiguredSources(false);
-        }
-        return;
-      }
-
-      const data = await response.json();
-      const statusMap: SyncStatusMap = {};
-
-      const providers = data.content?.providers || [];
-
-      providers.forEach(
-        (provider: {
-          sourceId: string;
-          lastSyncTime: string | null;
-          lastFailedSyncTime: string | null;
-        }) => {
-          statusMap[provider.sourceId] = {
-            lastSyncTime: provider.lastSyncTime,
-            lastFailedSyncTime: provider.lastFailedSyncTime,
-          };
-        },
-      );
-
-      if (isMountedRef.current) {
-        setSyncStatusMap(statusMap);
-        const hasSources = providers.length > 0;
-        setHasConfiguredSources(hasSources);
-      }
-    } catch {
-      if (isMountedRef.current) {
-        setHasConfiguredSources(false);
-      }
-    }
-  }, [discoveryApi, fetchApi]);
-
-  useEffect(() => {
-    const searchLower = searchQuery.toLowerCase().trim();
-    let filtered = allEntities.filter(entity => {
-      const annotations = entity.metadata?.annotations || {};
-      const collectionSource = annotations['ansible.io/collection-source'];
-
-      const entitySource =
-        collectionSource === 'pah'
-          ? annotations['ansible.io/collection-source-repository'] || ''
-          : annotations['ansible.io/scm-host-name'] || '';
-
-      const matchesSource =
-        sourceFilter === 'All' || entitySource === sourceFilter;
-      const matchesTag =
-        tagFilter === 'All' || entity.metadata?.tags?.includes(tagFilter);
-
-      const matchesSearch =
-        !searchLower ||
-        entity.metadata?.name?.toLowerCase().includes(searchLower) ||
-        (entity.spec?.collection_namespace as string | undefined)
-          ?.toLowerCase()
-          .includes(searchLower) ||
-        entity.metadata?.description?.toLowerCase().includes(searchLower) ||
-        entity.metadata?.tags?.some((tag: string) =>
-          tag.toLowerCase().includes(searchLower),
-        );
-
-      return matchesSource && matchesTag && matchesSearch;
-    });
-
-    if (showLatestOnly) {
-      filtered = filterLatestVersions(filtered);
-    }
-
-    setFilteredEntities(sortEntities(filtered));
-  }, [sourceFilter, tagFilter, searchQuery, allEntities, showLatestOnly]);
-
-  useEffect(() => {
-    isMountedRef.current = true;
-    fetchCollections();
-    fetchSyncStatus();
-
-    return () => {
-      isMountedRef.current = false;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    if (allEntities && filters.user?.value === 'starred') {
-      let starred = allEntities.filter(e => isStarredEntity(e));
-      if (showLatestOnly) {
-        starred = filterLatestVersions(starred);
-      }
-      setFilteredEntities(sortEntities(starred));
-    } else if (filters.user?.value === 'all') {
-      let all = allEntities;
-      if (showLatestOnly) {
-        all = filterLatestVersions(all);
-      }
-      setFilteredEntities(sortEntities(all));
-    }
-  }, [filters.user, allEntities, isStarredEntity, showLatestOnly]);
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [sourceFilter, tagFilter, searchQuery, showLatestOnly]);
+  const {
+    entities: paginatedEntities,
+    loadedEntityCount,
+    totalCount,
+    initialLoading,
+    loadingMore,
+    error,
+    currentPage,
+    totalPages,
+    hasNextPage,
+    hasPrevPage,
+    nextPage,
+    prevPage,
+    syncStatusMap,
+    hasConfiguredSources,
+    allSources,
+    allTags,
+    sourceFilter,
+    setSourceFilter,
+    tagFilter,
+    setTagFilter,
+    searchQuery,
+    setSearchQuery,
+    showLatestOnly,
+    setShowLatestOnly,
+  } = usePaginatedCollections({
+    catalogApi,
+    discoveryApi,
+    fetchApi,
+    filterByRepositoryEntity,
+  });
 
   useEffect(() => {
     if (onSourcesStatusChange) {
@@ -251,146 +163,245 @@ export const CollectionsListPage = ({
     }
   }, [hasConfiguredSources, onSourcesStatusChange]);
 
-  const totalPages = Math.ceil(filteredEntities.length / PAGE_SIZE);
-  const startIndex = (currentPage - 1) * PAGE_SIZE;
-  const endIndex = startIndex + PAGE_SIZE;
-  const paginatedEntities = filteredEntities.slice(startIndex, endIndex);
+  const displayedEntities = (() => {
+    if (filterByRepositoryEntity) return paginatedEntities;
 
-  if (loading) {
-    return <Progress />;
+    if (filters.user?.value === 'starred') {
+      let starred = paginatedEntities.filter(e => isStarredEntity(e));
+      if (showLatestOnly) {
+        starred = filterLatestVersions(starred);
+      }
+      return sortEntities(starred);
+    }
+    return paginatedEntities;
+  })();
+
+  const startIndex = (currentPage - 1) * PAGE_SIZE;
+  const endIndex = Math.min(startIndex + PAGE_SIZE, totalCount);
+
+  if (error !== null) {
+    return <div>Error: {error}</div>;
   }
 
-  if (showError) {
-    return <div>{errorMessage ?? 'Unable to load collections'}</div>;
+  const showCatalogEmptyState =
+    !initialLoading &&
+    !loadingMore &&
+    (filterByRepositoryEntity ? totalCount === 0 : loadedEntityCount === 0);
+
+  const showNoFilterMatches =
+    !initialLoading &&
+    !loadingMore &&
+    !filterByRepositoryEntity &&
+    loadedEntityCount > 0 &&
+    totalCount === 0;
+
+  const collectionsTitleCount = collectionsTitleCountSuffix(
+    initialLoading,
+    filterByRepositoryEntity,
+    showNoFilterMatches,
+    loadedEntityCount,
+    totalCount,
+  );
+
+  let collectionsCardsContent: ReactNode;
+  if (initialLoading) {
+    collectionsCardsContent = (
+      <Box className={classes.cardsContainer}>
+        <Progress />
+      </Box>
+    );
+  } else if (showNoFilterMatches) {
+    collectionsCardsContent = (
+      <Box className={classes.cardsContainer}>
+        <Typography variant="body1" color="textSecondary" component="p">
+          No collections match your search or filters.
+        </Typography>
+      </Box>
+    );
+  } else {
+    collectionsCardsContent = (
+      <Box className={classes.cardsContainer}>
+        {displayedEntities.map(entity => (
+          <CollectionCard
+            key={entity.metadata.uid || entity.metadata.name}
+            entity={entity}
+            onClick={navigate}
+            isStarred={isStarredEntity(entity)}
+            onToggleStar={toggleStarredEntity}
+            syncStatusMap={syncStatusMap}
+          />
+        ))}
+      </Box>
+    );
   }
 
   return (
     <div style={{ flexDirection: 'column', width: '100%' }}>
       <CollectionsTypeFilter />
-      {allEntities.length === 0 ? (
-        <EmptyState
+      {showCatalogEmptyState ? (
+        <EmptyStateWrapper
+          filterByRepositoryEntity={!!filterByRepositoryEntity}
+          onSyncClick={onSyncClick}
           hasConfiguredSources={hasConfiguredSources}
+          syncDisabled={syncDisabled}
+          syncDisabledReason={syncDisabledReason}
         />
       ) : (
-        <div className={classes.catalogLayout}>
+        <Box
+          className={
+            filterByRepositoryEntity
+              ? `${classes.catalogLayout} ${classes.catalogLayoutStretch}`
+              : classes.catalogLayout
+          }
+        >
           <CatalogFilterLayout>
-            <CatalogFilterLayout.Filters>
-              <TextField
-                className={classes.searchInput}
-                placeholder="Search collections..."
-                variant="standard"
-                fullWidth
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <SearchIcon color="disabled" />
-                    </InputAdornment>
-                  ),
-                  endAdornment: searchQuery ? (
-                    <InputAdornment position="end">
-                      <IconButton
-                        size="small"
-                        onClick={() => setSearchQuery('')}
-                        aria-label="Clear search"
-                      >
-                        <ClearIcon fontSize="small" />
-                      </IconButton>
-                    </InputAdornment>
-                  ) : null,
-                }}
-              />
-              <UserListPicker availableFilters={['starred', 'all']} />
+            {!filterByRepositoryEntity && (
+              <CatalogFilterLayout.Filters>
+                <TextField
+                  className={classes.searchInput}
+                  placeholder="Search"
+                  variant="standard"
+                  fullWidth
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  disabled={initialLoading}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <SearchIcon color="disabled" />
+                      </InputAdornment>
+                    ),
+                    endAdornment: searchQuery ? (
+                      <InputAdornment position="end">
+                        <IconButton
+                          size="small"
+                          onClick={() => setSearchQuery('')}
+                          aria-label="Clear search"
+                        >
+                          <ClearIcon fontSize="small" />
+                        </IconButton>
+                      </InputAdornment>
+                    ) : null,
+                  }}
+                />
+                <UserListPicker availableFilters={['starred', 'all']} />
 
-              <Typography className={classes.filterLabel}>
-                Source Type
-              </Typography>
-              <Paper className={classes.paper}>
-                <FormControl fullWidth>
-                  <Select
+                <Typography
+                  style={{
+                    marginTop: 16,
+                    fontWeight: 600,
+                    fontSize: '0.875rem',
+                  }}
+                >
+                  Source Type
+                </Typography>
+                <Paper className={classes.paper}>
+                  <Autocomplete
+                    options={allSources}
                     value={sourceFilter}
-                    onChange={e => setSourceFilter(e.target.value as string)}
-                    input={<Input disableUnderline />}
-                  >
-                    {allSources.map(s => (
-                      <MenuItem key={s} value={s}>
-                        {s}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Paper>
-
-              <Typography className={classes.filterLabel}>
-                Tags
-              </Typography>
-              <Paper className={classes.paper}>
-                <FormControl fullWidth>
-                  <Select
-                    value={tagFilter}
-                    onChange={e => setTagFilter(e.target.value as string)}
-                    input={<Input disableUnderline />}
-                  >
-                    {allTags.map(t => (
-                      <MenuItem key={t} value={t}>
-                        {t}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Paper>
-
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={showLatestOnly}
-                    onChange={e => setShowLatestOnly(e.target.checked)}
-                    color="primary"
+                    onChange={(_event, newValue) =>
+                      setSourceFilter(newValue || 'All')
+                    }
+                    openOnFocus
+                    disabled={initialLoading}
+                    renderInput={params => (
+                      <TextField
+                        {...params}
+                        placeholder="Search sources..."
+                        variant="standard"
+                        InputProps={{
+                          ...params.InputProps,
+                          disableUnderline: true,
+                          style: { fontSize: '0.875rem' },
+                        }}
+                      />
+                    )}
+                    disableClearable={sourceFilter === 'All'}
                     size="small"
+                    fullWidth
                   />
-                }
-                label="Show latest version only"
-                style={{ marginTop: 16 }}
-              />
-            </CatalogFilterLayout.Filters>
+                </Paper>
+
+                <Typography
+                  style={{
+                    marginTop: 16,
+                    fontWeight: 600,
+                    fontSize: '0.875rem',
+                  }}
+                >
+                  Tags
+                </Typography>
+                <Paper className={classes.paper}>
+                  <Autocomplete
+                    options={allTags}
+                    value={tagFilter}
+                    onChange={(_event, newValue) =>
+                      setTagFilter(newValue || 'All')
+                    }
+                    openOnFocus
+                    disabled={initialLoading}
+                    renderInput={params => (
+                      <TextField
+                        {...params}
+                        placeholder="Search tags..."
+                        variant="standard"
+                        InputProps={{
+                          ...params.InputProps,
+                          disableUnderline: true,
+                          style: { fontSize: '0.875rem' },
+                        }}
+                      />
+                    )}
+                    disableClearable={tagFilter === 'All'}
+                    size="small"
+                    fullWidth
+                  />
+                </Paper>
+
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={showLatestOnly}
+                      onChange={e => setShowLatestOnly(e.target.checked)}
+                      color="primary"
+                      size="small"
+                      disabled={initialLoading}
+                    />
+                  }
+                  label="Show latest version only"
+                  style={{ marginTop: 16 }}
+                />
+              </CatalogFilterLayout.Filters>
+            )}
 
             <CatalogFilterLayout.Content>
               <Box>
                 <Box className={classes.contentHeader}>
-                  <Box>
-                    <Typography variant="h6" className={classes.contentTitle}>
-                      {filteredEntities.length} {filteredEntities.length === 1 ? 'collection' : 'collections'}
-                    </Typography>
-                    <LastSyncedIndicator source="Private Automation Hub" timeAgo="8 minutes ago" />
-                  </Box>
+                  <Typography variant="h6" className={classes.contentTitle}>
+                    Ansible Collections
+                    {collectionsTitleCount}
+                    {(initialLoading || loadingMore) && (
+                      <CircularProgress
+                        size={16}
+                        style={{ marginLeft: 8, verticalAlign: 'middle' }}
+                      />
+                    )}
+                  </Typography>
                 </Box>
 
-                <Box className={classes.cardsContainer}>
-                  {paginatedEntities.map(entity => (
-                    <CollectionCard
-                      key={entity.metadata.uid || entity.metadata.name}
-                      entity={entity}
-                      onClick={navigate}
-                      isStarred={isStarredEntity(entity)}
-                      onToggleStar={toggleStarredEntity}
-                      syncStatusMap={syncStatusMap}
-                    />
-                  ))}
-                </Box>
+                {collectionsCardsContent}
 
-                {totalPages > 1 && (
+                {!initialLoading && totalPages > 1 && (
                   <Box className={classes.paginationContainer}>
                     <Typography className={classes.paginationInfo}>
-                      Showing {startIndex + 1}-
-                      {Math.min(endIndex, filteredEntities.length)} of{' '}
-                      {filteredEntities.length} collections
+                      Showing {startIndex + 1}-{endIndex} of {totalCount}{' '}
+                      collections
                     </Typography>
                     <Box className={classes.paginationControls}>
                       <IconButton
                         size="small"
-                        disabled={currentPage === 1}
-                        onClick={() => setCurrentPage(p => p - 1)}
+                        disabled={!hasPrevPage}
+                        onClick={prevPage}
                         aria-label="Previous page"
                       >
                         <NavigateBeforeIcon />
@@ -400,8 +411,8 @@ export const CollectionsListPage = ({
                       </Typography>
                       <IconButton
                         size="small"
-                        disabled={currentPage === totalPages}
-                        onClick={() => setCurrentPage(p => p + 1)}
+                        disabled={!hasNextPage}
+                        onClick={nextPage}
                         aria-label="Next page"
                       >
                         <NavigateNextIcon />
@@ -412,20 +423,37 @@ export const CollectionsListPage = ({
               </Box>
             </CatalogFilterLayout.Content>
           </CatalogFilterLayout>
-        </div>
+        </Box>
       )}
     </div>
   );
 };
 
-export const CollectionsContent = () => {
+interface CollectionsContentProps {
+  onSyncClick?: () => void;
+  onSourcesStatusChange?: (hasConfiguredSources: boolean | null) => void;
+  syncDisabled?: boolean;
+  syncDisabledReason?: string;
+}
+
+export const CollectionsContent = ({
+  onSyncClick,
+  onSourcesStatusChange,
+  syncDisabled,
+  syncDisabledReason,
+}: CollectionsContentProps) => {
   const classes = useCollectionsStyles();
 
   return (
     <Box display="flex" justifyContent="space-between" width="100%">
       <Box className={classes.flex} width="100%">
         <EntityListProvider>
-          <CollectionsListPage />
+          <CollectionsListPage
+            onSyncClick={onSyncClick}
+            onSourcesStatusChange={onSourcesStatusChange}
+            syncDisabled={syncDisabled}
+            syncDisabledReason={syncDisabledReason}
+          />
         </EntityListProvider>
       </Box>
     </Box>

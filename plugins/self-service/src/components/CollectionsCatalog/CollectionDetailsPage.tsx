@@ -1,14 +1,17 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Box, Button, Typography } from '@material-ui/core';
+import { Box, Button, Typography, Tab, Tabs } from '@material-ui/core';
 import OpenInNewIcon from '@material-ui/icons/OpenInNew';
 import { Entity } from '@backstage/catalog-model';
 import { catalogApiRef } from '@backstage/plugin-catalog-react';
 import {
   useApi,
+  useRouteRef,
   discoveryApiRef,
   fetchApiRef,
 } from '@backstage/core-plugin-api';
+import { RequirePermission } from '@backstage/plugin-permission-react';
+import { collectionsViewPermission } from '@ansible/backstage-rhaap-common/permissions';
 
 import { CollectionBreadcrumbs } from './CollectionBreadcrumbs';
 import { CollectionAboutCard } from './CollectionAboutCard';
@@ -16,15 +19,21 @@ import { CollectionResourcesCard } from './CollectionResourcesCard';
 import { CollectionReadmeCard } from './CollectionReadmeCard';
 import { RepositoryBadge } from './RepositoryBadge';
 import { useCollectionsStyles } from './styles';
-import { EmptyState } from './EmptyState';
+import { rootRouteRef } from '../../routes';
+import {
+  EmptyState,
+  fetchGitFileContentFromBackend,
+  ScmIntegrationAuthError,
+} from '../common';
 
-export const CollectionDetailsPage = () => {
+const CollectionDetailsPageInner = () => {
   const classes = useCollectionsStyles();
   const navigate = useNavigate();
   const { collectionName } = useParams<{ collectionName: string }>();
   const catalogApi = useApi(catalogApiRef);
   const discoveryApi = useApi(discoveryApiRef);
   const fetchApi = useApi(fetchApiRef);
+  const rootLink = useRouteRef(rootRouteRef);
 
   const [entity, setEntity] = useState<Entity | null>(null);
   const [loading, setLoading] = useState(true);
@@ -34,6 +43,8 @@ export const CollectionDetailsPage = () => {
   const [lastSync, setLastSync] = useState<string | null>(null);
   const [lastFailedSync, setLastFailedSync] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [tab, setTab] = useState(0);
+  const [scmIntegrationAuthError, setScmIntegrationAuthError] = useState(false);
 
   const fetchEntity = useCallback(() => {
     if (!collectionName) return;
@@ -65,6 +76,10 @@ export const CollectionDetailsPage = () => {
   useEffect(() => {
     fetchEntity();
   }, [fetchEntity]);
+
+  useEffect(() => {
+    setScmIntegrationAuthError(false);
+  }, [collectionName]);
 
   useEffect(() => {
     if (!entity) return;
@@ -113,36 +128,6 @@ export const CollectionDetailsPage = () => {
     return '';
   }, []);
 
-  const fetchReadmeFromBackend = useCallback(
-    async (
-      scmProvider: string,
-      scmHost: string,
-      scmOrg: string,
-      scmRepo: string,
-      filePath: string,
-      gitRef: string,
-    ): Promise<string> => {
-      const baseUrl = await discoveryApi.getBaseUrl('catalog');
-      const params = new URLSearchParams({
-        scmProvider,
-        host: scmHost,
-        owner: scmOrg,
-        repo: scmRepo,
-        filePath,
-        ref: gitRef,
-      });
-
-      const response = await fetchApi.fetch(
-        `${baseUrl}/git_readme_content?${params}`,
-      );
-      if (response.ok) {
-        return response.text();
-      }
-      return '';
-    },
-    [discoveryApi, fetchApi],
-  );
-
   useEffect(() => {
     if (!entity) return;
 
@@ -159,6 +144,7 @@ export const CollectionDetailsPage = () => {
       setReadmeContent(htmlReadme);
       setIsHtmlReadme(true);
       setReadmeLoading(false);
+      setScmIntegrationAuthError(false);
       return;
     }
 
@@ -170,6 +156,7 @@ export const CollectionDetailsPage = () => {
 
     if (!readmeUrl) {
       setReadmeContent('');
+      setScmIntegrationAuthError(false);
       return;
     }
 
@@ -186,19 +173,34 @@ export const CollectionDetailsPage = () => {
     setReadmeLoading(true);
 
     if (canUseBackend) {
-      fetchReadmeFromBackend(
+      fetchGitFileContentFromBackend(discoveryApi, fetchApi, {
         scmProvider,
         scmHost,
         scmOrg,
         scmRepo,
         filePath,
         gitRef,
-      )
-        .then(setReadmeContent)
-        .catch(() => setReadmeContent(''))
+      })
+        .then(outcome => {
+          if (outcome.ok) {
+            setReadmeContent(outcome.data);
+            setScmIntegrationAuthError(false);
+          } else if (outcome.reason === 'integration_auth') {
+            setScmIntegrationAuthError(true);
+          } else {
+            setReadmeContent('');
+            setScmIntegrationAuthError(false);
+          }
+        })
+        .catch(() => {
+          setReadmeContent('');
+          setScmIntegrationAuthError(false);
+        })
         .finally(() => setReadmeLoading(false));
       return;
     }
+
+    setScmIntegrationAuthError(false);
 
     let fetchUrl = readmeUrl;
     if (
@@ -217,11 +219,11 @@ export const CollectionDetailsPage = () => {
       .then(setReadmeContent)
       .catch(() => setReadmeContent(''))
       .finally(() => setReadmeLoading(false));
-  }, [entity, parseReadmeFilePath, fetchReadmeFromBackend]);
+  }, [entity, parseReadmeFilePath, discoveryApi, fetchApi]);
 
   const handleNavigateToCatalog = useCallback(() => {
-    navigate('/self-service/collections');
-  }, [navigate]);
+    navigate(`${rootLink()}/collections`);
+  }, [navigate, rootLink]);
 
   const handleViewSource = useCallback(() => {
     const annotations = entity?.metadata?.annotations || {};
@@ -283,6 +285,18 @@ export const CollectionDetailsPage = () => {
     );
   }
 
+  if (scmIntegrationAuthError) {
+    return (
+      <Box className={classes.detailsContainer}>
+        <CollectionBreadcrumbs
+          collectionName={collectionFullName}
+          onNavigateToCatalog={handleNavigateToCatalog}
+        />
+        <ScmIntegrationAuthError resourceLabel="collection" />
+      </Box>
+    );
+  }
+
   return (
     <Box className={classes.detailsContainer}>
       <CollectionBreadcrumbs
@@ -312,32 +326,50 @@ export const CollectionDetailsPage = () => {
             onClick={handleViewSource}
             className={classes.syncButton}
           >
-            View source
+            View Source
           </Button>
         )}
       </Box>
 
-      <Box className={classes.detailsContent}>
-        <Box className={classes.detailsLeftColumn}>
-          <CollectionReadmeCard
-            readmeContent={readmeContent}
-            isLoading={readmeLoading}
-            isHtml={isHtmlReadme}
-          />
-        </Box>
+      <Tabs
+        value={tab}
+        onChange={(_, v) => setTab(v)}
+        className={classes.detailsTabs}
+      >
+        <Tab label="Overview" />
+      </Tabs>
 
-        <Box className={classes.detailsRightColumn}>
-          <CollectionAboutCard
-            entity={entity}
-            lastSync={lastSync}
-            lastFailedSync={lastFailedSync}
-            onViewSource={handleViewSource}
-            onRefresh={handleRefresh}
-            isRefreshing={isRefreshing}
-          />
-          <CollectionResourcesCard entity={entity} />
+      {tab === 0 && (
+        <Box className={classes.detailsContent}>
+          <Box className={classes.detailsLeftColumn}>
+            <CollectionReadmeCard
+              readmeContent={readmeContent}
+              isLoading={readmeLoading}
+              isHtml={isHtmlReadme}
+            />
+          </Box>
+
+          <Box className={classes.detailsRightColumn}>
+            <CollectionAboutCard
+              entity={entity}
+              lastSync={lastSync}
+              lastFailedSync={lastFailedSync}
+              onViewSource={handleViewSource}
+              onRefresh={handleRefresh}
+              isRefreshing={isRefreshing}
+            />
+            <CollectionResourcesCard entity={entity} />
+          </Box>
         </Box>
-      </Box>
+      )}
     </Box>
+  );
+};
+
+export const CollectionDetailsPage = () => {
+  return (
+    <RequirePermission permission={collectionsViewPermission}>
+      <CollectionDetailsPageInner />
+    </RequirePermission>
   );
 };

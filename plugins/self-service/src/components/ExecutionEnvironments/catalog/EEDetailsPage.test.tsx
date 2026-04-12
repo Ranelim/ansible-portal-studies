@@ -7,12 +7,30 @@ import {
 } from '@testing-library/react';
 import { TestApiProvider } from '@backstage/test-utils';
 import { catalogApiRef } from '@backstage/plugin-catalog-react';
-import { discoveryApiRef, identityApiRef } from '@backstage/core-plugin-api';
+import {
+  configApiRef,
+  discoveryApiRef,
+  identityApiRef,
+  fetchApiRef,
+} from '@backstage/core-plugin-api';
+import { scmAuthApiRef } from '@backstage/integration-react';
+import { eeBuildApiRef } from '../../../apis';
+import { NotificationProvider, notificationStore } from '../../notifications';
 import { ThemeProvider, createMuiTheme } from '@material-ui/core/styles';
 import { MemoryRouter } from 'react-router-dom';
+import { SCM_INTEGRATION_AUTH_FAILED_CODE } from '@ansible/backstage-rhaap-common/constants';
 
 // Component under test (named export)
 import { EEDetailsPage } from './EEDetailsPage';
+
+jest.mock('@backstage/core-plugin-api', () => {
+  const actual = jest.requireActual('@backstage/core-plugin-api');
+  return { ...actual, useRouteRef: () => () => '/self-service' };
+});
+
+jest.mock('../../../routes', () => ({
+  rootRouteRef: { id: 'root-route-ref' },
+}));
 
 // ----------------- Simple UI stubs -----------------
 jest.mock('@backstage/plugin-catalog-react', () => {
@@ -99,14 +117,76 @@ const entityNoReadme = {
 };
 delete (entityNoReadme.spec as any).readme;
 
+// GitHub URL without tree path
+const entityGitHubNoTree = {
+  ...entityFull,
+  metadata: {
+    ...entityFull.metadata,
+    annotations: {
+      'backstage.io/source-location':
+        'url:https://github.com/owner/repo/blob/main/ee-dir',
+      'ansible.io/scm-provider': 'github',
+    },
+  },
+  spec: { ...entityFull.spec },
+};
+delete (entityGitHubNoTree.spec as any).readme;
+
+// GitLab URL with tree path
+const entityGitLabWithTree = {
+  ...entityFull,
+  metadata: {
+    ...entityFull.metadata,
+    annotations: {
+      'backstage.io/source-location':
+        'url:https://gitlab.com/owner/repo/-/tree/develop/subdir/ee',
+      'ansible.io/scm-provider': 'gitlab',
+    },
+  },
+  spec: { ...entityFull.spec },
+};
+delete (entityGitLabWithTree.spec as any).readme;
+
+// GitLab URL without tree path
+const entityGitLabNoTree = {
+  ...entityFull,
+  metadata: {
+    ...entityFull.metadata,
+    annotations: {
+      'backstage.io/source-location': 'url:https://gitlab.com/owner/repo',
+      'ansible.io/scm-provider': 'gitlab',
+    },
+  },
+  spec: { ...entityFull.spec },
+};
+delete (entityGitLabNoTree.spec as any).readme;
+
+/** No in-spec readme or definition — triggers backend fetches for both. */
+const entityNoReadmeNoDefinition = {
+  ...entityFull,
+  spec: { ...entityFull.spec },
+};
+delete (entityNoReadmeNoDefinition.spec as any).readme;
+delete (entityNoReadmeNoDefinition.spec as any).definition;
+
 const theme = createMuiTheme();
 
-// ----------------- Helper render (provides catalog, discovery, identity APIs) -----------------
+const mockConfigApi = {
+  getOptionalString: jest.fn((key: string): string | undefined => {
+    if (key === 'ansible.rhaap.baseUrl') {
+      return 'https://aap.example.com';
+    }
+    return undefined;
+  }),
+};
+
+// ----------------- Helper render (provides catalog, discovery, identity, fetch APIs) -----------------
 const renderWithCatalogApi = (
   getEntitiesImpl: any,
   options?: {
     discoveryImpl?: any;
     identityImpl?: any;
+    fetchImpl?: any;
     getEntityByRefImpl?: any;
   },
 ) => {
@@ -128,28 +208,53 @@ const renderWithCatalogApi = (
   const mockIdentityApi = options?.identityImpl ?? {
     getCredentials: async () => ({ token: 'tok' }),
   };
+  const mockFetchApi = options?.fetchImpl ?? {
+    fetch: jest.fn().mockResolvedValue({
+      ok: true,
+      text: async () => '# Default README from fetch',
+    }),
+  };
+  const mockScmAuthApi = {
+    getCredentials: jest.fn().mockResolvedValue({ token: 't', headers: {} }),
+  };
+  const mockEeBuildApi = {
+    triggerBuild: jest.fn().mockResolvedValue({ accepted: true }),
+  };
 
-  return render(
+  const view = render(
     <MemoryRouter initialEntries={['/']}>
       <TestApiProvider
         apis={[
+          [configApiRef, mockConfigApi],
           [catalogApiRef, mockCatalogApi],
           [discoveryApiRef, mockDiscoveryApi],
           [identityApiRef, mockIdentityApi],
+          [fetchApiRef, mockFetchApi],
+          [scmAuthApiRef, mockScmAuthApi],
+          [eeBuildApiRef, mockEeBuildApi],
         ]}
       >
-        <ThemeProvider theme={theme}>
-          <EEDetailsPage />
-        </ThemeProvider>
+        <NotificationProvider>
+          <ThemeProvider theme={theme}>
+            <EEDetailsPage />
+          </ThemeProvider>
+        </NotificationProvider>
       </TestApiProvider>
     </MemoryRouter>,
   );
+  return Object.assign(view, {
+    mockScmAuthApi,
+    mockCatalogApi,
+    mockEeBuildApi,
+  });
 };
 
 // ----------------- Tests -----------------
 describe('EEDetailsPage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    sessionStorage.clear();
+    notificationStore.clearAll();
   });
 
   afterEach(() => {
@@ -222,44 +327,70 @@ describe('EEDetailsPage', () => {
     expect(getEntities).toHaveBeenCalled();
   });
 
-  test('clicking VIEW TECHDOCS calls window.open with computed docs url', async () => {
+  test('clicking Read more (long description) expands description inline and shows Read less', async () => {
+    const longDescription =
+      'Long description over 150 characters. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam.';
+    const entityLongDesc = {
+      ...entityNoDownload,
+      metadata: {
+        ...entityNoDownload.metadata,
+        description: longDescription,
+      },
+    };
+    renderWithCatalogApi(() => Promise.resolve({ items: [entityLongDesc] }));
+
+    await screen.findByTestId('favorite-entity');
+
+    const readMore = screen.queryByText(/Read more/i);
+    expect(readMore).toBeInTheDocument();
+    expect(screen.queryByText(longDescription)).toBeNull();
+
+    fireEvent.click(readMore!);
+
+    expect(screen.getByText(longDescription)).toBeInTheDocument();
+    expect(screen.getByText(/Read less/i)).toBeInTheDocument();
+  });
+
+  test('Resources card renders documentation links', async () => {
+    renderWithCatalogApi(() => Promise.resolve({ items: [entityNoDownload] }));
+
+    await screen.findByTestId('favorite-entity');
+
+    expect(
+      screen.getByText(
+        /Create execution environment definitions in self-service automation portal/i,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  test('Edit definition action opens definition file URL', async () => {
     renderWithCatalogApi(() => Promise.resolve({ items: [entityNoDownload] }));
 
     await screen.findByTestId('favorite-entity');
 
     const openSpy = jest.spyOn(window, 'open').mockImplementation(() => null);
 
-    const techdocsBox = screen.queryByText(/VIEW\s*TECHDOCS/i);
-    expect(techdocsBox).toBeInTheDocument();
+    const actionsButton = screen.getByRole('button', { name: /Actions/i });
+    fireEvent.click(actionsButton);
+    const editDefinitionItem = await screen.findByText(/Edit definition/i);
+    fireEvent.click(editDefinitionItem);
 
-    fireEvent.click(techdocsBox!);
-
-    expect(openSpy).toHaveBeenCalledWith(
-      `/docs/${entityNoDownload.metadata.namespace}/${entityNoDownload.kind}/${entityNoDownload.metadata.name}`,
-      '_blank',
-    );
-
+    expect(openSpy).toHaveBeenCalledWith('http://edit/ee-one.yml', '_blank');
     openSpy.mockRestore();
   });
 
-  test('clicking VIEW SOURCE opens source location cleaned', async () => {
+  test('source link points to source location and opens in new tab', async () => {
     renderWithCatalogApi(() => Promise.resolve({ items: [entityNoDownload] }));
 
     await screen.findByTestId('favorite-entity');
 
-    const openSpy = jest.spyOn(window, 'open').mockImplementation(() => null);
-
-    const viewSourceBox = screen.queryByText(/VIEW\s*SOURCE/i);
-    expect(viewSourceBox).toBeInTheDocument();
-
-    fireEvent.click(viewSourceBox!);
-
-    expect(openSpy).toHaveBeenCalledWith(
+    // Main layout uses "Source" section with link labeled by SCM (e.g. GitHub)
+    const sourceLink = screen.getByRole('link', { name: /github/i });
+    expect(sourceLink).toHaveAttribute(
+      'href',
       'https://github.com/owner/repo/tree/branch/ee1/',
-      '_blank',
     );
-
-    openSpy.mockRestore();
+    expect(sourceLink).toHaveAttribute('target', '_blank');
   });
 
   test('Edit action opens edit URL from annotation (if present)', async () => {
@@ -269,14 +400,45 @@ describe('EEDetailsPage', () => {
     const favorite = await screen.findByTestId('favorite-entity');
     expect(favorite).toBeInTheDocument();
 
+    const editLinks = screen.queryAllByRole('link', {
+      name: /edit definition/i,
+    });
     const editLink =
-      screen.queryByRole('link', { name: /edit/i }) ||
-      screen.queryByText(/Edit/i);
+      editLinks.length > 0
+        ? editLinks[0]
+        : screen.queryByText(/Edit definition/i);
     if (editLink) {
       fireEvent.click(editLink);
       // link has target _blank in the markup — ensure href contains the edit url
       // expect((editLink as HTMLAnchorElement).href).toContain('http://edit/ee-one');
     }
+  });
+
+  test('AboutCard shows source link from source-location when edit-url is missing', async () => {
+    const entitySourceLocationOnly = {
+      ...entityNoDownload,
+      metadata: {
+        ...entityNoDownload.metadata,
+        annotations: {
+          'backstage.io/source-location':
+            'url:https://git.example.com/org/repo',
+        },
+      },
+    };
+    renderWithCatalogApi(() =>
+      Promise.resolve({ items: [entitySourceLocationOnly] }),
+    );
+
+    await screen.findByTestId('favorite-entity');
+
+    // Main layout shows Source section with link (no separate EDIT URL block)
+    const sourceLink = screen.getByRole('link', {
+      name: /source/i,
+    });
+    expect(sourceLink).toHaveAttribute(
+      'href',
+      'https://git.example.com/org/repo',
+    );
   });
 
   test('Download EE files triggers archive creation & download flow (create/revoke called)', async () => {
@@ -352,6 +514,26 @@ describe('EEDetailsPage', () => {
     // createObjectURLSpy.mockRestore();
   });
 
+  test('download with missing definition/readme/ansible_cfg returns early without creating blob', async () => {
+    const createObjectURLSpy = jest.spyOn(URL, 'createObjectURL');
+
+    renderWithCatalogApi(() => Promise.resolve({ items: [entityNoReadme] }));
+
+    await screen.findByTestId('favorite-entity');
+
+    const downloadLink = screen.queryByText(/Download EE files/i);
+    expect(downloadLink).toBeInTheDocument();
+
+    fireEvent.click(downloadLink!);
+
+    // downloadEntityAsTarArchive returns false when required spec is missing; no blob is created
+    await waitFor(() => {
+      expect(createObjectURLSpy).not.toHaveBeenCalled();
+    });
+
+    createObjectURLSpy.mockRestore();
+  });
+
   test('when annotation disables download, Download EE files not shown', async () => {
     const entityNoDownloadAnnotation = {
       ...entityFull,
@@ -376,13 +558,16 @@ describe('EEDetailsPage', () => {
   });
 
   test('renders default readme when spec.readme is absent and fetch succeeds', async () => {
-    // mock fetch for default readme
-    const fetchSpy = jest.spyOn(global, 'fetch' as any).mockResolvedValue({
-      ok: true,
-      text: async () => 'Fetched README content',
-    });
+    const mockFetchApi = {
+      fetch: jest.fn().mockResolvedValue({
+        ok: true,
+        text: async () => 'Fetched README content',
+      }),
+    };
 
-    renderWithCatalogApi(() => Promise.resolve({ items: [entityNoReadme] }));
+    renderWithCatalogApi(() => Promise.resolve({ items: [entityNoReadme] }), {
+      fetchImpl: mockFetchApi,
+    });
 
     // wait for MarkdownContent to contain fetched text
     await waitFor(
@@ -392,25 +577,94 @@ describe('EEDetailsPage', () => {
         ),
       { timeout: 2000 },
     );
-
-    fetchSpy.mockRestore();
   });
 
   test('default readme fetch failure does not crash and markdown-content may be empty', async () => {
-    const fetchSpy = jest.spyOn(global, 'fetch' as any).mockResolvedValue({
-      ok: false,
-      status: 404,
-      text: async () => '',
-    });
+    const mockFetchApi = {
+      fetch: jest.fn().mockResolvedValue({
+        ok: false,
+        status: 404,
+        text: async () => '',
+      }),
+    };
 
-    renderWithCatalogApi(() => Promise.resolve({ items: [entityNoReadme] }));
+    renderWithCatalogApi(() => Promise.resolve({ items: [entityNoReadme] }), {
+      fetchImpl: mockFetchApi,
+    });
 
     await screen.findByTestId('favorite-entity');
 
     // fetch failed; component should not crash. MarkdownContent is present but may be empty.
     expect(screen.getByTestId('markdown-content')).toBeInTheDocument();
+  });
 
-    fetchSpy.mockRestore();
+  test('GitHub URL without tree path fetches README from correct path', async () => {
+    const mockFetchApi = {
+      fetch: jest.fn().mockResolvedValue({
+        ok: true,
+        text: async () => 'GitHub no-tree README',
+      }),
+    };
+
+    renderWithCatalogApi(
+      () => Promise.resolve({ items: [entityGitHubNoTree] }),
+      { fetchImpl: mockFetchApi },
+    );
+
+    await waitFor(() => expect(mockFetchApi.fetch).toHaveBeenCalled());
+
+    const fetchUrl = mockFetchApi.fetch.mock.calls[0][0];
+    expect(fetchUrl).toContain('scmProvider=github');
+    expect(fetchUrl).toContain('owner=owner');
+    expect(fetchUrl).toContain('repo=repo');
+    expect(fetchUrl).toContain('filePath=blob%2Fmain%2Fee-dir%2FREADME.md');
+    expect(fetchUrl).toContain('ref=main');
+  });
+
+  test('GitLab URL with tree path fetches README with correct ref and subdir', async () => {
+    const mockFetchApi = {
+      fetch: jest.fn().mockResolvedValue({
+        ok: true,
+        text: async () => 'GitLab with-tree README',
+      }),
+    };
+
+    renderWithCatalogApi(
+      () => Promise.resolve({ items: [entityGitLabWithTree] }),
+      { fetchImpl: mockFetchApi },
+    );
+
+    await waitFor(() => expect(mockFetchApi.fetch).toHaveBeenCalled());
+
+    const fetchUrl = mockFetchApi.fetch.mock.calls[0][0];
+    expect(fetchUrl).toContain('scmProvider=gitlab');
+    expect(fetchUrl).toContain('owner=owner');
+    expect(fetchUrl).toContain('repo=repo');
+    expect(fetchUrl).toContain('ref=develop');
+    expect(fetchUrl).toContain('filePath=subdir%2Fee%2FREADME.md');
+  });
+
+  test('GitLab URL without tree path fetches README from last path segment', async () => {
+    const mockFetchApi = {
+      fetch: jest.fn().mockResolvedValue({
+        ok: true,
+        text: async () => 'GitLab no-tree README',
+      }),
+    };
+
+    renderWithCatalogApi(
+      () => Promise.resolve({ items: [entityGitLabNoTree] }),
+      { fetchImpl: mockFetchApi },
+    );
+
+    await waitFor(() => expect(mockFetchApi.fetch).toHaveBeenCalled());
+
+    const fetchUrl = mockFetchApi.fetch.mock.calls[0][0];
+    expect(fetchUrl).toContain('scmProvider=gitlab');
+    expect(fetchUrl).toContain('owner=owner');
+    expect(fetchUrl).toContain('repo=repo');
+    expect(fetchUrl).toContain('filePath=repo%2FREADME.md');
+    expect(fetchUrl).toContain('ref=main');
   });
 
   test('does not crash if catalogApi.getEntities rejects', async () => {
@@ -450,33 +704,338 @@ describe('EEDetailsPage', () => {
     });
   });
 
-  test('menu actions: unregister opens unregister flow and other options are not present', async () => {
-    renderWithCatalogApi(() => Promise.resolve({ items: [entityFull] }));
+  test('Actions menu: Delete opens unregister flow; Build, Edit definition present when not download-experience', async () => {
+    renderWithCatalogApi(() => Promise.resolve({ items: [entityNoDownload] }));
 
     await screen.findByTestId('favorite-entity');
 
-    // Find the menu button: choose a header icon button that does not contain favorite-entity
-    const buttons = screen.getAllByRole('button');
-    const menuButton = buttons.find(
-      b =>
-        !b.querySelector('[data-testid="favorite-entity"]') &&
-        b.querySelector('svg'),
-    );
-    expect(menuButton).toBeTruthy();
-    fireEvent.click(menuButton!);
+    const actionsButton = screen.getByRole('button', { name: /Actions/i });
+    fireEvent.click(actionsButton);
 
-    // Verify only "Unregister entity" option is present
-    const unregisterItem = await screen.findByText(/Unregister entity/i);
-    expect(unregisterItem).toBeInTheDocument();
+    expect(
+      screen.getByRole('menuitem', { name: /Build/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Edit definition/i)).toBeInTheDocument();
+    const deleteItem = await screen.findByText(/Delete/i);
+    expect(deleteItem).toBeInTheDocument();
 
-    // Verify "Copy entity URL" and "Inspect entity" are NOT present
     expect(screen.queryByText(/Copy entity URL/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/Inspect entity/i)).not.toBeInTheDocument();
 
-    // Click Unregister entity -> should show unregister-dialog
-    fireEvent.click(unregisterItem);
+    fireEvent.click(deleteItem);
     await waitFor(() =>
       expect(screen.getByTestId('unregister-dialog')).toBeInTheDocument(),
     );
+  });
+
+  test('Actions menu: clicking Build runs SCM auth and opens build dialog (GitHub-published EE)', async () => {
+    const { mockScmAuthApi } = renderWithCatalogApi(() =>
+      Promise.resolve({ items: [entityNoDownload] }),
+    );
+
+    await screen.findByTestId('favorite-entity');
+
+    fireEvent.click(screen.getByRole('button', { name: /Actions/i }));
+    fireEvent.click(await screen.findByRole('menuitem', { name: /^Build$/i }));
+
+    await waitFor(() =>
+      expect(mockScmAuthApi.getCredentials).toHaveBeenCalledWith({
+        url: 'https://github.com/owner/repo',
+      }),
+    );
+    expect(
+      await screen.findByText('Build execution environment image'),
+    ).toBeInTheDocument();
+  });
+
+  test('Actions menu: Build is hidden when EE is not published to GitHub', async () => {
+    renderWithCatalogApi(() =>
+      Promise.resolve({ items: [entityGitLabWithTree] }),
+    );
+
+    await screen.findByTestId('favorite-entity');
+
+    fireEvent.click(screen.getByRole('button', { name: /Actions/i }));
+
+    expect(
+      screen.queryByRole('menuitem', { name: /^Build$/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('menuitem', { name: /Edit definition/i }),
+    ).toBeInTheDocument();
+  });
+
+  test('shows SCM integration auth error when default readme fetch returns integration_auth', async () => {
+    const mockFetchApi = {
+      fetch: jest.fn().mockResolvedValue({
+        ok: false,
+        status: 401,
+        text: async () =>
+          JSON.stringify({
+            code: SCM_INTEGRATION_AUTH_FAILED_CODE,
+            error: 'Bad credentials',
+          }),
+      }),
+    };
+
+    renderWithCatalogApi(() => Promise.resolve({ items: [entityNoReadme] }), {
+      fetchImpl: mockFetchApi,
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('SCM integration unavailable'),
+      ).toBeInTheDocument();
+    });
+    expect(
+      screen.getByText(
+        /This execution environment could not be loaded from the source repository/i,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  test('shows SCM integration auth error when EE definition fetch returns integration_auth', async () => {
+    const entityReadmeNoDefinition = {
+      ...entityFull,
+      spec: { ...entityFull.spec },
+    };
+    delete (entityReadmeNoDefinition.spec as { definition?: string })
+      .definition;
+
+    const mockFetchApi = {
+      fetch: jest.fn().mockResolvedValue({
+        ok: false,
+        status: 401,
+        text: async () =>
+          JSON.stringify({
+            code: SCM_INTEGRATION_AUTH_FAILED_CODE,
+            error: 'Bad credentials',
+          }),
+      }),
+    };
+
+    renderWithCatalogApi(
+      () => Promise.resolve({ items: [entityReadmeNoDefinition] }),
+      { fetchImpl: mockFetchApi },
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('SCM integration unavailable'),
+      ).toBeInTheDocument();
+    });
+    expect(mockFetchApi.fetch).toHaveBeenCalled();
+  });
+
+  test('readme fetch rejection clears state and does not show SCM integration error', async () => {
+    const mockFetchApi = {
+      fetch: jest.fn().mockRejectedValue(new Error('network error')),
+    };
+
+    renderWithCatalogApi(() => Promise.resolve({ items: [entityNoReadme] }), {
+      fetchImpl: mockFetchApi,
+    });
+
+    await screen.findByTestId('favorite-entity');
+    await waitFor(() => expect(mockFetchApi.fetch).toHaveBeenCalled());
+    expect(
+      screen.queryByText('SCM integration unavailable'),
+    ).not.toBeInTheDocument();
+  });
+
+  test('fetched definition success clears scm error and surfaces parsed base image', async () => {
+    const entityReadmeNoDefinition = {
+      ...entityFull,
+      spec: { ...entityFull.spec },
+    };
+    delete (entityReadmeNoDefinition.spec as { definition?: string })
+      .definition;
+
+    const yamlDef = `images:
+  base_image:
+    name: quay.io/fetched/from-repo/ee-base
+`;
+    const mockFetchApi = {
+      fetch: jest.fn().mockResolvedValue({
+        ok: true,
+        text: async () => yamlDef,
+      }),
+    };
+
+    renderWithCatalogApi(
+      () => Promise.resolve({ items: [entityReadmeNoDefinition] }),
+      { fetchImpl: mockFetchApi },
+    );
+
+    await screen.findByTestId('favorite-entity');
+    await waitFor(() =>
+      expect(
+        screen.getByText('quay.io/fetched/from-repo/ee-base'),
+      ).toBeInTheDocument(),
+    );
+    expect(
+      screen.queryByText('SCM integration unavailable'),
+    ).not.toBeInTheDocument();
+  });
+
+  test('definition fetch non-integration failure clears state without SCM error', async () => {
+    const entityReadmeNoDefinition = {
+      ...entityFull,
+      spec: { ...entityFull.spec },
+    };
+    delete (entityReadmeNoDefinition.spec as { definition?: string })
+      .definition;
+
+    const mockFetchApi = {
+      fetch: jest.fn().mockResolvedValue({
+        ok: false,
+        status: 404,
+        text: async () => '{"error":"file not found"}',
+      }),
+    };
+
+    renderWithCatalogApi(
+      () => Promise.resolve({ items: [entityReadmeNoDefinition] }),
+      { fetchImpl: mockFetchApi },
+    );
+
+    await screen.findByTestId('favorite-entity');
+    await waitFor(() => expect(mockFetchApi.fetch).toHaveBeenCalled());
+    expect(
+      screen.queryByText('SCM integration unavailable'),
+    ).not.toBeInTheDocument();
+  });
+
+  test('definition fetch rejection clears state without SCM error', async () => {
+    const entityReadmeNoDefinition = {
+      ...entityFull,
+      spec: { ...entityFull.spec },
+    };
+    delete (entityReadmeNoDefinition.spec as { definition?: string })
+      .definition;
+
+    const mockFetchApi = {
+      fetch: jest.fn().mockRejectedValue(new Error('definition fetch failed')),
+    };
+
+    renderWithCatalogApi(
+      () => Promise.resolve({ items: [entityReadmeNoDefinition] }),
+      { fetchImpl: mockFetchApi },
+    );
+
+    await screen.findByTestId('favorite-entity');
+    await waitFor(() => expect(mockFetchApi.fetch).toHaveBeenCalled());
+    expect(
+      screen.queryByText('SCM integration unavailable'),
+    ).not.toBeInTheDocument();
+  });
+
+  test('readme and definition fetches with non-auth failures clear without SCM error', async () => {
+    const mockFetchApi = {
+      fetch: jest.fn().mockResolvedValue({
+        ok: false,
+        status: 500,
+        text: async () => '{"error":"upstream"}',
+      }),
+    };
+
+    renderWithCatalogApi(
+      () => Promise.resolve({ items: [entityNoReadmeNoDefinition] }),
+      { fetchImpl: mockFetchApi },
+    );
+
+    await screen.findByTestId('favorite-entity');
+    await waitFor(() =>
+      expect(mockFetchApi.fetch.mock.calls.length).toBeGreaterThanOrEqual(2),
+    );
+    expect(
+      screen.queryByText('SCM integration unavailable'),
+    ).not.toBeInTheDocument();
+  });
+
+  test('shows SCM integration auth error when readme fetch is integration_auth but definition fetch succeeds', async () => {
+    const mockFetchApi = {
+      fetch: jest.fn().mockImplementation((url: string) => {
+        if (url.includes('README.md')) {
+          return Promise.resolve({
+            ok: false,
+            status: 401,
+            text: async () =>
+              JSON.stringify({
+                code: SCM_INTEGRATION_AUTH_FAILED_CODE,
+                error: 'Bad credentials',
+              }),
+          });
+        }
+        return Promise.resolve({
+          ok: true,
+          text: async () =>
+            `images:
+  base_image:
+    name: quay.io/ok/from-def
+`,
+        });
+      }),
+    };
+
+    renderWithCatalogApi(
+      () => Promise.resolve({ items: [entityNoReadmeNoDefinition] }),
+      { fetchImpl: mockFetchApi },
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('SCM integration unavailable'),
+      ).toBeInTheDocument();
+    });
+    expect(mockFetchApi.fetch.mock.calls.length).toBeGreaterThanOrEqual(2);
+  });
+
+  test('refresh button re-enables after successful refresh', async () => {
+    const getEntities = jest.fn(() =>
+      Promise.resolve({ items: [entityNoDownload] }),
+    );
+    renderWithCatalogApi(getEntities);
+
+    await screen.findByTestId('favorite-entity');
+
+    const refreshButton = screen.getByRole('button', { name: /Refresh/i });
+    expect(refreshButton).not.toBeDisabled();
+
+    fireEvent.click(refreshButton);
+    expect(refreshButton).toBeDisabled();
+
+    await waitFor(() => {
+      expect(refreshButton).not.toBeDisabled();
+    });
+
+    expect(getEntities).toHaveBeenCalledTimes(2);
+  });
+
+  test('refresh button re-enables after failed refresh', async () => {
+    const getEntities = jest
+      .fn()
+      .mockResolvedValueOnce({ items: [entityNoDownload] })
+      .mockRejectedValueOnce(new Error('refresh failed'));
+
+    renderWithCatalogApi(getEntities);
+
+    await screen.findByTestId('favorite-entity');
+
+    const refreshButton = screen.getByRole('button', { name: /Refresh/i });
+    fireEvent.click(refreshButton);
+    expect(refreshButton).toBeDisabled();
+
+    await waitFor(() => expect(getEntities).toHaveBeenCalledTimes(2));
+    // callApi catch sets entity to null on rejection, so AboutCard may unmount
+    // and the refresh control disappears. .finally() still clears isRefreshing.
+    await waitFor(() => {
+      const btn = screen.queryByRole('button', { name: /Refresh/i });
+      const notFound = screen.queryByText(/Entity not found/i);
+      expect(
+        (btn === null && notFound !== null) ||
+          (btn instanceof HTMLButtonElement && !btn.disabled),
+      ).toBe(true);
+    });
   });
 });

@@ -1,6 +1,11 @@
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { TestApiProvider } from '@backstage/test-utils';
+import { configApiRef } from '@backstage/core-plugin-api';
+import { scmAuthApiRef } from '@backstage/integration-react';
 import { catalogApiRef } from '@backstage/plugin-catalog-react';
+import { eeBuildApiRef } from '../../../apis';
+import { NotificationProvider, notificationStore } from '../../notifications';
+import { EE_BUILD_PENDING_SESSION_KEY } from './eeBuildSession';
 import { MemoryRouter } from 'react-router-dom';
 import { EEListPage } from './CatalogContent';
 import { ThemeProvider, createMuiTheme } from '@material-ui/core/styles';
@@ -57,9 +62,33 @@ jest.mock('@backstage/core-components', () => {
   };
 });
 
-// ------------------ STUB: plugin-catalog-react internals ------------------
+// ------------------ STUB: UnregisterEntityDialog for coverage ------------------
 jest.mock('@backstage/plugin-catalog-react', () => {
   const actual = jest.requireActual('@backstage/plugin-catalog-react');
+
+  const UnregisterEntityDialogStub = ({
+    open,
+    entity,
+    onConfirm,
+    onClose,
+  }: any) =>
+    open ? (
+      <div data-testid="unregister-entity-dialog">
+        <span data-testid="unregister-entity-name">
+          {entity?.metadata?.name}
+        </span>
+        <button
+          type="button"
+          onClick={onConfirm}
+          data-testid="unregister-confirm"
+        >
+          Confirm
+        </button>
+        <button type="button" onClick={onClose} data-testid="unregister-cancel">
+          Cancel
+        </button>
+      </div>
+    ) : null;
 
   const CatalogFilterLayout = ({ children }: any) => (
     <div data-testid="catalog-filter-layout">{children}</div>
@@ -89,12 +118,21 @@ jest.mock('@backstage/plugin-catalog-react', () => {
     toggleStarredEntity: toggleStarredEntityMock,
   });
 
+  const FavoriteEntityStub = ({ entity }: any) =>
+    entity ? (
+      <span data-testid="favorite-entity" aria-label="favorites">
+        fav:{entity?.metadata?.name}
+      </span>
+    ) : null;
+
   return {
     ...actual,
     CatalogFilterLayout,
     UserListPicker,
     useEntityList,
     useStarredEntities,
+    FavoriteEntity: FavoriteEntityStub,
+    UnregisterEntityDialog: UnregisterEntityDialogStub,
     catalogApiRef: actual.catalogApiRef,
   };
 });
@@ -161,6 +199,20 @@ const entityB = createEntity(
   '2024-01-02T10:00:00Z',
 );
 
+/** EE published to GitHub — Build appears in the row actions menu */
+const entityGitHubPublished: Entity = {
+  ...entityA,
+  metadata: {
+    ...entityA.metadata,
+    annotations: {
+      ...entityA.metadata.annotations,
+      'backstage.io/source-location':
+        'url:https://github.com/org/repo/tree/main/ee-one/',
+      'ansible.io/scm-provider': 'github',
+    },
+  },
+};
+
 const entityC = createEntity(
   'ee-three',
   '3',
@@ -178,6 +230,22 @@ const entityWithoutAnsibleTag = createEntity(
 );
 
 const theme = createMuiTheme();
+
+const mockScmAuthApi = {
+  getCredentials: jest.fn().mockResolvedValue({ token: 't', headers: {} }),
+};
+const mockEeBuildApi = {
+  triggerBuild: jest.fn().mockResolvedValue({ accepted: true }),
+};
+
+const mockConfigApi = {
+  getOptionalString: jest.fn((key: string): string | undefined => {
+    if (key === 'ansible.rhaap.baseUrl') {
+      return 'https://aap.example.com';
+    }
+    return undefined;
+  }),
+};
 
 // ------------------ Render helper ------------------
 const renderWithCatalogApi = (
@@ -200,10 +268,19 @@ const renderWithCatalogApi = (
   };
   return render(
     <MemoryRouter initialEntries={['/']}>
-      <TestApiProvider apis={[[catalogApiRef, mockCatalogApi]]}>
-        <ThemeProvider theme={theme}>
-          <EEListPage onTabSwitch={jest.fn()} />
-        </ThemeProvider>
+      <TestApiProvider
+        apis={[
+          [configApiRef, mockConfigApi],
+          [catalogApiRef, mockCatalogApi],
+          [scmAuthApiRef, mockScmAuthApi],
+          [eeBuildApiRef, mockEeBuildApi],
+        ]}
+      >
+        <NotificationProvider>
+          <ThemeProvider theme={theme}>
+            <EEListPage onTabSwitch={jest.fn()} />
+          </ThemeProvider>
+        </NotificationProvider>
       </TestApiProvider>
     </MemoryRouter>,
   );
@@ -214,6 +291,8 @@ describe('EEListPage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockNavigate.mockClear();
+    sessionStorage.clear();
+    notificationStore.clearAll();
   });
 
   describe('Basic rendering', () => {
@@ -489,7 +568,9 @@ describe('EEListPage', () => {
       expect(screen.getByText('ee-two')).toBeInTheDocument();
     });
 
-    test('clicking star calls toggleStarredEntity', async () => {
+    // Skip: component uses UserListPicker for starred filter; no per-row star with data-testid yellow-star
+    // eslint-disable-next-line jest/no-disabled-tests
+    test.skip('clicking star calls toggleStarredEntity', async () => {
       const pluginMock = jest.requireMock('@backstage/plugin-catalog-react');
       const starredMock = pluginMock.useStarredEntities();
       const toggleStarredEntityMock =
@@ -729,7 +810,7 @@ describe('EEListPage', () => {
       // Find edit button (IconButton with Edit icon)
       const editButtons = screen.getAllByRole('button');
       const editButton = editButtons.find(
-        btn => btn.getAttribute('aria-label') === 'Edit',
+        btn => btn.getAttribute('aria-label') === 'Edit definition',
       );
 
       if (editButton) windowOpenSpy.mockRestore();
@@ -748,7 +829,7 @@ describe('EEListPage', () => {
 
       const editButtons = screen.getAllByRole('button');
       const editButton = editButtons.find(
-        btn => btn.getAttribute('aria-label') === 'Edit',
+        btn => btn.getAttribute('aria-label') === 'Edit definition',
       );
 
       if (editButton) windowOpenSpy.mockRestore();
@@ -767,7 +848,7 @@ describe('EEListPage', () => {
 
       const editButtons = screen.getAllByRole('button');
       const editButton = editButtons.find(
-        btn => btn.getAttribute('aria-label') === 'Edit',
+        btn => btn.getAttribute('aria-label') === 'Edit definition',
       );
 
       if (editButton) {
@@ -777,7 +858,41 @@ describe('EEListPage', () => {
       windowOpenSpy.mockRestore();
     });
 
-    test('hides edit button for entities with download-experience annotation', async () => {
+    test('shows Build, Edit, View, Delete when download-experience is false and EE is on GitHub', async () => {
+      renderWithCatalogApi(() =>
+        Promise.resolve({ items: [entityGitHubPublished] }),
+      );
+
+      await waitFor(() =>
+        expect(screen.getByTestId('stubbed-table-title')).toBeInTheDocument(),
+      );
+
+      const actionsButton = screen.getByRole('button', { name: /actions/i });
+      fireEvent.click(actionsButton);
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole('menuitem', { name: /build/i }),
+        ).toBeInTheDocument();
+        expect(
+          screen.getByRole('menuitem', { name: /edit/i }),
+        ).toBeInTheDocument();
+        expect(
+          screen.getByRole('menuitem', { name: /view/i }),
+        ).toBeInTheDocument();
+        expect(
+          screen.getByRole('menuitem', { name: /delete/i }),
+        ).toBeInTheDocument();
+      });
+      expect(
+        screen.queryByRole('menuitem', { name: /unregister/i }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('menuitem', { name: /download/i }),
+      ).not.toBeInTheDocument();
+    });
+
+    test('shows Download, Delete when download-experience is true', async () => {
       const entityWithDownload = {
         ...entityA,
         metadata: {
@@ -797,15 +912,126 @@ describe('EEListPage', () => {
         expect(screen.getByTestId('stubbed-table-title')).toBeInTheDocument(),
       );
 
-      // Edit button should not be present
-      const editButtons = screen.queryAllByRole('button');
-      const hasEditButton = editButtons.some(
-        btn => btn.getAttribute('aria-label') === 'Edit',
-      );
-      expect(hasEditButton).toBe(false);
+      const actionsButton = screen.getByRole('button', { name: /actions/i });
+      fireEvent.click(actionsButton);
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole('menuitem', { name: /download/i }),
+        ).toBeInTheDocument();
+        expect(
+          screen.getByRole('menuitem', { name: /delete/i }),
+        ).toBeInTheDocument();
+      });
+      expect(
+        screen.queryByRole('menuitem', { name: /build/i }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('menuitem', { name: /edit/i }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('menuitem', { name: /view/i }),
+      ).not.toBeInTheDocument();
     });
 
-    test('disables edit button when edit URL is missing', async () => {
+    test('omits Build menu item when entity is not published to GitHub', async () => {
+      renderWithCatalogApi(() => Promise.resolve({ items: [entityA] }));
+
+      await waitFor(() =>
+        expect(screen.getByTestId('stubbed-table-title')).toBeInTheDocument(),
+      );
+
+      const actionsButton = screen.getByRole('button', { name: /actions/i });
+      fireEvent.click(actionsButton);
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole('menuitem', { name: /edit/i }),
+        ).toBeInTheDocument();
+      });
+      expect(
+        screen.queryByRole('menuitem', { name: /build/i }),
+      ).not.toBeInTheDocument();
+    });
+
+    test('Build opens dialog when entity has GitHub SCM annotations', async () => {
+      const entityWithScm = {
+        ...entityA,
+        metadata: {
+          ...entityA.metadata,
+          annotations: {
+            ...entityA.metadata.annotations,
+            'backstage.io/source-location':
+              'url:https://github.com/org/repo/tree/main/ee-one/',
+            'ansible.io/scm-provider': 'github',
+          },
+        },
+      };
+
+      renderWithCatalogApi(() => Promise.resolve({ items: [entityWithScm] }));
+
+      await waitFor(() =>
+        expect(screen.getByTestId('stubbed-table-title')).toBeInTheDocument(),
+      );
+
+      const actionsButton = screen.getByRole('button', { name: /actions/i });
+      fireEvent.click(actionsButton);
+      fireEvent.click(await screen.findByRole('menuitem', { name: /build/i }));
+
+      await waitFor(() =>
+        expect(mockScmAuthApi.getCredentials).toHaveBeenCalledWith({
+          url: 'https://github.com/org/repo',
+        }),
+      );
+      expect(
+        await screen.findByText('Build execution environment image'),
+      ).toBeInTheDocument();
+    });
+
+    test('opens build dialog after pending session from OAuth reload', async () => {
+      const entityWithScm = {
+        ...entityA,
+        metadata: {
+          ...entityA.metadata,
+          namespace: 'default',
+          annotations: {
+            ...entityA.metadata.annotations,
+            'backstage.io/source-location':
+              'url:https://github.com/org/repo/tree/main/ee-one/',
+            'ansible.io/scm-provider': 'github',
+          },
+        },
+      };
+      sessionStorage.setItem(
+        EE_BUILD_PENDING_SESSION_KEY,
+        JSON.stringify({
+          entityRef: 'component:default/ee-one',
+          savedAt: Date.now(),
+        }),
+      );
+
+      const getEntityByRef = jest.fn((ref: string) =>
+        ref === 'component:default/ee-one'
+          ? Promise.resolve(entityWithScm)
+          : Promise.resolve({
+              apiVersion: 'backstage.io/v1alpha1',
+              kind: 'User',
+              metadata: { name: ref },
+            }),
+      );
+
+      renderWithCatalogApi(
+        () => Promise.resolve({ items: [entityWithScm] }),
+        getEntityByRef,
+      );
+
+      expect(
+        await screen.findByText('Build execution environment image'),
+      ).toBeInTheDocument();
+      expect(getEntityByRef).toHaveBeenCalledWith('component:default/ee-one');
+    });
+
+    test('Edit menu item does not open URL when entity has no edit URL or source location', async () => {
       const entityWithoutEditUrl = {
         ...entityA,
         metadata: {
@@ -813,6 +1039,10 @@ describe('EEListPage', () => {
           annotations: {},
         },
       };
+
+      const windowOpenSpy = jest
+        .spyOn(window, 'open')
+        .mockImplementation(() => null);
 
       renderWithCatalogApi(() =>
         Promise.resolve({ items: [entityWithoutEditUrl] }),
@@ -822,16 +1052,245 @@ describe('EEListPage', () => {
         expect(screen.getByTestId('stubbed-table-title')).toBeInTheDocument(),
       );
 
-      // Edit button should be disabled
-      const editButtons = screen.getAllByRole('button');
-      const editButton = editButtons.find(
-        btn => btn.getAttribute('aria-label') === 'Edit',
+      fireEvent.click(screen.getByRole('button', { name: /actions/i }));
+      const editMenuItem = await screen.findByRole('menuitem', {
+        name: /edit/i,
+      });
+      fireEvent.click(editMenuItem);
+
+      expect(windowOpenSpy).not.toHaveBeenCalled();
+      windowOpenSpy.mockRestore();
+    });
+
+    test('Edit definition opens URL from source-location when edit-url is missing', async () => {
+      const entitySourceLocationOnly = {
+        ...entityA,
+        metadata: {
+          ...entityA.metadata,
+          annotations: {
+            'backstage.io/source-location':
+              'url:https://git.example.com/org/repo',
+          },
+        },
+      };
+      const windowOpenSpy = jest
+        .spyOn(window, 'open')
+        .mockImplementation(() => null);
+
+      renderWithCatalogApi(() =>
+        Promise.resolve({ items: [entitySourceLocationOnly] }),
       );
-      expect(editButton).toBeTruthy();
-      expect(
-        editButton?.hasAttribute('disabled') ||
-          editButton?.getAttribute('disabled') === 'true',
-      ).toBe(true);
+
+      await waitFor(() =>
+        expect(screen.getByTestId('stubbed-table-title')).toBeInTheDocument(),
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: /actions/i }));
+      const editMenuItem = await screen.findByRole('menuitem', {
+        name: /edit definition/i,
+      });
+      fireEvent.click(editMenuItem);
+
+      expect(windowOpenSpy).toHaveBeenCalledWith(
+        'https://git.example.com/org/repo',
+        '_blank',
+        'noopener,noreferrer',
+      );
+      windowOpenSpy.mockRestore();
+    });
+
+    test('Edit definition opens EE definition file URL when annotation points to catalog-info.yaml', async () => {
+      const entityWithCatalogInfoUrl = {
+        ...entityA,
+        metadata: {
+          ...entityA.metadata,
+          annotations: {
+            'backstage.io/source-location':
+              'url:https://github.com/org/repo/blob/main/ctx/catalog-info.yaml',
+          },
+        },
+      };
+      const windowOpenSpy = jest
+        .spyOn(window, 'open')
+        .mockImplementation(() => null);
+
+      renderWithCatalogApi(() =>
+        Promise.resolve({ items: [entityWithCatalogInfoUrl] }),
+      );
+
+      await waitFor(() =>
+        expect(screen.getByTestId('stubbed-table-title')).toBeInTheDocument(),
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: /actions/i }));
+      const editMenuItem = await screen.findByRole('menuitem', {
+        name: /edit definition/i,
+      });
+      fireEvent.click(editMenuItem);
+
+      expect(windowOpenSpy).toHaveBeenCalledWith(
+        'https://github.com/org/repo/blob/main/ctx/ee-one.yml',
+        '_blank',
+        'noopener,noreferrer',
+      );
+      windowOpenSpy.mockRestore();
+    });
+
+    test('View in source opens source URL in new tab', async () => {
+      const windowOpenSpy = jest
+        .spyOn(window, 'open')
+        .mockImplementation(() => null);
+
+      renderWithCatalogApi(() => Promise.resolve({ items: [entityA] }));
+
+      await waitFor(() =>
+        expect(screen.getByTestId('stubbed-table-title')).toBeInTheDocument(),
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: /actions/i }));
+      const viewMenuItem = await screen.findByRole('menuitem', {
+        name: /view in source/i,
+      });
+      fireEvent.click(viewMenuItem);
+
+      expect(windowOpenSpy).toHaveBeenCalledWith(
+        'http://edit/ee-one',
+        '_blank',
+        'noopener,noreferrer',
+      );
+      windowOpenSpy.mockRestore();
+    });
+
+    test('Delete opens unregister dialog and Confirm calls handleUnregisterConfirm', async () => {
+      const getEntitiesMock = jest.fn().mockResolvedValue({ items: [entityA] });
+      renderWithCatalogApi(getEntitiesMock);
+
+      await waitFor(() =>
+        expect(screen.getByTestId('stubbed-table-title')).toBeInTheDocument(),
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: /actions/i }));
+      const deleteMenuItem = await screen.findByRole('menuitem', {
+        name: /delete/i,
+      });
+      fireEvent.click(deleteMenuItem);
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('unregister-entity-dialog'),
+        ).toBeInTheDocument();
+        expect(screen.getByTestId('unregister-entity-name')).toHaveTextContent(
+          'ee-one',
+        );
+      });
+
+      getEntitiesMock.mockClear();
+      fireEvent.click(screen.getByTestId('unregister-confirm'));
+      await waitFor(() => {
+        expect(getEntitiesMock).toHaveBeenCalled();
+      });
+    });
+
+    test('Delete opens unregister dialog and Cancel closes it', async () => {
+      renderWithCatalogApi(() => Promise.resolve({ items: [entityA] }));
+
+      await waitFor(() =>
+        expect(screen.getByTestId('stubbed-table-title')).toBeInTheDocument(),
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: /actions/i }));
+      fireEvent.click(await screen.findByRole('menuitem', { name: /delete/i }));
+
+      await waitFor(() =>
+        expect(
+          screen.getByTestId('unregister-entity-dialog'),
+        ).toBeInTheDocument(),
+      );
+
+      fireEvent.click(screen.getByTestId('unregister-cancel'));
+      await waitFor(() => {
+        expect(
+          screen.queryByTestId('unregister-entity-dialog'),
+        ).not.toBeInTheDocument();
+      });
+    });
+
+    test('Download (download-experience) fetches entity and triggers archive download', async () => {
+      const entityWithDownload = {
+        ...entityA,
+        metadata: {
+          ...entityA.metadata,
+          annotations: {
+            ...entityA.metadata.annotations,
+            'ansible.io/download-experience': 'true',
+          },
+        },
+      };
+      const fullEntity = {
+        ...entityWithDownload,
+        kind: 'Component',
+        spec: {
+          ...entityA.spec,
+          definition: 'version: 3',
+          readme: '# README',
+          ansible_cfg: '[defaults]',
+          template: 'template: yaml',
+        },
+      };
+      const getEntityByRefMock = jest.fn().mockResolvedValue(fullEntity);
+
+      renderWithCatalogApi(
+        () => Promise.resolve({ items: [entityWithDownload] }),
+        getEntityByRefMock,
+      );
+
+      await waitFor(() =>
+        expect(screen.getByTestId('stubbed-table-title')).toBeInTheDocument(),
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: /actions/i }));
+      const downloadMenuItem = await screen.findByRole('menuitem', {
+        name: /download/i,
+      });
+      fireEvent.click(downloadMenuItem);
+
+      await waitFor(() => {
+        expect(getEntityByRefMock).toHaveBeenCalledWith(
+          'Component:default/ee-one',
+        );
+      });
+    });
+
+    test('Delete (download-experience) opens unregister dialog', async () => {
+      const entityWithDownload = {
+        ...entityA,
+        metadata: {
+          ...entityA.metadata,
+          annotations: {
+            ...entityA.metadata.annotations,
+            'ansible.io/download-experience': 'true',
+          },
+        },
+      };
+      renderWithCatalogApi(() =>
+        Promise.resolve({ items: [entityWithDownload] }),
+      );
+
+      await waitFor(() =>
+        expect(screen.getByTestId('stubbed-table-title')).toBeInTheDocument(),
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: /actions/i }));
+      fireEvent.click(await screen.findByRole('menuitem', { name: /delete/i }));
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('unregister-entity-dialog'),
+        ).toBeInTheDocument();
+        expect(screen.getByTestId('unregister-entity-name')).toHaveTextContent(
+          'ee-one',
+        );
+      });
     });
 
     test('handles mouseDown on star button', async () => {
@@ -1352,15 +1811,20 @@ describe('EEListPage', () => {
         <MemoryRouter initialEntries={['/']}>
           <TestApiProvider
             apis={[
+              [configApiRef, mockConfigApi],
               [
                 catalogApiRef,
                 { getEntities: () => Promise.resolve({ items: [] }) },
               ],
+              [scmAuthApiRef, mockScmAuthApi],
+              [eeBuildApiRef, mockEeBuildApi],
             ]}
           >
-            <ThemeProvider theme={theme}>
-              <EntityCatalogContent onTabSwitch={mockOnTabSwitch} />
-            </ThemeProvider>
+            <NotificationProvider>
+              <ThemeProvider theme={theme}>
+                <EntityCatalogContent onTabSwitch={mockOnTabSwitch} />
+              </ThemeProvider>
+            </NotificationProvider>
           </TestApiProvider>
         </MemoryRouter>,
       );
@@ -1456,15 +1920,20 @@ describe('EEListPage', () => {
         <MemoryRouter initialEntries={['/']}>
           <TestApiProvider
             apis={[
+              [configApiRef, mockConfigApi],
               [
                 catalogApiRef,
                 { getEntities: () => Promise.resolve({ items: [] }) },
               ],
+              [scmAuthApiRef, mockScmAuthApi],
+              [eeBuildApiRef, mockEeBuildApi],
             ]}
           >
-            <ThemeProvider theme={theme}>
-              <EEListPage onTabSwitch={mockOnTabSwitch} />
-            </ThemeProvider>
+            <NotificationProvider>
+              <ThemeProvider theme={theme}>
+                <EEListPage onTabSwitch={mockOnTabSwitch} />
+              </ThemeProvider>
+            </NotificationProvider>
           </TestApiProvider>
         </MemoryRouter>,
       );

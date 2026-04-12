@@ -1,7 +1,17 @@
-import { Route, Routes, Navigate } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Route, Routes, Navigate, Outlet } from 'react-router-dom';
 import { RequirePermission } from '@backstage/plugin-permission-react';
 import { catalogEntityCreatePermission } from '@backstage/plugin-catalog-common/alpha';
 import { taskReadPermission } from '@backstage/plugin-scaffolder-common/alpha';
+import {
+  useApi,
+  discoveryApiRef,
+  fetchApiRef,
+} from '@backstage/core-plugin-api';
+import {
+  executionEnvironmentsViewPermission,
+  collectionsViewPermission,
+} from '@ansible/backstage-rhaap-common/permissions';
 
 import { HomeComponent } from '../Home';
 import { CatalogImport } from '../CatalogImport';
@@ -25,8 +35,22 @@ import { LearningPage } from '../Learning/LearningPage';
 import { WorkspacesPage } from '../Workspaces/WorkspacesPage';
 import { WorkspaceIDEPage } from '../Workspaces/WorkspaceIDEPage';
 import { SetupWizardPage } from '../Setup/SetupWizardPage';
+import {
+  NotificationProvider,
+  NotificationStack,
+  useNotifications,
+  syncPollingService,
+} from '../notifications';
 
-export const RouteView = () => {
+const RouteViewContent = () => {
+  const { notifications, removeNotification } = useNotifications();
+  const discoveryApi = useApi(discoveryApiRef);
+  const fetchApi = useApi(fetchApiRef);
+
+  useEffect(() => {
+    syncPollingService.initialize(discoveryApi, fetchApi);
+  }, [discoveryApi, fetchApi]);
+
   return (
     <>
       <Routes>
@@ -71,11 +95,18 @@ export const RouteView = () => {
             }
           />
         </Route>
-        <Route path="ee">
+        <Route
+          path="ee"
+          element={
+            <RequirePermission permission={executionEnvironmentsViewPermission}>
+              <Outlet />
+            </RequirePermission>
+          }
+        >
           <Route index element={<Navigate to="catalog" replace />} />
           <Route path="catalog" element={<EETabs />} />
           <Route path="create" element={<EETabs />} />
-          <Route path="docs" element={<EETabs />} />
+          <Route path="*" element={<Navigate to="catalog" replace />} />
         </Route>
         <Route path="catalog/:templateName" element={<EEDetailsPage />} />
         <Route path="projects">
@@ -89,7 +120,11 @@ export const RouteView = () => {
         <Route path="collections" element={<CollectionsCatalogPage />} />
         <Route
           path="collections/:collectionName"
-          element={<CollectionDetailsPage />}
+          element={
+            <RequirePermission permission={collectionsViewPermission}>
+              <CollectionDetailsPage />
+            </RequirePermission>
+          }
         />
         <Route path="learning" element={<LearningPage />} />
         <Route path="workspaces" element={<WorkspacesPage />} />
@@ -107,6 +142,18 @@ export const RouteView = () => {
         <Route path="*" element={<Navigate to="/self-service/projects" />} />
       </Routes>
       <FeedbackFooter />
+      <NotificationStack
+        notifications={notifications}
+        onClose={removeNotification}
+      />
     </>
+  );
+};
+
+export const RouteView = () => {
+  return (
+    <NotificationProvider>
+      <RouteViewContent />
+    </NotificationProvider>
   );
 };

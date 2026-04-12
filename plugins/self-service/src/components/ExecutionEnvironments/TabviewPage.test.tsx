@@ -1,6 +1,15 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
+jest.mock('@backstage/core-plugin-api', () => ({
+  ...jest.requireActual('@backstage/core-plugin-api'),
+  useRouteRef: () => () => '/self-service',
+}));
+
+jest.mock('../../routes', () => ({
+  rootRouteRef: { id: 'root-route-ref' },
+}));
+
 // --------- Mocks for Backstage core components to keep tests simple ----------
 jest.mock('@backstage/core-components', () => ({
   Page: ({ children }: any) => <div data-testid="page">{children}</div>,
@@ -171,14 +180,12 @@ describe('EETabs + EEHeader', () => {
 });
 
 describe('EEHeader', () => {
-  test('renders header title and technology preview badge', () => {
+  test('renders header title', () => {
     render(<EEHeader />);
 
-    // Header title is rendered inside the Header mock (we rendered children via Header's title prop)
     const header = screen.getByTestId('header');
     expect(header).toBeInTheDocument();
 
-    // The title text should be present somewhere in the header's rendered title
     expect(
       screen.getByText(/Execution Environments definition files/i),
     ).toBeInTheDocument();

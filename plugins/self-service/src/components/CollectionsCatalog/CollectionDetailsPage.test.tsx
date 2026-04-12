@@ -1,12 +1,41 @@
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { ThemeProvider, createTheme } from '@material-ui/core/styles';
-import { TestApiProvider, mockApis } from '@backstage/test-utils';
+import { TestApiProvider } from '@backstage/test-utils';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { catalogApiRef } from '@backstage/plugin-catalog-react';
 import { discoveryApiRef, fetchApiRef } from '@backstage/core-plugin-api';
-import { permissionApiRef } from '@backstage/plugin-permission-react';
 import { Entity } from '@backstage/catalog-model';
+import { SCM_INTEGRATION_AUTH_FAILED_CODE } from '@ansible/backstage-rhaap-common/constants';
 import { CollectionDetailsPage } from './CollectionDetailsPage';
+
+jest.mock('@backstage/plugin-permission-react', () => ({
+  RequirePermission: (props: any) => props.children,
+}));
+
+jest.mock('@ansible/backstage-rhaap-common/permissions', () => ({
+  collectionsViewPermission: {
+    type: 'basic',
+    name: 'collections.view',
+    attributes: {},
+  },
+}));
+
+jest.mock('../../hooks', () => ({
+  useIsSuperuser: () => ({
+    isSuperuser: true,
+    loading: false,
+    error: null,
+  }),
+}));
+
+jest.mock('@backstage/core-plugin-api', () => {
+  const actual = jest.requireActual('@backstage/core-plugin-api');
+  return { ...actual, useRouteRef: () => () => '/self-service' };
+});
+
+jest.mock('../../routes', () => ({
+  rootRouteRef: { id: 'root-route-ref' },
+}));
 
 const theme = createTheme();
 
@@ -49,7 +78,6 @@ const renderWithRouter = (collectionName: string) => {
           [catalogApiRef, mockCatalogApi],
           [discoveryApiRef, mockDiscoveryApi],
           [fetchApiRef, mockFetchApi],
-          [permissionApiRef, mockApis.permission()],
         ]}
       >
         <MemoryRouter initialEntries={[`/collections/${collectionName}`]}>
@@ -57,6 +85,10 @@ const renderWithRouter = (collectionName: string) => {
             <Route
               path="/collections/:collectionName"
               element={<CollectionDetailsPage />}
+            />
+            <Route
+              path="/self-service/collections"
+              element={<div>Collections Page</div>}
             />
           </Routes>
         </MemoryRouter>
@@ -372,6 +404,122 @@ describe('CollectionDetailsPage', () => {
     );
   });
 
+  it('shows SCM integration auth error when backend returns integration auth for readme', async () => {
+    const entityWithScmReadme: Entity = {
+      ...mockEntity,
+      metadata: {
+        ...mockEntity.metadata,
+        annotations: {
+          ...mockEntity.metadata.annotations,
+          'ansible.io/collection-source': 'scm',
+          'ansible.io/scm-provider': 'github',
+          'ansible.io/scm-host': 'github.com',
+          'ansible.io/scm-organization': 'myorg',
+          'ansible.io/scm-repository': 'myrepo',
+          'ansible.io/ref': 'main',
+        },
+      },
+      spec: {
+        ...mockEntity.spec,
+        collection_readme_url:
+          'https://github.com/myorg/myrepo/blob/main/README.md',
+      } as any,
+    };
+    mockCatalogApi.getEntities.mockResolvedValue({
+      items: [entityWithScmReadme],
+    });
+    mockFetchApi.fetch.mockImplementation((url: string) => {
+      if (url.includes('ansible/sync/status')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            content: { providers: [{ sourceId: 'src-1', lastSyncTime: null }] },
+          }),
+        });
+      }
+      if (url.includes('ansible/git/file-content')) {
+        return Promise.resolve({
+          ok: false,
+          status: 401,
+          text: () =>
+            Promise.resolve(
+              JSON.stringify({
+                code: SCM_INTEGRATION_AUTH_FAILED_CODE,
+                error: 'Bad credentials',
+              }),
+            ),
+        });
+      }
+      return Promise.resolve({ ok: false });
+    });
+
+    renderWithRouter('my-namespace-my-collection');
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('SCM integration unavailable'),
+      ).toBeInTheDocument();
+    });
+    expect(
+      screen.getByText(
+        /This collection could not be loaded from the source repository/i,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('does not show SCM auth error when backend returns a non-auth readme failure', async () => {
+    const entityWithScmReadme: Entity = {
+      ...mockEntity,
+      metadata: {
+        ...mockEntity.metadata,
+        annotations: {
+          ...mockEntity.metadata.annotations,
+          'ansible.io/collection-source': 'scm',
+          'ansible.io/scm-provider': 'github',
+          'ansible.io/scm-host': 'github.com',
+          'ansible.io/scm-organization': 'myorg',
+          'ansible.io/scm-repository': 'myrepo',
+          'ansible.io/ref': 'main',
+        },
+      },
+      spec: {
+        ...mockEntity.spec,
+        collection_readme_url:
+          'https://github.com/myorg/myrepo/blob/main/README.md',
+      } as any,
+    };
+    mockCatalogApi.getEntities.mockResolvedValue({
+      items: [entityWithScmReadme],
+    });
+    mockFetchApi.fetch.mockImplementation((url: string) => {
+      if (url.includes('ansible/sync/status')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            content: { providers: [{ sourceId: 'src-1', lastSyncTime: null }] },
+          }),
+        });
+      }
+      if (url.includes('ansible/git/file-content')) {
+        return Promise.resolve({
+          ok: false,
+          status: 404,
+          text: () => Promise.resolve('{"error":"not found"}'),
+        });
+      }
+      return Promise.resolve({ ok: false });
+    });
+
+    renderWithRouter('my-namespace-my-collection');
+
+    await waitFor(() => {
+      expect(screen.getByText('About')).toBeInTheDocument();
+    });
+    expect(
+      screen.queryByText('SCM integration unavailable'),
+    ).not.toBeInTheDocument();
+  });
+
   it('fetches readme via backend when SCM annotations and blob readme URL are present', async () => {
     const entityWithScmReadme: Entity = {
       ...mockEntity,
@@ -405,7 +553,7 @@ describe('CollectionDetailsPage', () => {
           }),
         });
       }
-      if (url.includes('git_readme_content')) {
+      if (url.includes('ansible/git/file-content')) {
         return Promise.resolve({
           ok: true,
           text: () => Promise.resolve('# Backend readme content'),
@@ -421,7 +569,7 @@ describe('CollectionDetailsPage', () => {
     });
     expect(mockFetchApi.fetch).toHaveBeenCalledWith(
       expect.stringMatching(
-        /git_readme_content\?.*filePath=README\.md.*ref=main/,
+        /ansible\/git\/file-content\?.*filePath=README\.md.*ref=main/,
       ),
     );
   });
@@ -459,7 +607,7 @@ describe('CollectionDetailsPage', () => {
           }),
         });
       }
-      if (url.includes('git_readme_content')) {
+      if (url.includes('ansible/git/file-content')) {
         return Promise.resolve({
           ok: true,
           text: () => Promise.resolve('Nested path readme'),
@@ -508,7 +656,7 @@ describe('CollectionDetailsPage', () => {
           json: async () => ({ content: { providers: [] } }),
         });
       }
-      if (url.includes('git_readme_content')) {
+      if (url.includes('ansible/git/file-content')) {
         return Promise.resolve({ ok: false });
       }
       return Promise.resolve({ ok: false });
@@ -521,7 +669,7 @@ describe('CollectionDetailsPage', () => {
     });
     await waitFor(() => {
       expect(mockFetchApi.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('git_readme_content'),
+        expect.stringContaining('ansible/git/file-content'),
       );
     });
   });
@@ -556,7 +704,7 @@ describe('CollectionDetailsPage', () => {
           json: async () => ({ content: { providers: [] } }),
         });
       }
-      if (url.includes('git_readme_content')) {
+      if (url.includes('ansible/git/file-content')) {
         return Promise.reject(new Error('Backend error'));
       }
       return Promise.resolve({ ok: false });
@@ -569,7 +717,7 @@ describe('CollectionDetailsPage', () => {
     });
     await waitFor(() => {
       expect(mockFetchApi.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('git_readme_content'),
+        expect.stringContaining('ansible/git/file-content'),
       );
     });
   });
@@ -739,7 +887,7 @@ describe('CollectionDetailsPage', () => {
       expect(screen.getByText('Direct fetch readme')).toBeInTheDocument();
     });
     expect(mockFetchApi.fetch).not.toHaveBeenCalledWith(
-      expect.stringContaining('git_readme_content'),
+      expect.stringContaining('ansible/git/file-content'),
     );
     expect(globalThis.fetch).toHaveBeenCalledWith(
       'https://raw.githubusercontent.com/o/r/main/README.md',
@@ -774,7 +922,7 @@ describe('CollectionDetailsPage', () => {
       expect(screen.getByText('About')).toBeInTheDocument();
     });
     expect(mockFetchApi.fetch).not.toHaveBeenCalledWith(
-      expect.stringContaining('git_readme_content'),
+      expect.stringContaining('ansible/git/file-content'),
     );
   });
 

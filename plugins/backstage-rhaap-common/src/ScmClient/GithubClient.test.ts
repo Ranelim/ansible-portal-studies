@@ -1,7 +1,7 @@
 import { LoggerService } from '@backstage/backend-plugin-api';
 import * as undici from 'undici';
 import { GithubClient } from './GithubClient';
-import type { RepositoryInfo, ScmClientConfig } from './types';
+import { RepositoryInfo, ScmClientConfig } from './types';
 
 // Mock global fetch
 const mockFetch = jest.fn();
@@ -189,6 +189,110 @@ describe('GithubClient', () => {
         url: 'https://github.com/test-org/repo2',
         description: undefined,
       });
+    });
+
+    it('retries GraphQL up to 2 times on HTTP 5xx then succeeds', async () => {
+      jest.useFakeTimers();
+
+      try {
+        const successBody = {
+          data: {
+            organization: {
+              repositories: {
+                pageInfo: { hasNextPage: false, endCursor: null },
+                nodes: [],
+              },
+            },
+          },
+        };
+
+        mockFetch
+          .mockResolvedValueOnce({
+            ok: false,
+            status: 502,
+            text: () => Promise.resolve('bad gateway'),
+          })
+          .mockResolvedValueOnce({
+            ok: true,
+            json: () => Promise.resolve(successBody),
+          });
+
+        const promise = client.getRepositories();
+
+        await Promise.resolve();
+        await jest.runOnlyPendingTimersAsync();
+
+        const repos = await promise;
+
+        expect(mockFetch).toHaveBeenCalledTimes(2);
+        expect(repos).toHaveLength(0);
+        expect(mockLogger.warn).toHaveBeenCalledWith(
+          expect.stringMatching(/HTTP 502, retry 1\/2/),
+        );
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it('stops after all 5xx retries are exhausted and throws from the last response', async () => {
+      jest.useFakeTimers();
+
+      try {
+        const errorResponse = {
+          ok: false,
+          status: 503,
+          text: () => Promise.resolve('service unavailable'),
+        };
+
+        mockFetch
+          .mockResolvedValueOnce(errorResponse)
+          .mockResolvedValueOnce(errorResponse)
+          .mockResolvedValueOnce(errorResponse);
+
+        const promise = client.getRepositories();
+        // Attach the matcher before advancing timers so the rejection is never "unhandled";
+        // await is deferred until after fake timers (jest/valid-expect disallows non-awaited expect).
+        const expectRejected =
+          // eslint-disable-next-line jest/valid-expect -- awaited after runOnlyPendingTimersAsync below
+          expect(promise).rejects.toThrow(
+            'GitHub GraphQL error (503): service unavailable',
+          );
+
+        await Promise.resolve();
+        await jest.runOnlyPendingTimersAsync();
+        await Promise.resolve();
+        await jest.runOnlyPendingTimersAsync();
+
+        await expectRejected;
+
+        expect(mockFetch).toHaveBeenCalledTimes(3);
+        expect(mockLogger.warn).toHaveBeenCalledTimes(2);
+        expect(mockLogger.warn).toHaveBeenNthCalledWith(
+          1,
+          expect.stringMatching(/HTTP 503, retry 1\/2/),
+        );
+        expect(mockLogger.warn).toHaveBeenNthCalledWith(
+          2,
+          expect.stringMatching(/HTTP 503, retry 2\/2/),
+        );
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it('does not retry GraphQL on non-5xx errors', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        text: () => Promise.resolve('not found'),
+      });
+
+      await expect(client.getRepositories()).rejects.toThrow(
+        'GitHub GraphQL error (404)',
+      );
+
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      expect(mockLogger.warn).not.toHaveBeenCalled();
     });
 
     it('should skip archived repositories', async () => {
@@ -455,6 +559,51 @@ describe('GithubClient', () => {
     });
   });
 
+  describe('getFetchOptions (no token)', () => {
+    it('should omit Authorization header when token is not provided', async () => {
+      const config: ScmClientConfig = {
+        scmProvider: 'github',
+        host: 'github.com',
+        organization: 'test-org',
+      };
+      const ghClient = new GithubClient({ config, logger: mockLogger });
+      mockFetch.mockResolvedValueOnce({ ok: true, status: 200 });
+
+      await ghClient.repositoryExists('test-org', 'public-repo');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          headers: expect.not.objectContaining({
+            Authorization: expect.any(String),
+          }),
+        }),
+      );
+    });
+
+    it('should omit Authorization header when token is empty string', async () => {
+      const config: ScmClientConfig = {
+        scmProvider: 'github',
+        host: 'github.com',
+        organization: 'test-org',
+        token: '',
+      };
+      const ghClient = new GithubClient({ config, logger: mockLogger });
+      mockFetch.mockResolvedValueOnce({ ok: true, status: 200 });
+
+      await ghClient.repositoryExists('test-org', 'public-repo');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          headers: expect.not.objectContaining({
+            Authorization: expect.any(String),
+          }),
+        }),
+      );
+    });
+  });
+
   describe('getBranches', () => {
     const mockRepo: RepositoryInfo = {
       name: 'test-repo',
@@ -517,6 +666,17 @@ describe('GithubClient', () => {
         'GitHub API error (404): Not Found',
       );
     });
+
+    it('should throw when AbortSignal is already aborted', async () => {
+      const controller = new AbortController();
+      controller.abort();
+
+      await expect(
+        client.getBranches(mockRepo, controller.signal),
+      ).rejects.toThrow('SCM sync aborted, stopping branch fetch');
+
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
   });
 
   describe('getTags', () => {
@@ -568,6 +728,29 @@ describe('GithubClient', () => {
 
       expect(tags).toHaveLength(101);
       expect(mockFetch).toHaveBeenCalledTimes(2);
+    });
+
+    it('should throw error on API failure', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+        text: () => Promise.resolve('Forbidden'),
+      });
+
+      await expect(client.getTags(mockRepo)).rejects.toThrow(
+        'GitHub API error (403): Forbidden',
+      );
+    });
+
+    it('should throw when AbortSignal is already aborted', async () => {
+      const controller = new AbortController();
+      controller.abort();
+
+      await expect(client.getTags(mockRepo, controller.signal)).rejects.toThrow(
+        'SCM sync aborted, stopping tag fetch',
+      );
+
+      expect(mockFetch).not.toHaveBeenCalled();
     });
   });
 
@@ -677,6 +860,86 @@ describe('GithubClient', () => {
         client.getFileContent(mockRepo, 'main', 'nonexistent.txt'),
       ).rejects.toThrow('Failed to fetch file content: 404 Not Found');
     });
+
+    it('should throw AbortError when signal is already aborted before fetch', async () => {
+      const controller = new AbortController();
+      controller.abort();
+
+      await expect(
+        client.getFileContent(mockRepo, 'main', 'file.ts', controller.signal),
+      ).rejects.toThrow('The operation was aborted');
+
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it('should throw AbortError when signal aborts between fetch and sleepMs', async () => {
+      jest.useFakeTimers();
+
+      try {
+        const controller = new AbortController();
+
+        mockFetch.mockResolvedValueOnce({
+          ok: false,
+          status: 502,
+          arrayBuffer: () => {
+            controller.abort();
+            return Promise.resolve(new ArrayBuffer(0));
+          },
+        });
+
+        const promise = client.getFileContent(
+          mockRepo,
+          'main',
+          'file.ts',
+          controller.signal,
+        );
+
+        await expect(promise).rejects.toThrow('The operation was aborted');
+
+        expect(mockFetch).toHaveBeenCalledTimes(1);
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it('should throw AbortError when signal fires during retry backoff', async () => {
+      jest.useFakeTimers();
+
+      try {
+        const controller = new AbortController();
+
+        mockFetch.mockResolvedValueOnce({
+          ok: false,
+          status: 500,
+          arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
+        });
+
+        const promise = client.getFileContent(
+          mockRepo,
+          'main',
+          'file.ts',
+          controller.signal,
+        );
+
+        const expectRejected =
+          // eslint-disable-next-line jest/valid-expect
+          expect(promise).rejects.toThrow('The operation was aborted');
+
+        // Flush enough microtasks for fetchWithRetry to enter sleepMs and set
+        // up the addEventListener before we fire abort.
+        for (let i = 0; i < 10; i++) {
+          await Promise.resolve();
+        }
+
+        controller.abort();
+
+        await expectRejected;
+
+        expect(mockFetch).toHaveBeenCalledTimes(1);
+      } finally {
+        jest.useRealTimers();
+      }
+    });
   });
 
   describe('buildUrl', () => {
@@ -774,6 +1037,234 @@ describe('GithubClient', () => {
       expect(location).toBe(
         'url:https://github.com/test-org/test-repo/tree/main',
       );
+    });
+  });
+
+  describe('repositoryExists', () => {
+    it('should return true when repository exists', async () => {
+      (fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+      });
+
+      const exists = await client.repositoryExists('test-owner', 'test-repo');
+
+      expect(exists).toBe(true);
+      expect(fetch).toHaveBeenCalledWith(
+        'https://api.github.com/repos/test-owner/test-repo',
+        expect.objectContaining({
+          method: 'HEAD',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token',
+          }),
+        }),
+      );
+    });
+
+    it('should return false when repository does not exist', async () => {
+      (fetch as jest.Mock).mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+      });
+
+      const exists = await client.repositoryExists('test-owner', 'nonexistent');
+
+      expect(exists).toBe(false);
+    });
+
+    it('should return false when fetch throws error', async () => {
+      (fetch as jest.Mock).mockRejectedValueOnce(new Error('Network error'));
+
+      const exists = await client.repositoryExists('test-owner', 'test-repo');
+
+      expect(exists).toBe(false);
+      expect(mockLogger.debug).toHaveBeenCalledWith(
+        expect.stringContaining(
+          '[GithubClient] Repository test-owner/test-repo check failed',
+        ),
+      );
+    });
+
+    it('should encode owner and repo in URL', async () => {
+      (fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+      });
+
+      await client.repositoryExists('test/owner', 'test/repo');
+
+      expect(fetch).toHaveBeenCalledWith(
+        'https://api.github.com/repos/test%2Fowner/test%2Frepo',
+        expect.any(Object),
+      );
+    });
+
+    it('should use enterprise API URL for enterprise host', async () => {
+      const config: ScmClientConfig = {
+        scmProvider: 'github',
+        host: 'github.enterprise.com',
+        organization: 'test-org',
+        token: 'test-token',
+        apiBaseUrl: 'https://github.enterprise.com/api/v3',
+      };
+      const enterpriseClient = new GithubClient({ config, logger: mockLogger });
+
+      (fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+      });
+
+      await enterpriseClient.repositoryExists('test-owner', 'test-repo');
+
+      expect(fetch).toHaveBeenCalledWith(
+        'https://github.enterprise.com/api/v3/repos/test-owner/test-repo',
+        expect.any(Object),
+      );
+    });
+  });
+
+  describe('dispatchActionsWorkflow', () => {
+    it('should POST workflow_dispatch with API version 2026-03-10 and parse run details', async () => {
+      const dispatchBody = JSON.stringify({
+        workflow_run_id: 987654,
+        run_url:
+          'https://api.github.com/repos/acme/widgets/actions/runs/987654',
+        html_url: 'https://github.com/acme/widgets/actions/runs/987654',
+      });
+      (fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        text: () => Promise.resolve(dispatchBody),
+      });
+
+      const result = await client.dispatchActionsWorkflow(
+        'acme',
+        'widgets',
+        'ee-build.yml',
+        'main',
+        {
+          ee_dir: 'my-ee',
+          ee_file_name: 'my-ee.yml',
+          ee_registry: 'quay.io/ansible',
+          ee_image_name: 'ns/img',
+        },
+      );
+
+      expect(result.ok).toBe(true);
+      expect(result.status).toBe(200);
+      expect(result.workflowRunId).toBe(987654);
+      expect(result.workflowRunUrl).toBe(
+        'https://github.com/acme/widgets/actions/runs/987654',
+      );
+      expect(fetch).toHaveBeenCalledWith(
+        'https://api.github.com/repos/acme/widgets/actions/workflows/ee-build.yml/dispatches',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token',
+            Accept: 'application/vnd.github+json',
+            'Content-Type': 'application/json',
+            'X-GitHub-Api-Version': '2026-03-10',
+          }),
+          body: JSON.stringify({
+            ref: 'main',
+            inputs: {
+              ee_dir: 'my-ee',
+              ee_file_name: 'my-ee.yml',
+              ee_registry: 'quay.io/ansible',
+              ee_image_name: 'ns/img',
+            },
+          }),
+        }),
+      );
+    });
+
+    it('falls back gracefully when response body is empty (legacy 204)', async () => {
+      (fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        status: 204,
+        statusText: 'No Content',
+        text: () => Promise.resolve(''),
+      });
+
+      const result = await client.dispatchActionsWorkflow(
+        'acme',
+        'widgets',
+        'ee-build.yml',
+        'main',
+        { ee_dir: 'x' },
+      );
+
+      expect(result.ok).toBe(true);
+      expect(result.workflowRunId).toBeUndefined();
+      expect(result.workflowRunUrl).toBeUndefined();
+    });
+
+    it('returns undefined run details when response JSON lacks those fields', async () => {
+      (fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        text: () => Promise.resolve('{"some":"other"}'),
+      });
+
+      const result = await client.dispatchActionsWorkflow(
+        'acme',
+        'widgets',
+        'ee-build.yml',
+        'main',
+        { ee_dir: 'x' },
+      );
+
+      expect(result.ok).toBe(true);
+      expect(result.workflowRunId).toBeUndefined();
+      expect(result.workflowRunUrl).toBeUndefined();
+    });
+
+    it('ignores non-JSON body on success (catch branch)', async () => {
+      (fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        text: () => Promise.resolve('not valid json'),
+      });
+
+      const result = await client.dispatchActionsWorkflow(
+        'acme',
+        'widgets',
+        'ee-build.yml',
+        'main',
+        { ee_dir: 'x' },
+      );
+
+      expect(result.ok).toBe(true);
+      expect(result.workflowRunId).toBeUndefined();
+      expect(result.workflowRunUrl).toBeUndefined();
+      expect(result.bodyText).toBe('not valid json');
+    });
+
+    it('should return body text when GitHub returns an error', async () => {
+      (fetch as jest.Mock).mockResolvedValueOnce({
+        ok: false,
+        status: 422,
+        statusText: 'Unprocessable',
+        text: () => Promise.resolve('{"message":"No ref"}'),
+      });
+
+      const result = await client.dispatchActionsWorkflow(
+        'o',
+        'r',
+        'w.yml',
+        'bad',
+        {},
+      );
+
+      expect(result.ok).toBe(false);
+      expect(result.status).toBe(422);
+      expect(result.bodyText).toBe('{"message":"No ref"}');
+      expect(result.workflowRunId).toBeUndefined();
+      expect(result.workflowRunUrl).toBeUndefined();
     });
   });
 });

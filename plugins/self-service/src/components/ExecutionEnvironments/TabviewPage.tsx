@@ -1,18 +1,57 @@
-import { useEffect, useCallback, useMemo, useState } from 'react';
-import { Header, Page, HeaderTabs, Content } from '@backstage/core-components';
-import { Box } from '@material-ui/core';
+import { useEffect, useCallback, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import FileCopyOutlinedIcon from '@material-ui/icons/FileCopyOutlined';
-import PublishIcon from '@material-ui/icons/Publish';
-import { PageHelpIcon } from '../common/PageHelpIcon';
-import { DismissibleBanner } from '../common/DismissibleBanner';
-import { AddActionButton } from '../common/AddActionButton';
+import { Typography, Box, makeStyles } from '@material-ui/core';
+import CategoryOutlinedIcon from '@material-ui/icons/CategoryOutlined';
+import CreateComponentIcon from '@material-ui/icons/AddCircleOutline';
+import { Header, Page, HeaderTabs, Content } from '@backstage/core-components';
+import { useRouteRef } from '@backstage/core-plugin-api';
+
+import { rootRouteRef } from '../../routes';
 import { CreateContent } from './create/CreateContent';
 import { EntityCatalogContent } from './catalog/CatalogContent';
 
+const useStyles = makeStyles(() => ({
+  tabContainer: {
+    '& .MuiTab-root': {
+      minWidth: '200px',
+      padding: '12px 40px',
+      fontSize: '16px',
+    },
+  },
+  tabWithIcon: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+}));
+
+export const EEHeader = () => {
+  const headerTitle = (
+    <Typography
+      variant="h4"
+      component="h1"
+      style={{ fontWeight: 'bold', fontSize: '2rem' }}
+    >
+      Execution Environments definition files
+    </Typography>
+  );
+
+  return (
+    <Header
+      title={headerTitle}
+      pageTitleOverride="Execution Environments Definition Files"
+      style={{
+        fontFamily: 'Red Hat Text',
+        color: 'white',
+        paddingBottom: '16px',
+      }}
+    />
+  );
+};
+
 const tabs = [
-  { id: 0, label: 'Catalog', path: 'catalog' },
-  { id: 1, label: 'Templates', path: 'create' },
+  { id: 0, label: 'Catalog', icon: <CategoryOutlinedIcon />, path: 'catalog' },
+  { id: 1, label: 'Create', icon: <CreateComponentIcon />, path: 'create' },
 ];
 
 const getTabIndexFromPath = (pathname: string): number => {
@@ -20,48 +59,11 @@ const getTabIndexFromPath = (pathname: string): number => {
   return 0;
 };
 
-export const EEHeader = () => {
-  const navigate = useNavigate();
-  return (
-    <Header
-      title={
-        <Box display="flex" alignItems="center" justifyContent="space-between" width="100%">
-          <Box display="flex" alignItems="center">
-            Execution Environments
-            <PageHelpIcon
-              tooltipLabel="What are execution environments?"
-              title="What are Execution Environments?"
-              description="Execution environment (EE) definition files describe the container images used to run your Ansible automation. They ensure your playbooks run consistently by packaging all dependencies, collections, and Python libraries into a reproducible container image."
-            />
-          </Box>
-          <AddActionButton
-            label="Add execution environment"
-            options={[
-              {
-                label: 'Create from template',
-                description: 'Scaffold a new EE definition from a curated template.',
-                icon: <FileCopyOutlinedIcon fontSize="small" />,
-                onClick: () => navigate('/self-service/ee/create'),
-              },
-              {
-                label: 'Import EE definition',
-                description: 'Import an existing execution-environment.yml from a Git repository.',
-                icon: <PublishIcon fontSize="small" />,
-                onClick: () => navigate('/self-service/ee/create'),
-              },
-            ]}
-          />
-        </Box>
-      }
-      pageTitleOverride="Execution Environments"
-      subtitle="Container images that package dependencies for running Ansible automation"
-    />
-  );
-};
-
 export const EETabs: React.FC = () => {
+  const classes = useStyles();
   const location = useLocation();
   const navigate = useNavigate();
+  const rootLink = useRouteRef(rootRouteRef);
 
   const selectedTab = useMemo(
     () => getTabIndexFromPath(location.pathname),
@@ -73,22 +75,22 @@ export const EETabs: React.FC = () => {
     if (tabIndex !== undefined) {
       const tab = tabs[tabIndex];
       if (tab) {
-        navigate(`/self-service/ee/${tab.path}`, {
+        navigate(`${rootLink()}/ee/${tab.path}`, {
           replace: true,
           state: {},
         });
       }
     }
-  }, [location.state, navigate]);
+  }, [location.state, navigate, rootLink]);
 
   const onTabSelect = useCallback(
     (index: number) => {
       const tab = tabs[index];
       if (tab) {
-        navigate(`/self-service/ee/${tab.path}`);
+        navigate(`${rootLink()}/ee/${tab.path}`);
       }
     },
-    [navigate],
+    [navigate, rootLink],
   );
 
   const handleTabSwitch = useCallback(
@@ -111,18 +113,19 @@ export const EETabs: React.FC = () => {
       <HeaderTabs
         selectedIndex={selectedTab}
         onChange={onTabSelect}
-        tabs={tabs.map(({ label }) => ({
-          id: label.toLowerCase(),
-          label,
-        }))}
+        tabs={
+          tabs.map(({ label, icon }) => ({
+            id: label.toLowerCase(),
+            label: (
+              <Box className={classes.tabWithIcon}>
+                {icon}
+                {label}
+              </Box>
+            ),
+          })) as any
+        }
       />
-      <Content>
-        <DismissibleBanner
-          storageKey="ee-catalog"
-          message="Execution environments are container images that package all dependencies needed to run your Ansible automation. Browse the catalog to find available EE definitions or create new ones from templates."
-        />
-        {content}
-      </Content>
+      <Content>{content}</Content>
     </Page>
   );
 };

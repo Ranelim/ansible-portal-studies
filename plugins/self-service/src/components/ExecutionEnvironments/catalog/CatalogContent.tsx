@@ -1,18 +1,22 @@
-import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
-import { Progress } from '@backstage/core-components';
+import { useEffect, useState, useCallback, useRef } from 'react';
+import { Progress, Table, TableColumn } from '@backstage/core-components';
 import {
+  Backdrop,
   Box,
+  Chip,
+  CircularProgress,
   FormControl,
   Grid,
+  IconButton,
   Input,
-  InputAdornment,
+  Menu,
   MenuItem,
   Paper,
   Select,
-  TextField,
+  Tooltip,
   Typography,
 } from '@material-ui/core';
-import { makeStyles } from '@material-ui/core/styles';
+import { makeStyles, useTheme } from '@material-ui/core/styles';
 import {
   CatalogFilterLayout,
   EntityKindFilter,
@@ -22,30 +26,45 @@ import {
   catalogApiRef,
   useEntityList,
   useStarredEntities,
+  UnregisterEntityDialog,
+  FavoriteEntity,
 } from '@backstage/plugin-catalog-react';
-import { Table, TableColumn } from '@backstage/core-components';
-import { Chip, IconButton, Menu, MenuItem as MuiMenuItem, ListItemText } from '@material-ui/core';
-import MoreVertIcon from '@material-ui/icons/MoreVert';
-import StarIcon from '@material-ui/icons/Star';
+import MoreVert from '@material-ui/icons/MoreVert';
+import OpenInNew from '@material-ui/icons/OpenInNew';
 import { ANNOTATION_EDIT_URL, Entity } from '@backstage/catalog-model';
-import { DEMO_EE_ENTITIES } from '../../common/catalogDemoData';
-import StarBorder from '@material-ui/icons/StarBorder';
-import SearchIcon from '@material-ui/icons/Search';
-import ClearIcon from '@material-ui/icons/Clear';
 import { useApi } from '@backstage/core-plugin-api';
-import { useNavigate } from 'react-router-dom';
 import { CreateCatalog } from './CreateCatalog';
-import { LastSyncedIndicator } from '../../Admin/LastSyncedIndicator';
+import { EEBuildDialog } from './EEBuildDialog';
+import {
+  toEEDefinitionUrl,
+  downloadEntityAsTarArchive,
+  isEntityPublishedToGithub,
+} from './helpers';
+import { useEEBuildFlow } from './useEEBuildFlow';
+import { EntityLinkButton } from '../../common';
+
+const DESCRIPTION_TRUNCATE_LENGTH = 30;
 
 const useStyles = makeStyles(theme => ({
   flex: {
     display: 'flex',
+  },
+  ml_16: {
+    marginLeft: '16px',
   },
   tagsContainer: {
     display: 'flex',
     flexWrap: 'wrap',
     gap: theme.spacing(1),
     alignItems: 'center',
+  },
+  linkButtonRoot: {
+    '&.MuiButton-root': {
+      color: '#1976d2',
+      textTransform: 'none',
+      fontSize: '1rem',
+      fontWeight: 500,
+    },
   },
   actionButton: {
     cursor: 'pointer',
@@ -67,7 +86,7 @@ const useStyles = makeStyles(theme => ({
     border: 'none',
     padding: 0,
     font: 'inherit',
-    fontWeight: 500,
+    fontWeight: 'normal',
     textAlign: 'left',
     position: 'relative',
     zIndex: 10,
@@ -75,17 +94,45 @@ const useStyles = makeStyles(theme => ({
       textDecoration: 'underline',
     },
   },
-  filterLabel: {
-    marginTop: theme.spacing(2),
-    fontWeight: 600,
-    fontSize: '0.875rem',
-    '&:first-child': {
-      marginTop: 0,
-    },
+  description: {
+    color: theme.palette.text.secondary,
+    fontSize: 16,
+    lineHeight: 1.6,
+    padding: '16px 0',
+    width: '100%',
+    marginBottom: '16px',
+  },
+  descriptionCell: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 4,
+    maxWidth: 240, // ~30 characters visible
+    minWidth: 0,
+  },
+  descriptionCellText: {
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    minWidth: 0,
+    flex: 1,
+  },
+  descriptionCellTextFull: {
+    minWidth: 0,
+    flex: 1,
   },
   paper: {
-    padding: theme.spacing(1.5),
+    padding: theme.spacing(1.5, 1.5),
     borderRadius: 3,
+  },
+  filter: {
+    padding: theme.spacing(1.5, 1.5),
+    borderRadius: 5,
+    border: `1px solid ${theme.palette.divider}`,
+    backgroundColor: 'red',
+  },
+  actionsMenuPaper: {
+    padding: theme.spacing(1, 0),
+    minWidth: 180,
   },
 }));
 
@@ -106,36 +153,32 @@ const ExecutionEnvironmentTypeFilter = () => {
   return null;
 };
 
-const EERowActions = ({ entity }: { entity: any }) => {
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const navigate = useNavigate();
-  const editUrl = entity.metadata.annotations?.[ANNOTATION_EDIT_URL];
+function sortByMetadataTitleAsc<T extends { metadata?: { name?: string } }>(
+  data: T[],
+): T[] {
+  return [...data].sort((a, b) => {
+    const titleA = a.metadata?.name ?? '';
+    const titleB = b.metadata?.name ?? '';
 
-  return (
-    <>
-      <IconButton size="small" onClick={(e: React.MouseEvent<HTMLButtonElement>) => { e.stopPropagation(); setAnchorEl(e.currentTarget); }}>
-        <MoreVertIcon fontSize="small" />
-      </IconButton>
-      <Menu
-        anchorEl={anchorEl}
-        open={Boolean(anchorEl)}
-        onClose={() => setAnchorEl(null)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-        getContentAnchorEl={null}
-      >
-        <MuiMenuItem onClick={() => { setAnchorEl(null); navigate(`/self-service/catalog/${entity.metadata.name}`); }}>
-          <ListItemText primary="View details" />
-        </MuiMenuItem>
-        {editUrl && (
-          <MuiMenuItem onClick={() => { setAnchorEl(null); window.open(editUrl, '_blank', 'noopener,noreferrer'); }}>
-            <ListItemText primary="View source" />
-          </MuiMenuItem>
-        )}
-      </Menu>
-    </>
-  );
-};
+    const numA = Number(titleA);
+    const numB = Number(titleB);
+
+    const isNumA = !Number.isNaN(numA);
+    const isNumB = !Number.isNaN(numB);
+
+    // both numeric → numeric sort
+    if (isNumA && isNumB) {
+      return numA - numB;
+    }
+
+    // numeric before string
+    if (isNumA) return -1;
+    if (isNumB) return 1;
+
+    // both strings → string sort
+    return titleA.localeCompare(titleB, undefined, { sensitivity: 'base' });
+  });
+}
 
 export const EEListPage = ({
   onTabSwitch,
@@ -143,23 +186,65 @@ export const EEListPage = ({
   onTabSwitch: (index: number) => void;
 }) => {
   const classes = useStyles();
+  const theme = useTheme();
   const catalogApi = useApi(catalogApiRef);
-  const navigate = useNavigate();
-  const { isStarredEntity, toggleStarredEntity } = useStarredEntities();
+  const { isStarredEntity } = useStarredEntities();
   const [loading, setLoading] = useState<boolean>(true);
   const [showError, setShowError] = useState<boolean>(false);
-  const [errorMessage] = useState<string>('');
+  const [errorMessage, setErrorMessage] = useState<string>('');
   const [allEntities, setAllEntities] = useState<Entity[]>([]);
   const [ansibleComponents, setAnsibleComponents] = useState<Entity[]>([]);
-  const [ownerFilter, setOwnerFilter] = useState<'All' | string>('All');
-  const [tagFilter, setTagFilter] = useState<'All' | string>('All');
+  const [ownerFilter, setOwnerFilter] = useState<string>('All');
+  const [tagFilter, setTagFilter] = useState<string>('All');
   const [allOwners, setAllOwners] = useState<string[]>(['All']);
   const [allTags, setAllTags] = useState<string[]>(['All']);
   const [filtered, setFiltered] = useState<boolean>(true);
   const [ownerNames, setOwnerNames] = useState<Map<string, string>>(new Map());
+  const [actionsMenuAnchor, setActionsMenuAnchor] =
+    useState<null | HTMLElement>(null);
+  const [menuAnchorPosition, setMenuAnchorPosition] = useState<
+    { top: number; left: number } | undefined
+  >(undefined);
+  const [actionsMenuEntity, setActionsMenuEntity] = useState<Entity | null>(
+    null,
+  );
+  const [unregisterDialogOpen, setUnregisterDialogOpen] =
+    useState<boolean>(false);
+  const [entityToUnregister, setEntityToUnregister] = useState<Entity | null>(
+    null,
+  );
   const { filters, updateFilters } = useEntityList();
+  const {
+    startBuildFlow,
+    authBusy,
+    dialogOpen,
+    buildEntity,
+    githubToken,
+    closeDialog,
+  } = useEEBuildFlow();
 
   const isMountedRef = useRef(true);
+
+  const handleActionsMenuOpen = (
+    event: React.MouseEvent<HTMLElement>,
+    entity: Entity,
+  ) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const target = event.currentTarget;
+    if (target) {
+      const rect = target.getBoundingClientRect();
+      setMenuAnchorPosition({ left: rect.left, top: rect.bottom });
+    }
+    setActionsMenuAnchor(target);
+    setActionsMenuEntity(entity);
+  };
+
+  const handleActionsMenuClose = () => {
+    setActionsMenuAnchor(null);
+    setMenuAnchorPosition(undefined);
+    setActionsMenuEntity(null);
+  };
 
   const getOwnerName = useCallback(
     async (ownerRef: string | undefined): Promise<string> => {
@@ -173,7 +258,7 @@ export const EEListPage = ({
           ownerRef ??
           'Unknown'
         );
-      } catch (error) {
+      } catch {
         // If API call fails, fallback to ownerRef
         return ownerRef ?? 'Unknown';
       }
@@ -236,7 +321,6 @@ export const EEListPage = ({
         if (!isMountedRef.current) return;
 
         let items = Array.isArray(entities) ? entities : entities?.items || [];
-        if (items.length === 0) items = DEMO_EE_ENTITIES;
         const sortedData = sortByMetadataTitleAsc(items);
         items = sortedData;
         setAllEntities(items);
@@ -256,46 +340,22 @@ export const EEListPage = ({
         setShowError(false);
       })
 
-      .catch(() => {
+      .catch(error => {
         if (!isMountedRef.current) return;
-        const items = DEMO_EE_ENTITIES;
-        setAllEntities(items);
-        setFiltered(true);
-        const { owners, tags } = getUniqueOwnersAndTags(items);
-        setAllOwners(['All', ...owners]);
-        setAllTags(['All', ...tags]);
-        fetchOwnerNames(items);
-        setLoading(false);
-        setShowError(false);
+
+        if (error) {
+          setErrorMessage(error.message);
+          setShowError(true);
+          setLoading(false);
+        }
       });
   }, [catalogApi, getUniqueOwnersAndTags, fetchOwnerNames]);
 
-  function sortByMetadataTitleAsc<T extends { metadata?: { name?: string } }>(
-    data: T[],
-  ): T[] {
-    return [...data].sort((a, b) => {
-      const titleA = a.metadata?.name ?? '';
-      const titleB = b.metadata?.name ?? '';
-
-      const numA = Number(titleA);
-      const numB = Number(titleB);
-
-      const isNumA = !isNaN(numA);
-      const isNumB = !isNaN(numB);
-
-      // both numeric → numeric sort
-      if (isNumA && isNumB) {
-        return numA - numB;
-      }
-
-      // numeric before string
-      if (isNumA) return -1;
-      if (isNumB) return 1;
-
-      // both strings → string sort
-      return titleA.localeCompare(titleB, undefined, { sensitivity: 'base' });
-    });
-  }
+  const handleUnregisterConfirm = useCallback(() => {
+    setUnregisterDialogOpen(false);
+    setEntityToUnregister(null);
+    callApi();
+  }, [callApi]);
 
   useEffect(() => {
     const filterData = allEntities.filter(d => {
@@ -326,18 +386,6 @@ export const EEListPage = ({
     else if (filters.user?.value === 'all') setAnsibleComponents(allEntities);
   }, [filters.user, allEntities, isStarredEntity]);
 
-  const [searchText, setSearchText] = useState('');
-
-  const searchFilteredComponents = useMemo(() => {
-    if (!searchText) return ansibleComponents;
-    const lower = searchText.toLowerCase();
-    return ansibleComponents.filter(
-      e =>
-        e.metadata?.name?.toLowerCase().includes(lower) ||
-        e.metadata?.description?.toLowerCase().includes(lower),
-    );
-  }, [ansibleComponents, searchText]);
-
   if (loading) {
     return (
       <div>
@@ -347,7 +395,7 @@ export const EEListPage = ({
   }
 
   if (showError)
-    return <div>{errorMessage ?? 'Unable to load execution environments'}</div>;
+    return <div>Error: {errorMessage ?? 'Unable to retrieve data'}</div>;
   const columns: TableColumn[] = [
     {
       title: 'Name',
@@ -357,32 +405,10 @@ export const EEListPage = ({
       render: (entity: any) => {
         const entityName = entity.metadata.name;
         const linkPath = `/self-service/catalog/${entityName}`;
-
-        const handleClick = (e: React.MouseEvent | React.KeyboardEvent) => {
-          e.preventDefault();
-          e.stopPropagation();
-          navigate(linkPath);
-        };
-
         return (
-          <button
-            type="button"
-            onClick={handleClick}
-            onMouseDown={(e: React.MouseEvent) => {
-              e.preventDefault();
-              e.stopPropagation();
-              navigate(linkPath);
-            }}
-            onKeyDown={(e: React.KeyboardEvent) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                handleClick(e);
-              }
-            }}
-            className={classes.entityLink}
-          >
+          <EntityLinkButton linkPath={linkPath} className={classes.entityLink}>
             {entityName}
-          </button>
+          </EntityLinkButton>
         );
       },
     },
@@ -398,7 +424,38 @@ export const EEListPage = ({
         return <div>{ownerName}</div>;
       },
     },
-    { title: 'Description', field: 'metadata.description', id: 'description' },
+    {
+      title: 'Description',
+      field: 'metadata.description',
+      id: 'description',
+      render: (entity: any) => {
+        const desc = entity?.metadata?.description ?? '';
+        const displayText = desc || '—';
+        const isLong = desc.length > DESCRIPTION_TRUNCATE_LENGTH;
+        const cell = (
+          <Tooltip
+            title={isLong ? desc : ''}
+            placement="bottom-start"
+            leaveDelay={0}
+            enterDelay={300}
+          >
+            <Box className={classes.descriptionCell}>
+              <Typography
+                className={
+                  isLong
+                    ? classes.descriptionCellText
+                    : classes.descriptionCellTextFull
+                }
+                variant="body2"
+              >
+                {displayText}
+              </Typography>
+            </Box>
+          </Tooltip>
+        );
+        return cell;
+      },
+    },
     {
       title: 'Tags',
       field: 'metadata.tags',
@@ -416,30 +473,39 @@ export const EEListPage = ({
       cellStyle: { padding: '16px 16px 0px 20px' },
     },
     {
-      title: '',
-      width: '80px',
-      sorting: false,
+      title: 'Actions',
+      id: 'actions',
       render: (entity: any) => {
-        const isStarred = isStarredEntity(entity);
-
+        const entityName = entity.metadata?.name;
         return (
-          <Box className={classes.flex} style={{ alignItems: 'center', gap: 4 }}>
-            <IconButton
-              size="small"
-              onClick={(e: React.MouseEvent) => {
-                e.stopPropagation();
-                toggleStarredEntity(entity);
-              }}
-              aria-label={isStarred ? 'Remove from favorites' : 'Add to favorites'}
-            >
-              {isStarred ? (
-                <StarIcon style={{ color: '#faaf00' }} />
-              ) : (
-                <StarBorder />
-              )}
-            </IconButton>
-            <EERowActions entity={entity} />
-          </Box>
+          <div
+            className={classes.flex}
+            style={{ position: 'relative', zIndex: 1 }}
+          >
+            <FavoriteEntity entity={entity} style={{ padding: 0 }} />
+            <Tooltip title="Actions">
+              <IconButton
+                size="small"
+                onClick={(e: React.MouseEvent<HTMLElement>) =>
+                  handleActionsMenuOpen(e, entity)
+                }
+                onMouseDown={(e: React.MouseEvent) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+                className={classes.actionButton}
+                aria-label="Actions"
+                aria-haspopup="true"
+                aria-controls={
+                  actionsMenuEntity?.metadata?.name === entityName
+                    ? 'ee-actions-menu'
+                    : undefined
+                }
+              >
+                <MoreVert fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </div>
         );
       },
     },
@@ -448,38 +514,25 @@ export const EEListPage = ({
   return (
     <div style={{ flexDirection: 'column', width: '100%' }}>
       {filtered || (allEntities && allEntities.length > 0) ? (
+        <Typography variant="body1" className={classes.description}>
+          Create an Execution Environment (EE) definition to ensure your
+          playbooks run the same way, every time. Choose a recommended preset or
+          start from scratch for full control. After saving your definition,
+          follow our guide to create your EE image.
+        </Typography>
+      ) : null}
+      {filtered || (allEntities && allEntities.length > 0) ? (
         <CatalogFilterLayout>
           <ExecutionEnvironmentTypeFilter />
           <CatalogFilterLayout.Filters>
-            <TextField
-              placeholder="Search execution environments..."
-              variant="standard"
-              fullWidth
-              value={searchText}
-              onChange={e => setSearchText(e.target.value)}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon color="disabled" />
-                  </InputAdornment>
-                ),
-                endAdornment: searchText ? (
-                  <InputAdornment position="end">
-                    <IconButton size="small" onClick={() => setSearchText('')} aria-label="Clear search">
-                      <ClearIcon fontSize="small" />
-                    </IconButton>
-                  </InputAdornment>
-                ) : null,
-              }}
-            />
             <UserListPicker availableFilters={['starred', 'all']} />
+            <Typography>Owner</Typography>
 
-            <Typography className={classes.filterLabel}>Owner</Typography>
             <Paper className={classes.paper}>
               <FormControl fullWidth>
                 <Select
                   value={ownerFilter}
-                  onChange={e => setOwnerFilter(e.target.value as any)}
+                  onChange={e => setOwnerFilter(e.target.value as string)}
                   displayEmpty
                   input={<Input disableUnderline />}
                 >
@@ -492,12 +545,12 @@ export const EEListPage = ({
               </FormControl>
             </Paper>
 
-            <Typography className={classes.filterLabel}>Tags</Typography>
+            <Typography style={{ marginTop: 10 }}>Tags</Typography>
             <Paper className={classes.paper}>
-              <FormControl fullWidth>
+              <FormControl fullWidth variant="outlined">
                 <Select
                   value={tagFilter}
-                  onChange={e => setTagFilter(e.target.value as any)}
+                  onChange={e => setTagFilter(e.target.value as string)}
                   input={<Input disableUnderline />}
                   MenuProps={{
                     getContentAnchorEl: null,
@@ -514,30 +567,203 @@ export const EEListPage = ({
             </Paper>
           </CatalogFilterLayout.Filters>
           <CatalogFilterLayout.Content>
-            <Box mb={1}>
-              <LastSyncedIndicator source="Private Automation Hub" timeAgo="8 minutes ago" />
-            </Box>
             <Table
-              title={`${searchFilteredComponents?.length ?? 0} ${(searchFilteredComponents?.length ?? 0) === 1 ? 'execution environment' : 'execution environments'}`}
+              title={`Execution Environments definition files (${ansibleComponents?.length})`}
               options={{
-                paging: true,
-                pageSize: 10,
-                pageSizeOptions: [5, 10, 20],
-                emptyRowsWhenPaging: false,
-                search: false,
-                sorting: true,
-                padding: 'dense',
-                rowStyle: { cursor: 'pointer' },
+                search: true,
+                rowStyle: { cursor: 'default' },
               }}
               columns={columns}
-              data={searchFilteredComponents || []}
-              style={{ width: '100%', overflowX: 'hidden' }}
-              onRowClick={(_event, rowData) => {
-                if (rowData) {
-                  const entityName = (rowData as any).metadata?.name;
-                  if (entityName) navigate(`/self-service/catalog/${entityName}`);
-                }
-              }}
+              data={ansibleComponents || []}
+            />
+            <Menu
+              id="ee-actions-menu"
+              anchorEl={actionsMenuAnchor}
+              anchorReference="anchorPosition"
+              anchorPosition={
+                menuAnchorPosition
+                  ? {
+                      top: menuAnchorPosition.top,
+                      left: menuAnchorPosition.left,
+                    }
+                  : undefined
+              }
+              keepMounted
+              open={Boolean(actionsMenuAnchor)}
+              onClose={handleActionsMenuClose}
+              anchorOrigin={{ vertical: 'top', horizontal: 'left' }}
+              transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+              onClick={(e: React.MouseEvent) => e.stopPropagation()}
+              PaperProps={{ className: classes.actionsMenuPaper }}
+            >
+              {actionsMenuEntity &&
+                (() => {
+                  const isDownloadExperience =
+                    actionsMenuEntity?.metadata?.annotations?.[
+                      'ansible.io/download-experience'
+                    ]
+                      ?.toString()
+                      .toLowerCase()
+                      .trim() === 'true';
+                  return isDownloadExperience
+                    ? [
+                        <MenuItem
+                          key="download"
+                          onClick={() => {
+                            handleActionsMenuClose();
+                            const entityRef = `${actionsMenuEntity.kind}:${actionsMenuEntity.metadata?.namespace || 'default'}/${actionsMenuEntity.metadata?.name}`;
+                            catalogApi
+                              .getEntityByRef(entityRef)
+                              .then((entity: Entity | undefined) => {
+                                if (entity) {
+                                  downloadEntityAsTarArchive(entity);
+                                }
+                              });
+                          }}
+                        >
+                          Download
+                        </MenuItem>,
+                        <MenuItem
+                          key="delete"
+                          onClick={() => {
+                            setEntityToUnregister(actionsMenuEntity);
+                            handleActionsMenuClose();
+                            setUnregisterDialogOpen(true);
+                          }}
+                          style={{ color: theme.palette.error.main }}
+                        >
+                          Delete
+                        </MenuItem>,
+                      ]
+                    : [
+                        ...(isEntityPublishedToGithub(actionsMenuEntity)
+                          ? [
+                              <MenuItem
+                                key="build"
+                                onClick={() => {
+                                  const targetEntity = actionsMenuEntity;
+                                  handleActionsMenuClose();
+                                  if (targetEntity) {
+                                    startBuildFlow(targetEntity).catch(
+                                      () => undefined,
+                                    );
+                                  }
+                                }}
+                              >
+                                Build
+                              </MenuItem>,
+                            ]
+                          : []),
+                        <MenuItem
+                          key="edit"
+                          onClick={() => {
+                            const editUrl =
+                              actionsMenuEntity?.metadata?.annotations?.[
+                                ANNOTATION_EDIT_URL
+                              ];
+                            const sourceLocation =
+                              actionsMenuEntity?.metadata?.annotations?.[
+                                'backstage.io/source-location'
+                              ];
+                            const rawUrl =
+                              editUrl ||
+                              (typeof sourceLocation === 'string'
+                                ? sourceLocation.replace(/^url:/i, '').trim()
+                                : undefined);
+                            const urlToOpen = toEEDefinitionUrl(
+                              rawUrl ?? '',
+                              actionsMenuEntity?.metadata?.name ?? '',
+                            );
+                            if (urlToOpen) {
+                              window.open(
+                                urlToOpen,
+                                '_blank',
+                                'noopener,noreferrer',
+                              );
+                            }
+                            handleActionsMenuClose();
+                          }}
+                        >
+                          Edit definition
+                        </MenuItem>,
+                        <MenuItem
+                          key="view"
+                          onClick={() => {
+                            const viewUrl =
+                              actionsMenuEntity?.metadata?.annotations?.[
+                                'backstage.io/view-url'
+                              ];
+                            const editUrl =
+                              actionsMenuEntity?.metadata?.annotations?.[
+                                ANNOTATION_EDIT_URL
+                              ];
+                            const sourceLocation =
+                              actionsMenuEntity?.metadata?.annotations?.[
+                                'backstage.io/source-location'
+                              ];
+                            const sourceUrl =
+                              typeof sourceLocation === 'string'
+                                ? sourceLocation.replace(/^url:/i, '').trim()
+                                : undefined;
+                            const rawUrl = viewUrl || sourceUrl || editUrl;
+                            const urlToOpen = toEEDefinitionUrl(
+                              rawUrl ?? '',
+                              actionsMenuEntity?.metadata?.name ?? '',
+                            );
+                            if (urlToOpen) {
+                              window.open(
+                                urlToOpen,
+                                '_blank',
+                                'noopener,noreferrer',
+                              );
+                            }
+                            handleActionsMenuClose();
+                          }}
+                        >
+                          <Box
+                            display="flex"
+                            alignItems="center"
+                            justifyContent="space-between"
+                            width="100%"
+                            style={{ gap: 8 }}
+                          >
+                            <span>View in source</span>
+                            <OpenInNew fontSize="small" />
+                          </Box>
+                        </MenuItem>,
+                        <MenuItem
+                          key="delete"
+                          onClick={() => {
+                            setEntityToUnregister(actionsMenuEntity);
+                            handleActionsMenuClose();
+                            setUnregisterDialogOpen(true);
+                          }}
+                          style={{ color: theme.palette.error.main }}
+                        >
+                          Delete
+                        </MenuItem>,
+                      ];
+                })()}
+            </Menu>
+            {entityToUnregister && (
+              <UnregisterEntityDialog
+                open={unregisterDialogOpen}
+                entity={entityToUnregister}
+                onConfirm={handleUnregisterConfirm}
+                onClose={() => {
+                  setUnregisterDialogOpen(false);
+                  setEntityToUnregister(null);
+                }}
+              />
+            )}
+            <Backdrop open={authBusy} style={{ zIndex: 1400, color: '#fff' }}>
+              <CircularProgress color="inherit" />
+            </Backdrop>
+            <EEBuildDialog
+              open={dialogOpen}
+              entity={buildEntity}
+              githubToken={githubToken}
+              onClose={closeDialog}
             />
           </CatalogFilterLayout.Content>
         </CatalogFilterLayout>

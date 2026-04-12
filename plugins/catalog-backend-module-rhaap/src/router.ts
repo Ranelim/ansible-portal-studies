@@ -19,8 +19,21 @@ import type { Config } from '@backstage/config';
 
 import { AAPJobTemplateProvider } from './providers/AAPJobTemplateProvider';
 import { AAPEntityProvider } from './providers/AAPEntityProvider';
-import { LoggerService } from '@backstage/backend-plugin-api';
-import { EEEntityProvider } from './providers/EEEntityProvider';
+import {
+  LoggerService,
+  HttpAuthService,
+  UserInfoService,
+  AuthService,
+  PermissionsService,
+} from '@backstage/backend-plugin-api';
+import { AuthorizeResult } from '@backstage/plugin-permission-common';
+import { catalogEntityReadPermission } from '@backstage/plugin-catalog-common/alpha';
+import {
+  gitRepositoriesViewPermission,
+  executionEnvironmentsViewPermission,
+  collectionsViewPermission,
+} from '@ansible/backstage-rhaap-common/permissions';
+import { CatalogClient } from '@backstage/catalog-client';
 import { PAHCollectionProvider } from './providers/PAHCollectionProvider';
 import { AnsibleGitContentsProvider } from './providers/AnsibleGitContentsProvider';
 import {
@@ -34,8 +47,21 @@ import {
   getSyncResponseStatusCode,
   buildInvalidRepositoryResults,
   resolveProvidersToRun,
+  createRequireSuperuserMiddleware,
+  createRequireUserOrExternalAccessMiddleware,
+  createPermissionCheckMiddleware,
+  handleGitHubCIActivity,
+  handleGitLabCIActivity,
+  parseEeBuildRequestBody,
+  validateGitHubHost,
+  isKnownEeBuildError,
+  resolveEntityAndRepo,
+  dispatchEeBuild,
+  isScmIntegrationAuthFailure,
 } from './helpers';
+import { SCM_INTEGRATION_AUTH_FAILED_CODE } from '@ansible/backstage-rhaap-common/constants';
 import { ScmClientFactory } from '@ansible/backstage-rhaap-common';
+import { EEEntityProvider } from './providers/EEEntityProvider';
 
 export async function createRouter(options: {
   logger: LoggerService;
@@ -44,7 +70,13 @@ export async function createRouter(options: {
   jobTemplateProvider: AAPJobTemplateProvider;
   eeEntityProvider: EEEntityProvider;
   pahCollectionProviders: PAHCollectionProvider[];
+  httpAuth: HttpAuthService;
+  userInfo: UserInfoService;
+  auth: AuthService;
+  catalogClient: CatalogClient;
+  permissions: PermissionsService;
   ansibleGitContentsProviders?: AnsibleGitContentsProvider[];
+  allowedExternalAccessSubjects?: string[];
 }): Promise<express.Router> {
   const {
     logger,
@@ -53,7 +85,13 @@ export async function createRouter(options: {
     jobTemplateProvider,
     eeEntityProvider,
     pahCollectionProviders,
+    httpAuth,
+    userInfo,
+    auth,
+    catalogClient,
+    permissions,
     ansibleGitContentsProviders = [],
+    allowedExternalAccessSubjects,
   } = options;
   const router = Router();
   const scmClientFactory = new ScmClientFactory({ rootConfig: config, logger });
@@ -72,6 +110,23 @@ export async function createRouter(options: {
     _GIT_CONTENTS_PROVIDERS.set(provider.getSourceId(), provider);
   }
 
+  const requireSuperuserMiddleware = createRequireSuperuserMiddleware({
+    httpAuth,
+    userInfo,
+    auth,
+    catalogClient,
+    logger,
+    allowedExternalAccessSubjects,
+  });
+
+  const requireUserOrExternalAccessForEeBuild =
+    createRequireUserOrExternalAccessMiddleware({
+      httpAuth,
+      auth,
+      logger,
+      allowedExternalAccessSubjects,
+    });
+
   router.get('/health', (_, response) => {
     logger.info('PONG!');
     response.json({ status: 'ok' });
@@ -89,72 +144,59 @@ export async function createRouter(options: {
     response.status(200).json(res);
   });
 
-  router.get('/ansible/sync/status', async (request, response) => {
-    logger.info('Getting sync status');
-    const aapEntities = request.query.aap_entities === 'true';
-    const ansibleContents = request.query.ansible_contents === 'true';
-    const noQueryParams =
-      request.query.aap_entities === undefined &&
-      request.query.ansible_contents === undefined;
+  router.get(
+    '/ansible/sync/status',
+    requireSuperuserMiddleware,
+    async (request, response) => {
+      logger.info('Getting sync status');
+      const aapEntities = request.query.aap_entities === 'true';
+      const ansibleContents = request.query.ansible_contents === 'true';
+      const noQueryParams =
+        request.query.aap_entities === undefined &&
+        request.query.ansible_contents === undefined;
 
-    try {
-      const result: {
-        aap?: {
-          orgsUsersTeams: { lastSync: string | null };
-          jobTemplates: { lastSync: string | null };
-        };
-        content?: {
-          syncInProgress: boolean;
-          providers: Array<{
-            sourceId: string;
-            repository?: string;
-            scmProvider?: string;
-            hostName?: string;
-            organization?: string;
-            providerName: string;
-            enabled: boolean;
+      try {
+        const result: {
+          aap?: {
+            orgsUsersTeams: { lastSync: string | null };
+            jobTemplates: { lastSync: string | null };
+          };
+          content?: {
             syncInProgress: boolean;
-            lastSyncTime: string | null;
-            lastFailedSyncTime: string | null;
-            lastSyncStatus: 'success' | 'failure' | null;
-            collectionsFound: number;
-            collectionsDelta: number;
-          }>;
-        };
-      } = {};
+            providers: Array<{
+              sourceId: string;
+              repository?: string;
+              scmProvider?: string;
+              hostName?: string;
+              organization?: string;
+              providerName: string;
+              enabled: boolean;
+              syncInProgress: boolean;
+              lastSyncTime: string | null;
+              lastFailedSyncTime: string | null;
+              lastSyncStatus: 'success' | 'failure' | null;
+              collectionsFound: number;
+              collectionsDelta: number;
+            }>;
+          };
+        } = {};
 
-      // Include aap block if aap_entities=true or no query params
-      if (aapEntities || noQueryParams) {
-        result.aap = {
-          orgsUsersTeams: {
-            lastSync: aapEntityProvider.getLastSyncTime(),
-          },
-          jobTemplates: {
-            lastSync: jobTemplateProvider.getLastSyncTime(),
-          },
-        };
-      }
+        // Include aap block if aap_entities=true or no query params
+        if (aapEntities || noQueryParams) {
+          result.aap = {
+            orgsUsersTeams: {
+              lastSync: aapEntityProvider.getLastSyncTime(),
+            },
+            jobTemplates: {
+              lastSync: jobTemplateProvider.getLastSyncTime(),
+            },
+          };
+        }
 
-      if (ansibleContents || noQueryParams) {
-        const pahProviders = pahCollectionProviders.map(provider => ({
-          sourceId: provider.getSourceId(),
-          repository: provider.getPahRepositoryName(),
-          providerName: provider.getProviderName(),
-          enabled: provider.isEnabled(),
-          syncInProgress: provider.getIsSyncing(),
-          lastSyncTime: provider.getLastSyncTime(),
-          lastFailedSyncTime: provider.getLastFailedSyncTime(),
-          lastSyncStatus: provider.getLastSyncStatus(),
-          collectionsFound: provider.getCurrentCollectionsCount(),
-          collectionsDelta: provider.getCollectionsDelta(),
-        }));
-        const scmProviders = ansibleGitContentsProviders.map(provider => {
-          const providerInfo = parseSourceId(provider.getSourceId());
-          return {
+        if (ansibleContents || noQueryParams) {
+          const pahProviders = pahCollectionProviders.map(provider => ({
             sourceId: provider.getSourceId(),
-            scmProvider: providerInfo.scmProvider,
-            hostName: providerInfo.hostName,
-            organization: providerInfo.organization,
+            repository: provider.getPahRepositoryName(),
             providerName: provider.getProviderName(),
             enabled: provider.isEnabled(),
             syncInProgress: provider.getIsSyncing(),
@@ -163,33 +205,50 @@ export async function createRouter(options: {
             lastSyncStatus: provider.getLastSyncStatus(),
             collectionsFound: provider.getCurrentCollectionsCount(),
             collectionsDelta: provider.getCollectionsDelta(),
+          }));
+          const scmProviders = ansibleGitContentsProviders.map(provider => {
+            const providerInfo = parseSourceId(provider.getSourceId());
+            return {
+              sourceId: provider.getSourceId(),
+              scmProvider: providerInfo.scmProvider,
+              hostName: providerInfo.hostName,
+              organization: providerInfo.organization,
+              providerName: provider.getProviderName(),
+              enabled: provider.isEnabled(),
+              syncInProgress: provider.getIsSyncing(),
+              lastSyncTime: provider.getLastSyncTime(),
+              lastFailedSyncTime: provider.getLastFailedSyncTime(),
+              lastSyncStatus: provider.getLastSyncStatus(),
+              collectionsFound: provider.getCurrentCollectionsCount(),
+              collectionsDelta: provider.getCollectionsDelta(),
+            };
+          });
+          const providers = [...pahProviders, ...scmProviders];
+          const anySyncInProgress = providers.some(p => p.syncInProgress);
+
+          result.content = {
+            syncInProgress: anySyncInProgress,
+            providers,
           };
+        }
+
+        response.status(200).json(result);
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        logger.error(`Failed to get sync status: ${errorMessage}`);
+
+        response.status(500).json({
+          error: `Failed to get sync status: ${errorMessage}`,
+          aap: {
+            orgsUsersTeams: null,
+            jobTemplates: null,
+          },
+          content: null,
         });
-        const providers = [...pahProviders, ...scmProviders];
-        const anySyncInProgress = providers.some(p => p.syncInProgress);
-
-        result.content = {
-          syncInProgress: anySyncInProgress,
-          providers,
-        };
       }
-
-      response.status(200).json(result);
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      logger.error(`Failed to get sync status: ${errorMessage}`);
-
-      response.status(500).json({
-        error: `Failed to get sync status: ${errorMessage}`,
-        aap: {
-          orgsUsersTeams: null,
-          jobTemplates: null,
-        },
-        content: null,
-      });
-    }
-  });
+    },
+  );
 
   router.post('/aap/create_user', express.json(), async (request, response) => {
     const { username, userID } = request.body;
@@ -216,7 +275,17 @@ export async function createRouter(options: {
     }
   });
 
-  router.post('/register_ee', express.json(), async (request, response) => {
+  router.post('/ansible/ee', express.json(), async (request, response) => {
+    // Only allow backend service calls (for example, scaffolder to catalog), not user requests
+    await httpAuth.credentials(
+      // Express Request (express-promise-router) vs Backstage's `credentials` param use incompatible Express generics; runtime value is valid.
+      // @ts-expect-error Avoid double assertion flagged by Sonar; types do not overlap per TS (e.g. `param` on Request).
+      request,
+      {
+        allow: ['service'],
+      },
+    );
+
     const { entity } = request.body;
 
     if (!entity) {
@@ -237,9 +306,100 @@ export async function createRouter(options: {
     }
   });
 
+  /**
+   * Triggers GitHub Actions `ee-build.yml` via workflow_dispatch.
+   * Authenticated Backstage user or allowlisted external-access (service) token; loads the EE entity
+   * with that principal's catalog token so RBAC applies.
+   */
+  router.post(
+    '/ansible/ee/build',
+    express.json(),
+    requireUserOrExternalAccessForEeBuild,
+    createPermissionCheckMiddleware({ httpAuth, permissions }, [
+      executionEnvironmentsViewPermission,
+      catalogEntityReadPermission,
+    ]),
+    async (request, response) => {
+      const perms = response.locals.permissions as Record<string, boolean>;
+      if (!Object.values(perms).every(Boolean)) {
+        response
+          .status(403)
+          .json({ error: 'Forbidden: insufficient permissions' });
+        return;
+      }
+
+      let parsedBody;
+      try {
+        parsedBody = parseEeBuildRequestBody(request.body);
+      } catch (e) {
+        response.status(400).json({
+          error: e instanceof Error ? e.message : String(e),
+        });
+        return;
+      }
+
+      const resolved = await resolveEntityAndRepo(
+        response,
+        auth,
+        catalogClient,
+        parsedBody.entityRef,
+      );
+      if (!resolved) return;
+      const { gh, eeDir, eeFileName } = resolved;
+
+      if (!eeDir || !eeFileName) {
+        response.status(400).json({
+          error:
+            'Could not determine ee_dir/ee_file_name from entity annotations.',
+        });
+        return;
+      }
+
+      const hostErr = validateGitHubHost(config, gh.host);
+      if (hostErr) {
+        response.status(400).json({ error: hostErr });
+        return;
+      }
+
+      const githubToken = request.headers['x-github-token'] as string;
+      if (!githubToken) {
+        response.status(400).json({
+          error:
+            'No GitHub token available to dispatch the workflow. Send X-Github-Token header.',
+        });
+        return;
+      }
+
+      try {
+        await dispatchEeBuild({
+          response,
+          logger,
+          config,
+          gh,
+          eeDir,
+          eeFileName,
+          githubToken,
+          parsedBody,
+        });
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
+        if (isKnownEeBuildError(msg)) {
+          logger.debug(`[ansible/ee/build] Bad request: ${msg}`);
+          response.status(400).json({ error: msg });
+          return;
+        }
+        logger.error(`[ansible/ee/build] ${msg}`);
+        response
+          .status(500)
+          .json({ error: 'Internal error during EE build dispatch' });
+      }
+    },
+  );
+
   router.post(
     '/ansible/sync/from-aap/content',
     express.json(),
+    requireSuperuserMiddleware,
     async (request, response) => {
       // Extract repository names from request body
       // Expected format: { "filters": [{ "repository_name": "rh-certified" }, { "repository_name": "validated" }] }
@@ -365,6 +525,7 @@ export async function createRouter(options: {
   router.post(
     '/ansible/sync/from-scm/content',
     express.json(),
+    requireSuperuserMiddleware,
     async (request, response) => {
       const { filters = [] } = request.body as { filters?: SyncFilter[] };
       const invalidFilters: Array<{ filter: SyncFilter; error: string }> = [];
@@ -477,10 +638,42 @@ export async function createRouter(options: {
       ansibleGitContentsProviders,
       filters,
     );
-    return Array.from(matchedIds).map(id => _GIT_CONTENTS_PROVIDERS.get(id)!);
+    return Array.from(matchedIds).flatMap(id => {
+      const provider = _GIT_CONTENTS_PROVIDERS.get(id);
+      return provider === undefined ? [] : [provider];
+    });
   }
 
-  router.get('/git_readme_content', async (request, response) => {
+  router.get('/ansible/git/file-content', async (request, response) => {
+    const credentials = await httpAuth.credentials(request as any);
+
+    const [basicDecisions, [catalogReadDecision]] = await Promise.all([
+      permissions.authorize(
+        [
+          { permission: gitRepositoriesViewPermission },
+          { permission: executionEnvironmentsViewPermission },
+          { permission: collectionsViewPermission },
+        ],
+        { credentials },
+      ),
+      permissions.authorizeConditional(
+        [{ permission: catalogEntityReadPermission }],
+        { credentials },
+      ),
+    ]);
+
+    const hasAnyAnsiblePermission = basicDecisions.some(
+      d => d.result === AuthorizeResult.ALLOW,
+    );
+    const hasCatalogRead = catalogReadDecision.result !== AuthorizeResult.DENY;
+
+    if (!hasAnyAnsiblePermission || !hasCatalogRead) {
+      response
+        .status(403)
+        .json({ error: 'Forbidden: insufficient permissions' });
+      return;
+    }
+
     const { scmProvider, host, owner, repo, filePath, ref } = request.query;
 
     const required = [
@@ -522,6 +715,7 @@ export async function createRouter(options: {
         scmProvider: scm as 'github' | 'gitlab',
         host: hostUrl,
         organization: ownerName,
+        ...(scm === 'github' ? { repository: repoName } : {}),
       });
 
       const content = await scmClient.getFileContent(
@@ -535,17 +729,94 @@ export async function createRouter(options: {
         path,
       );
 
-      response.type('text/markdown');
+      const ext = path.split('.').pop()?.toLowerCase();
+      const contentTypeMap: Record<string, string> = {
+        md: 'text/markdown',
+        yaml: 'application/yaml',
+        yml: 'application/yaml',
+        json: 'application/json',
+        txt: 'text/plain',
+      };
+      response.type(contentTypeMap[ext ?? ''] ?? 'text/plain');
       response.send(content);
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
       logger.warn(`Failed to fetch README: ${errorMessage}`);
 
-      const status = errorMessage.includes('not found') ? 404 : 500;
-      response.status(status).json({
+      if (errorMessage.toLowerCase().includes('not found')) {
+        response.status(404).json({
+          error: `Failed to fetch README: ${errorMessage}`,
+        });
+        return;
+      }
+
+      if (isScmIntegrationAuthFailure(errorMessage)) {
+        response.status(401).json({
+          code: SCM_INTEGRATION_AUTH_FAILED_CODE,
+          error:
+            'Unable to authenticate with the configured GitHub or GitLab integration.',
+        });
+        return;
+      }
+
+      response.status(500).json({
         error: `Failed to fetch README: ${errorMessage}`,
       });
+    }
+  });
+
+  // Unified CI activity proxy for GitHub and GitLab
+  // Query params:
+  //   - provider: 'github' | 'gitlab' (required)
+  //   - host: hostname (optional, defaults based on provider)
+  //   - per_page: number of results (optional)
+  //   GitHub-specific: owner, repo
+  //   GitLab-specific: projectPath
+  router.get('/ansible/git/ci-activity', async (request, response) => {
+    const credentials = await httpAuth.credentials(request as any);
+
+    const [[gitRepoDecision], [catalogReadDecision]] = await Promise.all([
+      permissions.authorize([{ permission: gitRepositoriesViewPermission }], {
+        credentials,
+      }),
+      permissions.authorizeConditional(
+        [{ permission: catalogEntityReadPermission }],
+        { credentials },
+      ),
+    ]);
+
+    const hasGitRepoView = gitRepoDecision.result === AuthorizeResult.ALLOW;
+    const hasCatalogRead = catalogReadDecision.result !== AuthorizeResult.DENY;
+
+    if (!hasGitRepoView || !hasCatalogRead) {
+      response
+        .status(403)
+        .json({ error: 'Forbidden: insufficient permissions' });
+      return;
+    }
+
+    const provider = (request.query.provider as string)?.toLowerCase();
+    const perPage = Math.min(Number(request.query.per_page) || 15, 100);
+    const ciActivityDeps = {
+      config,
+      logger,
+      scmIntegrations: scmClientFactory.integrations,
+      githubCredentialsProvider: scmClientFactory.githubCredentialsProvider,
+    };
+
+    if (!provider || !['github', 'gitlab'].includes(provider)) {
+      response.status(400).json({
+        error:
+          "Missing or invalid 'provider' query parameter. Must be 'github' or 'gitlab'.",
+      });
+      return;
+    }
+
+    if (provider === 'github') {
+      await handleGitHubCIActivity(ciActivityDeps, request, response, perPage);
+    } else {
+      await handleGitLabCIActivity(ciActivityDeps, request, response, perPage);
     }
   });
 
