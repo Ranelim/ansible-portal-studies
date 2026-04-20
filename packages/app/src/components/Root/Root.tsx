@@ -1,5 +1,8 @@
 import { PropsWithChildren } from 'react';
-import { makeStyles } from '@material-ui/core';
+import { makeStyles, Box, Typography, Button } from '@material-ui/core';
+import WarningIcon from '@material-ui/icons/Warning';
+import { useLocation } from 'react-router-dom';
+import { RestartProvider, useRestartRequired } from '@ansible/plugin-backstage-self-service';
 import LibraryBooks from '@material-ui/icons/LibraryBooks';
 import CategoryIcon from '@material-ui/icons/Category';
 import CodeIcon from '@material-ui/icons/Code';
@@ -24,7 +27,6 @@ import SchoolIcon from '@material-ui/icons/School';
 import SyncIcon from '@material-ui/icons/Sync';
 import LinkIcon from '@material-ui/icons/Link';
 import VpnKeyIcon from '@material-ui/icons/VpnKey';
-import SecurityIcon from '@material-ui/icons/Security';
 import SettingsIcon from '@material-ui/icons/Settings';
 
 const useSidebarLogoStyles = makeStyles({
@@ -68,12 +70,56 @@ const useRootStyles = makeStyles(theme => ({
   },
 }));
 
+const GlobalRestartBanner = () => {
+  const { restartRequired, setRestartRequired } = useRestartRequired();
+  if (!restartRequired) return null;
+
+  return (
+    <Box
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12,
+        padding: '10px 24px',
+        backgroundColor: 'rgba(240,173,78,0.15)',
+        borderBottom: '1px solid rgba(240,173,78,0.3)',
+        position: 'sticky',
+        top: 0,
+        zIndex: 100,
+        backdropFilter: 'blur(8px)',
+      }}
+    >
+      <WarningIcon style={{ fontSize: 20, color: '#f0ad4e', flexShrink: 0 }} />
+      <Typography style={{ flex: 1, fontSize: 13, lineHeight: 1.5 }}>
+        Configuration changes have been saved but require a portal restart to take effect.
+      </Typography>
+      <Button
+        variant="contained"
+        color="primary"
+        size="small"
+        onClick={() => setRestartRequired(false)}
+        style={{ textTransform: 'none', fontSize: 12, whiteSpace: 'nowrap' }}
+      >
+        Restart now
+      </Button>
+    </Box>
+  );
+};
+
 export const Root = ({ children }: PropsWithChildren<{}>) => {
   const rootClasses = useRootStyles();
+  const location = useLocation();
+  const isSetup = location.pathname.includes('/setup');
+
+  if (isSetup) {
+    return <>{children}</>;
+  }
+
   return (
-    <div className={rootClasses.fixedHeaderOffset}>
-      <SidebarPage>
-        <Sidebar>
+    <RestartProvider>
+      <div className={rootClasses.fixedHeaderOffset}>
+        <SidebarPage>
+          <Sidebar>
           <SidebarSpacer />
           <SidebarGroup label="Search" icon={<SearchIcon />} to="/search">
             <SidebarSearchModal />
@@ -115,24 +161,29 @@ export const Root = ({ children }: PropsWithChildren<{}>) => {
             <SidebarScrollWrapper>
               <SidebarSectionLabel text="Administration" />
               <SidebarItem
+                icon={SettingsIcon}
+                to="/self-service/admin/general"
+                text="General"
+              />
+              <SidebarItem
                 icon={LinkIcon}
                 to="/self-service/admin/connections"
                 text="Connections"
               />
               <SidebarItem
+                icon={CodeIcon}
+                to="/self-service/admin/scm"
+                text="SCM Integration"
+              />
+              <SidebarItem
                 icon={SyncIcon}
                 to="/self-service/admin/sync-activity"
-                text="Sync Activity"
+                text="Sync"
               />
               <SidebarItem
-                icon={SecurityIcon}
-                to="/self-service/admin/pipeline-policies"
-                text="Pipeline Policies"
-              />
-              <SidebarItem
-                icon={SettingsIcon}
-                to="/self-service/setup"
-                text="Initial Setup"
+                icon={MemoryIcon}
+                to="/self-service/admin/ee-builder"
+                text="EE Builder"
               />
               <SidebarItem
                 icon={VpnKeyIcon}
@@ -143,8 +194,10 @@ export const Root = ({ children }: PropsWithChildren<{}>) => {
           </SidebarGroup>
           <SidebarSpace />
         </Sidebar>
+        <GlobalRestartBanner />
         {children}
       </SidebarPage>
-    </div>
+      </div>
+    </RestartProvider>
   );
 };

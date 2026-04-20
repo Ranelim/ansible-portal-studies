@@ -20,13 +20,7 @@ import ErrorOutlineIcon from '@material-ui/icons/ErrorOutline';
 import LoopIcon from '@material-ui/icons/Loop';
 import WarningIcon from '@material-ui/icons/Warning';
 import ReplayIcon from '@material-ui/icons/Replay';
-import AddCircleOutlineIcon from '@material-ui/icons/AddCircleOutline';
-import EditOutlinedIcon from '@material-ui/icons/EditOutlined';
-import RemoveCircleOutlineIcon from '@material-ui/icons/RemoveCircleOutline';
-import BlockIcon from '@material-ui/icons/Block';
-import { useParams, useNavigate, useSearchParams, Link as RouterLink } from 'react-router-dom';
-import Breadcrumbs from '@material-ui/core/Breadcrumbs';
-import NavigateNextIcon from '@material-ui/icons/NavigateNext';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   DEMO_SYNC_HISTORY,
   SyncHistoryEntry,
@@ -35,24 +29,6 @@ import {
 } from './syncDemoData';
 
 const useStyles = makeStyles(theme => ({
-  breadcrumbs: {
-    marginBottom: theme.spacing(1),
-    '& a': {
-      color: theme.palette.primary.main,
-      textDecoration: 'none',
-      fontSize: 14,
-      '&:hover': {
-        textDecoration: 'underline',
-      },
-    },
-    '& .MuiBreadcrumbs-separator': {
-      fontSize: 14,
-    },
-  },
-  breadcrumbCurrent: {
-    fontSize: 14,
-    color: theme.palette.text.secondary,
-  },
   summaryGrid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
@@ -168,21 +144,6 @@ const statusColor = (status: SyncStatus): 'default' | 'primary' | 'secondary' =>
   return 'default';
 };
 
-const ChangeActionIcon = ({ action }: { action: SyncChangeItem['action'] }) => {
-  switch (action) {
-    case 'added':
-      return <AddCircleOutlineIcon style={{ color: '#4caf50', fontSize: 16 }} />;
-    case 'updated':
-      return <EditOutlinedIcon style={{ color: '#1976d2', fontSize: 16 }} />;
-    case 'removed':
-      return <RemoveCircleOutlineIcon style={{ color: '#f44336', fontSize: 16 }} />;
-    case 'skipped':
-      return <BlockIcon style={{ color: '#ff9800', fontSize: 16 }} />;
-    default:
-      return null;
-  }
-};
-
 const OverviewTab = ({ entry }: { entry: SyncHistoryEntry }) => {
   const classes = useStyles();
 
@@ -198,12 +159,9 @@ const OverviewTab = ({ entry }: { entry: SyncHistoryEntry }) => {
       title: 'Action',
       field: 'action',
       render: (row: SyncChangeItem) => (
-        <Box display="flex" alignItems="center" style={{ gap: 6 }}>
-          <ChangeActionIcon action={row.action} />
-          <Typography variant="body2" style={{ textTransform: 'capitalize' }}>
-            {row.action}
-          </Typography>
-        </Box>
+        <Typography variant="body2" style={{ textTransform: 'capitalize' }}>
+          {row.action}
+        </Typography>
       ),
     },
     {
@@ -277,15 +235,12 @@ const OverviewTab = ({ entry }: { entry: SyncHistoryEntry }) => {
       <Box className={classes.changesSection}>
         <Box className={classes.changesSummary}>
           <Typography className={classes.changeStat}>
-            <AddCircleOutlineIcon style={{ color: '#4caf50', fontSize: 18 }} />
             {entry.itemsAdded ?? 0} added
           </Typography>
           <Typography className={classes.changeStat}>
-            <EditOutlinedIcon style={{ color: '#1976d2', fontSize: 18 }} />
             {entry.itemsUpdated ?? 0} updated
           </Typography>
           <Typography className={classes.changeStat}>
-            <RemoveCircleOutlineIcon style={{ color: '#f44336', fontSize: 18 }} />
             {entry.itemsRemoved ?? 0} removed
           </Typography>
         </Box>
@@ -388,7 +343,7 @@ export const SyncJobDetailPage = () => {
               onClick={() => navigate('/self-service/admin/sync-activity')}
               style={{ marginTop: 16, textTransform: 'none' }}
             >
-              Back to Sync Activity
+              Back to Sync
             </Button>
           </Box>
         </Content>
@@ -396,11 +351,16 @@ export const SyncJobDetailPage = () => {
     );
   }
 
+  const runTitle = `${entry.source} — ${entry.contentType}`;
+
   return (
     <Page themeId="app">
       <Header
-        title={`${entry.source} — ${entry.contentType}`}
-        subtitle={`${entry.trigger} sync · ${entry.started} · ${entry.duration}`}
+        title={runTitle}
+        pageTitleOverride={runTitle}
+        type="Sync"
+        typeLink="/self-service/admin/sync-activity"
+        subtitle={`${entry.trigger} · ${entry.started} · ${entry.duration}`}
       />
       <HeaderTabs
         selectedIndex={selectedTab}
@@ -408,16 +368,6 @@ export const SyncJobDetailPage = () => {
         tabs={tabs.map(t => ({ id: t.id, label: t.label }))}
       />
       <Content>
-        <Breadcrumbs
-          separator={<NavigateNextIcon fontSize="small" />}
-          className={classes.breadcrumbs}
-        >
-          <RouterLink to="/self-service/admin/sync-activity">Sync Activity</RouterLink>
-          <Typography className={classes.breadcrumbCurrent}>
-            {entry.source} — {entry.contentType}
-          </Typography>
-        </Breadcrumbs>
-
         {selectedTab === 0 ? (
           <OverviewTab entry={entry} />
         ) : (

@@ -1,9 +1,10 @@
 import { useState, useMemo, useCallback } from 'react';
-import { Page, Header, HeaderTabs, Content, Table, TableColumn, Link } from '@backstage/core-components';
+import { Page, Header, Content, Table, TableColumn, Link } from '@backstage/core-components';
 import {
   Box,
   Typography,
   Chip,
+  Button,
   makeStyles,
   FormControl,
   Select,
@@ -14,11 +15,7 @@ import {
   Menu,
   ListItemText,
   Divider,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
+  ListSubheader,
 } from '@material-ui/core';
 import { CatalogFilterLayout } from '@backstage/plugin-catalog-react';
 import CheckCircleOutlineIcon from '@material-ui/icons/CheckCircleOutline';
@@ -27,15 +24,16 @@ import LoopIcon from '@material-ui/icons/Loop';
 import WarningIcon from '@material-ui/icons/Warning';
 import ScheduleIcon from '@material-ui/icons/Schedule';
 import MoreVertIcon from '@material-ui/icons/MoreVert';
+import SettingsIcon from '@material-ui/icons/Settings';
+import ArrowDropDownIcon from '@material-ui/icons/ArrowDropDown';
+import FiberManualRecordIcon from '@material-ui/icons/FiberManualRecord';
 import { useNavigate } from 'react-router-dom';
 import {
+  DEMO_CONNECTIONS,
   DEMO_SYNC_HISTORY,
-  DEMO_SYNC_SCHEDULES,
   SyncHistoryEntry,
-  SyncScheduleEntry,
   SyncStatus,
 } from './syncDemoData';
-import { DismissibleBanner } from '../common/DismissibleBanner';
 import { PageHelpIcon } from '../common/PageHelpIcon';
 import { statusColors } from '../common/statusColors';
 
@@ -122,24 +120,6 @@ const useStyles = makeStyles(theme => ({
     color: theme.palette.text.secondary,
     lineHeight: 1.3,
   },
-  editDialogField: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: theme.spacing(1.5, 0),
-    borderBottom: `1px solid ${theme.palette.divider}`,
-    '&:last-child': {
-      borderBottom: 'none',
-    },
-  },
-  editFieldLabel: {
-    fontSize: 14,
-    fontWeight: 500,
-  },
-  editFieldSub: {
-    fontSize: 12,
-    color: theme.palette.text.secondary,
-  },
 }));
 
 const StatusIcon = ({ status }: { status: SyncStatus }) => {
@@ -161,6 +141,26 @@ const statusColor = (status: SyncStatus): 'default' | 'primary' | 'secondary' =>
   if (status === 'Failed') return 'secondary';
   if (status === 'In Progress') return 'primary';
   return 'default';
+};
+
+const sourceToProviderId = (source: string): string | null => {
+  switch (source) {
+    case 'AAP': return 'aap';
+    case 'Private Automation Hub': return 'pah';
+    case 'GitHub': return 'github';
+    case 'GitLab': return 'gitlab';
+    case 'Public Registries': return 'registries';
+    default: return null;
+  }
+};
+
+const sourceToProviderLink = (source: string): string | null => {
+  const id = sourceToProviderId(source);
+  if (!id) return null;
+  const provider = DEMO_CONNECTIONS.find(c => c.id === id);
+  if (!provider) return null;
+  const base = provider.type === 'git' ? '/self-service/admin/scm' : '/self-service/admin/connections';
+  return `${base}/${id}`;
 };
 
 type HistoryFilter = {
@@ -201,7 +201,7 @@ const HistoryRowActions = ({ entry }: { entry: SyncHistoryEntry }) => {
           </MuiMenuItem>
         )}
         <Divider />
-        <MuiMenuItem onClick={() => { setAnchorEl(null); navigate('/self-service/admin/connections'); }}>
+        <MuiMenuItem onClick={() => { setAnchorEl(null); const link = sourceToProviderLink(entry.source); if (link) navigate(link); }}>
           <ListItemText primary="View connection" />
         </MuiMenuItem>
       </Menu>
@@ -243,24 +243,35 @@ const HistoryTab = () => {
 
   const columns: TableColumn<SyncHistoryEntry>[] = [
     {
-      title: 'Source',
-      field: 'source',
+      title: 'Sync Job',
+      field: 'contentType',
       render: (row: SyncHistoryEntry) => (
         <Link
           to={`/self-service/admin/sync-activity/${row.id}`}
           className={classes.sourceLink}
           onClick={(e: React.MouseEvent) => e.stopPropagation()}
         >
-          {row.source}
+          {row.contentType}
         </Link>
       ),
     },
     {
-      title: 'Content Type',
-      field: 'contentType',
-      render: (row: SyncHistoryEntry) => (
-        <Typography variant="body2">{row.contentType}</Typography>
-      ),
+      title: 'Source',
+      field: 'source',
+      render: (row: SyncHistoryEntry) => {
+        const providerLink = sourceToProviderLink(row.source);
+        return providerLink ? (
+          <Link
+            to={`${providerLink}?tab=sync`}
+            className={classes.sourceLink}
+            onClick={(e: React.MouseEvent) => e.stopPropagation()}
+          >
+            {row.source}
+          </Link>
+        ) : (
+          <Typography variant="body2">{row.source}</Typography>
+        );
+      },
     },
     {
       title: 'Trigger',
@@ -457,75 +468,41 @@ const HistoryTab = () => {
   );
 };
 
-const INTERVAL_OPTIONS = [
-  'Every 5 minutes',
-  'Every 15 minutes',
-  'Every 30 minutes',
-  'Every 1 hour',
-  'Every 6 hours',
-  'Daily',
-];
+// ---------------------------------------------------------------------------
+// Sync settings dropdown — links to each provider's Sync tab
+// ---------------------------------------------------------------------------
 
-const EditScheduleDialog = ({
-  entry,
-  open,
-  onClose,
-}: {
-  entry: SyncScheduleEntry | null;
-  open: boolean;
-  onClose: () => void;
-}) => {
-  const classes = useStyles();
-  const [interval, setInterval] = useState(entry?.interval ?? '');
-
-  if (!entry) return null;
-
-  return (
-    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
-      <DialogTitle>Edit sync schedule</DialogTitle>
-      <DialogContent>
-        <Box className={classes.editDialogField}>
-          <Box>
-            <Typography className={classes.editFieldLabel}>{entry.syncJob}</Typography>
-            <Typography className={classes.editFieldSub}>{entry.source}</Typography>
-          </Box>
-        </Box>
-        <Box mt={2}>
-          <Typography className={classes.editFieldLabel} style={{ marginBottom: 8 }}>
-            Sync interval
-          </Typography>
-          <FormControl fullWidth variant="outlined" size="small">
-            <Select
-              value={interval || entry.interval}
-              onChange={e => setInterval(e.target.value as string)}
-            >
-              {INTERVAL_OPTIONS.map(opt => (
-                <MuiMenuItem key={opt} value={opt}>{opt}</MuiMenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </Box>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose} style={{ textTransform: 'none' }}>Cancel</Button>
-        <Button variant="contained" color="primary" onClick={onClose} style={{ textTransform: 'none' }}>
-          Save changes
-        </Button>
-      </DialogActions>
-    </Dialog>
-  );
-};
-
-const ScheduleRowActions = ({ entry }: { entry: SyncScheduleEntry }) => {
+const SyncSettingsDropdown = () => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const [editOpen, setEditOpen] = useState(false);
   const navigate = useNavigate();
+
+  const connectionProviders = DEMO_CONNECTIONS.filter(c => c.type !== 'git');
+  const scmProviders = DEMO_CONNECTIONS.filter(c => c.type === 'git');
+
+  const handleClick = (provider: typeof DEMO_CONNECTIONS[0]) => {
+    setAnchorEl(null);
+    const base = provider.type === 'git' ? '/self-service/admin/scm' : '/self-service/admin/connections';
+    navigate(`${base}/${provider.id}`);
+  };
 
   return (
     <>
-      <IconButton size="small" onClick={e => setAnchorEl(e.currentTarget)}>
-        <MoreVertIcon fontSize="small" />
-      </IconButton>
+      <Button
+        variant="outlined"
+        size="small"
+        startIcon={<SettingsIcon style={{ fontSize: 16 }} />}
+        endIcon={<ArrowDropDownIcon />}
+        onClick={e => setAnchorEl(e.currentTarget)}
+        style={{
+          textTransform: 'none',
+          fontSize: 13,
+          fontWeight: 500,
+          borderColor: 'rgba(255,255,255,0.3)',
+          color: '#fff',
+        }}
+      >
+        Sync settings
+      </Button>
       <Menu
         anchorEl={anchorEl}
         open={Boolean(anchorEl)}
@@ -533,151 +510,85 @@ const ScheduleRowActions = ({ entry }: { entry: SyncScheduleEntry }) => {
         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
         transformOrigin={{ vertical: 'top', horizontal: 'right' }}
         getContentAnchorEl={null}
+        PaperProps={{ style: { minWidth: 240 } }}
       >
-        <MuiMenuItem onClick={() => { setAnchorEl(null); console.log('Run now:', entry.syncJob); }}>{/* eslint-disable-line no-console */}
-          <ListItemText primary="Run now" />
-        </MuiMenuItem>
-        <MuiMenuItem onClick={() => { setAnchorEl(null); setEditOpen(true); }}>
-          <ListItemText primary="Edit schedule" />
-        </MuiMenuItem>
-        <Divider />
-        <MuiMenuItem onClick={() => { setAnchorEl(null); console.log(entry.enabled ? 'Disable' : 'Enable', entry.syncJob); }}>{/* eslint-disable-line no-console */}
-          <ListItemText
-            primary={entry.enabled ? 'Disable' : 'Enable'}
-            primaryTypographyProps={entry.enabled ? { style: { color: statusColors.error } } : undefined}
-          />
-        </MuiMenuItem>
-        <Divider />
-        <MuiMenuItem onClick={() => { setAnchorEl(null); navigate('/self-service/admin/connections'); }}>
-          <ListItemText primary="View connection" />
-        </MuiMenuItem>
+        <ListSubheader style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, lineHeight: '32px' }}>
+          Connections
+        </ListSubheader>
+        {connectionProviders.map(p => {
+          const isConfigured = p.status !== 'Not configured';
+          return (
+            <MuiMenuItem key={p.id} onClick={() => handleClick(p)}>
+              <Box display="flex" alignItems="center" justifyContent="space-between" width="100%">
+                <ListItemText
+                  primary={p.name.replace(/ \(.*\)/, '')}
+                  primaryTypographyProps={{ style: { fontSize: 13 } }}
+                />
+                {isConfigured ? (
+                  <FiberManualRecordIcon style={{ fontSize: 8, color: statusColors.success, marginLeft: 8 }} />
+                ) : (
+                  <Typography style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginLeft: 8, whiteSpace: 'nowrap' }}>
+                    Not configured
+                  </Typography>
+                )}
+              </Box>
+            </MuiMenuItem>
+          );
+        })}
+        <Divider style={{ margin: '4px 0' }} />
+        <ListSubheader style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, lineHeight: '32px' }}>
+          SCM Integration
+        </ListSubheader>
+        {scmProviders.map(p => {
+          const isConfigured = p.status !== 'Not configured';
+          return (
+            <MuiMenuItem key={p.id} onClick={() => handleClick(p)}>
+              <Box display="flex" alignItems="center" justifyContent="space-between" width="100%">
+                <ListItemText
+                  primary={p.name}
+                  primaryTypographyProps={{ style: { fontSize: 13 } }}
+                />
+                {isConfigured ? (
+                  <FiberManualRecordIcon style={{ fontSize: 8, color: statusColors.success, marginLeft: 8 }} />
+                ) : (
+                  <Typography style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginLeft: 8, whiteSpace: 'nowrap' }}>
+                    Not configured
+                  </Typography>
+                )}
+              </Box>
+            </MuiMenuItem>
+          );
+        })}
       </Menu>
-      <EditScheduleDialog entry={entry} open={editOpen} onClose={() => setEditOpen(false)} />
     </>
   );
 };
 
-const SchedulesTab = () => {
-  const classes = useStyles();
-
-  const columns: TableColumn<SyncScheduleEntry>[] = [
-    {
-      title: 'Source',
-      field: 'source',
-      render: (row: SyncScheduleEntry) => (
-        <Typography variant="body2" style={{ fontWeight: 500 }}>{row.source}</Typography>
-      ),
-    },
-    {
-      title: 'Sync Job',
-      field: 'syncJob',
-      render: (row: SyncScheduleEntry) => (
-        <Typography variant="body2">{row.syncJob}</Typography>
-      ),
-    },
-    {
-      title: 'Interval',
-      field: 'interval',
-      render: (row: SyncScheduleEntry) => (
-        <Typography variant="body2">{row.interval}</Typography>
-      ),
-    },
-    {
-      title: 'Last Run',
-      field: 'lastRun',
-      render: (row: SyncScheduleEntry) => (
-        <Box display="flex" alignItems="center" style={{ gap: 6 }}>
-          {row.lastStatus === 'Failed' ? (
-            <ErrorOutlineIcon style={{ color: statusColors.error, fontSize: 16 }} />
-          ) : (
-            <CheckCircleOutlineIcon style={{ color: statusColors.success, fontSize: 16 }} />
-          )}
-          <Typography variant="body2" color="textSecondary">{row.lastRun}</Typography>
-        </Box>
-      ),
-    },
-    {
-      title: 'Next Run',
-      field: 'nextRun',
-      render: (row: SyncScheduleEntry) => (
-        <Typography variant="body2" color="textSecondary">{row.nextRun}</Typography>
-      ),
-    },
-    {
-      title: 'Status',
-      field: 'enabled',
-      render: (row: SyncScheduleEntry) => (
-        <Chip
-          label={row.enabled ? 'Active' : 'Disabled'}
-          size="small"
-          variant="outlined"
-          className={classes.enabledChip}
-          style={{
-            color: row.enabled ? statusColors.success : undefined,
-            borderColor: row.enabled ? statusColors.success : undefined,
-          }}
-        />
-      ),
-    },
-    {
-      title: '',
-      width: '48px',
-      sorting: false,
-      render: (row: SyncScheduleEntry) => <ScheduleRowActions entry={row} />,
-    },
-  ];
-
-  return (
-    <Table<SyncScheduleEntry>
-      columns={columns}
-      data={DEMO_SYNC_SCHEDULES}
-      title={`${DEMO_SYNC_SCHEDULES.length} scheduled sync jobs`}
-      options={{
-        paging: false,
-        search: false,
-        sorting: true,
-        padding: 'dense',
-      }}
-      style={{ width: '100%', overflowX: 'hidden' }}
-    />
-  );
-};
-
-const pageTabs = [
-  { id: 0, label: 'History' },
-  { id: 1, label: 'Schedules' },
-];
+// ---------------------------------------------------------------------------
+// Main page — Activity only (schedules moved to per-connection detail pages)
+// ---------------------------------------------------------------------------
 
 export const SyncActivityPage = () => {
-  const [selectedTab, setSelectedTab] = useState(0);
-
   return (
     <Page themeId="app">
       <Header
         title={
           <Box display="flex" alignItems="center">
-            Sync Activity
+            Sync
             <PageHelpIcon
-              tooltipLabel="What is sync activity?"
-              title="What is Sync Activity?"
-              description="Sync activity tracks background operations that keep your portal content up to date with connected platforms. Each sync pulls the latest data from a source into the portal."
+              tooltipLabel="What is sync?"
+              title="Sync"
+              description="Monitor sync operations across all connected platforms. Use the Sync settings dropdown to jump to any provider's sync configuration."
             />
           </Box>
         }
-        pageTitleOverride="Sync Activity"
-        subtitle="Monitor background sync operations across all connected platforms"
-      />
-      <HeaderTabs
-        selectedIndex={selectedTab}
-        onChange={setSelectedTab}
-        tabs={pageTabs.map(t => ({ id: t.label.toLowerCase(), label: t.label }))}
-      />
+        pageTitleOverride="Sync"
+        subtitle="Monitor and manage sync operations across all connected platforms"
+      >
+        <SyncSettingsDropdown />
+      </Header>
       <Content>
-        <DismissibleBanner
-          storageKey="admin-sync-activity"
-          message="Review the status of background sync operations that keep your portal content up to date with connected platforms. Use the History tab to inspect individual runs, or the Schedules tab to manage sync intervals."
-        />
-        {selectedTab === 0 ? <HistoryTab /> : <SchedulesTab />}
+        <HistoryTab />
       </Content>
     </Page>
   );

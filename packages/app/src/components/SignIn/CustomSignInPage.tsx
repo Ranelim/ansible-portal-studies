@@ -73,6 +73,8 @@ export const CustomSignInPage = (props: CustomSignInPageProps) => {
           size="small"
           className={classes.setupButton}
           onClick={() => {
+            sessionStorage.setItem('portal-setup-redirect', 'true');
+            sessionStorage.setItem('portal-welcome-modal-dismissed-session', 'true');
             props.onSignInSuccess({
               getIdToken: async () => ({ token: '' }),
               getId: async () => 'setup-admin',
@@ -83,9 +85,6 @@ export const CustomSignInPage = (props: CustomSignInPageProps) => {
               getCredentials: async () => ({ token: '' }),
               signOut: async () => {},
             } as any);
-            setTimeout(() => {
-              window.location.href = '/self-service/setup';
-            }, 200);
           }}
         >
           Setup Wizard

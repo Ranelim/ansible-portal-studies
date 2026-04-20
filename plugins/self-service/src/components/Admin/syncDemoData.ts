@@ -56,6 +56,7 @@ export type ConnectionProvider = {
   lastSync?: string;
   host?: string;
   auth?: string;
+  orgCount?: number;
   syncJobs: { name: string; interval: string; enabled: boolean }[];
 };
 
@@ -68,6 +69,7 @@ export const DEMO_CONNECTIONS: ConnectionProvider[] = [
     lastSync: '3 minutes ago',
     host: 'aap-controller.example.com',
     auth: 'OAuth (configured during setup)',
+    orgCount: 3,
     syncJobs: [
       { name: 'Job Templates', interval: 'Every 30 minutes', enabled: true },
       { name: 'Teams & Users', interval: 'Every 1 hour', enabled: true },

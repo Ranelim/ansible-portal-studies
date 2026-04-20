@@ -14,7 +14,7 @@ import SyncIcon from '@material-ui/icons/Sync';
 import PlaylistAddCheckIcon from '@material-ui/icons/PlaylistAddCheck';
 import { useQuickstart } from './QuickstartContext';
 
-const DISMISSED_KEY = 'portal-welcome-modal-dismissed';
+const DISMISSED_KEY = 'portal-welcome-modal-dismissed-session';
 
 const useStyles = makeStyles(theme => ({
   dialog: {
@@ -119,7 +119,7 @@ const useStyles = makeStyles(theme => ({
 const NEXT_STEPS = [
   { label: 'Connect content registries', icon: StorageIcon, color: '#6753AC' },
   { label: 'Connect source control', icon: CodeIcon, color: '#24292e' },
-  { label: 'Review sync schedules', icon: SyncIcon, color: '#0066CC' },
+  { label: 'Configure content discovery', icon: SyncIcon, color: '#0066CC' },
   { label: 'Configure access control', icon: SecurityIcon, color: '#C9190B' },
 ];
 
@@ -129,8 +129,10 @@ export const WelcomeModal = () => {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    const dismissed = localStorage.getItem(DISMISSED_KEY);
-    if (!dismissed) {
+    const dismissed = sessionStorage.getItem(DISMISSED_KEY);
+    const setupCompleted = sessionStorage.getItem('portal-setup-just-completed');
+    if (!dismissed && setupCompleted) {
+      sessionStorage.removeItem('portal-setup-just-completed');
       const timer = setTimeout(() => setVisible(true), 800);
       return () => clearTimeout(timer);
     }
@@ -138,12 +140,12 @@ export const WelcomeModal = () => {
   }, []);
 
   const handleDismiss = () => {
-    localStorage.setItem(DISMISSED_KEY, 'true');
+    sessionStorage.setItem(DISMISSED_KEY, 'true');
     setVisible(false);
   };
 
   const handleOpenQuickstart = () => {
-    localStorage.setItem(DISMISSED_KEY, 'true');
+    sessionStorage.setItem(DISMISSED_KEY, 'true');
     setVisible(false);
     setTimeout(() => openQuickstart(), 200);
   };

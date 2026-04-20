@@ -60,8 +60,8 @@ const ADMIN_QUICKSTART_ITEMS: QuickstartItem[] = [
     icon: 'registry',
     roles: ['admin'],
     cta: {
-      text: 'Add registries',
-      link: '/self-service/admin/connections',
+      text: 'Open registries',
+      link: '/self-service/admin/connections/registries',
     },
   },
   {
@@ -73,21 +73,21 @@ const ADMIN_QUICKSTART_ITEMS: QuickstartItem[] = [
     icon: 'scm',
     roles: ['admin'],
     cta: {
-      text: 'Add SCM provider',
-      link: '/self-service/admin/connections',
+      text: 'Open GitHub',
+      link: '/self-service/admin/connections/github',
     },
   },
   {
-    id: 'configure-sync',
-    title: 'Review sync schedules',
+    id: 'configure-discovery',
+    title: 'Configure content discovery',
     description:
-      'Adjust how often the portal syncs job templates, users, and collections from AAP. ' +
-      'Defaults are set, but you can tune intervals to match your environment.',
+      'Open each connection to define which organizations, repositories, and collections the portal ' +
+      'discovers. Content discovery and sync schedules are configured per integration.',
     icon: 'sync',
     roles: ['admin'],
     cta: {
-      text: 'Manage sync settings',
-      link: '/self-service/admin/sync',
+      text: 'Open connections',
+      link: '/self-service/admin/connections',
     },
   },
   {

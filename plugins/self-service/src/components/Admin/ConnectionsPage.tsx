@@ -6,31 +6,44 @@ import {
   Button,
   Card,
   CardContent,
+  CardActionArea,
   makeStyles,
-  IconButton,
-  Menu,
-  MenuItem,
-  ListItemIcon,
-  ListItemText,
-  Divider,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Switch,
-  FormControlLabel,
+  Chip,
+  Tooltip,
 } from '@material-ui/core';
 import SyncIcon from '@material-ui/icons/Sync';
-import EditIcon from '@material-ui/icons/Edit';
-import MoreVertIcon from '@material-ui/icons/MoreVert';
-import CheckCircleOutlineIcon from '@material-ui/icons/CheckCircleOutline';
 import ErrorOutlineIcon from '@material-ui/icons/ErrorOutline';
 import LinkOffIcon from '@material-ui/icons/LinkOff';
-import DeleteOutlineIcon from '@material-ui/icons/DeleteOutline';
-import SettingsIcon from '@material-ui/icons/Settings';
-import PlaylistAddCheckIcon from '@material-ui/icons/PlaylistAddCheck';
+import ArrowForwardIcon from '@material-ui/icons/ArrowForward';
+import WarningAmberIcon from '@material-ui/icons/ReportProblemOutlined';
+import PublicIcon from '@material-ui/icons/Public';
+import { SvgIcon } from '@material-ui/core';
+
+const AnsibleIcon = (props: any) => (
+  <SvgIcon {...props} viewBox="0 0 24 24">
+    <path d="M12 0C5.37 0 0 5.37 0 12s5.37 12 12 12 12-5.37 12-12S18.63 0 12 0zm4.54 17.85L12 7.97l-1.78 4.26 3.63 2.89H9.6l-1.06-.83L12 5.31l6.09 13.27a.28.28 0 01-.26.38h-1.29z" />
+  </SvgIcon>
+);
+
+const GitHubIcon = (props: any) => (
+  <SvgIcon {...props} viewBox="0 0 24 24">
+    <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12" />
+  </SvgIcon>
+);
+
+const GitLabIcon = (props: any) => (
+  <SvgIcon {...props} viewBox="0 0 24 24">
+    <path d="M23.955 13.587l-1.342-4.135-2.664-8.189a.455.455 0 00-.867 0L16.418 9.45H7.582L4.918 1.263a.455.455 0 00-.867 0L1.387 9.452.045 13.587a.924.924 0 00.331 1.023L12 23.054l11.624-8.443a.92.92 0 00.331-1.024" />
+  </SvgIcon>
+);
+
+const PAHIcon = (props: any) => (
+  <SvgIcon {...props} viewBox="0 0 24 24">
+    <path d="M21 3H3a2 2 0 00-2 2v14a2 2 0 002 2h18a2 2 0 002-2V5a2 2 0 00-2-2zm-9 15H5v-2h7v2zm4-4H5v-2h11v2zm3-4H5V8h14v2z" />
+  </SvgIcon>
+);
+import { useNavigate } from 'react-router-dom';
 import { DEMO_CONNECTIONS, ConnectionProvider } from './syncDemoData';
-import { DismissibleBanner } from '../common/DismissibleBanner';
 import { PageHelpIcon } from '../common/PageHelpIcon';
 import { statusColors } from '../common/statusColors';
 
@@ -38,22 +51,33 @@ const useStyles = makeStyles(theme => ({
   sectionTitle: {
     fontWeight: 600,
     fontSize: '1.125rem',
-    marginBottom: theme.spacing(2),
     marginTop: theme.spacing(3),
+    marginBottom: 4,
+  },
+  sectionDescription: {
+    fontSize: 13,
+    color: theme.palette.text.secondary,
+    lineHeight: 1.5,
+    marginBottom: theme.spacing(2),
   },
   cardGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))',
     gap: theme.spacing(2),
     marginBottom: theme.spacing(3),
   },
   card: {
     border: `1px solid ${theme.palette.divider}`,
-    borderRadius: theme.shape.borderRadius,
-    position: 'relative',
+    borderRadius: 8,
+    transition: 'border-color 0.15s, box-shadow 0.15s',
     '&:hover': {
       borderColor: theme.palette.primary.light,
+      boxShadow: `0 0 0 1px ${theme.palette.primary.light}`,
     },
+  },
+  cardContent: {
+    padding: theme.spacing(2.5),
+    '&:last-child': { paddingBottom: theme.spacing(2.5) },
   },
   cardHeader: {
     display: 'flex',
@@ -61,389 +85,210 @@ const useStyles = makeStyles(theme => ({
     alignItems: 'flex-start',
     marginBottom: theme.spacing(1.5),
   },
-  providerName: {
-    fontWeight: 600,
-    fontSize: 15,
-  },
-  statusLine: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: theme.spacing(0.75),
-    marginBottom: theme.spacing(0.5),
-    fontSize: 13,
-  },
-  statusActive: {
-    color: statusColors.success,
-  },
-  statusInactive: {
-    color: theme.palette.text.disabled,
-  },
-  hostLine: {
-    fontSize: 13,
-    color: theme.palette.text.secondary,
-    marginTop: theme.spacing(1),
-    marginBottom: theme.spacing(0.5),
-  },
-  authLine: {
-    fontSize: 12,
-    color: theme.palette.text.disabled,
-    marginBottom: theme.spacing(1.5),
-  },
-  cardActions: {
-    display: 'flex',
-    gap: theme.spacing(1),
-    marginTop: theme.spacing(1),
-  },
-  actionButton: {
-    textTransform: 'none',
-    fontWeight: 500,
-    fontSize: 13,
-  },
-  syncJobRow: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: theme.spacing(1, 0),
-    borderBottom: `1px solid ${theme.palette.divider}`,
-    '&:last-child': {
-      borderBottom: 'none',
-    },
-  },
-  syncJobName: {
-    fontSize: 14,
-    fontWeight: 500,
-  },
-  syncJobInterval: {
-    fontSize: 13,
-    color: theme.palette.text.secondary,
-  },
-  dialogSection: {
-    marginBottom: theme.spacing(3),
-  },
-  dialogSectionTitle: {
-    fontWeight: 600,
-    fontSize: 14,
-    marginBottom: theme.spacing(1.5),
-    color: theme.palette.text.secondary,
-    textTransform: 'uppercase' as const,
-    letterSpacing: '0.5px',
-  },
   providerIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: '50%',
+    width: 36,
+    height: 36,
+    borderRadius: 8,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    fontSize: 16,
-    fontWeight: 700,
-    color: '#fff',
     flexShrink: 0,
     marginRight: theme.spacing(1.5),
+  },
+  providerName: {
+    fontWeight: 600,
+    fontSize: 15,
+    lineHeight: 1.3,
+  },
+  providerType: {
+    fontSize: 12,
+    color: theme.palette.text.secondary,
+  },
+  cardMeta: {
+    fontSize: 13,
+    color: theme.palette.text.secondary,
+    lineHeight: 1.6,
+    marginTop: theme.spacing(0.5),
+  },
+  cardFooter: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: theme.spacing(1.5),
+    paddingTop: theme.spacing(1.5),
+    borderTop: `1px solid ${theme.palette.divider}`,
   },
   notConfiguredCard: {
     opacity: 0.7,
   },
-  pageSubtitle: {
-    fontSize: 14,
-    color: theme.palette.text.secondary,
-    marginBottom: theme.spacing(1),
-  },
-  setupBanner: {
-    display: 'flex',
-    alignItems: 'flex-start',
-    gap: theme.spacing(2),
-    padding: theme.spacing(2, 2.5),
-    borderRadius: 8,
-    border: `1px solid ${theme.palette.type === 'dark' ? 'rgba(0,102,204,0.3)' : '#BEE1F4'}`,
-    backgroundColor: theme.palette.type === 'dark' ? 'rgba(0,102,204,0.08)' : '#E7F1FA',
-    marginBottom: theme.spacing(3),
-  },
-  setupBannerIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    backgroundColor: theme.palette.type === 'dark' ? 'rgba(0,102,204,0.2)' : '#BEE1F4',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-    color: '#0066CC',
-  },
-  setupBannerText: {
-    flex: 1,
-  },
-  setupBannerTitle: {
-    fontWeight: 600,
-    fontSize: 14,
-    marginBottom: 2,
-  },
-  setupBannerDescription: {
-    fontSize: 13,
-    lineHeight: 1.5,
-    color: theme.palette.text.secondary,
-  },
 }));
 
-const getEmptyStateDescription = (type: ConnectionProvider['type']): string => {
-  switch (type) {
+const providerIcon = (id: string): { icon: React.ReactNode; bg: string } => {
+  switch (id) {
     case 'aap':
-      return 'Connect your AAP Controller to enable user authentication, job template discovery, and content synchronization.';
+      return { icon: <AnsibleIcon style={{ fontSize: 20, color: '#fff' }} />, bg: '#ee0000' };
     case 'pah':
-      return 'Connect your Private Automation Hub to discover curated collections and execution environments from your organization.';
-    case 'git':
-      return 'Connect to discover automation content in Git repositories, enable dev workspaces, and create new projects.';
-    case 'registry':
-      return 'Enable public content sources like Red Hat Certified Content, Validated Content, or Ansible Galaxy.';
+      return { icon: <PAHIcon style={{ fontSize: 20, color: '#fff' }} />, bg: '#ee0000' };
+    case 'github':
+      return { icon: <GitHubIcon style={{ fontSize: 20, color: '#fff' }} />, bg: '#24292e' };
+    case 'gitlab':
+      return { icon: <GitLabIcon style={{ fontSize: 20, color: '#fff' }} />, bg: '#FC6D26' };
+    case 'registries':
+      return { icon: <PublicIcon style={{ fontSize: 20, color: '#fff' }} />, bg: '#4A4A4A' };
     default:
-      return 'Connect this integration to extend portal capabilities.';
+      return { icon: <AnsibleIcon style={{ fontSize: 20, color: '#fff' }} />, bg: '#757575' };
   }
 };
 
-const providerColor = (type: ConnectionProvider['type']): string => {
+const providerTypeLabel = (type: ConnectionProvider['type']): string => {
   switch (type) {
-    case 'aap': return '#ee0000';
-    case 'pah': return '#ee0000';
-    case 'git': return '#24292e';
-    case 'registry': return '#ee0000';
-    default: return '#757575';
+    case 'aap': return 'Automation Platform';
+    case 'pah': return 'Content Registry';
+    case 'git': return 'Source Control';
+    case 'registry': return 'Public Content';
+    default: return '';
   }
 };
 
-const providerLetter = (type: ConnectionProvider['type']): string => {
-  switch (type) {
-    case 'aap': return 'A';
-    case 'pah': return 'A';
-    case 'git': return 'G';
-    case 'registry': return 'R';
-    default: return '?';
+const getCardDescription = (id: string, isConfigured: boolean): string => {
+  if (isConfigured) {
+    switch (id) {
+      case 'aap': return '3 organizations · 42 job templates · 60 users';
+      default: return '';
+    }
   }
+  switch (id) {
+    case 'pah': return 'Sync collections, execution environments, and roles from your private hub.';
+    case 'github': return 'Import repositories containing playbooks, roles, and automation projects.';
+    case 'gitlab': return 'Import repositories containing playbooks, roles, and automation projects.';
+    case 'registries': return 'Index certified and validated content from Ansible Galaxy and Red Hat.';
+    default: return '';
+  }
+};
+
+const getCardWarning = (provider: ConnectionProvider): string | null => {
+  if (provider.id === 'aap' && provider.status === 'Active' && provider.orgCount === 0) {
+    return 'No organizations selected — job templates and users will not be synced.';
+  }
+  return null;
 };
 
 const ProviderCard = ({ provider }: { provider: ConnectionProvider }) => {
   const classes = useStyles();
-  const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
-  const [editOpen, setEditOpen] = useState(false);
+  const navigate = useNavigate();
   const [syncing, setSyncing] = useState(false);
 
-  const isActive = provider.status === 'Active';
   const isConfigured = provider.status !== 'Not configured';
+  const isActive = provider.status === 'Active';
+  const { icon, bg } = providerIcon(provider.id);
+  const description = getCardDescription(provider.id, isConfigured);
+  const warning = getCardWarning(provider);
 
-  const handleSync = () => {
+  const handleSync = (e: React.MouseEvent) => {
+    e.stopPropagation();
     setSyncing(true);
     setTimeout(() => setSyncing(false), 2000);
   };
 
   return (
-    <>
-      <Card
-        className={`${classes.card} ${!isConfigured ? classes.notConfiguredCard : ''}`}
-        variant="outlined"
+    <Card
+      className={`${classes.card} ${!isConfigured ? classes.notConfiguredCard : ''}`}
+      variant="outlined"
+    >
+      <CardActionArea
+        onClick={() => navigate(`/self-service/admin/${provider.type === 'git' ? 'scm' : 'connections'}/${provider.id}`)}
       >
-        <CardContent>
+        <CardContent className={classes.cardContent}>
           <Box className={classes.cardHeader}>
             <Box display="flex" alignItems="center">
-              <Box
-                className={classes.providerIcon}
-                style={{ backgroundColor: providerColor(provider.type) }}
-              >
-                {providerLetter(provider.type)}
+              <Box className={classes.providerIcon} style={{ backgroundColor: bg }}>
+                {icon}
               </Box>
-              <Typography className={classes.providerName}>
-                {provider.name}
-              </Typography>
+              <Box>
+                <Typography className={classes.providerName}>
+                  {provider.name}
+                </Typography>
+                <Typography className={classes.providerType}>
+                  {providerTypeLabel(provider.type)}
+                </Typography>
+              </Box>
             </Box>
-            {isConfigured && (
-              <IconButton size="small" onClick={e => setMenuAnchor(e.currentTarget)}>
-                <MoreVertIcon fontSize="small" />
-              </IconButton>
-            )}
+            <Tooltip title={isConfigured ? (isActive ? 'This source is connected and syncing content to the portal.' : 'This source has a connection error.') : 'This source has not been configured yet.'} arrow>
+              <Chip
+                label={isConfigured ? (isActive ? 'Connected' : 'Error') : 'Not connected'}
+                size="small"
+                style={{
+                  fontSize: 11,
+                  height: 22,
+                  backgroundColor: isConfigured
+                    ? (isActive ? 'rgba(99,153,61,0.15)' : 'rgba(201,25,11,0.15)')
+                    : 'rgba(255,255,255,0.08)',
+                  color: isConfigured
+                    ? (isActive ? statusColors.success : statusColors.error)
+                    : '#999',
+                }}
+              />
+            </Tooltip>
           </Box>
 
           {isConfigured ? (
             <>
-              <Box className={classes.statusLine}>
-                {isActive ? (
-                  <CheckCircleOutlineIcon className={classes.statusActive} style={{ fontSize: 16 }} />
-                ) : (
-                  <ErrorOutlineIcon style={{ fontSize: 16, color: statusColors.error }} />
-                )}
-                <Typography variant="body2" style={{ fontSize: 13 }}>
-                  Content discovery: {provider.status}
+              <Typography className={classes.cardMeta}>
+                {provider.host}
+                {provider.lastSync && ` · Last sync ${provider.lastSync}`}
+              </Typography>
+              {description && (
+                <Typography className={classes.cardMeta} style={{ fontWeight: 500, color: 'inherit' }}>
+                  {description}
                 </Typography>
-              </Box>
-              {provider.lastSync && (
-                <Box className={classes.statusLine}>
-                  <SyncIcon style={{ fontSize: 14, color: '#9e9e9e' }} />
-                  <Typography variant="body2" style={{ fontSize: 12, color: '#9e9e9e' }}>
-                    Last sync {provider.lastSync}
+              )}
+              {warning && (
+                <Box display="flex" alignItems="flex-start" style={{ gap: 6, marginTop: 8 }}>
+                  <WarningAmberIcon style={{ fontSize: 16, color: statusColors.warning, flexShrink: 0, marginTop: 1 }} />
+                  <Typography style={{ fontSize: 12, color: statusColors.warning, lineHeight: 1.4 }}>
+                    {warning}
                   </Typography>
                 </Box>
               )}
-              {provider.host && (
-                <Typography className={classes.hostLine}>
-                  Host: {provider.host}
-                </Typography>
-              )}
-              {provider.auth && (
-                <Typography className={classes.authLine}>
-                  Auth: {provider.auth}
-                </Typography>
-              )}
-              <Box className={classes.cardActions}>
+              <Box className={classes.cardFooter}>
                 <Button
-                  variant="outlined"
-                  color="primary"
                   size="small"
-                  startIcon={<EditIcon />}
-                  className={classes.actionButton}
-                  onClick={() => setEditOpen(true)}
-                >
-                  Edit
-                </Button>
-                <Button
-                  variant="outlined"
                   color="primary"
-                  size="small"
-                  startIcon={<SyncIcon />}
-                  className={classes.actionButton}
+                  startIcon={<SyncIcon style={{ fontSize: 16 }} />}
                   onClick={handleSync}
                   disabled={syncing}
+                  style={{ textTransform: 'none', fontSize: 12 }}
                 >
-                  {syncing ? 'Syncing...' : 'Sync now'}
+                  {syncing ? 'Syncing…' : 'Sync now'}
                 </Button>
+                <Box display="flex" alignItems="center" style={{ gap: 4, color: '#0066CC', fontSize: 12 }}>
+                  Configure <ArrowForwardIcon style={{ fontSize: 14 }} />
+                </Box>
               </Box>
             </>
           ) : (
             <>
-              <Box className={classes.statusLine}>
-                <LinkOffIcon className={classes.statusInactive} style={{ fontSize: 16 }} />
-                <Typography variant="body2" style={{ fontSize: 13, color: '#9e9e9e' }}>
-                  Not configured
+              {description && (
+                <Typography className={classes.cardMeta}>
+                  {description}
                 </Typography>
-              </Box>
-              <Typography
-                variant="body2"
-                style={{
-                  fontSize: 12,
-                  color: '#9e9e9e',
-                  lineHeight: 1.5,
-                  marginTop: 4,
-                  marginBottom: 8,
-                }}
-              >
-                {getEmptyStateDescription(provider.type)}
-              </Typography>
-              <Box className={classes.cardActions} style={{ marginTop: 8 }}>
-                <Button
-                  variant="contained"
-                  color="primary"
-                  size="small"
-                  className={classes.actionButton}
-                >
-                  Connect {provider.name.split(' ')[0]}
-                </Button>
+              )}
+              <Box className={classes.cardFooter}>
+                <Box display="flex" alignItems="center" style={{ gap: 6 }}>
+                  <LinkOffIcon style={{ fontSize: 14, color: '#999' }} />
+                  <Typography style={{ fontSize: 12, color: '#999' }}>
+                    Not configured
+                  </Typography>
+                </Box>
+                <Box display="flex" alignItems="center" style={{ gap: 4, color: '#0066CC', fontSize: 12 }}>
+                  Connect <ArrowForwardIcon style={{ fontSize: 14 }} />
+                </Box>
               </Box>
             </>
           )}
         </CardContent>
-      </Card>
-
-      <Menu
-        anchorEl={menuAnchor}
-        open={Boolean(menuAnchor)}
-        onClose={() => setMenuAnchor(null)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-        getContentAnchorEl={null}
-      >
-        <MenuItem onClick={() => { setEditOpen(true); setMenuAnchor(null); }}>
-          <ListItemIcon><SettingsIcon fontSize="small" /></ListItemIcon>
-          <ListItemText primary="Edit connection" />
-        </MenuItem>
-        <MenuItem onClick={() => { handleSync(); setMenuAnchor(null); }}>
-          <ListItemIcon><SyncIcon fontSize="small" /></ListItemIcon>
-          <ListItemText primary="Sync now" />
-        </MenuItem>
-        <Divider />
-        <MenuItem onClick={() => setMenuAnchor(null)}>
-          <ListItemIcon><DeleteOutlineIcon fontSize="small" style={{ color: statusColors.error }} /></ListItemIcon>
-          <ListItemText primary="Disconnect" primaryTypographyProps={{ style: { color: statusColors.error } }} />
-        </MenuItem>
-      </Menu>
-
-      <EditConnectionDialog
-        provider={provider}
-        open={editOpen}
-        onClose={() => setEditOpen(false)}
-      />
-    </>
-  );
-};
-
-const EditConnectionDialog = ({
-  provider,
-  open,
-  onClose,
-}: {
-  provider: ConnectionProvider;
-  open: boolean;
-  onClose: () => void;
-}) => {
-  const classes = useStyles();
-
-  return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>
-        Edit {provider.name} connection
-      </DialogTitle>
-      <DialogContent>
-        <Box className={classes.dialogSection}>
-          <Typography className={classes.dialogSectionTitle}>
-            Connection Settings
-          </Typography>
-          <Typography variant="body2" color="textSecondary" style={{ fontSize: 13 }}>
-            {provider.host ? `Host: ${provider.host}` : 'No host configured'}
-          </Typography>
-          {provider.auth && (
-            <Typography variant="body2" color="textSecondary" style={{ fontSize: 13, marginTop: 4 }}>
-              Auth: {provider.auth}
-            </Typography>
-          )}
-        </Box>
-
-        {provider.syncJobs.length > 0 && (
-          <Box className={classes.dialogSection}>
-            <Typography className={classes.dialogSectionTitle}>
-              Sync Schedule
-            </Typography>
-            {provider.syncJobs.map(job => (
-              <Box key={job.name} className={classes.syncJobRow}>
-                <Box>
-                  <Typography className={classes.syncJobName}>{job.name}</Typography>
-                  <Typography className={classes.syncJobInterval}>{job.interval}</Typography>
-                </Box>
-                <FormControlLabel
-                  control={<Switch checked={job.enabled} color="primary" size="small" />}
-                  label=""
-                />
-              </Box>
-            ))}
-          </Box>
-        )}
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose} style={{ textTransform: 'none' }}>Cancel</Button>
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={onClose}
-          style={{ textTransform: 'none' }}
-        >
-          Save changes
-        </Button>
-      </DialogActions>
-    </Dialog>
+      </CardActionArea>
+    </Card>
   );
 };
 
@@ -453,13 +298,6 @@ export const ConnectionsPage = () => {
   const automationPlatforms = DEMO_CONNECTIONS.filter(
     c => c.type === 'aap' || c.type === 'pah' || c.type === 'registry',
   );
-  const sourceControlProviders = DEMO_CONNECTIONS.filter(c => c.type === 'git');
-
-  const unconfiguredCount = DEMO_CONNECTIONS.filter(
-    c => c.status === 'Not configured',
-  ).length;
-  const totalCount = DEMO_CONNECTIONS.length;
-  const configuredCount = totalCount - unconfiguredCount;
 
   return (
     <Page themeId="app">
@@ -470,47 +308,46 @@ export const ConnectionsPage = () => {
             <PageHelpIcon
               tooltipLabel="What are connections?"
               title="What are Connections?"
-              description="Connections are integrations with external platforms like Ansible Automation Platform, Git providers, and content registries. They enable content discovery, sync, and project deployment."
+              description="Connections link the portal to the automation platforms and content registries that power your catalog. Configure credentials, choose what content to sync, and control how often updates are pulled. Changes here determine what your developers can discover and use."
             />
           </Box>
         }
         pageTitleOverride="Connections"
-        subtitle="Manage integrations with external platforms for content discovery and user authentication (SSO)"
+        subtitle="Manage credentials, content discovery, and sync schedules for your automation platforms and content registries"
       />
       <Content>
-        <DismissibleBanner
-          storageKey="admin-connections"
-          message="Connect the portal to your automation infrastructure. Add Ansible Automation Platform controllers, Git providers, and content registries to enable content discovery, sync, and project deployment."
-        />
-
-        {unconfiguredCount > 0 && (
-          <Box className={classes.setupBanner}>
-            <Box className={classes.setupBannerIcon}>
-              <PlaylistAddCheckIcon style={{ fontSize: 20 }} />
-            </Box>
-            <Box className={classes.setupBannerText}>
-              <Typography className={classes.setupBannerTitle}>
-                {configuredCount} of {totalCount} integrations connected
-              </Typography>
-              <Typography className={classes.setupBannerDescription}>
-                Connect additional integrations to unlock content discovery, project creation, and team collaboration.
-                Use the Quick start guide from the Help menu (?) for step-by-step instructions.
-              </Typography>
-            </Box>
-          </Box>
-        )}
-        <Typography className={classes.sectionTitle}>
-          Automation & Content Platforms
-        </Typography>
         <Box className={classes.cardGrid}>
           {automationPlatforms.map(provider => (
             <ProviderCard key={provider.id} provider={provider} />
           ))}
         </Box>
+      </Content>
+    </Page>
+  );
+};
 
-        <Typography className={classes.sectionTitle}>
-          Source Control Providers
-        </Typography>
+export const SCMIntegrationPage = () => {
+  const classes = useStyles();
+
+  const sourceControlProviders = DEMO_CONNECTIONS.filter(c => c.type === 'git');
+
+  return (
+    <Page themeId="app">
+      <Header
+        title={
+          <Box display="flex" alignItems="center">
+            SCM Integration
+            <PageHelpIcon
+              tooltipLabel="What is SCM Integration?"
+              title="What is SCM Integration?"
+              description="SCM integrations connect the portal to the Git providers where your teams store automation projects. The portal scans configured organizations and repositories to index playbooks, roles, and collections — making them discoverable without manual registration."
+            />
+          </Box>
+        }
+        pageTitleOverride="SCM Integration"
+        subtitle="Connect to Git providers to scan and index playbooks, roles, and collections from your repositories"
+      />
+      <Content>
         <Box className={classes.cardGrid}>
           {sourceControlProviders.map(provider => (
             <ProviderCard key={provider.id} provider={provider} />

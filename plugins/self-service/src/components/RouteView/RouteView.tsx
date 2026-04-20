@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { Route, Routes, Navigate, Outlet } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Route, Routes, Navigate, Outlet, useNavigate } from 'react-router-dom';
 import { RequirePermission } from '@backstage/plugin-permission-react';
 import { catalogEntityCreatePermission } from '@backstage/plugin-catalog-common/alpha';
 import { taskReadPermission } from '@backstage/plugin-scaffolder-common/alpha';
@@ -27,14 +27,18 @@ import { ProjectDetailsPage } from '../Projects/detail/ProjectDetailsPage';
 import { RepositoryDetailPage } from '../Projects/repositories/RepositoryDetailPage';
 import { CollectionsCatalogPage } from '../CollectionsCatalog';
 import { CollectionDetailsPage } from '../CollectionsCatalog/CollectionDetailsPage';
-import { ConnectionsPage } from '../Admin/ConnectionsPage';
+import { ConnectionsPage, SCMIntegrationPage } from '../Admin/ConnectionsPage';
+import { EEBuilderPlaceholderPage } from '../Admin/EEBuilderPlaceholderPage';
+import { ConnectionDetailPage } from '../Admin/ConnectionDetailPage';
 import { SyncActivityPage } from '../Admin/SyncActivityPage';
 import { SyncJobDetailPage } from '../Admin/SyncJobDetailPage';
 import { PipelinePoliciesPage } from '../Admin/PipelinePoliciesPage';
+import { ContentSourcesPage } from '../Admin/ContentSourcesPage';
 import { LearningPage } from '../Learning/LearningPage';
 import { WorkspacesPage } from '../Workspaces/WorkspacesPage';
 import { WorkspaceIDEPage } from '../Workspaces/WorkspaceIDEPage';
 import { SetupWizardPage } from '../Setup/SetupWizardPage';
+import { GeneralPage } from '../Admin/GeneralPage';
 import {
   NotificationProvider,
   NotificationStack,
@@ -46,10 +50,23 @@ const RouteViewContent = () => {
   const { notifications, removeNotification } = useNotifications();
   const discoveryApi = useApi(discoveryApiRef);
   const fetchApi = useApi(fetchApiRef);
+  const navigate = useNavigate();
+  const [redirectChecked, setRedirectChecked] = useState(false);
 
   useEffect(() => {
     syncPollingService.initialize(discoveryApi, fetchApi);
   }, [discoveryApi, fetchApi]);
+
+  useEffect(() => {
+    if (!redirectChecked) {
+      setRedirectChecked(true);
+      const shouldRedirect = sessionStorage.getItem('portal-setup-redirect');
+      if (shouldRedirect) {
+        sessionStorage.removeItem('portal-setup-redirect');
+        navigate('setup', { replace: true });
+      }
+    }
+  }, [redirectChecked, navigate]);
 
   return (
     <>
@@ -129,7 +146,13 @@ const RouteViewContent = () => {
         <Route path="learning" element={<LearningPage />} />
         <Route path="workspaces" element={<WorkspacesPage />} />
         <Route path="workspaces/:workspaceId/ide" element={<WorkspaceIDEPage />} />
+        <Route path="admin/general" element={<GeneralPage />} />
         <Route path="admin/connections" element={<ConnectionsPage />} />
+        <Route path="admin/connections/:providerId" element={<ConnectionDetailPage />} />
+        <Route path="admin/scm" element={<SCMIntegrationPage />} />
+        <Route path="admin/scm/:providerId" element={<ConnectionDetailPage />} />
+        <Route path="admin/ee-builder" element={<EEBuilderPlaceholderPage />} />
+        <Route path="admin/content-sources" element={<ContentSourcesPage />} />
         <Route path="admin/sync-activity" element={<SyncActivityPage />} />
         <Route path="admin/sync-activity/:syncId" element={<SyncJobDetailPage />} />
         <Route path="admin/pipeline-policies" element={<PipelinePoliciesPage />} />

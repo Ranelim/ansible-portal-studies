@@ -21,3 +21,5 @@ export { EETagsPickerFieldExtension } from './components/Scaffolder/EETagsPicker
 export { ScmSelectorFieldExtension } from './components/Scaffolder/ScmSelector/extensions';
 
 export * from './apis';
+
+export { RestartProvider, useRestartRequired } from './components/Admin/RestartContext';

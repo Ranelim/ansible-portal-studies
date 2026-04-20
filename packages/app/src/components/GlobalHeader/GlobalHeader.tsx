@@ -29,7 +29,7 @@ import ExitToAppIcon from '@material-ui/icons/ExitToApp';
 import OpenInNewIcon from '@material-ui/icons/OpenInNew';
 import PlaylistAddCheckIcon from '@material-ui/icons/PlaylistAddCheck';
 import { makeStyles, alpha } from '@material-ui/core/styles';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useApi, identityApiRef } from '@backstage/core-plugin-api';
 import { useStarredEntities } from '@backstage/plugin-catalog-react';
 import { useState, useMemo } from 'react';
@@ -316,7 +316,12 @@ const StarredItemsList = ({ onClose }: { onClose: () => void }) => {
 export const GlobalHeader = () => {
   const classes = useStyles();
   const navigate = useNavigate();
+  const location = useLocation();
   const identityApi = useApi(identityApiRef);
+
+  if (location.pathname.includes('/setup')) {
+    return null;
+  }
   const { isOpen: isLightspeedOpen, toggle: toggleLightspeed } = useLightspeed();
   const { toggle: toggleQuickstart } = useQuickstart();
   const { starredEntities } = useStarredEntities();
