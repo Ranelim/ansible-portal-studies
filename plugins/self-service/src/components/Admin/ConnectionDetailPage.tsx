@@ -2,7 +2,6 @@ import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import {
   Page,
   Header,
-  HeaderTabs,
   Content,
 } from '@backstage/core-components';
 import {
@@ -18,6 +17,8 @@ import {
   Divider,
   IconButton,
   Radio,
+  Tabs,
+  Tab,
   RadioGroup,
   Collapse,
   Tooltip,
@@ -33,14 +34,20 @@ import DeleteOutlineIcon from '@material-ui/icons/DeleteOutline';
 import InsertDriveFileOutlinedIcon from '@material-ui/icons/InsertDriveFileOutlined';
 import InfoOutlinedIcon from '@material-ui/icons/InfoOutlined';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { SyncErrorModal } from './SyncErrorModal';
 import {
   DEMO_CONNECTIONS,
-  DEMO_SYNC_SCHEDULES,
+  DEMO_SYNC_STATUS,
   ConnectionProvider,
+  SyncEntityStatus,
 } from './syncDemoData';
 import { useRestartRequired } from './RestartContext';
 import { statusColors } from '../common/statusColors';
 import SyncIcon from '@material-ui/icons/Sync';
+import CheckCircleOutlineIcon from '@material-ui/icons/CheckCircleOutline';
+import ErrorOutlineIcon from '@material-ui/icons/ErrorOutline';
+import LoopIcon from '@material-ui/icons/Loop';
+import ScheduleIcon from '@material-ui/icons/Schedule';
 import {
   Select,
   MenuItem as MuiMenuItem,
@@ -328,7 +335,6 @@ const PAHConnectionTab = ({ onSave }: { onSave: () => void }) => {
 
 const GitConnectionTab = ({ provider, onSave }: { provider: ConnectionProvider; onSave: () => void }) => {
   const classes = useStyles();
-  const [authMethod, setAuthMethod] = useState<'token' | 'oauth'>('token');
   const providerLabel = provider.id === 'github' ? 'GitHub' : 'GitLab';
 
   return (
@@ -351,58 +357,31 @@ const GitConnectionTab = ({ provider, onSave }: { provider: ConnectionProvider; 
 
       <Divider style={{ margin: '8px 0 16px' }} />
       <Typography style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>Authentication</Typography>
-      <Typography className={classes.helperText} style={{ marginBottom: 12, marginTop: 0 }}>
-        How the portal authenticates to {providerLabel} when scanning repositories.
+      <Typography className={classes.helperText} style={{ marginBottom: 16, marginTop: 0 }}>
+        Both a personal access token and an OAuth application are required for {providerLabel} integration.
       </Typography>
 
-      <RadioGroup
-        value={authMethod}
-        onChange={e => setAuthMethod(e.target.value as 'token' | 'oauth')}
-      >
-        <FormControlLabel
-          value="token"
-          control={<Radio color="primary" size="small" />}
-          label={
-            <Typography style={{ fontSize: 13, fontWeight: 500 }}>
-              Personal access token
-              <Typography component="span" style={{ fontSize: 12, color: '#999', marginLeft: 6 }}>recommended</Typography>
-            </Typography>
-          }
-          style={{ marginBottom: 4 }}
-        />
-        {authMethod === 'token' && (
-          <Box style={{ marginLeft: 30, marginBottom: 12 }}>
-            <Box className={classes.fieldGroup}>
-              <TextField fullWidth variant="outlined" size="small" type="password" placeholder="Enter access token" />
-              <Typography className={classes.helperText}>
-                A token with read access to the organizations you want to scan.
-              </Typography>
-            </Box>
-          </Box>
-        )}
+      <Box className={classes.fieldGroup}>
+        <Typography className={classes.fieldLabel}>Personal access token *</Typography>
+        <TextField fullWidth variant="outlined" size="small" type="password" placeholder="Enter access token" />
+        <Typography className={classes.helperText}>
+          A token with read access to the organizations you want to scan.
+        </Typography>
+      </Box>
 
-        <FormControlLabel
-          value="oauth"
-          control={<Radio color="primary" size="small" />}
-          label={<Typography style={{ fontSize: 13, fontWeight: 500 }}>OAuth application</Typography>}
-          style={{ marginBottom: 4 }}
-        />
-        {authMethod === 'oauth' && (
-          <Box style={{ marginLeft: 30, marginBottom: 12 }}>
-            <Box className={classes.fieldGroup}>
-              <Typography className={classes.fieldLabel}>Client ID *</Typography>
-              <TextField fullWidth variant="outlined" size="small" placeholder="Enter OAuth Client ID" />
-            </Box>
-            <Box className={classes.fieldGroup}>
-              <Typography className={classes.fieldLabel}>Client Secret *</Typography>
-              <TextField fullWidth variant="outlined" size="small" type="password" placeholder="Enter OAuth Client Secret" />
-            </Box>
-            <Typography className={classes.helperText}>
-              Register an OAuth application in your {providerLabel} settings to obtain these credentials.
-            </Typography>
-          </Box>
-        )}
-      </RadioGroup>
+      <Divider style={{ margin: '8px 0 16px' }} />
+
+      <Box className={classes.fieldGroup}>
+        <Typography className={classes.fieldLabel}>OAuth Client ID *</Typography>
+        <TextField fullWidth variant="outlined" size="small" placeholder="Enter OAuth Client ID" />
+      </Box>
+      <Box className={classes.fieldGroup}>
+        <Typography className={classes.fieldLabel}>OAuth Client Secret *</Typography>
+        <TextField fullWidth variant="outlined" size="small" type="password" placeholder="Enter OAuth Client Secret" />
+        <Typography className={classes.helperText}>
+          Register an OAuth application in your {providerLabel} settings to obtain these credentials.
+        </Typography>
+      </Box>
 
       <StickyFooter>
         <Button variant="outlined" style={{ textTransform: 'none', fontSize: 13 }}>Test connection</Button>
@@ -586,7 +565,7 @@ const AAPContentTab = ({ onSave }: { onSave: () => void }) => {
       <Box className={classes.sectionCard}>
         <Box display="flex" justifyContent="space-between" alignItems="flex-start" marginBottom={1}>
           <Box style={{ flex: 1 }}>
-            <Typography className={classes.sectionTitle}>Job template sync</Typography>
+            <Typography className={classes.sectionTitle}>Job template filters</Typography>
             <Typography className={classes.sectionDescription}>
               Control which job templates appear as self-service templates in the portal catalog.
             </Typography>
@@ -645,11 +624,14 @@ const PAHContentTab = ({ onSave }: { onSave: () => void }) => {
           Select which PAH remotes to sync content from. Each remote maps to a content source in your private hub.
         </Typography>
         {remotes.map(remote => (
-          <Box key={remote.name} className={classes.scheduleRow}>
+          <Box key={remote.name} className={classes.scheduleRow} display="flex" justifyContent="space-between" alignItems="center">
             <Box>
               <Typography style={{ fontSize: 13, fontWeight: 500 }}>{remote.name}</Typography>
               <Typography style={{ fontSize: 12, color: '#999' }}>{remote.description}</Typography>
             </Box>
+            <IconButton size="small">
+              <DeleteOutlineIcon fontSize="small" />
+            </IconButton>
           </Box>
         ))}
         <Button size="small" startIcon={<AddIcon />} color="primary" style={{ textTransform: 'none', fontSize: 12, marginTop: 8 }}>
@@ -750,7 +732,7 @@ const GitContentTab = ({ provider, onSave }: { provider: ConnectionProvider; onS
 };
 
 // ---------------------------------------------------------------------------
-// Sync Tab — per-source schedules + recent history
+// Sync Tab — last sync status + per-source schedule configuration
 // ---------------------------------------------------------------------------
 
 const FREQUENCY_OPTIONS = [
@@ -771,13 +753,16 @@ const intervalToValue = (interval: string): string => {
   return '60';
 };
 
-const connectionIdToSource = (id: string): string => {
-  switch (id) {
-    case 'aap': return 'AAP';
-    case 'pah': return 'AAP';
-    case 'github': return 'GitHub';
-    case 'gitlab': return 'GitLab';
-    default: return '';
+const SyncStatusIcon = ({ status }: { status: string }) => {
+  switch (status) {
+    case 'Healthy':
+      return <CheckCircleOutlineIcon style={{ fontSize: 18, color: statusColors.success }} />;
+    case 'Failed':
+      return <ErrorOutlineIcon style={{ fontSize: 18, color: statusColors.error }} />;
+    case 'In Progress':
+      return <LoopIcon style={{ fontSize: 18, color: statusColors.info }} />;
+    default:
+      return <SyncIcon style={{ fontSize: 18, color: 'rgba(255,255,255,0.3)' }} />;
   }
 };
 
@@ -809,44 +794,23 @@ const SyncTabEmptyState = ({ provider, onGoToConnection }: { provider: Connectio
   );
 };
 
-const SyncTab = ({ provider, isConfigured, onGoToConnection }: { provider: ConnectionProvider; isConfigured: boolean; onGoToConnection: () => void }) => {
+const SyncTab = ({ provider, isConfigured, onGoToConnection, onViewDetails }: { provider: ConnectionProvider; isConfigured: boolean; onGoToConnection: () => void; onViewDetails: (e: SyncEntityStatus) => void }) => {
   const classes = useStyles();
 
   if (!isConfigured) {
     return <SyncTabEmptyState provider={provider} onGoToConnection={onGoToConnection} />;
   }
 
-  const sourceName = connectionIdToSource(provider.id);
-  const initialSchedules = DEMO_SYNC_SCHEDULES.filter(s => s.source === sourceName);
-  const [scheduleState, setScheduleState] = useState(
-    initialSchedules.map(s => ({ ...s })),
-  );
-  const [confirmDisable, setConfirmDisable] = useState<{ id: string; name: string } | null>(null);
-
-  const handleToggle = (id: string, currentlyEnabled: boolean) => {
-    if (currentlyEnabled) {
-      const sched = scheduleState.find(s => s.id === id);
-      setConfirmDisable({ id, name: sched?.syncJob || '' });
-    } else {
-      setScheduleState(prev => prev.map(s => s.id === id ? { ...s, enabled: true } : s));
-    }
-  };
-
-  const handleConfirmDisable = () => {
-    if (confirmDisable) {
-      setScheduleState(prev => prev.map(s => s.id === confirmDisable.id ? { ...s, enabled: false } : s));
-      setConfirmDisable(null);
-    }
-  };
+  const entityStatuses = DEMO_SYNC_STATUS.filter(s => s.providerId === provider.id);
 
   return (
     <>
-      <Box className={classes.sectionCard}>
+      <Box className={classes.sectionCard} style={{ marginBottom: 24 }}>
         <Box display="flex" justifyContent="space-between" alignItems="center" style={{ marginBottom: 16 }}>
           <Box>
-            <Typography className={classes.sectionTitle}>Sync Schedules</Typography>
+            <Typography className={classes.sectionTitle}>Last sync results</Typography>
             <Typography style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>
-              Configure how often each content type is synced from {provider.name}.
+              Current sync status for each {provider.type === 'git' ? 'organization' : 'content type'} from {provider.name}.
             </Typography>
           </Box>
           <Button
@@ -860,81 +824,98 @@ const SyncTab = ({ provider, isConfigured, onGoToConnection }: { provider: Conne
           </Button>
         </Box>
 
-        {scheduleState.length > 0 ? scheduleState.map(s => (
-          <Box key={s.id} className={classes.scheduleRow} style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8 }}>
+        {entityStatuses.length > 0 ? entityStatuses.map(entity => (
+          <Box
+            key={entity.id}
+            className={classes.scheduleRow}
+            style={{
+              flexDirection: 'column',
+              alignItems: 'stretch',
+              gap: 6,
+              backgroundColor: entity.status === 'Failed' ? 'rgba(244,67,54,0.05)' : undefined,
+            }}
+          >
             <Box display="flex" justifyContent="space-between" alignItems="center">
-              <Typography style={{ fontSize: 13, fontWeight: 500 }}>{s.syncJob}</Typography>
-              <Box display="flex" alignItems="center" style={{ gap: 12 }}>
-                <Select
-                  variant="outlined"
-                  value={intervalToValue(s.interval)}
-                  disabled={!s.enabled}
-                  style={{ fontSize: 13, height: 32, minWidth: 150 }}
-                >
-                  {FREQUENCY_OPTIONS.map(opt => (
-                    <MuiMenuItem key={opt.value} value={opt.value} style={{ fontSize: 13 }}>
-                      {opt.label}
-                    </MuiMenuItem>
-                  ))}
-                </Select>
+              <Box display="flex" alignItems="center" style={{ gap: 8 }}>
+                <SyncStatusIcon status={entity.status} />
+                <Typography style={{ fontSize: 13, fontWeight: 500 }}>{entity.entity}</Typography>
+              </Box>
+              <Box display="flex" alignItems="center" style={{ gap: 16 }}>
+                {entity.lastSync && (
+                  <Typography style={{ fontSize: 12, color: '#999' }}>
+                    {entity.lastSync}
+                    {entity.lastSyncDuration && ` · ${entity.lastSyncDuration}`}
+                  </Typography>
+                )}
+                {entity.nextSync && (
+                  <Box display="flex" alignItems="center" style={{ gap: 4 }}>
+                    <ScheduleIcon style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)' }} />
+                    <Typography style={{ fontSize: 12, color: '#999' }}>
+                      {entity.nextSync}
+                    </Typography>
+                  </Box>
+                )}
               </Box>
             </Box>
-            <Box display="flex" justifyContent="space-between" alignItems="center">
-              <Box display="flex" alignItems="center" style={{ gap: 6 }}>
-                <Switch
-                  checked={s.enabled}
-                  onChange={() => handleToggle(s.id, s.enabled)}
-                  color="primary"
-                  size="small"
-                />
-                <Typography style={{ fontSize: 12, color: s.enabled ? statusColors.success : '#999', fontWeight: 500 }}>
-                  {s.enabled ? 'Enabled' : 'Disabled'}
+            {entity.status === 'Failed' && entity.errorDetail && (
+              <Box display="flex" alignItems="center" style={{ paddingLeft: 26, gap: 8 }}>
+                <Typography style={{ fontSize: 12, color: statusColors.error, lineHeight: 1.4 }}>
+                  {entity.errorDetail}
+                </Typography>
+                <Typography
+                  component="span"
+                  onClick={() => onViewDetails(entity)}
+                  style={{
+                    fontSize: 11,
+                    color: '#4DA3FF',
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0,
+                  }}
+                >
+                  View details
                 </Typography>
               </Box>
-              <Typography style={{ fontSize: 12, color: '#999' }}>
-                Last sync:{' '}
-                <a
-                  href={`/self-service/admin/sync-activity/${s.id}`}
-                  style={{ color: '#4DA3FF', textDecoration: 'none' }}
-                >
-                  {s.lastRun}
-                </a>
-              </Typography>
-            </Box>
+            )}
           </Box>
         )) : (
           <Typography style={{ fontSize: 13, color: '#999', padding: '16px 0', textAlign: 'center' }}>
-            No sync schedules configured. Connect this source first.
+            No sync data available yet.
           </Typography>
         )}
       </Box>
 
-      <Dialog open={!!confirmDisable} onClose={() => setConfirmDisable(null)} maxWidth="xs" fullWidth>
-        <DialogTitle style={{ fontSize: 16 }}>
-          Disable {confirmDisable?.name} sync?
-        </DialogTitle>
-        <DialogContent>
-          <Typography style={{ fontSize: 13 }}>
-            This content type will no longer be automatically updated from {provider.name}. You can re-enable it at any time.
+      {provider.type !== 'git' && (
+        <Box className={classes.sectionCard}>
+          <Box display="flex" justifyContent="space-between" alignItems="center">
+            <Box>
+              <Typography className={classes.sectionTitle}>Sync interval</Typography>
+              <Typography style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>
+                How often the portal syncs all content from {provider.name}.
+              </Typography>
+            </Box>
+            <Select
+              variant="outlined"
+              value={intervalToValue(entityStatuses[0]?.interval || 'Every 30 min')}
+              style={{ fontSize: 13, height: 32, minWidth: 150 }}
+            >
+              {FREQUENCY_OPTIONS.map(opt => (
+                <MuiMenuItem key={opt.value} value={opt.value} style={{ fontSize: 13 }}>
+                  {opt.label}
+                </MuiMenuItem>
+              ))}
+            </Select>
+          </Box>
+        </Box>
+      )}
+
+      {provider.type === 'git' && entityStatuses.length > 0 && (
+        <Box style={{ marginTop: 8 }}>
+          <Typography style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>
+            Sync intervals are configured per organization on the Content tab.
           </Typography>
-        </DialogContent>
-        <DialogActions style={{ justifyContent: 'flex-start', padding: '16px 24px' }}>
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={handleConfirmDisable}
-            style={{ textTransform: 'none' }}
-          >
-            Disable
-          </Button>
-          <Button
-            onClick={() => setConfirmDisable(null)}
-            style={{ textTransform: 'none' }}
-          >
-            Cancel
-          </Button>
-        </DialogActions>
-      </Dialog>
+        </Box>
+      )}
     </>
   );
 };
@@ -993,6 +974,7 @@ export const ConnectionDetailPage = () => {
   }, []);
 
   const [selectedTab, setSelectedTab] = useState(initialTabIndex);
+  const [modalEntity, setModalEntity] = useState<SyncEntityStatus | null>(null);
 
   const resolveTab = (): 'connection' | 'content' | 'sync' => {
     const tab = tabs[selectedTab];
@@ -1001,6 +983,8 @@ export const ConnectionDetailPage = () => {
   const activeTab = resolveTab();
 
   const description = providerDescription(provider.id);
+  const providerSyncStatuses = DEMO_SYNC_STATUS.filter(s => s.providerId === provider.id);
+  const failedSyncs = providerSyncStatuses.filter(s => s.status === 'Failed');
 
   return (
     <Page themeId="app">
@@ -1037,16 +1021,61 @@ export const ConnectionDetailPage = () => {
               <Typography style={{ fontSize: 13, color: '#fff' }}>
                 {provider.lastSync}
               </Typography>
+              
             </Box>
           )}
         </Box>
       </Header>
-      <HeaderTabs
-        selectedIndex={selectedTab}
-        onChange={setSelectedTab}
-        tabs={tabs}
-      />
       <Content>
+        {failedSyncs.length > 0 && (
+          <Box
+            style={{
+              borderLeft: `3px solid ${statusColors.error}`,
+              borderRadius: 2,
+              backgroundColor: 'rgba(244,67,54,0.06)',
+              padding: '4px 0 4px 0',
+              marginBottom: 16,
+              position: 'relative',
+            }}
+          >
+            {failedSyncs.map(entity => (
+              <Box
+                key={entity.id}
+                display="flex"
+                alignItems="center"
+                style={{ padding: '4px 12px', gap: 8 }}
+              >
+                <ErrorOutlineIcon style={{ fontSize: 14, color: statusColors.error, flexShrink: 0 }} />
+                <Typography style={{ fontSize: 13 }}>
+                  <strong>{entity.entity}</strong>: sync failed.{' '}
+                  <Typography
+                    component="span"
+                    onClick={() => setModalEntity(entity)}
+                    style={{ fontSize: 13, color: '#4DA3FF', cursor: 'pointer' }}
+                  >
+                    View details
+                  </Typography>
+                </Typography>
+              </Box>
+            ))}
+          </Box>
+        )}
+        <SyncErrorModal
+          entity={modalEntity}
+          open={modalEntity !== null}
+          onClose={() => setModalEntity(null)}
+        />
+        <Tabs
+          value={selectedTab}
+          onChange={(_, v) => setSelectedTab(v)}
+          indicatorColor="primary"
+          textColor="primary"
+          style={{ borderBottom: '1px solid rgba(255,255,255,0.12)', marginBottom: 16 }}
+        >
+          {tabs.map(t => (
+            <Tab key={t.id} label={t.label} style={{ textTransform: 'none', minWidth: 80 }} />
+          ))}
+        </Tabs>
 
         {activeTab === 'connection' && (
           <>
@@ -1066,7 +1095,7 @@ export const ConnectionDetailPage = () => {
         )}
 
         {activeTab === 'sync' && (
-          <SyncTab provider={provider} isConfigured={isConfigured} onGoToConnection={() => setSelectedTab(0)} />
+          <SyncTab provider={provider} isConfigured={isConfigured} onGoToConnection={() => setSelectedTab(0)} onViewDetails={setModalEntity} />
         )}
 
       </Content>

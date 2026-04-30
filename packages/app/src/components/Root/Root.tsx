@@ -173,7 +173,7 @@ export const Root = ({ children }: PropsWithChildren<{}>) => {
               <SidebarItem
                 icon={SyncIcon}
                 to="/self-service/admin/sync-activity"
-                text="Sync"
+                text="Sync status"
               />
               <SidebarItem
                 icon={VpnKeyIcon}

@@ -28,6 +28,7 @@ import AddIcon from '@material-ui/icons/Add';
 import CloseIcon from '@material-ui/icons/Close';
 import ArrowBackIcon from '@material-ui/icons/ArrowBack';
 import { SvgIcon } from '@material-ui/core';
+import { SyncErrorModal } from './SyncErrorModal';
 
 const AnsibleIcon = (props: any) => (
   <SvgIcon {...props} viewBox="0 0 24 24">
@@ -47,8 +48,9 @@ const GitLabIcon = (props: any) => (
   </SvgIcon>
 );
 
+import ErrorOutlineIcon from '@material-ui/icons/ErrorOutline';
 import { useNavigate } from 'react-router-dom';
-import { DEMO_CONNECTIONS, ConnectionProvider } from './syncDemoData';
+import { DEMO_CONNECTIONS, DEMO_SYNC_STATUS, ConnectionProvider, SyncEntityStatus } from './syncDemoData';
 import { PageHelpIcon } from '../common/PageHelpIcon';
 import { statusColors } from '../common/statusColors';
 
@@ -66,8 +68,8 @@ const useStyles = makeStyles(theme => ({
     flexDirection: 'column' as const,
   },
   cardContent: {
-    padding: theme.spacing(2.5),
-    '&:last-child': { paddingBottom: theme.spacing(2.5) },
+    padding: theme.spacing(2),
+    '&:last-child': { paddingBottom: theme.spacing(2) },
     display: 'flex',
     flexDirection: 'column' as const,
     flex: 1,
@@ -82,9 +84,9 @@ const useStyles = makeStyles(theme => ({
     marginBottom: theme.spacing(1.5),
   },
   providerIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
+    width: 30,
+    height: 30,
+    borderRadius: 6,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -92,8 +94,8 @@ const useStyles = makeStyles(theme => ({
     marginRight: theme.spacing(1.5),
   },
   providerName: {
-    fontWeight: 600,
-    fontSize: 15,
+    fontWeight: 500,
+    fontSize: 14,
     lineHeight: 1.3,
   },
   providerType: {
@@ -139,15 +141,15 @@ const useStyles = makeStyles(theme => ({
 const providerIcon = (id: string): { icon: React.ReactNode; bg: string } => {
   switch (id) {
     case 'aap':
-      return { icon: <AnsibleIcon style={{ fontSize: 20, color: '#fff' }} />, bg: '#ee0000' };
+      return { icon: <AnsibleIcon style={{ fontSize: 16, color: '#fff' }} />, bg: '#ee0000' };
     case 'pah':
-      return { icon: <AnsibleIcon style={{ fontSize: 20, color: '#fff' }} />, bg: '#a30000' };
+      return { icon: <AnsibleIcon style={{ fontSize: 16, color: '#fff' }} />, bg: '#a30000' };
     case 'github':
-      return { icon: <GitHubIcon style={{ fontSize: 20, color: '#fff' }} />, bg: '#24292e' };
+      return { icon: <GitHubIcon style={{ fontSize: 16, color: '#fff' }} />, bg: '#24292e' };
     case 'gitlab':
-      return { icon: <GitLabIcon style={{ fontSize: 20, color: '#fff' }} />, bg: '#FC6D26' };
+      return { icon: <GitLabIcon style={{ fontSize: 16, color: '#fff' }} />, bg: '#FC6D26' };
     default:
-      return { icon: <AnsibleIcon style={{ fontSize: 20, color: '#fff' }} />, bg: '#757575' };
+      return { icon: <AnsibleIcon style={{ fontSize: 16, color: '#fff' }} />, bg: '#757575' };
   }
 };
 
@@ -185,6 +187,13 @@ const getCardWarning = (provider: ConnectionProvider): string | null => {
   return null;
 };
 
+const getProviderSyncStatus = (providerId: string): 'healthy' | 'failed' | 'none' => {
+  const entities = DEMO_SYNC_STATUS.filter(e => e.providerId === providerId);
+  if (entities.length === 0) return 'none';
+  if (entities.some(e => e.status === 'Failed')) return 'failed';
+  return 'healthy';
+};
+
 const ProviderCard = ({ provider, basePath }: { provider: ConnectionProvider; basePath: string }) => {
   const classes = useStyles();
   const navigate = useNavigate();
@@ -195,6 +204,7 @@ const ProviderCard = ({ provider, basePath }: { provider: ConnectionProvider; ba
   const { icon, bg } = providerIcon(provider.id);
   const description = getCardDescription(provider.id, isConfigured);
   const warning = getCardWarning(provider);
+  const syncStatus = isActive ? getProviderSyncStatus(provider.id) : 'none';
 
   const handleSync = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -247,7 +257,25 @@ const ProviderCard = ({ provider, basePath }: { provider: ConnectionProvider; ba
             <>
               <Typography className={classes.cardMeta}>
                 {provider.host}
-                {provider.lastSync && ` · Last sync ${provider.lastSync}`}
+                {provider.lastSync && (
+                  <>
+                    {' · Last sync '}
+                    {provider.lastSync}
+                    {syncStatus !== 'none' && (
+                      <span
+                        style={{
+                          display: 'inline-block',
+                          width: 6,
+                          height: 6,
+                          borderRadius: '50%',
+                          backgroundColor: syncStatus === 'failed' ? statusColors.error : statusColors.success,
+                          marginLeft: 6,
+                          verticalAlign: 'middle',
+                        }}
+                      />
+                    )}
+                  </>
+                )}
               </Typography>
               {description && (
                 <Typography className={classes.cardMeta}>
@@ -362,6 +390,7 @@ const useDialogStyles = makeStyles(theme => ({
   dialog: {
     '& .MuiDialog-paper': {
       width: 560,
+      minWidth: 560,
       maxWidth: 560,
     },
   },
@@ -437,7 +466,13 @@ const AddIntegrationDialog = ({ open, onClose }: { open: boolean; onClose: () =>
   const canSave = url.trim() !== '' && token.trim() !== '';
 
   return (
-    <Dialog open={open} onClose={handleClose} className={dialogClasses.dialog}>
+    <Dialog
+      open={open}
+      onClose={handleClose}
+      className={dialogClasses.dialog}
+      maxWidth={false}
+      PaperProps={{ style: { width: 560, minWidth: 560, maxWidth: 560 } }}
+    >
       <Box className={dialogClasses.dialogTitle}>
         <Box display="flex" alignItems="center" style={{ gap: 8 }}>
           {step > 0 && (
@@ -624,6 +659,65 @@ const AddIntegrationDialog = ({ open, onClose }: { open: boolean; onClose: () =>
   );
 };
 
+const SyncFailureBanner = () => {
+  const [dismissed, setDismissed] = useState(false);
+  const [modalEntity, setModalEntity] = useState<SyncEntityStatus | null>(null);
+  const connectedProviderIds = DEMO_CONNECTIONS.filter(c => c.status === 'Active').map(c => c.id);
+  const failedEntities = DEMO_SYNC_STATUS.filter(
+    e => e.status === 'Failed' && connectedProviderIds.includes(e.providerId),
+  );
+
+  if (dismissed || failedEntities.length === 0) return null;
+
+  return (
+    <>
+      <Box
+        style={{
+          position: 'relative',
+          marginBottom: 16,
+          borderLeft: `3px solid ${statusColors.error}`,
+          borderRadius: 2,
+          backgroundColor: 'rgba(244,67,54,0.06)',
+          padding: '4px 32px 4px 0',
+        }}
+      >
+        {failedEntities.map(entity => (
+          <Box
+            key={entity.id}
+            display="flex"
+            alignItems="center"
+            style={{ padding: '4px 12px', gap: 8 }}
+          >
+            <ErrorOutlineIcon style={{ fontSize: 14, color: statusColors.error, flexShrink: 0 }} />
+            <Typography style={{ fontSize: 13 }}>
+              <strong>{entity.source}</strong> — {entity.entity}: sync failed.{' '}
+              <Typography
+                component="span"
+                onClick={() => setModalEntity(entity)}
+                style={{ fontSize: 13, color: '#4DA3FF', cursor: 'pointer' }}
+              >
+                View details
+              </Typography>
+            </Typography>
+          </Box>
+        ))}
+        <IconButton
+          size="small"
+          onClick={() => setDismissed(true)}
+          style={{ position: 'absolute', right: 4, top: 4, padding: 4 }}
+        >
+          <CloseIcon style={{ fontSize: 14 }} />
+        </IconButton>
+      </Box>
+      <SyncErrorModal
+        entity={modalEntity}
+        open={modalEntity !== null}
+        onClose={() => setModalEntity(null)}
+      />
+    </>
+  );
+};
+
 export const IntegrationsPage = () => {
   const classes = useStyles();
   const [activeTab, setActiveTab] = useState(0);
@@ -696,6 +790,7 @@ export const IntegrationsPage = () => {
         </Box>
       </Header>
       <Content>
+        <SyncFailureBanner />
         <Tabs
           value={activeTab}
           onChange={(_, v) => setActiveTab(v)}
