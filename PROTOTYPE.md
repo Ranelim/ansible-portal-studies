@@ -1,21 +1,30 @@
 # Ansible Portal — UX Prototype
 
-> **Branch:** `feat/self-service-ux-prototype`
 > **Status:** Vision prototype (near-to-mid-term desired state)
 > **Maintainer:** Ran Elimelech
 
-This branch contains a clickable UX prototype of the Ansible Portal built on top of the [ansible-backstage-plugins](https://github.com/ansible/ansible-backstage-plugins) codebase. It demonstrates information architecture, interaction patterns, and design direction for the self-service developer portal experience.
+This repository contains clickable UX prototypes of the Ansible Portal built on top of the [ansible-backstage-plugins](https://github.com/ansible/ansible-backstage-plugins) codebase. Each `prototype/*` branch demonstrates a specific feature's information architecture, interaction patterns, and design direction.
 
 **This is a design artifact, not production code.** Most interactions use hardcoded demo data to simulate the experience without requiring live backend services.
 
 ---
 
+## Available Prototypes
+
+| Branch | Feature | ANSTRAT |
+|--------|---------|---------|
+| `prototype/admin-settings-1806` | Setup wizard, admin settings, integrations management | ANSTRAT-1806 |
+
+---
+
 ## Quick Start
 
+> Requires: **Node.js 20+**, **Yarn 4.x** (`corepack enable`), **Git**, and **Red Hat VPN** for GitLab access.
+
 ```bash
-git clone https://github.com/Ranelim/ansible-backstage-plugins.git
-cd ansible-backstage-plugins
-git checkout feat/self-service-ux-prototype
+git clone https://gitlab.cee.redhat.com/relimele/ansible-portal-prototypes.git
+cd ansible-portal-prototypes
+git checkout prototype/admin-settings-1806
 cp app-config.local.example.yaml app-config.local.yaml
 yarn install
 yarn start
