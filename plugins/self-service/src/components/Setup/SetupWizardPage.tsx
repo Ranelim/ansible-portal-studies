@@ -904,9 +904,9 @@ export const SetupWizardPage = () => {
                 </Box>
               )}
               {oauthAutoStatus === 'done' && (
-                <Box style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <CheckCircleIcon style={{ fontSize: 18, color: '#63993D' }} />
-                  <Typography style={{ fontSize: 13, fontWeight: 600, color: '#63993D' }}>
+                <Box display="flex" alignItems="center" style={{ gap: 6, padding: '8px 12px', backgroundColor: 'rgba(99,153,61,0.1)', borderRadius: 6, border: '1px solid rgba(99,153,61,0.3)' }}>
+                  <CheckCircleOutlineIcon style={{ fontSize: 16, color: '#63993D' }} />
+                  <Typography style={{ fontSize: 13, color: '#63993D' }}>
                     OAuth application created successfully. Client ID and secret have been saved.
                   </Typography>
                 </Box>
