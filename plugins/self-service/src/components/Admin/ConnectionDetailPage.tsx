@@ -31,6 +31,7 @@ import ExpandLessIcon from '@material-ui/icons/ExpandLess';
 import AddIcon from '@material-ui/icons/Add';
 import DeleteOutlineIcon from '@material-ui/icons/DeleteOutline';
 import InsertDriveFileOutlinedIcon from '@material-ui/icons/InsertDriveFileOutlined';
+import InfoOutlinedIcon from '@material-ui/icons/InfoOutlined';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   DEMO_CONNECTIONS,
@@ -262,68 +263,61 @@ const AAPConnectionTab = ({ provider, onSave }: { provider: ConnectionProvider; 
 
 const PAHConnectionTab = ({ onSave }: { onSave: () => void }) => {
   const classes = useStyles();
-  const [inherit, setInherit] = useState(true);
+  const navigate = useNavigate();
   return (
     <>
-      <FormControlLabel
-        control={<Checkbox checked={inherit} onChange={(_, v) => setInherit(v)} color="primary" size="small" />}
-        label={<Typography style={{ fontSize: 13 }}>Use AAP connection (same host and credentials)</Typography>}
-        style={{ marginBottom: 16, display: 'flex' }}
-      />
-      {!inherit && (
-        <>
-          <Box className={classes.fieldGroup}>
-            <Typography className={classes.fieldLabel}>Private Automation Hub URL *</Typography>
-            <TextField fullWidth variant="outlined" size="small" placeholder="https://pah.example.com" />
-          </Box>
-          <Box className={classes.fieldGroup}>
-            <Typography className={classes.fieldLabel}>API Token *</Typography>
-            <TextField fullWidth variant="outlined" size="small" type="password" placeholder="Enter PAH token" />
-          </Box>
-        </>
-      )}
-      {inherit && (
-        <>
-          <Box style={{
-            padding: '12px 16px', borderRadius: 8,
-            backgroundColor: 'rgba(0,102,204,0.06)', border: '1px solid rgba(0,102,204,0.15)',
-            marginBottom: 20,
-          }}>
-            <Typography style={{ fontSize: 12, lineHeight: 1.6, opacity: 0.8 }}>
-              Credentials are inherited from the AAP connection. The portal derives the Hub API endpoint
-              from the AAP Controller URL. Uncheck above to configure separately.
-            </Typography>
-          </Box>
-          <Box className={classes.fieldGroup}>
-            <Typography className={classes.fieldLabel}>Derived Hub URL</Typography>
-            <TextField fullWidth variant="outlined" size="small"
-              value="https://aap-controller.example.com/api/automation-hub/"
-              disabled
-              InputProps={{ style: { opacity: 0.6 } }}
-            />
-            <Box display="flex" alignItems="center" style={{ gap: 4, marginTop: 4 }}>
-              <InsertDriveFileOutlinedIcon style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)' }} />
-              <Typography style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', fontStyle: 'italic' }}>
-                Inherited from AAP connection
-              </Typography>
-            </Box>
-          </Box>
-          <Box className={classes.fieldGroup}>
-            <Typography className={classes.fieldLabel}>Authentication</Typography>
-            <TextField fullWidth variant="outlined" size="small"
-              value="Using AAP admin token"
-              disabled
-              InputProps={{ style: { opacity: 0.6 } }}
-            />
-            <Box display="flex" alignItems="center" style={{ gap: 4, marginTop: 4 }}>
-              <InsertDriveFileOutlinedIcon style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)' }} />
-              <Typography style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', fontStyle: 'italic' }}>
-                Inherited from AAP connection
-              </Typography>
-            </Box>
-          </Box>
-        </>
-      )}
+      <Box style={{
+        padding: '12px 16px', borderRadius: 8,
+        backgroundColor: 'rgba(0,102,204,0.06)', border: '1px solid rgba(0,102,204,0.15)',
+        marginBottom: 20,
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: 10,
+      }}>
+        <InfoOutlinedIcon style={{ fontSize: 18, color: '#0066CC', flexShrink: 0, marginTop: 1 }} />
+        <Box>
+          <Typography style={{ fontSize: 13, lineHeight: 1.6 }}>
+            Private Automation Hub shares the AAP connection. The Hub API endpoint and credentials
+            are derived automatically from your Ansible Automation Platform configuration.
+          </Typography>
+          <Button
+            size="small"
+            color="primary"
+            onClick={() => navigate('/self-service/admin/integrations/aap')}
+            style={{ textTransform: 'none', fontSize: 12, marginTop: 4, padding: '2px 0', minWidth: 0 }}
+          >
+            Go to AAP connection settings
+          </Button>
+        </Box>
+      </Box>
+      <Box className={classes.fieldGroup}>
+        <Typography className={classes.fieldLabel}>Derived Hub URL</Typography>
+        <TextField fullWidth variant="outlined" size="small"
+          value="https://aap-controller.example.com/api/automation-hub/"
+          disabled
+          InputProps={{ style: { opacity: 0.6 } }}
+        />
+        <Box display="flex" alignItems="center" style={{ gap: 4, marginTop: 4 }}>
+          <InsertDriveFileOutlinedIcon style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)' }} />
+          <Typography style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', fontStyle: 'italic' }}>
+            Inherited from AAP connection
+          </Typography>
+        </Box>
+      </Box>
+      <Box className={classes.fieldGroup}>
+        <Typography className={classes.fieldLabel}>Authentication</Typography>
+        <TextField fullWidth variant="outlined" size="small"
+          value="Using AAP admin token"
+          disabled
+          InputProps={{ style: { opacity: 0.6 } }}
+        />
+        <Box display="flex" alignItems="center" style={{ gap: 4, marginTop: 4 }}>
+          <InsertDriveFileOutlinedIcon style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)' }} />
+          <Typography style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', fontStyle: 'italic' }}>
+            Inherited from AAP connection
+          </Typography>
+        </Box>
+      </Box>
       <StickyFooter>
         <Button variant="outlined" style={{ textTransform: 'none', fontSize: 13 }}>Test connection</Button>
         <Button variant="contained" color="primary" onClick={onSave} style={{ textTransform: 'none', fontSize: 13 }}>Save changes</Button>
@@ -780,10 +774,9 @@ const intervalToValue = (interval: string): string => {
 const connectionIdToSource = (id: string): string => {
   switch (id) {
     case 'aap': return 'AAP';
-    case 'pah': return 'Private Automation Hub';
+    case 'pah': return 'AAP';
     case 'github': return 'GitHub';
     case 'gitlab': return 'GitLab';
-    case 'registries': return 'Public Registries';
     default: return '';
   }
 };
@@ -965,9 +958,8 @@ export const ConnectionDetailPage = () => {
   const { setRestartRequired } = useRestartRequired();
   const handleSave = () => setRestartRequired(true);
 
-  const isScmRoute = location.pathname.includes('/admin/scm/');
-  const parentLabel = isScmRoute ? 'SCM Integration' : 'Connections';
-  const parentLink = isScmRoute ? '/self-service/admin/scm' : '/self-service/admin/connections';
+  const parentLabel = 'Integrations';
+  const parentLink = '/self-service/admin/integrations';
 
   const provider = DEMO_CONNECTIONS.find(c => c.id === providerId);
 
@@ -1058,8 +1050,8 @@ export const ConnectionDetailPage = () => {
 
         {activeTab === 'connection' && (
           <>
-            {provider.type === 'aap' && <AAPConnectionTab provider={provider} onSave={handleSave} />}
-            {provider.type === 'pah' && <PAHConnectionTab onSave={handleSave} />}
+            {provider.id === 'aap' && <AAPConnectionTab provider={provider} onSave={handleSave} />}
+            {provider.id === 'pah' && <PAHConnectionTab onSave={handleSave} />}
             {provider.type === 'git' && <GitConnectionTab provider={provider} onSave={handleSave} />}
             {provider.type === 'registry' && <RegistryConnectionTab onSave={handleSave} />}
           </>
@@ -1067,8 +1059,8 @@ export const ConnectionDetailPage = () => {
 
         {activeTab === 'content' && (
           <>
-            {provider.type === 'aap' && <AAPContentTab onSave={handleSave} />}
-            {provider.type === 'pah' && <PAHContentTab onSave={handleSave} />}
+            {provider.id === 'aap' && <AAPContentTab onSave={handleSave} />}
+            {provider.id === 'pah' && <PAHContentTab onSave={handleSave} />}
             {provider.type === 'git' && <GitContentTab provider={provider} onSave={handleSave} />}
           </>
         )}

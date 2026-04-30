@@ -27,8 +27,7 @@ import { ProjectDetailsPage } from '../Projects/detail/ProjectDetailsPage';
 import { RepositoryDetailPage } from '../Projects/repositories/RepositoryDetailPage';
 import { CollectionsCatalogPage } from '../CollectionsCatalog';
 import { CollectionDetailsPage } from '../CollectionsCatalog/CollectionDetailsPage';
-import { ConnectionsPage, SCMIntegrationPage } from '../Admin/ConnectionsPage';
-import { EEBuilderPlaceholderPage } from '../Admin/EEBuilderPlaceholderPage';
+import { ConnectionsPage, IntegrationsPage } from '../Admin/ConnectionsPage';
 import { ConnectionDetailPage } from '../Admin/ConnectionDetailPage';
 import { SyncActivityPage } from '../Admin/SyncActivityPage';
 import { SyncJobDetailPage } from '../Admin/SyncJobDetailPage';
@@ -147,11 +146,10 @@ const RouteViewContent = () => {
         <Route path="workspaces" element={<WorkspacesPage />} />
         <Route path="workspaces/:workspaceId/ide" element={<WorkspaceIDEPage />} />
         <Route path="admin/general" element={<GeneralPage />} />
-        <Route path="admin/connections" element={<ConnectionsPage />} />
+        <Route path="admin/connections" element={<Navigate to="/self-service/admin/integrations" replace />} />
         <Route path="admin/connections/:providerId" element={<ConnectionDetailPage />} />
-        <Route path="admin/scm" element={<SCMIntegrationPage />} />
-        <Route path="admin/scm/:providerId" element={<ConnectionDetailPage />} />
-        <Route path="admin/ee-builder" element={<EEBuilderPlaceholderPage />} />
+        <Route path="admin/integrations" element={<IntegrationsPage />} />
+        <Route path="admin/integrations/:providerId" element={<ConnectionDetailPage />} />
         <Route path="admin/content-sources" element={<ContentSourcesPage />} />
         <Route path="admin/sync-activity" element={<SyncActivityPage />} />
         <Route path="admin/sync-activity/:syncId" element={<SyncJobDetailPage />} />

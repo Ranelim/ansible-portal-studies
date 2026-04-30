@@ -167,23 +167,13 @@ export const Root = ({ children }: PropsWithChildren<{}>) => {
               />
               <SidebarItem
                 icon={LinkIcon}
-                to="/self-service/admin/connections"
-                text="Connections"
-              />
-              <SidebarItem
-                icon={CodeIcon}
-                to="/self-service/admin/scm"
-                text="SCM Integration"
+                to="/self-service/admin/integrations"
+                text="Integrations"
               />
               <SidebarItem
                 icon={SyncIcon}
                 to="/self-service/admin/sync-activity"
                 text="Sync"
-              />
-              <SidebarItem
-                icon={MemoryIcon}
-                to="/self-service/admin/ee-builder"
-                text="EE Builder"
               />
               <SidebarItem
                 icon={VpnKeyIcon}

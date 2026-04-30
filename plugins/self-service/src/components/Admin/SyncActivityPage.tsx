@@ -146,10 +146,8 @@ const statusColor = (status: SyncStatus): 'default' | 'primary' | 'secondary' =>
 const sourceToProviderId = (source: string): string | null => {
   switch (source) {
     case 'AAP': return 'aap';
-    case 'Private Automation Hub': return 'pah';
     case 'GitHub': return 'github';
     case 'GitLab': return 'gitlab';
-    case 'Public Registries': return 'registries';
     default: return null;
   }
 };
@@ -159,7 +157,7 @@ const sourceToProviderLink = (source: string): string | null => {
   if (!id) return null;
   const provider = DEMO_CONNECTIONS.find(c => c.id === id);
   if (!provider) return null;
-  const base = provider.type === 'git' ? '/self-service/admin/scm' : '/self-service/admin/connections';
+  const base = '/self-service/admin/integrations';
   return `${base}/${id}`;
 };
 
@@ -345,9 +343,8 @@ const HistoryTab = () => {
             >
               <MuiMenuItem value="all">All</MuiMenuItem>
               <MuiMenuItem value="AAP">AAP</MuiMenuItem>
-              <MuiMenuItem value="Private Automation Hub">Private Automation Hub</MuiMenuItem>
               <MuiMenuItem value="GitHub">GitHub</MuiMenuItem>
-              <MuiMenuItem value="Public Registries">Public Registries</MuiMenuItem>
+              <MuiMenuItem value="GitLab">GitLab</MuiMenuItem>
             </Select>
           </FormControl>
         </Paper>
@@ -366,7 +363,6 @@ const HistoryTab = () => {
               <MuiMenuItem value="Teams & Users">Teams & Users</MuiMenuItem>
               <MuiMenuItem value="EE Definitions">EE Definitions</MuiMenuItem>
               <MuiMenuItem value="Projects">Projects</MuiMenuItem>
-              <MuiMenuItem value="Job Run Logs">Job Run Logs</MuiMenuItem>
               <MuiMenuItem value="Certified Content">Certified Content</MuiMenuItem>
               <MuiMenuItem value="Validated Content">Validated Content</MuiMenuItem>
             </Select>
@@ -476,12 +472,12 @@ const SyncSettingsDropdown = () => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const navigate = useNavigate();
 
-  const connectionProviders = DEMO_CONNECTIONS.filter(c => c.type !== 'git');
-  const scmProviders = DEMO_CONNECTIONS.filter(c => c.type === 'git');
+  const connectionProviders = DEMO_CONNECTIONS.filter(c => c.type === 'aap');
+  const integrationProviders = DEMO_CONNECTIONS.filter(c => c.type === 'git' || c.type === 'registry');
 
   const handleClick = (provider: typeof DEMO_CONNECTIONS[0]) => {
     setAnchorEl(null);
-    const base = provider.type === 'git' ? '/self-service/admin/scm' : '/self-service/admin/connections';
+    const base = '/self-service/admin/integrations';
     navigate(`${base}/${provider.id}`);
   };
 
@@ -513,7 +509,7 @@ const SyncSettingsDropdown = () => {
         PaperProps={{ style: { minWidth: 240 } }}
       >
         <ListSubheader style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, lineHeight: '32px' }}>
-          Connections
+          Automation platform
         </ListSubheader>
         {connectionProviders.map(p => {
           const isConfigured = p.status !== 'Not configured';
@@ -521,7 +517,7 @@ const SyncSettingsDropdown = () => {
             <MuiMenuItem key={p.id} onClick={() => handleClick(p)}>
               <Box display="flex" alignItems="center" justifyContent="space-between" width="100%">
                 <ListItemText
-                  primary={p.name.replace(/ \(.*\)/, '')}
+                  primary={p.name}
                   primaryTypographyProps={{ style: { fontSize: 13 } }}
                 />
                 {isConfigured ? (
@@ -537,9 +533,9 @@ const SyncSettingsDropdown = () => {
         })}
         <Divider style={{ margin: '4px 0' }} />
         <ListSubheader style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, lineHeight: '32px' }}>
-          SCM Integration
+          Source control
         </ListSubheader>
-        {scmProviders.map(p => {
+        {integrationProviders.map(p => {
           const isConfigured = p.status !== 'Not configured';
           return (
             <MuiMenuItem key={p.id} onClick={() => handleClick(p)}>

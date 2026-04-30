@@ -257,10 +257,10 @@ const useStyles = makeStyles(theme => ({
 }));
 
 const STEPS = [
-  { label: 'Getting Started', key: 'overview' },
+  { label: 'Getting started', key: 'overview' },
   { label: 'Connect AAP', key: 'aap' },
-  { label: 'AAP Organizations', key: 'orgs' },
-  { label: 'Review', key: 'review' },
+  { label: 'Organizations', key: 'orgs' },
+  { label: 'Review & apply', key: 'review' },
 ];
 
 type WizardPhase = 'login' | 'wizard' | 'applying' | 'success';
@@ -271,10 +271,9 @@ type DiscoveryStep = {
 };
 
 const DISCOVERY_STEPS: DiscoveryStep[] = [
-  { label: 'Writing configuration to app-config.yaml', status: 'pending' },
-  { label: 'Connecting to AAP Controller', status: 'pending' },
+  { label: 'Writing configuration', status: 'pending' },
+  { label: 'Connecting to Ansible Automation Platform', status: 'pending' },
   { label: 'Validating OAuth credentials', status: 'pending' },
-  { label: 'Syncing initial data from AAP', status: 'pending' },
 ];
 
 const ApplyingAndDiscoveryScreen = ({ onDone, isDone }: { onDone: () => void; isDone: boolean }) => {
@@ -374,24 +373,25 @@ const ApplyingAndDiscoveryScreen = ({ onDone, isDone }: { onDone: () => void; is
         {allDone && (
           <>
             <Typography variant="body2" style={{ maxWidth: 460, lineHeight: 1.6, opacity: 0.7 }}>
-              Configuration saved. The temporary admin session has ended.
-              Sign in with your AAP credentials to verify the setup and start using the portal.
+              Configuration saved and portal restarted. The temporary admin session has ended.
+              Sign in with your Ansible Automation Platform credentials to verify the setup.
             </Typography>
             <Box style={{ display: 'flex', gap: 12, marginTop: 8 }}>
               <Button
                 variant="contained"
                 color="primary"
                 onClick={() => {
-                  sessionStorage.setItem('portal-setup-just-completed', 'true');
+                  sessionStorage.removeItem('portal-setup-completed');
                   window.location.href = '/';
                 }}
                 style={{ textTransform: 'none', fontWeight: 500 }}
               >
-                Sign in with AAP
+                Go to sign-in page
               </Button>
             </Box>
             <Typography variant="caption" style={{ opacity: 0.5, marginTop: 8 }}>
-              After signing in, a Quick Start guide will walk you through additional setup.
+              After signing in, the Administration page will guide you through connecting
+              source control and other integrations.
             </Typography>
           </>
         )}
@@ -403,7 +403,11 @@ const ApplyingAndDiscoveryScreen = ({ onDone, isDone }: { onDone: () => void; is
 export const SetupWizardPage = () => {
   const classes = useStyles();
   const theme = useTheme();
-  const [phase, setPhase] = useState<WizardPhase>('login');
+  const [phase, setPhase] = useState<WizardPhase>(() => {
+    const setupCompleted = sessionStorage.getItem('portal-setup-completed');
+    if (setupCompleted) return 'success';
+    return 'login';
+  });
   const [step, setStep] = useState(0);
   const [password, setPassword] = useState('');
   const [showPasswordHint, setShowPasswordHint] = useState(false);
@@ -416,6 +420,7 @@ export const SetupWizardPage = () => {
 
   const [oauthMode, setOauthMode] = useState<'auto' | 'manual'>('auto');
   const [oauthAutoStatus, setOauthAutoStatus] = useState<'idle' | 'creating' | 'done'>('idle');
+  const [oauthAppName, setOauthAppName] = useState('ansible-portal');
   const [connTestStatus, setConnTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
   const connTestTimer = useRef<ReturnType<typeof setTimeout>>();
 
@@ -490,7 +495,10 @@ export const SetupWizardPage = () => {
 
   const handleApply = useCallback(() => {
     setPhase('applying');
-    setTimeout(() => setPhase('success'), 3000);
+    setTimeout(() => {
+      sessionStorage.setItem('portal-setup-completed', 'true');
+      setPhase('success');
+    }, 3000);
   }, []);
 
   if (phase === 'login') {
@@ -619,7 +627,7 @@ export const SetupWizardPage = () => {
       <>
         <Typography className={classes.sectionTitle}>Welcome to Ansible Automation Portal</Typography>
         <Typography className={classes.sectionDescription}>
-          This wizard connects your portal to Ansible Automation Platform (AAP). Once connected,
+          This wizard connects your portal to Ansible Automation Platform. Once connected,
           the portal will discover and serve your automation content — job templates, collections,
           and execution environments — so your team can find and use them through a single interface.
         </Typography>
@@ -629,9 +637,9 @@ export const SetupWizardPage = () => {
         </Typography>
         <Box style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 24 }}>
           {[
-            'AAP job templates appear as self-service templates your team can browse, configure, and run',
+            'Job templates appear as self-service templates your team can browse, configure, and run',
             'Collections, roles, and execution environments are indexed so developers can find and reuse them',
-            'Your team signs in with their existing AAP credentials — no separate accounts needed',
+            'Your team signs in with their existing Ansible Automation Platform credentials — no separate accounts needed',
           ].map(text => (
             <Box key={text} style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
               <Box style={{
@@ -649,7 +657,7 @@ export const SetupWizardPage = () => {
         <ul className={classes.prerequisiteList}>
           <li>Your AAP Controller URL</li>
           <li>A personal access token with admin privileges</li>
-          <li>An OAuth application registered in AAP, or admin access to create one automatically</li>
+          <li>Admin access to create an OAuth application (or an existing one's client ID and secret)</li>
         </ul>
 
         <Box style={{
@@ -660,8 +668,8 @@ export const SetupWizardPage = () => {
         }}>
           <InfoOutlinedIcon style={{ fontSize: 18, color: '#4DA3FF', flexShrink: 0, marginTop: 2 }} />
           <Typography style={{ fontSize: 13, lineHeight: 1.6 }}>
-            This wizard takes about 5 minutes. After setup, a Quick Start guide will help you
-            connect additional sources like content registries and source control.
+            This wizard takes about 5 minutes. After setup, the Administration pages will guide you
+            through connecting source control and other integrations.
           </Typography>
         </Box>
       </>
@@ -669,6 +677,8 @@ export const SetupWizardPage = () => {
   }
 
   function renderConnectAAP() {
+    const tokenValidated = connTestStatus === 'success';
+
     const handleAutoOAuth = () => {
       setOauthAutoStatus('creating');
       setTimeout(() => {
@@ -680,11 +690,31 @@ export const SetupWizardPage = () => {
 
     return (
       <>
-        <Typography className={classes.sectionTitle}>Connect AAP</Typography>
+        <Typography className={classes.sectionTitle}>Connect Ansible Automation Platform</Typography>
         <Typography className={classes.sectionDescription}>
-          Connect to your Ansible Automation Platform (AAP) instance. This enables user authentication
-          via AAP OAuth and allows the portal to sync content in the background.
+          Connect to your Ansible Automation Platform instance. This enables user authentication
+          via OAuth and allows the portal to sync content in the background.
         </Typography>
+
+        {/* Portal base URL — read-only at top */}
+        <Box style={{
+          padding: '12px 16px',
+          borderRadius: 8,
+          backgroundColor: 'rgba(255,255,255,0.04)',
+          border: '1px solid rgba(255,255,255,0.1)',
+          marginBottom: 24,
+        }}>
+          <Typography style={{ fontSize: 12, fontWeight: 600, marginBottom: 4, color: 'rgba(255,255,255,0.6)' }}>
+            Portal base URL
+          </Typography>
+          <Typography style={{ fontSize: 14, fontFamily: 'monospace' }}>
+            {portalBaseUrl}
+          </Typography>
+          <Typography style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 4, lineHeight: 1.5 }}>
+            Read-only — configured in app-config.yaml. To change, edit the <code>app.baseUrl</code> value
+            in your configuration file and restart the portal.
+          </Typography>
+        </Box>
 
         <Box className={classes.fieldGroup}>
           <Typography className={classes.fieldLabel}>AAP Controller URL *</Typography>
@@ -711,23 +741,21 @@ export const SetupWizardPage = () => {
             <Box>
               <Typography style={{ fontSize: 13, fontWeight: 500 }}>Verify TLS certificate</Typography>
               <Typography style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', lineHeight: 1.5 }}>
-                Ensures the portal validates your AAP server's identity. Uncheck only if your AAP
-                instance uses a self-signed or internal CA certificate — this reduces security and
-                should be avoided in production.
+                Uncheck only if your instance uses a self-signed or internal CA certificate.
               </Typography>
             </Box>
           }
           style={{ marginBottom: 20, alignItems: 'flex-start' }}
         />
 
-        <Typography className={classes.subsectionTitle}>Service Access</Typography>
+        <Typography className={classes.subsectionTitle}>Service access</Typography>
         <Typography variant="body2" color="textSecondary" style={{ marginBottom: 16, fontSize: 13 }}>
           A personal access token with admin privileges is required for API access — content sync,
           job template discovery, and organization data retrieval.
         </Typography>
 
         <Box className={classes.fieldGroup}>
-          <Typography className={classes.fieldLabel}>Admin Personal Access Token *</Typography>
+          <Typography className={classes.fieldLabel}>Admin personal access token *</Typography>
           <TextField
             fullWidth variant="outlined" size="small"
             placeholder="Enter access token"
@@ -786,154 +814,150 @@ export const SetupWizardPage = () => {
           </Box>
         )}
 
-        <Typography className={classes.subsectionTitle}>User Sign-in (OAuth)</Typography>
-        <Typography variant="body2" color="textSecondary" style={{ marginBottom: 12, fontSize: 13 }}>
-          Choose how to configure OAuth for user sign-in with AAP accounts.
-        </Typography>
+        {/* OAuth section — always visible, disabled until connection is validated */}
+        <Box style={{ opacity: tokenValidated ? 1 : 0.45, transition: 'opacity 0.3s ease', pointerEvents: tokenValidated ? 'auto' : 'none' }}>
+          <Typography className={classes.subsectionTitle}>User sign-in (OAuth)</Typography>
+          {!tokenValidated ? (
+            <Typography variant="body2" style={{ marginBottom: 12, fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>
+              Complete service access above to configure OAuth sign-in.
+            </Typography>
+          ) : (
+            <Typography variant="body2" color="textSecondary" style={{ marginBottom: 12, fontSize: 13 }}>
+              Configure OAuth so users can sign in with their Ansible Automation Platform accounts.
+            </Typography>
+          )}
 
-        <Box style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
-          <Box
-            onClick={() => { setOauthMode('auto'); setOauthAutoStatus('idle'); }}
-            style={{
-              flex: 1,
-              padding: '14px 16px',
-              border: `2px solid ${oauthMode === 'auto' ? '#0066CC' : 'rgba(255,255,255,0.12)'}`,
-              borderRadius: 8,
-              cursor: 'pointer',
-              backgroundColor: oauthMode === 'auto' ? 'rgba(0,102,204,0.06)' : 'transparent',
-            }}
-          >
-            <Typography style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>
-              Automatic setup
-            </Typography>
-            <Typography style={{ fontSize: 12, opacity: 0.7, lineHeight: 1.5 }}>
-              Recommended — Portal creates an OAuth application in AAP automatically using your admin token
-            </Typography>
+          <Box style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
+            <Box
+              onClick={tokenValidated ? () => { setOauthMode('auto'); setOauthAutoStatus('idle'); } : undefined}
+              style={{
+                flex: 1,
+                padding: '14px 16px',
+                border: `2px solid ${oauthMode === 'auto' && tokenValidated ? '#0066CC' : 'rgba(255,255,255,0.12)'}`,
+                borderRadius: 8,
+                cursor: tokenValidated ? 'pointer' : 'default',
+                backgroundColor: oauthMode === 'auto' && tokenValidated ? 'rgba(0,102,204,0.06)' : 'transparent',
+              }}
+            >
+              <Typography style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>
+                Automatic setup
+              </Typography>
+              <Typography style={{ fontSize: 12, opacity: 0.7, lineHeight: 1.5 }}>
+                Recommended — the portal creates an OAuth application in AAP using your admin token
+              </Typography>
+            </Box>
+            <Box
+              onClick={tokenValidated ? () => setOauthMode('manual') : undefined}
+              style={{
+                flex: 1,
+                padding: '14px 16px',
+                border: `2px solid ${oauthMode === 'manual' && tokenValidated ? '#0066CC' : 'rgba(255,255,255,0.12)'}`,
+                borderRadius: 8,
+                cursor: tokenValidated ? 'pointer' : 'default',
+                backgroundColor: oauthMode === 'manual' && tokenValidated ? 'rgba(0,102,204,0.06)' : 'transparent',
+              }}
+            >
+              <Typography style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>
+                Manual entry
+              </Typography>
+              <Typography style={{ fontSize: 12, opacity: 0.7, lineHeight: 1.5 }}>
+                Enter credentials from a pre-existing OAuth application registered in AAP
+              </Typography>
+            </Box>
           </Box>
-          <Box
-            onClick={() => setOauthMode('manual')}
-            style={{
-              flex: 1,
-              padding: '14px 16px',
-              border: `2px solid ${oauthMode === 'manual' ? '#0066CC' : 'rgba(255,255,255,0.12)'}`,
-              borderRadius: 8,
-              cursor: 'pointer',
-              backgroundColor: oauthMode === 'manual' ? 'rgba(0,102,204,0.06)' : 'transparent',
-            }}
-          >
-            <Typography style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>
-              Manual entry
-            </Typography>
-            <Typography style={{ fontSize: 12, opacity: 0.7, lineHeight: 1.5 }}>
-              Enter credentials from a pre-existing OAuth application registered in AAP
-            </Typography>
-          </Box>
-        </Box>
 
-        {oauthMode === 'auto' && (
-          <Box style={{
-            padding: '16px 20px',
-            border: '1px solid rgba(0,102,204,0.2)',
-            borderRadius: 8,
-            backgroundColor: 'rgba(0,102,204,0.04)',
-          }}>
-            {oauthAutoStatus === 'idle' && (
-              <>
-                <Typography style={{ fontSize: 13, lineHeight: 1.6, marginBottom: 12, opacity: 0.8 }}>
-                  The portal will use your admin token to create a new OAuth application in AAP with the
-                  correct redirect URI. Client ID and secret are retrieved automatically.
+          {oauthMode === 'auto' && (
+            <Box style={{
+              padding: '16px 20px',
+              border: '1px solid rgba(0,102,204,0.2)',
+              borderRadius: 8,
+              backgroundColor: 'rgba(0,102,204,0.04)',
+            }}>
+              <Box className={classes.fieldGroup} style={{ marginBottom: 16 }}>
+                <Typography className={classes.fieldLabel}>OAuth application name *</Typography>
+                <TextField
+                  fullWidth variant="outlined" size="small"
+                  placeholder="ansible-portal"
+                  value={oauthAppName}
+                  onChange={e => setOauthAppName(e.target.value)}
+                  disabled={!tokenValidated || oauthAutoStatus !== 'idle'}
+                />
+                <Typography className={classes.helperText}>
+                  A unique name for the OAuth application in AAP. Must not conflict with existing application names.
                 </Typography>
+              </Box>
+
+              {oauthAutoStatus === 'idle' && (
                 <Button
                   variant="contained" color="primary" size="small"
                   onClick={handleAutoOAuth}
-                  disabled={!aapUrl.trim() || !aapToken.trim()}
+                  disabled={!oauthAppName.trim() || !tokenValidated}
                   style={{ textTransform: 'none', fontWeight: 500 }}
                 >
-                  Create OAuth App in AAP
+                  Create OAuth application in AAP
                 </Button>
-                {(!aapUrl.trim() || !aapToken.trim()) && (
-                  <Typography style={{ fontSize: 12, color: '#f0ad4e', marginTop: 8 }}>
-                    Enter the AAP URL and admin token above first.
-                  </Typography>
-                )}
-              </>
-            )}
-            {oauthAutoStatus === 'creating' && (
-              <Box style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <CircularProgress size={18} />
-                <Typography style={{ fontSize: 13 }}>Creating OAuth application in AAP...</Typography>
-              </Box>
-            )}
-            {oauthAutoStatus === 'done' && (
-              <>
-                <Box style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+              )}
+              {oauthAutoStatus === 'creating' && (
+                <Box style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <CircularProgress size={18} />
+                  <Typography style={{ fontSize: 13 }}>Creating "{oauthAppName}" in AAP...</Typography>
+                </Box>
+              )}
+              {oauthAutoStatus === 'done' && (
+                <Box style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <CheckCircleIcon style={{ fontSize: 18, color: '#63993D' }} />
                   <Typography style={{ fontSize: 13, fontWeight: 600, color: '#63993D' }}>
-                    OAuth application created successfully
+                    OAuth application created successfully. Client ID and secret have been saved.
                   </Typography>
                 </Box>
-                <Typography style={{ fontSize: 12, opacity: 0.7, lineHeight: 1.6 }}>
-                  Client ID and secret have been retrieved and will be saved with your configuration.
-                  The redirect URI has been set automatically.
+              )}
+            </Box>
+          )}
+
+          {oauthMode === 'manual' && (
+            <Box style={{
+              padding: '16px 20px',
+              border: '1px solid rgba(255,255,255,0.12)',
+              borderRadius: 8,
+              backgroundColor: 'rgba(255,255,255,0.02)',
+            }}>
+              <Box style={{
+                padding: '10px 14px',
+                borderRadius: 6,
+                backgroundColor: 'rgba(0,102,204,0.06)',
+                border: '1px solid rgba(0,102,204,0.15)',
+                marginBottom: 16,
+              }}>
+                <Typography style={{ fontSize: 12, lineHeight: 1.6, color: 'rgba(255,255,255,0.7)' }}>
+                  In AAP, create a new OAuth application. Set the redirect URI to:
                 </Typography>
-              </>
-            )}
-          </Box>
-        )}
-
-        {oauthMode === 'manual' && (
-          <>
-            <Box className={classes.fieldGroup}>
-              <Typography className={classes.fieldLabel}>OAuth Client ID *</Typography>
-              <TextField
-                fullWidth variant="outlined" size="small"
-                placeholder="Enter Client ID"
-                value={oauthClientId} onChange={e => setOauthClientId(e.target.value)}
-              />
+                <Typography style={{ fontSize: 13, fontFamily: 'monospace', fontWeight: 500, marginTop: 4 }}>
+                  {portalBaseUrl}/api/auth/rhaap/handler/frame
+                </Typography>
+                <Typography style={{ fontSize: 12, lineHeight: 1.6, color: 'rgba(255,255,255,0.5)', marginTop: 4 }}>
+                  Then copy the client ID and secret back here.
+                </Typography>
+              </Box>
+              <Box className={classes.fieldGroup}>
+                <Typography className={classes.fieldLabel}>OAuth client ID *</Typography>
+                <TextField
+                  fullWidth variant="outlined" size="small"
+                  placeholder="Enter client ID"
+                  value={oauthClientId} onChange={e => setOauthClientId(e.target.value)}
+                  disabled={!tokenValidated}
+                />
+              </Box>
+              <Box className={classes.fieldGroup}>
+                <Typography className={classes.fieldLabel}>OAuth client secret *</Typography>
+                <TextField
+                  fullWidth variant="outlined" size="small"
+                  placeholder="Enter secret" type="password"
+                  value={oauthClientSecret} onChange={e => setOauthClientSecret(e.target.value)}
+                  disabled={!tokenValidated}
+                />
+              </Box>
             </Box>
-            <Box className={classes.fieldGroup}>
-              <Typography className={classes.fieldLabel}>OAuth Client Secret *</Typography>
-              <TextField
-                fullWidth variant="outlined" size="small"
-                placeholder="Enter secret" type="password"
-                value={oauthClientSecret} onChange={e => setOauthClientSecret(e.target.value)}
-              />
-            </Box>
-            <Link
-              component="button" variant="body2"
-              style={{ fontSize: 12 }}
-              onClick={() => window.open('https://docs.redhat.com', '_blank')}
-            >
-              How to create an OAuth application in AAP ↗
-            </Link>
-          </>
-        )}
-
-        <Typography className={classes.subsectionTitle} style={{ marginTop: 24 }}>Portal URL</Typography>
-        <Typography variant="body2" color="textSecondary" style={{ marginBottom: 12, fontSize: 13 }}>
-          The base URL where users access this portal. The OAuth callback is derived from it and
-          must match the redirect URI in your AAP OAuth application.
-        </Typography>
-
-        <Box className={classes.fieldGroup}>
-          <Typography className={classes.fieldLabel}>Base URL</Typography>
-          <TextField
-            fullWidth variant="outlined" size="small"
-            value={portalBaseUrl}
-            onChange={e => setPortalBaseUrl(e.target.value)}
-          />
-          <Typography className={classes.helperText}>
-            Auto-detected from the current browser address. Edit only if users access the portal through a different URL.
-          </Typography>
-        </Box>
-        <Box className={classes.fieldGroup}>
-          <Typography className={classes.fieldLabel}>OAuth Callback URL</Typography>
-          <Typography style={{ fontSize: 13, fontFamily: 'monospace', padding: '8px 12px', borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
-            {portalBaseUrl}/api/auth/rhaap/handler/frame
-          </Typography>
-          <Typography className={classes.helperText}>
-            Copy this URL and paste it as the redirect URI when configuring the OAuth application in AAP.
-          </Typography>
+          )}
         </Box>
       </>
     );
@@ -1042,14 +1066,14 @@ export const SetupWizardPage = () => {
   function renderReview() {
     return (
       <>
-        <Typography className={classes.sectionTitle}>Review & Apply</Typography>
+        <Typography className={classes.sectionTitle}>Review & apply</Typography>
         <Typography className={classes.sectionDescription}>
           Review your configuration. Applying will save these settings, restart the portal, and end this
-          temporary admin session. You'll sign in with AAP to verify everything works.
+          temporary admin session. You'll be redirected to the sign-in page to verify everything works.
         </Typography>
 
         <Box className={classes.reviewSection}>
-          <Typography className={classes.reviewTitle}>AAP Connection</Typography>
+          <Typography className={classes.reviewTitle}>AAP connection</Typography>
           <Box className={classes.reviewRow}>
             <Typography className={classes.reviewLabel}>Controller URL:</Typography>
             <Typography className={classes.reviewValue}>{aapUrl || 'Not set'}</Typography>
@@ -1059,34 +1083,34 @@ export const SetupWizardPage = () => {
             <Typography className={classes.reviewValue}>{checkSSL ? 'Enabled' : 'Disabled'}</Typography>
           </Box>
           <Box className={classes.reviewRow}>
-            <Typography className={classes.reviewLabel}>Admin Token:</Typography>
-            <Typography className={classes.reviewValue}>{aapToken ? '••••••••' : 'Not set'}</Typography>
+            <Typography className={classes.reviewLabel}>Admin token:</Typography>
+            <Typography className={classes.reviewValue} style={{ fontFamily: 'monospace' }}>{aapToken || 'Not set'}</Typography>
+          </Box>
+          <Box className={classes.reviewRow}>
+            <Typography className={classes.reviewLabel}>Portal base URL:</Typography>
+            <Typography className={classes.reviewValue}>{portalBaseUrl}</Typography>
           </Box>
         </Box>
 
         <Box className={classes.reviewSection}>
-          <Typography className={classes.reviewTitle}>User Authentication (OAuth)</Typography>
+          <Typography className={classes.reviewTitle}>User authentication (OAuth)</Typography>
           <Box className={classes.reviewRow}>
-            <Typography className={classes.reviewLabel}>OAuth Client ID:</Typography>
+            <Typography className={classes.reviewLabel}>Setup method:</Typography>
+            <Typography className={classes.reviewValue}>{oauthMode === 'auto' ? 'Automatic' : 'Manual'}</Typography>
+          </Box>
+          {oauthMode === 'auto' && (
+            <Box className={classes.reviewRow}>
+              <Typography className={classes.reviewLabel}>OAuth application name:</Typography>
+              <Typography className={classes.reviewValue}>{oauthAppName}</Typography>
+            </Box>
+          )}
+          <Box className={classes.reviewRow}>
+            <Typography className={classes.reviewLabel}>OAuth client ID:</Typography>
             <Typography className={classes.reviewValue}>{oauthClientId || 'Not set'}</Typography>
           </Box>
           <Box className={classes.reviewRow}>
-            <Typography className={classes.reviewLabel}>OAuth Client Secret:</Typography>
-            <Typography className={classes.reviewValue}>{oauthClientSecret ? '••••••••' : 'Not set'}</Typography>
-          </Box>
-        </Box>
-
-        <Box className={classes.reviewSection}>
-          <Typography className={classes.reviewTitle}>Portal URL</Typography>
-          <Box className={classes.reviewRow}>
-            <Typography className={classes.reviewLabel}>Base URL:</Typography>
-            <Typography className={classes.reviewValue}>{portalBaseUrl}</Typography>
-          </Box>
-          <Box className={classes.reviewRow}>
-            <Typography className={classes.reviewLabel}>OAuth Callback:</Typography>
-            <Typography className={classes.reviewValue} style={{ fontSize: 12, fontFamily: 'monospace' }}>
-              {portalBaseUrl}/api/auth/rhaap/handler/frame
-            </Typography>
+            <Typography className={classes.reviewLabel}>OAuth client secret:</Typography>
+            <Typography className={classes.reviewValue} style={{ fontFamily: 'monospace' }}>{oauthClientSecret || 'Not set'}</Typography>
           </Box>
         </Box>
 
@@ -1124,7 +1148,7 @@ export const SetupWizardPage = () => {
       </Box>
 
       <Typography variant="h6" style={{ fontWeight: 600, margin: '24px 24px 0' }}>
-        Setup Ansible Automation Portal
+        Set up Ansible Automation Portal
       </Typography>
 
       <Box className={classes.wizardContainer}>
@@ -1170,8 +1194,8 @@ export const SetupWizardPage = () => {
                 <InfoOutlinedIcon style={{ fontSize: 16, color: '#4DA3FF', flexShrink: 0, marginTop: 1 }} />
                 <Typography style={{ fontSize: 12, lineHeight: 1.5, color: 'rgba(255,255,255,0.7)' }}>
                   Applying will save these settings, restart the portal, and end this session.
-                  You'll sign in with AAP to verify, then a Quick Start guide will help you connect
-                  additional sources.
+                  You'll be redirected to the sign-in page to verify your Ansible Automation Platform
+                  credentials work.
                 </Typography>
               </Box>
             )}
@@ -1202,7 +1226,7 @@ export const SetupWizardPage = () => {
                   onClick={handleApply}
                   style={{ textTransform: 'none', fontWeight: 500 }}
                 >
-                  Apply & Restart Portal
+                  Apply & restart portal
                 </Button>
               )}
             </Box>
