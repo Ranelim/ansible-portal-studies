@@ -13,7 +13,7 @@ This repository contains clickable UX prototypes of the Ansible Portal built on 
 
 | Branch | Feature | ANSTRAT |
 |--------|---------|---------|
-| `prototype/admin-settings-1806` | Setup wizard, admin settings, integrations management | ANSTRAT-1806 |
+| `feat/self-service-ux-prototype` | Setup wizard, admin settings, integrations management, sync status | ANSTRAT-1806 |
 
 ---
 
@@ -24,7 +24,7 @@ This repository contains clickable UX prototypes of the Ansible Portal built on 
 ```bash
 git clone https://gitlab.cee.redhat.com/relimele/ansible-portal-prototypes.git
 cd ansible-portal-prototypes
-git checkout prototype/admin-settings-1806
+git checkout feat/self-service-ux-prototype
 cp app-config.local.example.yaml app-config.local.yaml
 yarn install
 yarn start
