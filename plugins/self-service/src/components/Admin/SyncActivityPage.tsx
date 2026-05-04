@@ -9,7 +9,6 @@ import {
   FormControl,
   Select,
   MenuItem as MuiMenuItem,
-  Input,
   Paper,
   Switch,
   Tooltip,
@@ -331,20 +330,40 @@ export const SyncActivityPage = () => {
         pageTitleOverride="Sync status"
         subtitle="Latest sync status across all configured integrations"
       >
-        <Button
-          variant="outlined"
-          size="small"
-          startIcon={<SyncIcon style={{ fontSize: 16 }} />}
-          className={classes.syncAllButton}
-          onClick={handleSyncAll}
-          disabled={syncingAll}
-          style={{
-            borderColor: 'rgba(255,255,255,0.3)',
-            color: '#fff',
-          }}
-        >
-          {syncingAll ? 'Syncing...' : 'Sync all now'}
-        </Button>
+        <Box display="flex" alignItems="center" style={{ gap: 12 }}>
+          <FormControl variant="outlined" size="small">
+            <Select
+              value={sourceFilter}
+              onChange={e => setSourceFilter(e.target.value as string)}
+              variant="outlined"
+              style={{ fontSize: 13, minWidth: 140, color: '#fff' }}
+            >
+              <MuiMenuItem value="all">All sources</MuiMenuItem>
+              <MuiMenuItem value="AAP">AAP</MuiMenuItem>
+              <MuiMenuItem value="PAH">PAH</MuiMenuItem>
+              <MuiMenuItem value="GitHub">GitHub</MuiMenuItem>
+              <MuiMenuItem value="GitLab">GitLab</MuiMenuItem>
+            </Select>
+          </FormControl>
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<SyncIcon style={{ fontSize: 16 }} />}
+            className={classes.syncAllButton}
+            onClick={handleSyncAll}
+            disabled={syncingAll}
+            style={{
+              borderColor: 'rgba(255,255,255,0.3)',
+              color: '#fff',
+            }}
+          >
+            {syncingAll
+              ? 'Syncing...'
+              : sourceFilter === 'all'
+                ? 'Sync all now'
+                : `Sync ${sourceFilter} now`}
+          </Button>
+        </Box>
       </Header>
       <Content>
         {/* Summary strip */}
@@ -375,22 +394,6 @@ export const SyncActivityPage = () => {
               onClick={() => setStatusFilter(f => f === 'In Progress' ? 'all' : 'In Progress')}
             />
           )}
-          <Box style={{ marginLeft: 'auto' }}>
-            <FormControl size="small">
-              <Select
-                value={sourceFilter}
-                onChange={e => setSourceFilter(e.target.value as string)}
-                input={<Input disableUnderline />}
-                style={{ fontSize: 13 }}
-              >
-                <MuiMenuItem value="all">All sources</MuiMenuItem>
-                <MuiMenuItem value="AAP">AAP</MuiMenuItem>
-                <MuiMenuItem value="PAH">PAH</MuiMenuItem>
-                <MuiMenuItem value="GitHub">GitHub</MuiMenuItem>
-                <MuiMenuItem value="GitLab">GitLab</MuiMenuItem>
-              </Select>
-            </FormControl>
-          </Box>
         </Box>
 
         {/* Status table */}
