@@ -188,7 +188,7 @@ export const TaskList = () => {
       status: 'completed',
       createdAt: new Date(Date.now() - 25 * 60 * 1000).toISOString(),
       createdBy: 'user:default/guest',
-    } as ScaffolderTask,
+    } as unknown as ScaffolderTask,
     {
       id: 'demo-project-success',
       spec: {
@@ -207,7 +207,7 @@ export const TaskList = () => {
       status: 'completed',
       createdAt: new Date(Date.now() - 40 * 60 * 1000).toISOString(),
       createdBy: 'user:default/guest',
-    } as ScaffolderTask,
+    } as unknown as ScaffolderTask,
     {
       id: 'demo-workflow-approval',
       spec: {
@@ -248,7 +248,7 @@ export const TaskList = () => {
       status: 'failed',
       createdAt: new Date(Date.now() - 120 * 60 * 1000).toISOString(),
       createdBy: 'user:default/guest',
-    } as ScaffolderTask,
+    } as unknown as ScaffolderTask,
     {
       id: 'demo-workflow-approved',
       spec: {
@@ -267,7 +267,7 @@ export const TaskList = () => {
       status: 'completed',
       createdAt: new Date(Date.now() - 90 * 60 * 1000).toISOString(),
       createdBy: 'user:default/guest',
-    } as ScaffolderTask,
+    } as unknown as ScaffolderTask,
     {
       id: 'demo-project-failed',
       spec: {
@@ -286,7 +286,7 @@ export const TaskList = () => {
       status: 'failed',
       createdAt: new Date(Date.now() - 55 * 60 * 1000).toISOString(),
       createdBy: 'user:default/guest',
-    } as ScaffolderTask,
+    } as unknown as ScaffolderTask,
     {
       id: 'demo-job-completing',
       spec: {
@@ -305,7 +305,7 @@ export const TaskList = () => {
       status: 'completed',
       createdAt: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
       createdBy: 'user:default/guest',
-    } as ScaffolderTask,
+    } as unknown as ScaffolderTask,
   ], []);
 
   const fetchTasks = useCallback(async () => {

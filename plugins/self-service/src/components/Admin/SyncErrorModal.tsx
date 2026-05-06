@@ -14,7 +14,16 @@ import ErrorOutlineIcon from '@material-ui/icons/ErrorOutline';
 import CloseIcon from '@material-ui/icons/Close';
 import SyncIcon from '@material-ui/icons/Sync';
 import OpenInNewIcon from '@material-ui/icons/OpenInNew';
-import { SyncEntityStatus } from './syncDemoData';
+export type SyncEntityStatus = {
+  source: string;
+  entity: string;
+  lastSync?: string;
+  lastSyncDuration?: string;
+  interval?: string;
+  errorDetail?: string;
+  errorTrace?: string;
+  providerId?: string;
+};
 import { statusColors } from '../common/statusColors';
 
 type SyncErrorModalProps = {

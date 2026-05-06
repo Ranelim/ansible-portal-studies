@@ -173,7 +173,7 @@ const StickyFooter = ({ children }: { children: React.ReactNode }) => {
           {children}
         </Box>
       )}
-      <Box ref={sentinelRef} className={classes.stickyFooter} style={isStuck ? { visibility: 'hidden' } : undefined}>
+      <Box ref={sentinelRef as any} className={classes.stickyFooter} style={isStuck ? { visibility: 'hidden' } : undefined}>
         {children}
       </Box>
     </>
