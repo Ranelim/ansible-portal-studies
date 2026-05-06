@@ -51,11 +51,11 @@ export const ProjectsTabs: React.FC = () => {
         title={
           <Box display="flex" alignItems="center" justifyContent="space-between" width="100%">
             <Box display="flex" alignItems="center">
-              Git repositories
+              Projects
               <PageHelpIcon
-                tooltipLabel="What are Git repositories?"
-                title="What are Git repositories?"
-                description="Git repositories are automation codebases discovered from your connected sources (GitHub, GitLab). Repositories containing Ansible content — playbooks, roles, collections, or execution environments — appear here automatically. Enable governance on any repository to add CI/CD pipelines with policy checks and connect to Ansible Automation Platform."
+                tooltipLabel="What are projects?"
+                title="What are projects?"
+                description="Projects are Git repositories containing automation content — playbooks, roles, collections, or execution environments. They are discovered from your connected sources (GitHub, GitLab) and appear here automatically. Enable governance on any project to add quality scans, CI/CD pipelines, and connect to Ansible Automation Platform."
               />
             </Box>
             <AddActionButton
@@ -77,8 +77,8 @@ export const ProjectsTabs: React.FC = () => {
             />
           </Box>
         }
-        pageTitleOverride="Git repositories"
-        subtitle="Discover, govern, and deploy automation content from your Git repositories"
+        pageTitleOverride="Projects"
+        subtitle="Git repositories containing your automation content"
       />
       <HeaderTabs
         selectedIndex={selectedTab}

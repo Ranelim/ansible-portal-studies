@@ -1,35 +1,55 @@
-import { useState, useMemo } from 'react';
-import { Page, Header, Content, Link } from '@backstage/core-components';
+import { useState, useMemo, useCallback } from 'react';
+import { Page, Header, Content, Table, TableColumn, Link } from '@backstage/core-components';
 import {
   Box,
   Typography,
+  Chip,
   Button,
   makeStyles,
-  Chip,
   FormControl,
   Select,
   MenuItem as MuiMenuItem,
+  Input,
   Paper,
-  Switch,
-  Tooltip,
+  IconButton,
+  Menu,
+  ListItemText,
+  Divider,
+  ListSubheader,
 } from '@material-ui/core';
+import { CatalogFilterLayout } from '@backstage/plugin-catalog-react';
 import CheckCircleOutlineIcon from '@material-ui/icons/CheckCircleOutline';
 import ErrorOutlineIcon from '@material-ui/icons/ErrorOutline';
 import LoopIcon from '@material-ui/icons/Loop';
+import WarningIcon from '@material-ui/icons/Warning';
 import ScheduleIcon from '@material-ui/icons/Schedule';
-import SyncIcon from '@material-ui/icons/Sync';
-import SyncDisabledIcon from '@material-ui/icons/SyncDisabled';
+import MoreVertIcon from '@material-ui/icons/MoreVert';
+import SettingsIcon from '@material-ui/icons/Settings';
+import ArrowDropDownIcon from '@material-ui/icons/ArrowDropDown';
+import FiberManualRecordIcon from '@material-ui/icons/FiberManualRecord';
+import { useNavigate } from 'react-router-dom';
 import {
   DEMO_CONNECTIONS,
-  DEMO_SYNC_STATUS,
-  SyncEntityStatus,
+  DEMO_SYNC_HISTORY,
+  SyncHistoryEntry,
   SyncStatus,
 } from './syncDemoData';
-import { SyncErrorModal } from './SyncErrorModal';
 import { PageHelpIcon } from '../common/PageHelpIcon';
 import { statusColors } from '../common/statusColors';
 
 const useStyles = makeStyles(theme => ({
+  filterLabel: {
+    marginTop: theme.spacing(2),
+    fontWeight: 600,
+    fontSize: '0.875rem',
+    '&:first-child': {
+      marginTop: 0,
+    },
+  },
+  filterPaper: {
+    padding: theme.spacing(1.5),
+    borderRadius: 3,
+  },
   summaryStrip: {
     display: 'flex',
     gap: theme.spacing(1),
@@ -58,393 +78,517 @@ const useStyles = makeStyles(theme => ({
       boxShadow: 'none',
     },
   },
-  entityRow: {
+  summaryDot: {
+    color: theme.palette.text.disabled,
+    margin: theme.spacing(0, 0.5),
+  },
+  summaryNextSync: {
     display: 'flex',
     alignItems: 'center',
-    padding: theme.spacing(1.5, 2),
-    borderBottom: `1px solid ${theme.palette.divider}`,
-    transition: 'background-color 0.1s ease',
-    '&:hover': {
-      backgroundColor: 'rgba(255,255,255,0.03)',
-    },
-    '&:last-child': {
-      borderBottom: 'none',
-    },
-  },
-  entityTable: {
-    backgroundColor: theme.palette.background.paper,
-    borderRadius: theme.shape.borderRadius,
-    border: `1px solid ${theme.palette.divider}`,
-    overflow: 'hidden',
-  },
-  tableHeader: {
-    display: 'flex',
-    alignItems: 'center',
-    padding: theme.spacing(1, 2),
-    borderBottom: `1px solid ${theme.palette.divider}`,
-    backgroundColor: 'rgba(255,255,255,0.03)',
-  },
-  headerCell: {
-    fontSize: 11,
-    fontWeight: 600,
-    textTransform: 'uppercase' as const,
-    letterSpacing: 0.5,
+    gap: theme.spacing(0.75),
+    fontSize: 13,
     color: theme.palette.text.secondary,
+    marginLeft: 'auto',
   },
-  entityName: {
+  summaryNextSyncValue: {
+    fontWeight: 600,
+    color: theme.palette.text.primary,
+  },
+  statusChip: {
+    fontWeight: 500,
+    fontSize: 12,
+  },
+  enabledChip: {
+    fontSize: 12,
+    fontWeight: 500,
+  },
+  sourceLink: {
     fontWeight: 500,
     fontSize: 14,
-  },
-  sourceLabel: {
-    fontSize: 13,
-    color: theme.palette.text.secondary,
-  },
-  metaText: {
-    fontSize: 13,
-    color: theme.palette.text.secondary,
-  },
-  errorRow: {
-    backgroundColor: 'rgba(244,67,54,0.05)',
-    '&:hover': {
-      backgroundColor: 'rgba(244,67,54,0.08)',
-    },
-  },
-  errorExpandToggle: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 4,
     cursor: 'pointer',
-    fontSize: 12,
-    color: statusColors.error,
-    fontWeight: 500,
-    marginTop: 4,
+    textDecoration: 'none',
     '&:hover': {
       textDecoration: 'underline',
     },
   },
-  filterLabel: {
-    marginTop: theme.spacing(2),
-    fontWeight: 600,
-    fontSize: '0.875rem',
-    '&:first-child': {
-      marginTop: 0,
-    },
+  triggerCell: {
+    display: 'flex',
+    flexDirection: 'column' as const,
   },
-  filterPaper: {
-    padding: theme.spacing(1.5),
-    borderRadius: 3,
-  },
-  syncAllButton: {
-    textTransform: 'none' as const,
-    fontSize: 13,
-    fontWeight: 500,
-  },
-  disabledRow: {
-    opacity: 0.5,
+  triggeredBy: {
+    fontSize: 12,
+    color: theme.palette.text.secondary,
+    lineHeight: 1.3,
   },
 }));
 
-const StatusChip = ({ status }: { status: SyncStatus }) => {
+const StatusIcon = ({ status }: { status: SyncStatus }) => {
   switch (status) {
-    case 'Healthy':
-      return (
-        <Chip
-          icon={<CheckCircleOutlineIcon style={{ fontSize: 16, color: statusColors.success }} />}
-          label="Healthy"
-          size="small"
-          variant="outlined"
-          style={{ fontSize: 12, fontWeight: 500, borderColor: statusColors.success, color: statusColors.success }}
-        />
-      );
+    case 'Completed':
+      return <CheckCircleOutlineIcon style={{ color: statusColors.success, fontSize: 18 }} />;
     case 'Failed':
-      return (
-        <Chip
-          icon={<ErrorOutlineIcon style={{ fontSize: 16, color: statusColors.error }} />}
-          label="Failed"
-          size="small"
-          variant="outlined"
-          style={{ fontSize: 12, fontWeight: 500, borderColor: statusColors.error, color: statusColors.error }}
-        />
-      );
+      return <ErrorOutlineIcon style={{ color: statusColors.error, fontSize: 18 }} />;
     case 'In Progress':
-      return (
-        <Chip
-          icon={<LoopIcon style={{ fontSize: 16, color: statusColors.info }} />}
-          label="Syncing"
-          size="small"
-          variant="outlined"
-          style={{ fontSize: 12, fontWeight: 500, borderColor: statusColors.info, color: statusColors.info }}
-        />
-      );
-    case 'Never synced':
-      return (
-        <Chip
-          icon={<SyncDisabledIcon style={{ fontSize: 16 }} />}
-          label="Never synced"
-          size="small"
-          variant="outlined"
-          style={{ fontSize: 12, fontWeight: 500 }}
-        />
-      );
+      return <LoopIcon style={{ color: statusColors.info, fontSize: 18 }} />;
+    case 'Partial':
+      return <WarningIcon style={{ color: statusColors.warning, fontSize: 18 }} />;
     default:
       return null;
   }
 };
 
-const COL_WIDTHS = {
-  entity: '22%',
-  source: '15%',
-  lastSync: '18%',
-  status: '14%',
-  nextSync: '15%',
-  schedule: '10%',
-  actions: '6%',
+const statusColor = (status: SyncStatus): 'default' | 'primary' | 'secondary' => {
+  if (status === 'Failed') return 'secondary';
+  if (status === 'In Progress') return 'primary';
+  return 'default';
 };
 
-const EntityRow = ({ entry, onViewDetails }: { entry: SyncEntityStatus; onViewDetails: (e: SyncEntityStatus) => void }) => {
-  const classes = useStyles();
-  const isFailed = entry.status === 'Failed';
+const sourceToProviderId = (source: string): string | null => {
+  switch (source) {
+    case 'AAP': return 'aap';
+    case 'Private Automation Hub': return 'pah';
+    case 'GitHub': return 'github';
+    case 'GitLab': return 'gitlab';
+    case 'Public Registries': return 'registries';
+    default: return null;
+  }
+};
+
+const sourceToProviderLink = (source: string): string | null => {
+  const id = sourceToProviderId(source);
+  if (!id) return null;
+  const provider = DEMO_CONNECTIONS.find(c => c.id === id);
+  if (!provider) return null;
+  const base = provider.type === 'git' ? '/self-service/admin/scm' : '/self-service/admin/connections';
+  return `${base}/${id}`;
+};
+
+type HistoryFilter = {
+  source: string;
+  contentType: string;
+  trigger: string;
+  status: string;
+};
+
+const HistoryRowActions = ({ entry }: { entry: SyncHistoryEntry }) => {
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const navigate = useNavigate();
 
   return (
-    <Box className={`${classes.entityRow} ${isFailed ? classes.errorRow : ''} ${!entry.enabled ? classes.disabledRow : ''}`}>
-      <Box style={{ width: COL_WIDTHS.entity }}>
-        <Link
-          to={`/self-service/admin/integrations/${entry.providerId}?tab=sync`}
-          className={classes.entityName}
-          onClick={(e: React.MouseEvent) => e.stopPropagation()}
-        >
-          {entry.entity}
-        </Link>
-      </Box>
-      <Box style={{ width: COL_WIDTHS.source }}>
-        <Link
-          to={`/self-service/admin/integrations/${entry.providerId}`}
-          className={classes.sourceLabel}
-          onClick={(e: React.MouseEvent) => e.stopPropagation()}
-          style={{ textDecoration: 'none' }}
-        >
-          {entry.source}
-        </Link>
-      </Box>
-      <Box style={{ width: COL_WIDTHS.lastSync }}>
-        {entry.lastSync ? (
-          <Box>
-            <Typography className={classes.metaText}>{entry.lastSync}</Typography>
-            {entry.lastSyncDuration && (
-              <Typography style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>
-                Duration: {entry.lastSyncDuration}
-              </Typography>
-            )}
-          </Box>
-        ) : (
-          <Typography className={classes.metaText} style={{ fontStyle: 'italic' }}>—</Typography>
+    <>
+      <IconButton size="small" onClick={e => { e.stopPropagation(); setAnchorEl(e.currentTarget); }}>
+        <MoreVertIcon fontSize="small" />
+      </IconButton>
+      <Menu
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
+        onClose={() => setAnchorEl(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+        getContentAnchorEl={null}
+      >
+        <MuiMenuItem onClick={() => { setAnchorEl(null); navigate(`/self-service/admin/sync-activity/${entry.id}?tab=log`); }}>
+          <ListItemText primary="View log" />
+        </MuiMenuItem>
+        {entry.status === 'Failed' && (
+          <MuiMenuItem onClick={() => { setAnchorEl(null); console.log('Retry:', entry.id); }}>{/* eslint-disable-line no-console */}
+            <ListItemText primary="Retry" />
+          </MuiMenuItem>
         )}
-      </Box>
-      <Box style={{ width: COL_WIDTHS.status }}>
-        <StatusChip status={entry.status} />
-        {isFailed && entry.errorDetail && (
-          <Box
-            className={classes.errorExpandToggle}
-            onClick={() => onViewDetails(entry)}
-          >
-            View details
-          </Box>
+        {entry.status === 'In Progress' && (
+          <MuiMenuItem onClick={() => { setAnchorEl(null); console.log('Stop:', entry.id); }}>{/* eslint-disable-line no-console */}
+            <ListItemText primary="Stop sync" primaryTypographyProps={{ style: { color: statusColors.error } }} />
+          </MuiMenuItem>
         )}
-      </Box>
-      <Box style={{ width: COL_WIDTHS.nextSync }}>
-        {entry.nextSync ? (
-          <Box display="flex" alignItems="center" style={{ gap: 4 }}>
-            <ScheduleIcon style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)' }} />
-            <Typography className={classes.metaText}>{entry.nextSync}</Typography>
-          </Box>
-        ) : (
-          <Typography className={classes.metaText} style={{ fontStyle: 'italic', color: isFailed ? statusColors.error : undefined }}>
-            {isFailed ? 'Paused' : '—'}
-          </Typography>
-        )}
-      </Box>
-      <Box style={{ width: COL_WIDTHS.schedule }}>
-        <Typography className={classes.metaText}>{entry.interval}</Typography>
-      </Box>
-      <Box style={{ width: COL_WIDTHS.actions, textAlign: 'right' }}>
-        <Tooltip title="Sync now">
-          <Button
-            size="small"
-            style={{ minWidth: 32, padding: 4 }}
-            disabled={!entry.enabled}
-          >
-            <SyncIcon style={{ fontSize: 16 }} />
-          </Button>
-        </Tooltip>
-      </Box>
-    </Box>
+        <Divider />
+        <MuiMenuItem onClick={() => { setAnchorEl(null); const link = sourceToProviderLink(entry.source); if (link) navigate(link); }}>
+          <ListItemText primary="View connection" />
+        </MuiMenuItem>
+      </Menu>
+    </>
   );
 };
 
-export const SyncActivityPage = () => {
+const HistoryTab = () => {
   const classes = useStyles();
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [sourceFilter, setSourceFilter] = useState<string>('all');
-  const [syncingAll, setSyncingAll] = useState(false);
-  const [modalEntity, setModalEntity] = useState<SyncEntityStatus | null>(null);
-
-  const connectedProviderIds = useMemo(
-    () => DEMO_CONNECTIONS.filter(c => c.status === 'Active').map(c => c.id),
-    [],
-  );
-  const activeEntities = useMemo(
-    () => DEMO_SYNC_STATUS.filter(e => connectedProviderIds.includes(e.providerId)),
-    [connectedProviderIds],
-  );
+  const navigate = useNavigate();
+  const [filters, setFilters] = useState<HistoryFilter>({
+    source: 'all',
+    contentType: 'all',
+    trigger: 'all',
+    status: 'all',
+  });
 
   const filtered = useMemo(() => {
-    return activeEntities.filter(entry => {
-      if (statusFilter !== 'all' && entry.status !== statusFilter) return false;
-      if (sourceFilter !== 'all' && entry.source !== sourceFilter) return false;
+    return DEMO_SYNC_HISTORY.filter(entry => {
+      if (filters.source !== 'all' && entry.source !== filters.source) return false;
+      if (filters.contentType !== 'all' && entry.contentType !== filters.contentType) return false;
+      if (filters.trigger !== 'all' && entry.trigger !== filters.trigger) return false;
+      if (filters.status !== 'all' && entry.status !== filters.status) return false;
       return true;
     });
-  }, [activeEntities, statusFilter, sourceFilter]);
+  }, [filters]);
 
-  const healthyCount = activeEntities.filter(e => e.status === 'Healthy').length;
-  const failedCount = activeEntities.filter(e => e.status === 'Failed').length;
-  const inProgressCount = activeEntities.filter(e => e.status === 'In Progress').length;
+  const activeSyncs = DEMO_SYNC_HISTORY.filter(e => e.status === 'In Progress').length;
+  const last24h = DEMO_SYNC_HISTORY.length;
+  const failedCount = DEMO_SYNC_HISTORY.filter(e => e.status === 'Failed').length;
+  const completedCount = DEMO_SYNC_HISTORY.filter(e => e.status === 'Completed').length;
 
-  const handleSyncAll = () => {
-    setSyncingAll(true);
-    setTimeout(() => setSyncingAll(false), 2000);
-  };
+  const toggleStatusFilter = useCallback((status: string) => {
+    setFilters(prev => ({
+      ...prev,
+      status: prev.status === status ? 'all' : status,
+    }));
+  }, []);
+
+  const columns: TableColumn<SyncHistoryEntry>[] = [
+    {
+      title: 'Sync Job',
+      field: 'contentType',
+      render: (row: SyncHistoryEntry) => (
+        <Link
+          to={`/self-service/admin/sync-activity/${row.id}`}
+          className={classes.sourceLink}
+          onClick={(e: React.MouseEvent) => e.stopPropagation()}
+        >
+          {row.contentType}
+        </Link>
+      ),
+    },
+    {
+      title: 'Source',
+      field: 'source',
+      render: (row: SyncHistoryEntry) => {
+        const providerLink = sourceToProviderLink(row.source);
+        return providerLink ? (
+          <Link
+            to={`${providerLink}?tab=sync`}
+            className={classes.sourceLink}
+            onClick={(e: React.MouseEvent) => e.stopPropagation()}
+          >
+            {row.source}
+          </Link>
+        ) : (
+          <Typography variant="body2">{row.source}</Typography>
+        );
+      },
+    },
+    {
+      title: 'Trigger',
+      field: 'trigger',
+      render: (row: SyncHistoryEntry) => (
+        <Box className={classes.triggerCell}>
+          <Typography variant="body2">{row.trigger}</Typography>
+          {row.triggeredBy && (
+            <Typography className={classes.triggeredBy}>
+              by {row.triggeredBy}
+            </Typography>
+          )}
+        </Box>
+      ),
+    },
+    {
+      title: 'Started',
+      field: 'started',
+      render: (row: SyncHistoryEntry) => (
+        <Typography variant="body2" color="textSecondary">{row.started}</Typography>
+      ),
+    },
+    {
+      title: 'Duration',
+      field: 'duration',
+      render: (row: SyncHistoryEntry) => (
+        <Typography variant="body2" color="textSecondary">{row.duration}</Typography>
+      ),
+    },
+    {
+      title: 'Status',
+      field: 'status',
+      render: (row: SyncHistoryEntry) => (
+        <Chip
+          icon={<StatusIcon status={row.status} />}
+          label={row.status}
+          size="small"
+          color={statusColor(row.status)}
+          variant="outlined"
+          className={classes.statusChip}
+        />
+      ),
+    },
+    {
+      title: 'Result',
+      field: 'result',
+      render: (row: SyncHistoryEntry) => (
+        <Typography variant="body2" color="textSecondary" style={{ fontSize: 13 }}>
+          {row.result}
+        </Typography>
+      ),
+    },
+    {
+      title: '',
+      width: '48px',
+      sorting: false,
+      render: (row: SyncHistoryEntry) => <HistoryRowActions entry={row} />,
+    },
+  ];
 
   return (
-    <Page themeId="app">
-      <Header
-        title={
-          <Box display="flex" alignItems="center">
-            Sync status
-            <PageHelpIcon
-              tooltipLabel="What is sync status?"
-              title="Sync status"
-              description="View the latest sync status for all configured content sources. Each row shows the last sync result and any errors that need attention."
-            />
-          </Box>
-        }
-        pageTitleOverride="Sync status"
-        subtitle="Latest sync status across all configured integrations"
-      >
-        <Box display="flex" alignItems="center" style={{ gap: 12 }}>
-          <FormControl variant="outlined" size="small">
+    <CatalogFilterLayout>
+      <CatalogFilterLayout.Filters>
+        <Typography className={classes.filterLabel}>Source</Typography>
+        <Paper className={classes.filterPaper}>
+          <FormControl fullWidth>
             <Select
-              value={sourceFilter}
-              onChange={e => setSourceFilter(e.target.value as string)}
-              variant="outlined"
-              style={{ fontSize: 13, minWidth: 140, color: '#fff' }}
+              value={filters.source}
+              onChange={e => setFilters(prev => ({ ...prev, source: e.target.value as string }))}
+              input={<Input disableUnderline />}
             >
-              <MuiMenuItem value="all">All sources</MuiMenuItem>
+              <MuiMenuItem value="all">All</MuiMenuItem>
               <MuiMenuItem value="AAP">AAP</MuiMenuItem>
-              <MuiMenuItem value="PAH">PAH</MuiMenuItem>
+              <MuiMenuItem value="Private Automation Hub">Private Automation Hub</MuiMenuItem>
               <MuiMenuItem value="GitHub">GitHub</MuiMenuItem>
-              <MuiMenuItem value="GitLab">GitLab</MuiMenuItem>
+              <MuiMenuItem value="Public Registries">Public Registries</MuiMenuItem>
             </Select>
           </FormControl>
-          <Button
-            variant="outlined"
-            size="small"
-            startIcon={<SyncIcon style={{ fontSize: 16 }} />}
-            className={classes.syncAllButton}
-            onClick={handleSyncAll}
-            disabled={syncingAll}
-            style={{
-              borderColor: 'rgba(255,255,255,0.3)',
-              color: '#fff',
-            }}
-          >
-            {syncingAll
-              ? 'Syncing...'
-              : sourceFilter === 'all'
-                ? 'Sync all now'
-                : `Sync ${sourceFilter} now`}
-          </Button>
-        </Box>
-      </Header>
-      <Content>
-        {/* Summary strip */}
+        </Paper>
+
+        <Typography className={classes.filterLabel}>Content Type</Typography>
+        <Paper className={classes.filterPaper}>
+          <FormControl fullWidth>
+            <Select
+              value={filters.contentType}
+              onChange={e => setFilters(prev => ({ ...prev, contentType: e.target.value as string }))}
+              input={<Input disableUnderline />}
+            >
+              <MuiMenuItem value="all">All</MuiMenuItem>
+              <MuiMenuItem value="Job Templates">Job Templates</MuiMenuItem>
+              <MuiMenuItem value="Collections">Collections</MuiMenuItem>
+              <MuiMenuItem value="Teams & Users">Teams & Users</MuiMenuItem>
+              <MuiMenuItem value="EE Definitions">EE Definitions</MuiMenuItem>
+              <MuiMenuItem value="Projects">Projects</MuiMenuItem>
+              <MuiMenuItem value="Job Run Logs">Job Run Logs</MuiMenuItem>
+              <MuiMenuItem value="Certified Content">Certified Content</MuiMenuItem>
+              <MuiMenuItem value="Validated Content">Validated Content</MuiMenuItem>
+            </Select>
+          </FormControl>
+        </Paper>
+
+        <Typography className={classes.filterLabel}>Trigger</Typography>
+        <Paper className={classes.filterPaper}>
+          <FormControl fullWidth>
+            <Select
+              value={filters.trigger}
+              onChange={e => setFilters(prev => ({ ...prev, trigger: e.target.value as string }))}
+              input={<Input disableUnderline />}
+            >
+              <MuiMenuItem value="all">All</MuiMenuItem>
+              <MuiMenuItem value="Scheduled">Scheduled</MuiMenuItem>
+              <MuiMenuItem value="Manual">Manual</MuiMenuItem>
+            </Select>
+          </FormControl>
+        </Paper>
+
+        <Typography className={classes.filterLabel}>Status</Typography>
+        <Paper className={classes.filterPaper}>
+          <FormControl fullWidth>
+            <Select
+              value={filters.status}
+              onChange={e => setFilters(prev => ({ ...prev, status: e.target.value as string }))}
+              input={<Input disableUnderline />}
+            >
+              <MuiMenuItem value="all">All</MuiMenuItem>
+              <MuiMenuItem value="Completed">Completed</MuiMenuItem>
+              <MuiMenuItem value="Failed">Failed</MuiMenuItem>
+              <MuiMenuItem value="In Progress">In Progress</MuiMenuItem>
+              <MuiMenuItem value="Partial">Partial</MuiMenuItem>
+            </Select>
+          </FormControl>
+        </Paper>
+      </CatalogFilterLayout.Filters>
+
+      <CatalogFilterLayout.Content>
         <Box className={classes.summaryStrip}>
           <Chip
-            icon={<CheckCircleOutlineIcon style={{ fontSize: 16 }} />}
-            label={`${healthyCount} healthy`}
+            icon={<LoopIcon style={{ fontSize: 16 }} />}
+            label={`${activeSyncs} active now`}
             size="small"
-            variant={statusFilter === 'Healthy' ? 'default' : 'outlined'}
-            className={`${classes.summaryChip} ${statusFilter === 'Healthy' ? classes.summaryChipActive : ''}`}
-            onClick={() => setStatusFilter(f => f === 'Healthy' ? 'all' : 'Healthy')}
+            variant={filters.status === 'In Progress' ? 'default' : 'outlined'}
+            className={`${classes.summaryChip} ${filters.status === 'In Progress' ? classes.summaryChipActive : ''}`}
+            onClick={() => toggleStatusFilter('In Progress')}
+          />
+          <Chip
+            icon={<CheckCircleOutlineIcon style={{ fontSize: 16 }} />}
+            label={`${completedCount} completed`}
+            size="small"
+            variant={filters.status === 'Completed' ? 'default' : 'outlined'}
+            className={`${classes.summaryChip} ${filters.status === 'Completed' ? classes.summaryChipActive : ''}`}
+            onClick={() => toggleStatusFilter('Completed')}
           />
           <Chip
             icon={<ErrorOutlineIcon style={{ fontSize: 16 }} />}
             label={`${failedCount} failed`}
             size="small"
-            variant={statusFilter === 'Failed' ? 'default' : 'outlined'}
-            className={`${classes.summaryChip} ${statusFilter === 'Failed' ? classes.summaryChipActive : ''}`}
-            onClick={() => setStatusFilter(f => f === 'Failed' ? 'all' : 'Failed')}
+            variant={filters.status === 'Failed' ? 'default' : 'outlined'}
+            className={`${classes.summaryChip} ${filters.status === 'Failed' ? classes.summaryChipActive : ''}`}
+            onClick={() => toggleStatusFilter('Failed')}
           />
-          {inProgressCount > 0 && (
-            <Chip
-              icon={<LoopIcon style={{ fontSize: 16 }} />}
-              label={`${inProgressCount} syncing`}
-              size="small"
-              variant={statusFilter === 'In Progress' ? 'default' : 'outlined'}
-              className={`${classes.summaryChip} ${statusFilter === 'In Progress' ? classes.summaryChipActive : ''}`}
-              onClick={() => setStatusFilter(f => f === 'In Progress' ? 'all' : 'In Progress')}
-            />
-          )}
-        </Box>
-
-        {/* Status table */}
-        <Box className={classes.entityTable}>
-          <Box className={classes.tableHeader}>
-            <Box style={{ width: COL_WIDTHS.entity }}>
-              <Typography className={classes.headerCell}>Name</Typography>
-            </Box>
-            <Box style={{ width: COL_WIDTHS.source }}>
-              <Typography className={classes.headerCell}>Source</Typography>
-            </Box>
-            <Box style={{ width: COL_WIDTHS.lastSync }}>
-              <Typography className={classes.headerCell}>Last sync</Typography>
-            </Box>
-            <Box style={{ width: COL_WIDTHS.status }}>
-              <Typography className={classes.headerCell}>Status</Typography>
-            </Box>
-            <Box style={{ width: COL_WIDTHS.nextSync }}>
-              <Typography className={classes.headerCell}>Next sync</Typography>
-            </Box>
-            <Box style={{ width: COL_WIDTHS.schedule }}>
-              <Typography className={classes.headerCell}>Schedule</Typography>
-            </Box>
-            <Box style={{ width: COL_WIDTHS.actions }} />
+          <span className={classes.summaryDot}>·</span>
+          <Typography variant="body2" style={{ fontSize: 13, color: 'inherit' }}>
+            {last24h} syncs in last 24h
+          </Typography>
+          <Box className={classes.summaryNextSync}>
+            <ScheduleIcon style={{ fontSize: 16 }} />
+            Next sync: <span className={classes.summaryNextSyncValue}>AAP Job Templates in 4 min</span>
           </Box>
-
-          {filtered.length > 0 ? (
-            filtered.map(entry => (
-              <EntityRow key={entry.id} entry={entry} onViewDetails={setModalEntity} />
-            ))
-          ) : (
-            <Box style={{ padding: '48px 24px', textAlign: 'center' }}>
-              <SyncDisabledIcon style={{ fontSize: 40, color: 'rgba(255,255,255,0.2)', marginBottom: 8 }} />
-              <Typography style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)' }}>
-                {statusFilter !== 'all' || sourceFilter !== 'all'
-                  ? 'No sync entities match the current filters.'
-                  : 'No sync entities configured. Add an integration to start syncing content.'}
-              </Typography>
-            </Box>
-          )}
         </Box>
 
-        <Typography style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginTop: 12, textAlign: 'right' }}>
-          {activeEntities.length} sync {activeEntities.length === 1 ? 'entity' : 'entities'} configured
-        </Typography>
-
-        <SyncErrorModal
-          entity={modalEntity}
-          open={modalEntity !== null}
-          onClose={() => setModalEntity(null)}
+        <Table<SyncHistoryEntry>
+          columns={columns}
+          data={filtered}
+          title={`${filtered.length} sync ${filtered.length === 1 ? 'event' : 'events'}`}
+          options={{
+            paging: true,
+            pageSize: 10,
+            pageSizeOptions: [5, 10, 20],
+            emptyRowsWhenPaging: false,
+            search: false,
+            sorting: true,
+            padding: 'dense',
+            rowStyle: { cursor: 'pointer' },
+          }}
+          style={{ width: '100%', overflowX: 'hidden' }}
+          onRowClick={(_event, rowData) => {
+            if (rowData) {
+              navigate(`/self-service/admin/sync-activity/${(rowData as SyncHistoryEntry).id}`);
+            }
+          }}
         />
+      </CatalogFilterLayout.Content>
+    </CatalogFilterLayout>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// Sync settings dropdown — links to each provider's Sync tab
+// ---------------------------------------------------------------------------
+
+const SyncSettingsDropdown = () => {
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const navigate = useNavigate();
+
+  const connectionProviders = DEMO_CONNECTIONS.filter(c => c.type !== 'git');
+  const scmProviders = DEMO_CONNECTIONS.filter(c => c.type === 'git');
+
+  const handleClick = (provider: typeof DEMO_CONNECTIONS[0]) => {
+    setAnchorEl(null);
+    const base = provider.type === 'git' ? '/self-service/admin/scm' : '/self-service/admin/connections';
+    navigate(`${base}/${provider.id}`);
+  };
+
+  return (
+    <>
+      <Button
+        variant="outlined"
+        size="small"
+        startIcon={<SettingsIcon style={{ fontSize: 16 }} />}
+        endIcon={<ArrowDropDownIcon />}
+        onClick={e => setAnchorEl(e.currentTarget)}
+        style={{
+          textTransform: 'none',
+          fontSize: 13,
+          fontWeight: 500,
+          borderColor: 'rgba(255,255,255,0.3)',
+          color: '#fff',
+        }}
+      >
+        Sync settings
+      </Button>
+      <Menu
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
+        onClose={() => setAnchorEl(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+        getContentAnchorEl={null}
+        PaperProps={{ style: { minWidth: 240 } }}
+      >
+        <ListSubheader style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, lineHeight: '32px' }}>
+          Connections
+        </ListSubheader>
+        {connectionProviders.map(p => {
+          const isConfigured = p.status !== 'Not configured';
+          return (
+            <MuiMenuItem key={p.id} onClick={() => handleClick(p)}>
+              <Box display="flex" alignItems="center" justifyContent="space-between" width="100%">
+                <ListItemText
+                  primary={p.name.replace(/ \(.*\)/, '')}
+                  primaryTypographyProps={{ style: { fontSize: 13 } }}
+                />
+                {isConfigured ? (
+                  <FiberManualRecordIcon style={{ fontSize: 8, color: statusColors.success, marginLeft: 8 }} />
+                ) : (
+                  <Typography style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginLeft: 8, whiteSpace: 'nowrap' }}>
+                    Not configured
+                  </Typography>
+                )}
+              </Box>
+            </MuiMenuItem>
+          );
+        })}
+        <Divider style={{ margin: '4px 0' }} />
+        <ListSubheader style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, lineHeight: '32px' }}>
+          SCM Integration
+        </ListSubheader>
+        {scmProviders.map(p => {
+          const isConfigured = p.status !== 'Not configured';
+          return (
+            <MuiMenuItem key={p.id} onClick={() => handleClick(p)}>
+              <Box display="flex" alignItems="center" justifyContent="space-between" width="100%">
+                <ListItemText
+                  primary={p.name}
+                  primaryTypographyProps={{ style: { fontSize: 13 } }}
+                />
+                {isConfigured ? (
+                  <FiberManualRecordIcon style={{ fontSize: 8, color: statusColors.success, marginLeft: 8 }} />
+                ) : (
+                  <Typography style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginLeft: 8, whiteSpace: 'nowrap' }}>
+                    Not configured
+                  </Typography>
+                )}
+              </Box>
+            </MuiMenuItem>
+          );
+        })}
+      </Menu>
+    </>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// Main page — Activity only (schedules moved to per-connection detail pages)
+// ---------------------------------------------------------------------------
+
+export const SyncActivityPage = () => {
+  return (
+    <Page themeId="app">
+      <Header
+        title={
+          <Box display="flex" alignItems="center">
+            Sync
+            <PageHelpIcon
+              tooltipLabel="What is sync?"
+              title="Sync"
+              description="Monitor sync operations across all connected platforms. Use the Sync settings dropdown to jump to any provider's sync configuration."
+            />
+          </Box>
+        }
+        pageTitleOverride="Sync"
+        subtitle="Monitor and manage sync operations across all connected platforms"
+      >
+        <SyncSettingsDropdown />
+      </Header>
+      <Content>
+        <HistoryTab />
       </Content>
     </Page>
   );

@@ -19,7 +19,6 @@ import {
   TextField,
   InputAdornment,
   Link,
-  Tooltip,
 } from '@material-ui/core';
 import SearchIcon from '@material-ui/icons/Search';
 import ClearIcon from '@material-ui/icons/Clear';
@@ -38,6 +37,7 @@ import FolderOutlinedIcon from '@material-ui/icons/FolderOutlined';
 import CategoryIcon from '@material-ui/icons/Category';
 import MemoryIcon from '@material-ui/icons/Memory';
 import EditIcon from '@material-ui/icons/Edit';
+import TransformIcon from '@material-ui/icons/Transform';
 import Popover from '@material-ui/core/Popover';
 import Dialog from '@material-ui/core/Dialog';
 import DialogTitle from '@material-ui/core/DialogTitle';
@@ -51,9 +51,8 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { CatalogFilterLayout } from '@backstage/plugin-catalog-react';
 import { DismissibleBanner } from '../../common/DismissibleBanner';
 import { EmptyStateLayout, RepositoriesIllustration } from '../../common/EmptyStateLayout';
-import { GovernanceStatusBadge, GovernanceStatusHelp } from '../../common/GovernanceStatusBadge';
+import { GovernanceStatusBadge } from '../../common/GovernanceStatusBadge';
 import { LastSyncedIndicator } from '../../Admin/LastSyncedIndicator';
-import { PipelineStatusIcons, PipelineColumnHeader } from './PipelineStatus';
 import { statusColors } from '../../common/statusColors';
 import {
   GIT_REPOSITORIES,
@@ -63,6 +62,9 @@ import {
   type GovernanceStatus,
   type DiscoveredResourceSummary,
 } from './unifiedDemoData';
+import { getProjectViolationCount, getProjectAapVersion } from '../../Projects/detail/qualityDemoData';
+import { HealthScorePopover } from './HealthScorePopover';
+import { MigrateToAnsibleWizard } from './MigrateToAnsibleWizard';
 import { GOVERNANCE_TEMPLATE } from '../create/templatesDemoData';
 
 type GovernanceFilter = 'all' | 'discovered' | 'governed' | 'pushed-to-aap';
@@ -326,10 +328,12 @@ const RowActionsMenu = ({
   repo,
   onDelete,
   onChangeProfile,
+  onMigrate,
 }: {
   repo: GitRepository;
   onDelete: (name: string) => void;
   onChangeProfile: (repoName: string) => void;
+  onMigrate: (repoName: string) => void;
 }) => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const isGoverned = repo.governance !== 'discovered';
@@ -366,6 +370,10 @@ const RowActionsMenu = ({
         <MenuItem onClick={() => handleAction('view-source')}>
           <ListItemIcon><VisibilityIcon fontSize="small" /></ListItemIcon>
           <ListItemText primary="View source" />
+        </MenuItem>
+        <MenuItem onClick={() => { handleClose(); onMigrate(repo.name); }}>
+          <ListItemIcon><TransformIcon fontSize="small" /></ListItemIcon>
+          <ListItemText primary="Migrate to Ansible" secondary="Convert Chef or Puppet content" />
         </MenuItem>
         {isGoverned && <Divider />}
         {isGoverned && (
@@ -504,6 +512,22 @@ export const GitRepositoriesContent = () => {
     setChangingProfileRepo(null);
   }, [changingProfileRepo, selectedProfileId]);
 
+  const [migrateRepoName, setMigrateRepoName] = useState<string | null>(null);
+  const [migrateWizardOpen, setMigrateWizardOpen] = useState(false);
+  const [scanningRepos] = useState<Set<string>>(() => new Set(['network-firewall-rules']));
+
+  useEffect(() => {
+    if (location.pathname.includes('/projects/migrate')) {
+      setMigrateWizardOpen(true);
+      navigate('/self-service/projects/repositories', { replace: true });
+    }
+  }, [location.pathname, navigate]);
+
+  const handleMigrate = useCallback((repoName: string) => {
+    setMigrateRepoName(repoName);
+    setMigrateWizardOpen(true);
+  }, []);
+
   const filteredRepos = useMemo(() => {
     let result = repos;
     if (searchText) {
@@ -527,8 +551,8 @@ export const GitRepositoriesContent = () => {
   if (repos.length === 0) {
     return (
       <EmptyStateLayout
-        title="No Git repositories discovered"
-        description="Connect a Git source in the Connections page to discover repositories containing Ansible automation content. The portal will scan for playbooks, roles, collections, and execution environments."
+        title="No projects discovered"
+        description="Connect a Git source in the Connections page to discover projects containing Ansible automation content. The portal will scan for playbooks, roles, collections, and execution environments."
         illustration={<RepositoriesIllustration />}
       />
     );
@@ -566,12 +590,13 @@ export const GitRepositoriesContent = () => {
       ),
     },
     {
-      title: (<Box display="flex" alignItems="center">Status<GovernanceStatusHelp /></Box>) as unknown as string,
-      width: '160px',
+      title: 'Status',
+      width: '100px',
       field: 'governance',
       render: (row: GitRepository) => (
         <GovernanceStatusBadge
           status={row.governance}
+          variant="minimal"
           onAction={(action) => {
             if (action === 'enable-governance') handleEnableGovernance(row);
           }}
@@ -579,56 +604,75 @@ export const GitRepositoriesContent = () => {
       ),
     },
     {
-      title: 'Pipeline profile',
-      width: '160px',
+      title: 'Health',
+      width: '80px',
+      sorting: false,
+      render: (row: GitRepository) => (
+        <HealthScorePopover
+          repoName={row.name}
+          scanning={scanningRepos.has(row.name)}
+          onNavigateToQuality={() => {
+            if (row.governance !== 'discovered') {
+              navigate(`/self-service/projects/${row.name}`, { state: { tab: 'quality' } });
+            } else {
+              navigate(`/self-service/projects/repositories/${row.name}`);
+            }
+          }}
+        />
+      ),
+    },
+    {
+      title: 'Violations',
+      width: '100px',
       sorting: false,
       render: (row: GitRepository) => {
-        if (row.governance === 'discovered' || !row.pipelineProfileId) {
+        if (scanningRepos.has(row.name)) {
+          return <Typography style={{ fontSize: 11, color: statusColors.info, fontStyle: 'italic' }}>checking…</Typography>;
+        }
+        const count = getProjectViolationCount(row.name);
+        if (count === undefined) {
           return <Typography variant="body2" color="textSecondary" style={{ fontSize: 12 }}>—</Typography>;
         }
-        const profile = PIPELINE_PROFILES.find(p => p.id === row.pipelineProfileId);
+        if (count === 0) {
+          return (
+            <Chip size="small" label="Clean" style={{
+              fontSize: 11, height: 20, backgroundColor: `${statusColors.success}20`,
+              color: statusColors.success, fontWeight: 500,
+            }} />
+          );
+        }
         return (
-          <Tooltip title={profile?.description ?? ''} arrow>
-            <Chip
-              size="small"
-              label={profileNameById[row.pipelineProfileId] ?? row.pipelineProfileId}
-              variant="outlined"
-              className={classes.profileChip}
-            />
-          </Tooltip>
+          <Chip size="small" label={`${count}`} style={{
+            fontSize: 11, height: 20, backgroundColor: `${statusColors.error}20`,
+            color: statusColors.error, fontWeight: 500,
+          }} />
         );
       },
     },
     {
-      title: (<PipelineColumnHeader />) as unknown as string,
+      title: 'AAP',
+      width: '80px',
       sorting: false,
       render: (row: GitRepository) => {
-        if (row.governance === 'discovered' || !row.pipeline) {
-          return (
-            <Box>
-              <Typography variant="body2" color="textSecondary" style={{ fontSize: 12 }}>—</Typography>
-              <Typography className={classes.commitInfo} style={{ marginTop: 2 }}>
-                <code style={{ fontSize: 11 }}>{row.lastCommit.hash.substring(0, 7)}</code>{' '}
-                {row.lastCommit.message}
-              </Typography>
-            </Box>
-          );
-        }
-        const profileName = row.pipelineProfileId ? (profileNameById[row.pipelineProfileId] ?? 'Pipeline') : 'Pipeline';
+        const version = getProjectAapVersion(row.name);
+        if (!version) return <Typography variant="body2" color="textSecondary" style={{ fontSize: 12 }}>—</Typography>;
         return (
-          <Box>
-            <PipelineStatusIcons
-              stages={row.pipeline}
-              pipelineType={profileName}
-              profileId={row.pipelineProfileId}
-            />
-            <Typography className={classes.commitInfo} style={{ marginTop: 2 }}>
-              <code style={{ fontSize: 11 }}>{row.lastCommit.hash.substring(0, 7)}</code>{' '}
-              {row.lastCommit.message}
-            </Typography>
-          </Box>
+          <Chip size="small" label={`v${version}`} variant="outlined" style={{
+            fontSize: 11, height: 20, fontWeight: 500,
+            color: statusColors.warning, borderColor: `${statusColors.warning}60`,
+          }} />
         );
       },
+    },
+    {
+      title: 'Last commit',
+      sorting: false,
+      render: (row: GitRepository) => (
+        <Typography className={classes.commitInfo}>
+          <code style={{ fontSize: 11 }}>{row.lastCommit.hash.substring(0, 7)}</code>{' '}
+          {row.lastCommit.message}
+        </Typography>
+      ),
     },
     {
       title: 'Content',
@@ -652,7 +696,7 @@ export const GitRepositoriesContent = () => {
               )}
             </IconButton>
           )}
-          <RowActionsMenu repo={row} onDelete={deleteProject} onChangeProfile={handleOpenChangeProfile} />
+          <RowActionsMenu repo={row} onDelete={deleteProject} onChangeProfile={handleOpenChangeProfile} onMigrate={handleMigrate} />
         </Box>
       ),
     },
@@ -710,22 +754,6 @@ export const GitRepositoriesContent = () => {
           </FormControl>
         </Paper>
 
-        <Typography className={classes.filterLabel}>Pipeline profile</Typography>
-        <Paper className={classes.filterPaper}>
-          <FormControl fullWidth>
-            <Select
-              value={filters.profile}
-              onChange={e => setFilters(prev => ({ ...prev, profile: e.target.value as string }))}
-              input={<Input disableUnderline />}
-            >
-              <MenuItem value="all">All</MenuItem>
-              {PIPELINE_PROFILES.map(p => (
-                <MenuItem key={p.id} value={p.id}>{p.name}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </Paper>
-
         <Typography className={classes.filterLabel}>Provider</Typography>
         <Paper className={classes.filterPaper}>
           <FormControl fullWidth>
@@ -745,7 +773,7 @@ export const GitRepositoriesContent = () => {
       <CatalogFilterLayout.Content>
         <DismissibleBanner
           storageKey="git-repositories"
-          message="Git repositories are discovered from your connected sources and contain Ansible automation content. Enable governance on any repository to add CI/CD pipelines with policy checks and connect to Ansible Automation Platform."
+          message="Projects are Git repositories discovered from your connected sources, containing Ansible automation content. Enable governance on any project to add quality scans, CI/CD pipelines, and connect to Ansible Automation Platform."
           ctaText="New here? Follow the getting started guide →"
           ctaHref="/self-service/learning"
         />
@@ -880,6 +908,17 @@ export const GitRepositoriesContent = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <MigrateToAnsibleWizard
+        open={migrateWizardOpen}
+        sourceRepoName={migrateRepoName}
+        onClose={() => { setMigrateWizardOpen(false); setMigrateRepoName(null); }}
+        onComplete={(newRepoName) => {
+          setMigrateWizardOpen(false);
+          setMigrateRepoName(null);
+          navigate(`/self-service/projects/${newRepoName}`, { state: { tab: 'quality' } });
+        }}
+      />
     </CatalogFilterLayout>
   );
 };

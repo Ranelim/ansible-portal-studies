@@ -648,7 +648,7 @@ export const ImportProjectWizard = ({
           className={classes.backButton}
           style={{ textTransform: 'none' }}
         >
-          Back to Git repositories
+          Back to Projects
         </Button>
       </Box>
 

@@ -28,6 +28,7 @@ import SettingsIcon from '@material-ui/icons/Settings';
 import ExitToAppIcon from '@material-ui/icons/ExitToApp';
 import OpenInNewIcon from '@material-ui/icons/OpenInNew';
 import PlaylistAddCheckIcon from '@material-ui/icons/PlaylistAddCheck';
+import TransformIcon from '@material-ui/icons/Transform';
 import { makeStyles, alpha } from '@material-ui/core/styles';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useApi, identityApiRef } from '@backstage/core-plugin-api';
@@ -464,6 +465,13 @@ export const GlobalHeader = () => {
           >
             <ListItemIcon><MemoryIcon fontSize="small" /></ListItemIcon>
             <ListItemText primary="Create execution environment" secondary="Build a custom EE" />
+          </MenuItem>
+          <MenuItem
+            onClick={() => { setCreateAnchor(null); navigate('/self-service/projects/migrate'); }}
+            className={classes.menuItem}
+          >
+            <ListItemIcon><TransformIcon fontSize="small" /></ListItemIcon>
+            <ListItemText primary="Migrate to Ansible" secondary="Convert a Chef or Puppet project" />
           </MenuItem>
           <Divider />
           <MenuItem

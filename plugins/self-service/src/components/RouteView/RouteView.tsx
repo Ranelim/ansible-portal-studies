@@ -27,7 +27,8 @@ import { ProjectDetailsPage } from '../Projects/detail/ProjectDetailsPage';
 import { RepositoryDetailPage } from '../Projects/repositories/RepositoryDetailPage';
 import { CollectionsCatalogPage } from '../CollectionsCatalog';
 import { CollectionDetailsPage } from '../CollectionsCatalog/CollectionDetailsPage';
-import { ConnectionsPage, IntegrationsPage } from '../Admin/ConnectionsPage';
+import { ConnectionsPage, SCMIntegrationPage } from '../Admin/ConnectionsPage';
+import { EEBuilderPlaceholderPage } from '../Admin/EEBuilderPlaceholderPage';
 import { ConnectionDetailPage } from '../Admin/ConnectionDetailPage';
 import { SyncActivityPage } from '../Admin/SyncActivityPage';
 import { SyncJobDetailPage } from '../Admin/SyncJobDetailPage';
@@ -38,6 +39,7 @@ import { WorkspacesPage } from '../Workspaces/WorkspacesPage';
 import { WorkspaceIDEPage } from '../Workspaces/WorkspaceIDEPage';
 import { SetupWizardPage } from '../Setup/SetupWizardPage';
 import { GeneralPage } from '../Admin/GeneralPage';
+import { QualityDashboardPage } from '../Projects/quality/QualityDashboardPage';
 import {
   NotificationProvider,
   NotificationStack,
@@ -130,9 +132,11 @@ const RouteViewContent = () => {
           <Route path="catalog" element={<ProjectsTabs />} />
           <Route path="repositories" element={<ProjectsTabs />} />
           <Route path="create" element={<ProjectsTabs />} />
+          <Route path="migrate" element={<ProjectsTabs />} />
           <Route path="repositories/:repoName" element={<RepositoryDetailPage />} />
           <Route path=":projectName" element={<ProjectDetailsPage />} />
         </Route>
+        <Route path="quality" element={<QualityDashboardPage />} />
         <Route path="collections" element={<CollectionsCatalogPage />} />
         <Route
           path="collections/:collectionName"
@@ -146,10 +150,11 @@ const RouteViewContent = () => {
         <Route path="workspaces" element={<WorkspacesPage />} />
         <Route path="workspaces/:workspaceId/ide" element={<WorkspaceIDEPage />} />
         <Route path="admin/general" element={<GeneralPage />} />
-        <Route path="admin/connections" element={<Navigate to="/self-service/admin/integrations" replace />} />
+        <Route path="admin/connections" element={<ConnectionsPage />} />
         <Route path="admin/connections/:providerId" element={<ConnectionDetailPage />} />
-        <Route path="admin/integrations" element={<IntegrationsPage />} />
-        <Route path="admin/integrations/:providerId" element={<ConnectionDetailPage />} />
+        <Route path="admin/scm" element={<SCMIntegrationPage />} />
+        <Route path="admin/scm/:providerId" element={<ConnectionDetailPage />} />
+        <Route path="admin/ee-builder" element={<EEBuilderPlaceholderPage />} />
         <Route path="admin/content-sources" element={<ContentSourcesPage />} />
         <Route path="admin/sync-activity" element={<SyncActivityPage />} />
         <Route path="admin/sync-activity/:syncId" element={<SyncJobDetailPage />} />

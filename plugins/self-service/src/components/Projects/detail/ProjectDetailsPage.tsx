@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
-import { useParams, useNavigate, Link as RouterLink } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, Link as RouterLink } from 'react-router-dom';
 import {
   Page,
   Header,
@@ -51,6 +51,7 @@ import OpenInNewIcon from '@material-ui/icons/OpenInNew';
 import CloudUploadIcon from '@material-ui/icons/CloudUpload';
 import DeleteOutlineIcon from '@material-ui/icons/DeleteOutline';
 import CheckCircleIcon from '@material-ui/icons/CheckCircle';
+import WarningIcon from '@material-ui/icons/Warning';
 import ErrorIcon from '@material-ui/icons/Error';
 import AutorenewIcon from '@material-ui/icons/Autorenew';
 import RadioButtonUncheckedIcon from '@material-ui/icons/RadioButtonUnchecked';
@@ -58,7 +59,6 @@ import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
 import ExpandLessIcon from '@material-ui/icons/ExpandLess';
 import DescriptionOutlinedIcon from '@material-ui/icons/DescriptionOutlined';
 import GitHubIcon from '@material-ui/icons/GitHub';
-import PlayArrowIcon from '@material-ui/icons/PlayArrow';
 import MemoryIcon from '@material-ui/icons/Memory';
 import CategoryIcon from '@material-ui/icons/Category';
 import InsertDriveFileOutlinedIcon from '@material-ui/icons/InsertDriveFileOutlined';
@@ -76,6 +76,13 @@ import { PIPELINE_PROFILES, STAGE_DESCRIPTIONS as UNIFIED_STAGE_DESCS } from '..
 import { GovernanceStatusBadge } from '../../common/GovernanceStatusBadge';
 import { useProjectDetailStyles } from './styles';
 import { statusColors } from '../../common/statusColors';
+import { getProjectQuality, getProjectUpgradeData } from './qualityDemoData';
+import { QualityTab, type OperationStatus } from './QualityTab';
+import { DependenciesTab } from './DependenciesTab';
+import { AapUpgradeWizard } from './AapUpgradeWizard';
+import PlayArrowIcon from '@material-ui/icons/PlayArrow';
+import BuildIcon from '@material-ui/icons/Build';
+import SystemUpdateIcon from '@material-ui/icons/SystemUpdate';
 
 const PROFILE_BY_REPO: Record<string, string> = {
   'rhel-patch-automation': 'stig-rhel9',
@@ -98,6 +105,8 @@ const getProfileStageNames = (projectName: string): string[] => {
 
 const tabs = [
   { id: 'overview', label: 'Overview' },
+  { id: 'quality', label: 'Quality' },
+  { id: 'dependencies', label: 'Dependencies' },
   { id: 'readme', label: 'README' },
   { id: 'yaml', label: 'YAML' },
   { id: 'pipeline', label: 'Pipeline' },
@@ -295,95 +304,73 @@ const statusColor = (status: string) => {
 // ---------------------------------------------------------------------------
 const OverviewTab = ({
   project,
-  onViewLatestRun,
   isPushedToAap,
   onPushToAap,
+  onGoToQuality,
 }: {
   project: DemoProject;
-  onViewLatestRun: () => void;
   isPushedToAap: boolean;
   onPushToAap: () => void;
+  onGoToQuality: () => void;
 }) => {
   const classes = useProjectDetailStyles();
+  const quality = getProjectQuality(project.name);
 
-  const overallStatus = project.pipeline.some(s => s.status === 'failed')
-    ? 'failed'
-    : project.pipeline.some(s => s.status === 'running')
-      ? 'running'
-      : project.pipeline.every(s => s.status === 'passed')
-        ? 'passed'
-        : 'pending';
-
-  const latestRun = project.pipelineHistory[0];
+  const healthColor = quality
+    ? quality.healthScore >= 80 ? statusColors.success : quality.healthScore >= 50 ? statusColors.warning : statusColors.error
+    : undefined;
 
   return (
     <Box className={classes.tabContent}>
       <Box className={classes.mainColumn}>
-        {/* Latest pipeline run — summary */}
+        {/* Quality overview */}
         <Card
           className={classes.card}
           variant="outlined"
           style={{ cursor: 'pointer' }}
-          onClick={onViewLatestRun}
+          onClick={onGoToQuality}
         >
           <CardContent className={classes.cardContent}>
-            <Box
-              display="flex"
-              alignItems="center"
-              justifyContent="space-between"
-              mb={1}
-            >
-              <Typography className={classes.cardTitle} style={{ marginBottom: 0 }}>
-                Latest pipeline run
-              </Typography>
-              <Chip
-                size="small"
-                label={statusLabel(overallStatus)}
-                style={{
-                  backgroundColor: `${statusColor(overallStatus)}20`,
-                  color: statusColor(overallStatus),
-                  fontWeight: 500,
-                }}
-              />
-            </Box>
-            {latestRun && (
-              <Box style={{ marginBottom: 12 }}>
-                <Typography variant="body2" color="textSecondary">
-                  Run #{latestRun.id} · triggered by{' '}
-                  <code style={{ fontSize: 12 }}>
-                    {latestRun.trigger.substring(0, 7)}
-                  </code>
-                  {' · '}{latestRun.startedAt}
-                  {latestRun.duration !== '—' && ` · ${latestRun.duration}`}
-                </Typography>
-                {latestRun.commitMessage && (
-                  <Typography variant="caption" color="textSecondary" style={{ display: 'block', marginTop: 2, fontStyle: 'italic' }}>
-                    {latestRun.commitMessage}
-                  </Typography>
-                )}
-              </Box>
-            )}
-            <Box display="flex" alignItems="center" style={{ gap: 4, flexWrap: 'wrap' }}>
-              {project.pipeline
-                .filter(stage => stage.name !== 'Pushed to AAP')
-                .map((stage, i) => (
-                <Box key={stage.name} display="flex" alignItems="center" style={{ gap: 4 }}>
-                  {i > 0 && (
-                    <Typography variant="caption" style={{ color: statusColors.pending, marginLeft: 2, marginRight: 2 }}>›</Typography>
-                  )}
-                  <StageIcon status={stage.status} size={16} />
-                  <Typography variant="caption" color="textSecondary">
-                    {stage.name}
-                  </Typography>
+            <Typography className={classes.cardTitle} style={{ marginBottom: 12 }}>
+              Quality overview
+            </Typography>
+            {quality ? (
+              <>
+                <Box display="flex" style={{ gap: 24, marginBottom: 12 }}>
+                  <Box>
+                    <Typography style={{ fontSize: 28, fontWeight: 700, color: healthColor, lineHeight: 1 }}>
+                      {quality.healthScore}
+                    </Typography>
+                    <Typography variant="caption" color="textSecondary">Health score</Typography>
+                  </Box>
+                  <Box>
+                    <Typography style={{ fontSize: 28, fontWeight: 700, color: quality.totalViolations > 0 ? statusColors.error : statusColors.success, lineHeight: 1 }}>
+                      {quality.totalViolations}
+                    </Typography>
+                    <Typography variant="caption" color="textSecondary">Violations</Typography>
+                  </Box>
+                  <Box>
+                    <Typography style={{ fontSize: 28, fontWeight: 700, lineHeight: 1 }}>
+                      {quality.scanCount}
+                    </Typography>
+                    <Typography variant="caption" color="textSecondary">Scans</Typography>
+                  </Box>
                 </Box>
-              ))}
-            </Box>
+                <Typography variant="body2" color="textSecondary" style={{ fontSize: 12 }}>
+                  Last scanned {quality.lastScannedAt} · commit <code style={{ fontSize: 11 }}>{quality.lastScannedCommit}</code>
+                </Typography>
+              </>
+            ) : (
+              <Typography variant="body2" color="textSecondary">
+                No quality scans have been run yet. Use the Check button to run your first scan.
+              </Typography>
+            )}
             <Typography
               variant="body2"
               color="primary"
               style={{ marginTop: 12, fontSize: 13, fontWeight: 500 }}
             >
-              View run details →
+              View quality details →
             </Typography>
           </CardContent>
         </Card>
@@ -394,17 +381,29 @@ const OverviewTab = ({
             <Typography className={classes.cardTitle}>
               Recent activity
             </Typography>
+            {quality && quality.scanHistory.length > 0 && (
+              <Box className={classes.activityItem}>
+                <SecurityIcon style={{ fontSize: 18, color: '#666', marginTop: 2 }} />
+                <Box style={{ flex: 1 }}>
+                  <Typography className={classes.activityText}>
+                    Quality {quality.scanHistory[0].scanType} <strong>completed</strong> — {quality.scanHistory[0].totalViolations} violation{quality.scanHistory[0].totalViolations !== 1 ? 's' : ''} found
+                    {quality.scanHistory[0].remediatedCount > 0 && `, ${quality.scanHistory[0].remediatedCount} fixed`}
+                  </Typography>
+                  <Typography variant="caption" color="textSecondary">
+                    commit <code style={{ fontSize: 11 }}>{quality.scanHistory[0].commitHash}</code>
+                  </Typography>
+                </Box>
+                <Typography className={classes.activityTime}>
+                  {quality.scanHistory[0].createdAt}
+                </Typography>
+              </Box>
+            )}
             {project.repo.lastCommit && (
               <Box className={classes.activityItem}>
-                <GitHubIcon
-                  style={{ fontSize: 18, color: '#666', marginTop: 2 }}
-                />
+                <GitHubIcon style={{ fontSize: 18, color: '#666', marginTop: 2 }} />
                 <Typography className={classes.activityText}>
-                  <strong>{project.repo.lastCommit.author}</strong> pushed
-                  commit{' '}
-                  <code style={{ fontSize: 12 }}>
-                    {project.repo.lastCommit.hash.substring(0, 7)}
-                  </code>{' '}
+                  <strong>{project.repo.lastCommit.author}</strong> pushed commit{' '}
+                  <code style={{ fontSize: 12 }}>{project.repo.lastCommit.hash.substring(0, 7)}</code>{' '}
                   — {project.repo.lastCommit.message}
                 </Typography>
                 <Typography className={classes.activityTime}>
@@ -412,40 +411,9 @@ const OverviewTab = ({
                 </Typography>
               </Box>
             )}
-            {project.pipelineHistory.length > 0 && (
-              <Box className={classes.activityItem}>
-                <PlayArrowIcon
-                  style={{ fontSize: 18, color: '#666', marginTop: 2 }}
-                />
-                <Box style={{ flex: 1 }}>
-                  <Typography className={classes.activityText}>
-                    Pipeline run #{project.pipelineHistory[0].id}{' '}
-                    <strong>
-                      {project.pipelineHistory[0].status === 'running'
-                        ? 'is running'
-                        : project.pipelineHistory[0].status}
-                    </strong>{' '}
-                    — triggered by{' '}
-                    <code style={{ fontSize: 12 }}>
-                      {project.pipelineHistory[0].trigger.substring(0, 7)}
-                    </code>
-                  </Typography>
-                  {project.pipelineHistory[0].commitMessage && (
-                    <Typography variant="caption" color="textSecondary" style={{ fontStyle: 'italic' }}>
-                      {project.pipelineHistory[0].commitMessage}
-                    </Typography>
-                  )}
-                </Box>
-                <Typography className={classes.activityTime}>
-                  {project.pipelineHistory[0].startedAt}
-                </Typography>
-              </Box>
-            )}
             {project.jobHistory.length > 0 && (
               <Box className={classes.activityItem}>
-                <CloudUploadIcon
-                  style={{ fontSize: 18, color: '#666', marginTop: 2 }}
-                />
+                <CloudUploadIcon style={{ fontSize: 18, color: '#666', marginTop: 2 }} />
                 <Typography className={classes.activityText}>
                   Job #{project.jobHistory[0].id}{' '}
                   <strong>{project.jobHistory[0].status}</strong> — launched by{' '}
@@ -1899,10 +1867,14 @@ const ActionsMenu = ({
   project,
   isPushedToAap,
   onPushToAap,
+  onUpgrade,
+  upgradeVersion,
 }: {
   project: DemoProject;
   isPushedToAap: boolean;
   onPushToAap: () => void;
+  onUpgrade?: () => void;
+  upgradeVersion?: string;
 }) => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const isPushed = isPushedToAap;
@@ -1938,6 +1910,14 @@ const ActionsMenu = ({
           <ListItemText primary="View source" />
         </MenuItem>
         <Divider />
+        {onUpgrade && upgradeVersion && (
+          <MenuItem onClick={() => { setAnchorEl(null); onUpgrade(); }}>
+            <ListItemIcon>
+              <SystemUpdateIcon fontSize="small" style={{ color: statusColors.info }} />
+            </ListItemIcon>
+            <ListItemText primary={`Upgrade to AAP ${upgradeVersion}`} />
+          </MenuItem>
+        )}
         {isPushed ? (
           <MenuItem onClick={() => setAnchorEl(null)}>
             <ListItemIcon>
@@ -1977,16 +1957,26 @@ const ActionsMenu = ({
 export const ProjectDetailsPage = () => {
   const { projectName } = useParams<{ projectName: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const classes = useProjectDetailStyles();
-  const [selectedTab, setSelectedTab] = useState(0);
-  const [pipelineRunId, setPipelineRunId] = useState<number | null>(null);
+
+  const urlTab = searchParams.get('tab');
+  const urlScan = searchParams.get('scan');
+  const [selectedTab, setSelectedTab] = useState(() => urlTab === 'quality' ? 1 : 0);
+  const [qualityInitialView, setQualityInitialView] = useState<'latest-scan' | undefined>(undefined);
+  const [initialScanId] = useState<string | null>(urlScan);
+  const [pipelineRunId] = useState<number | null>(null);
   const [starred, setStarred] = useState(false);
   const [workspaceSnackbar, setWorkspaceSnackbar] = useState(false);
+  const [opStatus, setOpStatus] = useState<OperationStatus>('idle');
+  const [showResult, setShowResult] = useState(false);
   const [isPushedToAap, setIsPushedToAap] = useState(() =>
     loadAapPushedRepos().has(projectName ?? ''),
   );
   const [pushSnackbar, setPushSnackbar] = useState(false);
   const [showPushModal, setShowPushModal] = useState(false);
+  const [showUpgradeWizard, setShowUpgradeWizard] = useState(false);
+  const [upgradeSnackbar, setUpgradeSnackbar] = useState(false);
 
   const handlePushToAap = useCallback(() => {
     setIsPushedToAap(true);
@@ -2008,7 +1998,8 @@ export const ProjectDetailsPage = () => {
     return found;
   }, [projectName]);
 
-  const handleTabChange = useCallback((index: number) => {
+  const handleTabChange = useCallback((index: number, view?: 'latest-scan') => {
+    setQualityInitialView(view);
     setSelectedTab(index);
   }, []);
 
@@ -2027,7 +2018,7 @@ export const ProjectDetailsPage = () => {
               onClick={() => navigate('/self-service/projects/catalog')}
               style={{ textTransform: 'none', marginTop: 16 }}
             >
-              Back to Git repositories
+              Back to Projects
             </Button>
           </Box>
         </Content>
@@ -2035,15 +2026,33 @@ export const ProjectDetailsPage = () => {
     );
   }
 
-  const overallPipelineStatus = project.pipeline.some(
-    s => s.status === 'failed',
-  )
-    ? 'failed'
-    : project.pipeline.some(s => s.status === 'running')
-      ? 'running'
-      : project.pipeline.every(s => s.status === 'passed')
-        ? 'passed'
-        : 'pending';
+  const quality = getProjectQuality(project.name);
+  const upgradeData = getProjectUpgradeData(project.name);
+
+  const handleCheck = (_remediate: boolean) => {
+    setOpStatus('running');
+    setTimeout(() => {
+      if (quality?.proposals && quality.proposals.length > 0) {
+        setOpStatus('awaiting_approval');
+      } else {
+        setShowResult(true);
+        setOpStatus('complete');
+      }
+    }, 3000);
+  };
+
+  const handleApprove = (_ids: string[]) => {
+    setOpStatus('running');
+    setTimeout(() => {
+      setShowResult(true);
+      setOpStatus('complete');
+    }, 2000);
+  };
+
+  const handleDismiss = () => {
+    setOpStatus('idle');
+    setShowResult(false);
+  };
 
   return (
     <Page themeId="app">
@@ -2053,7 +2062,7 @@ export const ProjectDetailsPage = () => {
           separator={<NavigateNextIcon fontSize="small" />}
           className={classes.breadcrumbs}
         >
-          <RouterLink to="/self-service/projects">Git repositories</RouterLink>
+          <RouterLink to="/self-service/projects">Projects</RouterLink>
           <Typography className={classes.breadcrumbCurrent}>
             {project.title}
           </Typography>
@@ -2077,6 +2086,17 @@ export const ProjectDetailsPage = () => {
             </IconButton>
           </Box>
           <Box className={classes.actionsRow}>
+            {quality && (
+              <Button
+                variant="contained" color="primary" size="small"
+                startIcon={opStatus === 'running' ? <AutorenewIcon style={{ animation: 'spin 1.5s linear infinite' }} /> : <PlayArrowIcon />}
+                onClick={() => handleCheck(false)}
+                disabled={opStatus === 'running'}
+                style={{ textTransform: 'none', fontWeight: 500 }}
+              >
+                {opStatus === 'running' ? 'Checking...' : 'Check'}
+              </Button>
+            )}
             <Button
               variant="outlined"
               color="primary"
@@ -2087,75 +2107,212 @@ export const ProjectDetailsPage = () => {
             >
               Edit in Workspace
             </Button>
-            <ActionsMenu project={project} isPushedToAap={isPushedToAap} onPushToAap={openPushModal} />
+            <ActionsMenu
+              project={project}
+              isPushedToAap={isPushedToAap}
+              onPushToAap={openPushModal}
+              onUpgrade={upgradeData ? () => setShowUpgradeWizard(true) : undefined}
+              upgradeVersion={upgradeData?.latestVersion}
+            />
           </Box>
         </Box>
 
         <Typography className={classes.subtitle}>
           Created from: {project.templateUsed}
-        </Typography>
-
-        <Box className={classes.chipsRow}>
+          <span style={{ margin: '0 6px', opacity: 0.4 }}>·</span>
           <GovernanceStatusBadge
             status={isPushedToAap ? 'pushed-to-aap' : 'governed'}
-            variant="header"
+            variant="minimal"
             onAction={(action) => {
               if (action === 'push-to-aap') openPushModal();
             }}
           />
-          <Tooltip
-            title={
-              <Box>
-                <Typography style={{ fontWeight: 600, fontSize: 12, marginBottom: 4 }}>Pipeline profile</Typography>
-                <Typography style={{ fontSize: 11 }}>
-                  {getProfileForProject(project.name).description}
-                </Typography>
-                <Typography style={{ fontSize: 11, marginTop: 4, opacity: 0.8 }}>
-                  Source: {getProfileForProject(project.name).source === 'built-in' ? 'Built-in' : getProfileForProject(project.name).source === 'organization' ? 'Organization' : 'Custom'}
-                </Typography>
-              </Box>
-            }
-            arrow
-          >
-            <Chip
-              size="small"
-              label={getProfileForProject(project.name).name}
-              variant="outlined"
-              icon={<SecurityIcon style={{ fontSize: 14 }} />}
-              style={{ fontSize: 12, cursor: 'default' }}
-            />
-          </Tooltip>
-          <Tooltip
-            title={
-              <Box>
-                <Typography style={{ fontWeight: 600, fontSize: 12, marginBottom: 4 }}>Latest pipeline run</Typography>
-                {project.pipeline
-                  .filter(s => s.name !== 'Pushed to AAP')
-                  .map(s => (
-                    <Typography key={s.name} style={{ fontSize: 11 }}>
-                      {s.name}: {statusLabel(s.status)}
-                    </Typography>
-                  ))
-                }
-              </Box>
-            }
-            arrow
-          >
-            <Chip
-              size="small"
-              label={`Pipeline: ${statusLabel(overallPipelineStatus)}`}
-              variant="outlined"
-              style={{
-                fontSize: 12,
-                fontWeight: 500,
-                cursor: 'pointer',
-                color: statusColor(overallPipelineStatus),
-                borderColor: statusColor(overallPipelineStatus),
-              }}
-              onClick={() => handleTabChange(3)}
-            />
-          </Tooltip>
+        </Typography>
+
+        <Box className={classes.chipsRow}>
+          {(() => {
+            const q = quality;
+            if (!q) return null;
+            const hColor = q.healthScore >= 80 ? statusColors.success : q.healthScore >= 50 ? statusColors.warning : statusColors.error;
+            return (
+              <>
+                <Chip
+                  size="small"
+                  label={`Health: ${q.healthScore}`}
+                  variant="outlined"
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                    color: hColor,
+                    borderColor: hColor,
+                  }}
+                  onClick={() => handleTabChange(1)}
+                />
+                {q.totalViolations > 0 ? (
+                  <Chip
+                    size="small"
+                    label={`${q.totalViolations} violation${q.totalViolations !== 1 ? 's' : ''}`}
+                    variant="outlined"
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                      color: statusColors.error,
+                      borderColor: statusColors.error,
+                    }}
+                    onClick={() => handleTabChange(1, 'latest-scan')}
+                  />
+                ) : (
+                  <Chip
+                    size="small"
+                    label="Clean"
+                    variant="outlined"
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 500,
+                      color: statusColors.success,
+                      borderColor: statusColors.success,
+                    }}
+                  />
+                )}
+              </>
+            );
+          })()}
         </Box>
+
+        {/* Inline alerts — PF6 bordered inline alert: neutral container, status-colored icon, high-contrast text */}
+        {opStatus === 'running' && (
+          <Box
+            display="flex" alignItems="center"
+            style={{
+              gap: 8, padding: '10px 16px', marginTop: 8, borderRadius: 4, cursor: 'pointer',
+              border: '1px solid rgba(255,255,255,0.12)', backgroundColor: 'rgba(255,255,255,0.04)',
+            }}
+            onClick={() => handleTabChange(1)}
+          >
+            <AutorenewIcon style={{ fontSize: 18, color: statusColors.info, animation: 'spin 1.5s linear infinite' }} />
+            <Typography style={{ fontSize: 13, fontWeight: 500, flex: 1 }}>
+              Analyzing content...
+            </Typography>
+            <Button
+              size="small" variant="text" color="primary"
+              onClick={(e: React.MouseEvent) => e.stopPropagation()}
+              style={{ textTransform: 'none', fontSize: 12, fontWeight: 500, padding: '2px 8px', minWidth: 0 }}
+            >
+              View in Quality →
+            </Button>
+          </Box>
+        )}
+        {opStatus === 'awaiting_approval' && quality && quality.proposals.length > 0 && (
+          <Box
+            display="flex" alignItems="center"
+            style={{
+              gap: 8, padding: '10px 16px', marginTop: 8, borderRadius: 4, cursor: 'pointer',
+              border: '1px solid rgba(255,255,255,0.12)', backgroundColor: 'rgba(255,255,255,0.04)',
+            }}
+            onClick={() => handleTabChange(1)}
+          >
+            <WarningIcon style={{ fontSize: 18, color: statusColors.warning }} />
+            <Typography style={{ fontSize: 13, fontWeight: 500, flex: 1 }}>
+              {quality.proposals.length} remediation{quality.proposals.length !== 1 ? 's' : ''} awaiting approval
+            </Typography>
+            <Button
+              size="small" variant="text" color="primary"
+              onClick={(e: React.MouseEvent) => e.stopPropagation()}
+              style={{ textTransform: 'none', fontSize: 12, fontWeight: 500, padding: '2px 8px', minWidth: 0 }}
+            >
+              Review in Quality →
+            </Button>
+          </Box>
+        )}
+        {showResult && opStatus === 'complete' && quality && (
+          <Box
+            display="flex" alignItems="center"
+            style={{
+              gap: 8, padding: '10px 16px', marginTop: 8, borderRadius: 4, cursor: 'pointer',
+              border: '1px solid rgba(255,255,255,0.12)', backgroundColor: 'rgba(255,255,255,0.04)',
+            }}
+            onClick={() => { handleTabChange(1, 'latest-scan'); handleDismiss(); }}
+          >
+            <CheckCircleIcon style={{ fontSize: 18, color: statusColors.success }} />
+            <Typography style={{ fontSize: 13, fontWeight: 500, flex: 1 }}>
+              {quality.latestScan.scanType === 'remediate'
+                ? `Remediation complete — ${quality.latestScan.remediatedCount} fixed`
+                : `Check complete — ${quality.latestScan.totalViolations} violation${quality.latestScan.totalViolations !== 1 ? 's' : ''} found`}
+            </Typography>
+            {quality.latestScan.scanType === 'remediate' && quality.latestScan.remediatedCount > 0 && (
+              <Button
+                size="small" variant="text" color="primary"
+                component="a" href="https://github.com/acme-corp/rhel-patching/pull/42" target="_blank" rel="noopener noreferrer"
+                onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                style={{ textTransform: 'none', fontSize: 12, fontWeight: 500, padding: '2px 8px', minWidth: 0 }}
+              >
+                View PR
+              </Button>
+            )}
+            <Button
+              size="small" variant="text" color="primary"
+              onClick={(e: React.MouseEvent) => e.stopPropagation()}
+              style={{ textTransform: 'none', fontSize: 12, fontWeight: 500, padding: '2px 8px', minWidth: 0 }}
+            >
+              View details →
+            </Button>
+            <IconButton
+              size="small"
+              onClick={(e: React.MouseEvent) => { e.stopPropagation(); handleDismiss(); }}
+              style={{ padding: 2 }}
+            >
+              <CloseIcon style={{ fontSize: 14 }} />
+            </IconButton>
+          </Box>
+        )}
+
+        {/* Recommended actions — PF6 bordered inline alerts, same container style, all buttons use primary */}
+        {opStatus === 'idle' && quality && quality.totalViolations > 0 && quality.latestScan.fixable > 0 && (
+          <Box
+            display="flex" alignItems="center"
+            style={{
+              gap: 8, padding: '10px 16px', marginTop: 8, borderRadius: 4, cursor: 'pointer',
+              border: '1px solid rgba(255,255,255,0.12)', backgroundColor: 'rgba(255,255,255,0.04)',
+            }}
+            onClick={() => handleTabChange(1, 'latest-scan')}
+          >
+            <BuildIcon style={{ fontSize: 18, color: statusColors.warning }} />
+            <Typography style={{ fontSize: 13, fontWeight: 500, flex: 1 }}>
+              {quality.totalViolations} violation{quality.totalViolations !== 1 ? 's' : ''} found, {quality.latestScan.fixable} auto-fixable
+            </Typography>
+            <Button
+              variant="outlined" color="primary" size="small"
+              onClick={(e: React.MouseEvent) => { e.stopPropagation(); handleCheck(true); }}
+              style={{ textTransform: 'none', fontWeight: 500, fontSize: 12, minWidth: 0, padding: '2px 12px' }}
+            >
+              Remediate
+            </Button>
+          </Box>
+        )}
+        {opStatus === 'idle' && upgradeData && (
+          <Box
+            display="flex" alignItems="center"
+            style={{
+              gap: 8, padding: '10px 16px', marginTop: 8, borderRadius: 4, cursor: 'pointer',
+              border: '1px solid rgba(255,255,255,0.12)', backgroundColor: 'rgba(255,255,255,0.04)',
+            }}
+            onClick={() => setShowUpgradeWizard(true)}
+          >
+            <SystemUpdateIcon style={{ fontSize: 18, color: statusColors.info }} />
+            <Typography style={{ fontSize: 13, fontWeight: 500, flex: 1 }}>
+              Content targets AAP {upgradeData.currentVersion} — AAP {upgradeData.latestVersion} is available
+            </Typography>
+            <Button
+              variant="outlined" color="primary" size="small"
+              onClick={(e: React.MouseEvent) => { e.stopPropagation(); setShowUpgradeWizard(true); }}
+              style={{ textTransform: 'none', fontWeight: 500, fontSize: 12, minWidth: 0, padding: '2px 12px' }}
+            >
+              Check compatibility
+            </Button>
+          </Box>
+        )}
 
         {/* Tabs */}
         <HeaderTabs
@@ -2170,18 +2327,23 @@ export const ProjectDetailsPage = () => {
             project={project}
             isPushedToAap={isPushedToAap}
             onPushToAap={openPushModal}
-            onViewLatestRun={() => {
-              const latestId = project.pipelineHistory[0]?.id ?? null;
-              setPipelineRunId(latestId);
-              setSelectedTab(3);
-            }}
+            onGoToQuality={() => handleTabChange(1)}
           />
         )}
-        {selectedTab === 1 && <ReadmeTab project={project} />}
-        {selectedTab === 2 && <ProjectYamlTab project={project} />}
-        {selectedTab === 3 && <PipelineTab project={project} initialRunId={pipelineRunId} />}
-        {selectedTab === 4 && <AapActivityTab project={project} isPushedToAap={isPushedToAap} onPushToAap={openPushModal} />}
-        {selectedTab === 5 && <ResourcesTab project={project} />}
+        {selectedTab === 1 && (
+          <QualityTab
+            quality={quality}
+            projectName={project.name}
+            initialView={qualityInitialView}
+            initialScanId={initialScanId}
+          />
+        )}
+        {selectedTab === 2 && <DependenciesTab quality={quality} />}
+        {selectedTab === 3 && <ReadmeTab project={project} />}
+        {selectedTab === 4 && <ProjectYamlTab project={project} />}
+        {selectedTab === 5 && <PipelineTab project={project} initialRunId={pipelineRunId} />}
+        {selectedTab === 6 && <AapActivityTab project={project} isPushedToAap={isPushedToAap} onPushToAap={openPushModal} />}
+        {selectedTab === 7 && <ResourcesTab project={project} />}
       </Content>
       <Snackbar
         open={workspaceSnackbar}
@@ -2205,6 +2367,25 @@ export const ProjectDetailsPage = () => {
           setShowPushModal(false);
           handlePushToAap();
         }}
+      />
+      {upgradeData && (
+        <AapUpgradeWizard
+          open={showUpgradeWizard}
+          projectName={project.name}
+          upgradeData={upgradeData}
+          onClose={() => setShowUpgradeWizard(false)}
+          onComplete={() => {
+            setShowUpgradeWizard(false);
+            setUpgradeSnackbar(true);
+          }}
+        />
+      )}
+      <Snackbar
+        open={upgradeSnackbar}
+        autoHideDuration={5000}
+        onClose={() => setUpgradeSnackbar(false)}
+        message={`AAP upgrade changes applied to ${project.title}. Pull request created.`}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       />
     </Page>
   );

@@ -117,7 +117,13 @@ const useStyles = makeStyles(theme => ({
   },
 }));
 
-type BadgeVariant = 'chip' | 'header';
+const MINIMAL_LABELS: Record<GovernanceStatus, string> = {
+  discovered: 'Discovered',
+  governed: 'Governed',
+  'pushed-to-aap': 'Connected',
+};
+
+type BadgeVariant = 'chip' | 'header' | 'minimal';
 
 export const GovernanceStatusBadge = ({
   status,
@@ -142,31 +148,46 @@ export const GovernanceStatusBadge = ({
 
   const handleClose = () => setAnchorEl(null);
 
-  const chipSize = variant === 'header' ? 'medium' : 'small';
+  const trigger = variant === 'minimal' ? (
+    <Typography
+      onClick={handleClick}
+      style={{
+        fontSize: 12,
+        fontWeight: 500,
+        color: status === 'discovered' ? '#999' : currentTier.color,
+        cursor: 'pointer',
+        display: 'inline-block',
+      }}
+    >
+      {MINIMAL_LABELS[status]}
+    </Typography>
+  ) : (
+    <Chip
+      size={variant === 'header' ? 'medium' : 'small'}
+      label={currentTier.label}
+      variant="outlined"
+      icon={
+        status !== 'discovered' ? (
+          <SecurityIcon
+            style={{ fontSize: variant === 'header' ? 16 : 14, color: currentTier.color }}
+          />
+        ) : undefined
+      }
+      onClick={handleClick}
+      className={classes.clickableChip}
+      style={{
+        fontSize: variant === 'header' ? 13 : 11,
+        height: variant === 'header' ? 28 : 24,
+        fontWeight: 500,
+        color: currentTier.color,
+        borderColor: currentTier.color,
+      }}
+    />
+  );
 
   return (
     <>
-      <Chip
-        size={chipSize}
-        label={currentTier.label}
-        variant="outlined"
-        icon={
-          status !== 'discovered' ? (
-            <SecurityIcon
-              style={{ fontSize: variant === 'header' ? 16 : 14, color: currentTier.color }}
-            />
-          ) : undefined
-        }
-        onClick={handleClick}
-        className={classes.clickableChip}
-        style={{
-          fontSize: variant === 'header' ? 13 : 11,
-          height: variant === 'header' ? 28 : 24,
-          fontWeight: 500,
-          color: currentTier.color,
-          borderColor: currentTier.color,
-        }}
-      />
+      {trigger}
       <Popover
         open={Boolean(anchorEl)}
         anchorEl={anchorEl}

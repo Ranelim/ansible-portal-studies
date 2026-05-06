@@ -28,6 +28,8 @@ import SyncIcon from '@material-ui/icons/Sync';
 import LinkIcon from '@material-ui/icons/Link';
 import VpnKeyIcon from '@material-ui/icons/VpnKey';
 import SettingsIcon from '@material-ui/icons/Settings';
+import HistoryIcon from '@material-ui/icons/History';
+import VerifiedUserIcon from '@material-ui/icons/VerifiedUser';
 
 const useSidebarLogoStyles = makeStyles({
   root: {
@@ -129,7 +131,12 @@ export const Root = ({ children }: PropsWithChildren<{}>) => {
             <SidebarItem
               icon={CodeIcon}
               to="/self-service/projects"
-              text="Git repositories"
+              text="Projects"
+            />
+            <SidebarItem
+              icon={VerifiedUserIcon}
+              to="/self-service/quality"
+              text="Quality"
             />
             <SidebarItem
               icon={MemoryIcon}
@@ -147,6 +154,11 @@ export const Root = ({ children }: PropsWithChildren<{}>) => {
               icon={AddCircleOutlineIcon}
               to="/create"
               text="Templates"
+            />
+            <SidebarItem
+              icon={HistoryIcon}
+              to="/self-service/create/tasks"
+              text="Activity"
             />
             <SidebarItem
               icon={BuildIcon}
@@ -167,13 +179,23 @@ export const Root = ({ children }: PropsWithChildren<{}>) => {
               />
               <SidebarItem
                 icon={LinkIcon}
-                to="/self-service/admin/integrations"
-                text="Integrations"
+                to="/self-service/admin/connections"
+                text="Connections"
+              />
+              <SidebarItem
+                icon={CodeIcon}
+                to="/self-service/admin/scm"
+                text="SCM Integration"
               />
               <SidebarItem
                 icon={SyncIcon}
                 to="/self-service/admin/sync-activity"
-                text="Sync status"
+                text="Sync"
+              />
+              <SidebarItem
+                icon={MemoryIcon}
+                to="/self-service/admin/ee-builder"
+                text="EE Builder"
               />
               <SidebarItem
                 icon={VpnKeyIcon}

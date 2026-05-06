@@ -920,7 +920,7 @@ export const RepositoryDetailPage = () => {
               }
               style={{ textTransform: 'none', marginTop: 16 }}
             >
-              Back to Git repositories
+              Back to Projects
             </Button>
           </Box>
         </Content>
@@ -936,7 +936,7 @@ export const RepositoryDetailPage = () => {
           separator={<NavigateNextIcon fontSize="small" />}
           className={classes.breadcrumbs}
         >
-          <RouterLink to="/self-service/projects">Git repositories</RouterLink>
+          <RouterLink to="/self-service/projects">Projects</RouterLink>
           <Typography className={classes.breadcrumbCurrent}>
             {repo.org}/{repo.name}
           </Typography>

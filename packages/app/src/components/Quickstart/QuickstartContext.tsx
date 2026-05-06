@@ -61,7 +61,7 @@ const ADMIN_QUICKSTART_ITEMS: QuickstartItem[] = [
     roles: ['admin'],
     cta: {
       text: 'Open registries',
-      link: '/self-service/admin/integrations',
+      link: '/self-service/admin/connections/registries',
     },
   },
   {
@@ -74,7 +74,7 @@ const ADMIN_QUICKSTART_ITEMS: QuickstartItem[] = [
     roles: ['admin'],
     cta: {
       text: 'Open GitHub',
-      link: '/self-service/admin/integrations/github',
+      link: '/self-service/admin/connections/github',
     },
   },
   {

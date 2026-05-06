@@ -501,7 +501,7 @@ const GitContentSection = () => {
                   style={{ marginBottom: 4 }}
                 />
                 <Typography className={classes.helperText}>
-                  Managed on the <a href="/self-service/admin/integrations" style={{ color: '#0066CC' }}>Integrations</a> page.
+                  Managed on the <a href="/self-service/admin/connections" style={{ color: '#0066CC' }}>Connections</a> page.
                 </Typography>
               </Box>
 
@@ -622,7 +622,7 @@ export const ContentSourcesPage = () => {
         <Box className={classes.infoCallout}>
           <Typography style={{ fontSize: 13, lineHeight: 1.6 }}>
             <strong>How this page relates to other admin pages:</strong> The{' '}
-            <a href="/self-service/admin/integrations" style={{ color: '#0066CC' }}>Integrations</a> page
+            <a href="/self-service/admin/connections" style={{ color: '#0066CC' }}>Connections</a> page
             manages <em>where</em> to connect (hosts, credentials). This page manages <em>what</em> to discover.
             The <a href="/self-service/admin/sync-activity" style={{ color: '#0066CC' }}>Sync Activity</a> page
             shows operational status and lets you adjust <em>when</em> syncs run.

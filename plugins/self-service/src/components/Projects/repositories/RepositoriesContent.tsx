@@ -452,7 +452,7 @@ export const RepositoriesContent = () => {
       <CatalogFilterLayout.Content>
         <DismissibleBanner
           storageKey="projects-repositories"
-          message="Repositories are Git repos discovered from your connected sources that contain Ansible automation content. Create a project from any repository to add governance pipelines, connect to AAP, and track content maturity."
+          message="Repositories are Git repos discovered from your connected sources that contain Ansible automation content. Enable governance on any project to add quality scans, pipelines, connect to AAP, and track content maturity."
         />
 
         <Box className={classes.contentHeader}>
