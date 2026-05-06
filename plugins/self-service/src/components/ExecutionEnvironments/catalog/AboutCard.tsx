@@ -20,7 +20,7 @@ import { getEntityEEDefinitionUrl } from './helpers';
 const useStyles = makeStyles(theme => ({
   tagButton: {
     borderRadius: 8,
-    borderColor: '#D3D3D3',
+    borderColor: theme.palette.divider,
     textTransform: 'none',
   },
   descriptionTruncate: {
@@ -162,7 +162,7 @@ export const AboutCard: React.FC<AboutCardProps> = ({
                 >
                   <AutorenewIcon
                     className={isRefreshing ? classes.rotate : ''}
-                    style={{ color: '#757575' }}
+                    style={{ color: 'inherit' }}
                   />
                 </IconButton>
               </Tooltip>

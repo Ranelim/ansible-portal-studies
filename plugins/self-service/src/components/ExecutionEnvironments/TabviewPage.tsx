@@ -1,31 +1,51 @@
-import { useEffect, useCallback, useMemo } from 'react';
+import { useEffect, useCallback, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Typography, Box, makeStyles } from '@material-ui/core';
+import {
+  Typography,
+  Box,
+  Button,
+  ListItemIcon,
+  makeStyles,
+  Menu,
+  MenuItem,
+} from '@material-ui/core';
+import ArrowDropDownIcon from '@material-ui/icons/ArrowDropDown';
+import AddCircleOutlineIcon from '@material-ui/icons/AddCircleOutline';
+import PublishIcon from '@material-ui/icons/Publish';
 import CategoryOutlinedIcon from '@material-ui/icons/CategoryOutlined';
 import CreateComponentIcon from '@material-ui/icons/AddCircleOutline';
 import { Header, Page, HeaderTabs, Content } from '@backstage/core-components';
 import { useRouteRef } from '@backstage/core-plugin-api';
+import { usePermission } from '@backstage/plugin-permission-react';
+import { catalogEntityCreatePermission } from '@backstage/plugin-catalog-common/alpha';
 
 import { rootRouteRef } from '../../routes';
 import { CreateContent } from './create/CreateContent';
 import { EntityCatalogContent } from './catalog/CatalogContent';
 
-const useStyles = makeStyles(() => ({
-  tabContainer: {
-    '& .MuiTab-root': {
-      minWidth: '200px',
-      padding: '12px 40px',
-      fontSize: '16px',
-    },
-  },
-  tabWithIcon: {
+const useStyles = makeStyles(theme => ({
+  tabLabel: {
     display: 'flex',
     alignItems: 'center',
     gap: '8px',
+    color: theme.palette.text.secondary,
+    '.Mui-selected &': {
+      color: theme.palette.text.primary,
+    },
+  },
+  menuItem: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    padding: '8px 16px',
+    gap: 8,
+  },
+  menuItemText: {
+    display: 'flex',
+    flexDirection: 'column' as const,
   },
 }));
 
-export const EEHeader = () => {
+export const EEHeader = ({ children }: { children?: React.ReactNode }) => {
   const headerTitle = (
     <Typography
       variant="h4"
@@ -45,7 +65,9 @@ export const EEHeader = () => {
         color: 'white',
         paddingBottom: '16px',
       }}
-    />
+    >
+      {children}
+    </Header>
   );
 };
 
@@ -64,6 +86,10 @@ export const EETabs: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const rootLink = useRouteRef(rootRouteRef);
+  const { allowed } = usePermission({
+    permission: catalogEntityCreatePermission,
+  });
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
   const selectedTab = useMemo(
     () => getTabIndexFromPath(location.pathname),
@@ -100,6 +126,27 @@ export const EETabs: React.FC = () => {
     [onTabSelect],
   );
 
+  const handleMenuOpen = useCallback(
+    (event: React.MouseEvent<HTMLElement>) => {
+      setAnchorEl(event.currentTarget);
+    },
+    [],
+  );
+
+  const handleMenuClose = useCallback(() => {
+    setAnchorEl(null);
+  }, []);
+
+  const handleCreate = useCallback(() => {
+    handleMenuClose();
+    navigate(`${rootLink()}/ee/create`);
+  }, [handleMenuClose, navigate, rootLink]);
+
+  const handleImport = useCallback(() => {
+    handleMenuClose();
+    navigate(`${rootLink()}/catalog-import`);
+  }, [handleMenuClose, navigate, rootLink]);
+
   const content = useMemo(() => {
     if (selectedTab === 1) {
       return <CreateContent key="create" />;
@@ -109,7 +156,56 @@ export const EETabs: React.FC = () => {
 
   return (
     <Page themeId="app">
-      <EEHeader />
+      <EEHeader>
+        {allowed && (
+          <>
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={handleMenuOpen}
+              endIcon={<ArrowDropDownIcon />}
+            >
+              Actions
+            </Button>
+            <Menu
+              anchorEl={anchorEl}
+              open={Boolean(anchorEl)}
+              onClose={handleMenuClose}
+              anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+              transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+              getContentAnchorEl={null}
+              PaperProps={{ style: { minWidth: 280 } }}
+            >
+              <MenuItem onClick={handleCreate} className={classes.menuItem}>
+                <ListItemIcon style={{ minWidth: 36, marginTop: 2 }}>
+                  <AddCircleOutlineIcon fontSize="small" />
+                </ListItemIcon>
+                <Box className={classes.menuItemText}>
+                  <Typography variant="body2" style={{ fontWeight: 500 }}>
+                    Create definition
+                  </Typography>
+                  <Typography variant="caption" color="textSecondary">
+                    Build a new EE definition from a preset or from scratch.
+                  </Typography>
+                </Box>
+              </MenuItem>
+              <MenuItem onClick={handleImport} className={classes.menuItem}>
+                <ListItemIcon style={{ minWidth: 36, marginTop: 2 }}>
+                  <PublishIcon fontSize="small" />
+                </ListItemIcon>
+                <Box className={classes.menuItemText}>
+                  <Typography variant="body2" style={{ fontWeight: 500 }}>
+                    Import template
+                  </Typography>
+                  <Typography variant="caption" color="textSecondary">
+                    Register an existing template from a URL or repository.
+                  </Typography>
+                </Box>
+              </MenuItem>
+            </Menu>
+          </>
+        )}
+      </EEHeader>
       <HeaderTabs
         selectedIndex={selectedTab}
         onChange={onTabSelect}
@@ -117,7 +213,7 @@ export const EETabs: React.FC = () => {
           tabs.map(({ label, icon }) => ({
             id: label.toLowerCase(),
             label: (
-              <Box className={classes.tabWithIcon}>
+              <Box className={classes.tabLabel}>
                 {icon}
                 {label}
               </Box>

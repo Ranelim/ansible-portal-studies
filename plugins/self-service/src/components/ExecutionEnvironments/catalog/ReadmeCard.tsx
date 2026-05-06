@@ -2,18 +2,17 @@ import { Box, Card, CardContent, Typography } from '@material-ui/core';
 import { makeStyles } from '@material-ui/core/styles';
 import { MarkdownContent } from '@backstage/core-components';
 
-const useStyles = makeStyles(() => ({
+const useStyles = makeStyles(theme => ({
   scrollArea: {
     maxHeight: '58vh',
     overflowY: 'auto',
     paddingRight: 8,
 
-    /* Optional prettier scrollbar */
     '&::-webkit-scrollbar': {
       width: '6px',
     },
     '&::-webkit-scrollbar-thumb': {
-      backgroundColor: '#bfbfbf',
+      backgroundColor: theme.palette.type === 'dark' ? '#555' : '#bfbfbf',
       borderRadius: '4px',
     },
   },
@@ -27,7 +26,7 @@ const useStyles = makeStyles(() => ({
       width: 8,
     },
     '&::-webkit-scrollbar-thumb': {
-      backgroundColor: '#bfbfbf',
+      backgroundColor: theme.palette.type === 'dark' ? '#555' : '#bfbfbf',
       borderRadius: 4,
     },
   },
@@ -44,7 +43,7 @@ export const ReadmeCard: React.FC<ReadmeCardProps> = ({ readmeContent }) => {
     <Box flex={1} style={{ minHeight: 0 }}>
       <Card
         variant="outlined"
-        style={{ borderRadius: 16, borderColor: '#D3D3D3' }}
+        style={{ borderRadius: 16 }}
       >
         <CardContent style={{ flex: 1, minHeight: 0 }}>
           <Typography

@@ -10,6 +10,7 @@ import {
   Chip,
   Divider,
   Link,
+  Tooltip,
   Typography,
   useTheme,
 } from '@material-ui/core';
@@ -18,6 +19,16 @@ import { useRouteRef } from '@backstage/core-plugin-api';
 import { usePermission } from '@backstage/plugin-permission-react';
 import { taskCreatePermission } from '@backstage/plugin-scaffolder-common/alpha';
 import { rootRouteRef } from '../../../routes';
+
+const typeLabels: Record<string, string> = {
+  'workflow-job-template': 'Workflow template',
+  service: 'Job template',
+};
+
+function getTypeLabel(specType?: string): string {
+  if (!specType) return 'Template';
+  return typeLabels[specType] ?? specType;
+}
 
 export function WizardCard({ template }: { template: TemplateEntityV1beta3 }) {
   const theme = useTheme();
@@ -28,6 +39,9 @@ export function WizardCard({ template }: { template: TemplateEntityV1beta3 }) {
   const { allowed: canCreateTask } = usePermission({
     permission: taskCreatePermission,
   });
+
+  const specType = template?.spec?.type?.toString();
+  const isWorkflow = specType === 'workflow-job-template';
 
   const chooseWizardItem = () =>
     navigate(`${rootLink()}/create/templates/${namespace}/${name}`);
@@ -47,7 +61,7 @@ export function WizardCard({ template }: { template: TemplateEntityV1beta3 }) {
             {template?.metadata?.title}
           </Link>
         }
-        subheader={template?.spec?.type?.toString()}
+        subheader={getTypeLabel(specType)}
         action={<FavoriteEntity entity={template} style={{ padding: 0 }} />}
         style={{ padding: 16 }}
       />
@@ -69,9 +83,19 @@ export function WizardCard({ template }: { template: TemplateEntityV1beta3 }) {
           </Typography>
         </div>
         <Divider />
-        {(template?.metadata?.tags ?? []).length > 0 && (
+        {((template?.metadata?.tags ?? []).length > 0 || isWorkflow) && (
           <div className="tags" data-testid="template--tags">
-            <div style={{ marginTop: 8 }}>
+            <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+              {isWorkflow && (
+                <Tooltip title="One or more steps in this workflow pause for approval in Ansible Automation Platform before continuing.">
+                  <Chip
+                    label="Includes approval"
+                    size="small"
+                    variant="outlined"
+                    data-testid="template-tags--approval"
+                  />
+                </Tooltip>
+              )}
               {template?.metadata?.tags?.map((tag, index) => (
                 <Chip
                   label={tag}

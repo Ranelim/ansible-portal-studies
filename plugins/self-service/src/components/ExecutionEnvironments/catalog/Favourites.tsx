@@ -18,7 +18,7 @@ const useStyles = makeStyles(theme => ({
     marginRight: '10px',
   },
   kind: {
-    color: theme.palette.type === 'light' ? '#757575' : 'currentColor',
+    color: theme.palette.text.secondary,
   },
 }));
 
@@ -26,7 +26,7 @@ const useStyles = makeStyles(theme => ({
 
 export const YellowStar: React.ComponentType = withStyles({
   root: {
-    color: '#faaf00',
+    color: '#f3ba37',
   },
 })(Star);
 

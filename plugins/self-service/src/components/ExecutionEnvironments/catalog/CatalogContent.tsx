@@ -60,7 +60,7 @@ const useStyles = makeStyles(theme => ({
   },
   linkButtonRoot: {
     '&.MuiButton-root': {
-      color: '#1976d2',
+      color: theme.palette.primary.main,
       textTransform: 'none',
       fontSize: '1rem',
       fontWeight: 500,

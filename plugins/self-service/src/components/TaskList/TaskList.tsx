@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   identityApiRef,
   useApi,
@@ -13,10 +13,16 @@ import { useNavigate } from 'react-router-dom';
 import { Content, Header, Page } from '@backstage/core-components';
 import {
   Box,
+  Chip,
   Grid,
   IconButton,
+  InputBase,
   Link,
   makeStyles,
+  Menu,
+  MenuItem,
+  Checkbox,
+  ListItemText,
   Table,
   TableBody,
   TableCell,
@@ -25,6 +31,8 @@ import {
   TablePagination,
   TableRow,
   Typography,
+  Button,
+  useTheme,
 } from '@material-ui/core';
 import FirstPageIcon from '@material-ui/icons/FirstPage';
 import KeyboardArrowLeft from '@material-ui/icons/KeyboardArrowLeft';
@@ -35,6 +43,10 @@ import CheckCircleOutlineIcon from '@material-ui/icons/CheckCircleOutline';
 import PlayCircleOutlineIcon from '@material-ui/icons/PlayCircleOutline';
 import AddCircleOutlineIcon from '@material-ui/icons/AddCircleOutline';
 import BlockIcon from '@material-ui/icons/Block';
+import PauseCircleOutlineIcon from '@material-ui/icons/PauseCircleOutline';
+import SearchIcon from '@material-ui/icons/Search';
+import CloseIcon from '@material-ui/icons/Close';
+import ArrowDropDownIcon from '@material-ui/icons/ArrowDropDown';
 import { rootRouteRef } from '../../routes';
 import { useAsync } from 'react-use';
 
@@ -157,6 +169,145 @@ export const TaskList = () => {
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const rootLink = useRouteRef(rootRouteRef);
 
+  const demoTasks: ScaffolderTask[] = useMemo(() => [
+    {
+      id: 'demo-ee-success',
+      spec: {
+        apiVersion: 'scaffolder.backstage.io/v1beta3',
+        steps: [],
+        parameters: {},
+        templateInfo: {
+          entityRef: 'template:default/build-ee-rhel9',
+          entity: {
+            metadata: { name: 'build-ee-rhel9', title: 'Build Execution Environment (RHEL 9)' },
+            spec: { type: 'execution-environment' },
+          } as any,
+        },
+        user: { entity: { metadata: { title: 'Guest User' } } as any },
+      },
+      status: 'completed',
+      createdAt: new Date(Date.now() - 25 * 60 * 1000).toISOString(),
+      createdBy: 'user:default/guest',
+    } as ScaffolderTask,
+    {
+      id: 'demo-project-success',
+      spec: {
+        apiVersion: 'scaffolder.backstage.io/v1beta3',
+        steps: [],
+        parameters: {},
+        templateInfo: {
+          entityRef: 'template:default/create-ansible-project',
+          entity: {
+            metadata: { name: 'create-ansible-project', title: 'Create Ansible Project' },
+            spec: { type: 'project' },
+          } as any,
+        },
+        user: { entity: { metadata: { title: 'Guest User' } } as any },
+      },
+      status: 'completed',
+      createdAt: new Date(Date.now() - 40 * 60 * 1000).toISOString(),
+      createdBy: 'user:default/guest',
+    } as ScaffolderTask,
+    {
+      id: 'demo-workflow-approval',
+      spec: {
+        apiVersion: 'scaffolder.backstage.io/v1beta3',
+        steps: [],
+        parameters: {},
+        templateInfo: {
+          entityRef: 'template:default/employee-onboarding-workflow',
+          entity: {
+            metadata: { name: 'employee-onboarding-workflow', title: 'Employee Onboarding Workflow' },
+            spec: { type: 'workflow-job-template' },
+          } as any,
+        },
+        user: { entity: { metadata: { title: 'Guest User' } } as any },
+      },
+      status: 'processing',
+      createdAt: new Date(Date.now() - 10 * 60 * 1000).toISOString(),
+      createdBy: 'user:default/guest',
+      stepLogs: {
+        'launch-workflow': ['Workflow is awaiting approval at node "Manager Approval".'],
+      },
+    } as unknown as ScaffolderTask,
+    {
+      id: 'demo-workflow-denied',
+      spec: {
+        apiVersion: 'scaffolder.backstage.io/v1beta3',
+        steps: [],
+        parameters: {},
+        templateInfo: {
+          entityRef: 'template:default/employee-onboarding-workflow',
+          entity: {
+            metadata: { name: 'employee-onboarding-workflow', title: 'Employee Onboarding Workflow' },
+            spec: { type: 'workflow-job-template' },
+          } as any,
+        },
+        user: { entity: { metadata: { title: 'Guest User' } } as any },
+      },
+      status: 'failed',
+      createdAt: new Date(Date.now() - 120 * 60 * 1000).toISOString(),
+      createdBy: 'user:default/guest',
+    } as ScaffolderTask,
+    {
+      id: 'demo-workflow-approved',
+      spec: {
+        apiVersion: 'scaffolder.backstage.io/v1beta3',
+        steps: [],
+        parameters: {},
+        templateInfo: {
+          entityRef: 'template:default/employee-onboarding-workflow',
+          entity: {
+            metadata: { name: 'employee-onboarding-workflow', title: 'Employee Onboarding Workflow' },
+            spec: { type: 'workflow-job-template' },
+          } as any,
+        },
+        user: { entity: { metadata: { title: 'Guest User' } } as any },
+      },
+      status: 'completed',
+      createdAt: new Date(Date.now() - 90 * 60 * 1000).toISOString(),
+      createdBy: 'user:default/guest',
+    } as ScaffolderTask,
+    {
+      id: 'demo-project-failed',
+      spec: {
+        apiVersion: 'scaffolder.backstage.io/v1beta3',
+        steps: [],
+        parameters: {},
+        templateInfo: {
+          entityRef: 'template:default/provision-cloud-infra',
+          entity: {
+            metadata: { name: 'provision-cloud-infra', title: 'Provision Cloud Infrastructure' },
+            spec: { type: 'project' },
+          } as any,
+        },
+        user: { entity: { metadata: { title: 'Guest User' } } as any },
+      },
+      status: 'failed',
+      createdAt: new Date(Date.now() - 55 * 60 * 1000).toISOString(),
+      createdBy: 'user:default/guest',
+    } as ScaffolderTask,
+    {
+      id: 'demo-job-completing',
+      spec: {
+        apiVersion: 'scaffolder.backstage.io/v1beta3',
+        steps: [],
+        parameters: {},
+        templateInfo: {
+          entityRef: 'template:default/deploy-database-update',
+          entity: {
+            metadata: { name: 'deploy-database-update', title: 'Deploy Database Update' },
+            spec: { type: 'service' },
+          } as any,
+        },
+        user: { entity: { metadata: { title: 'Guest User' } } as any },
+      },
+      status: 'completed',
+      createdAt: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
+      createdBy: 'user:default/guest',
+    } as ScaffolderTask,
+  ], []);
+
   const fetchTasks = useCallback(async () => {
     if (!scaffolderApi?.listTasks) {
       setError(new Error('listTasks method is not available on scaffolderApi'));
@@ -170,14 +321,15 @@ export const TaskList = () => {
         limit: rowsPerPage,
         offset: page * rowsPerPage,
       });
-      setTasks(response.tasks);
-      setTotalTasks(response.totalTasks ? Number(response.totalTasks) : 0);
+      const combined = [...demoTasks, ...response.tasks];
+      setTasks(combined);
+      setTotalTasks((response.totalTasks ? Number(response.totalTasks) : 0) + demoTasks.length);
     } catch (e) {
       setError(e as Error);
     } finally {
       setLoading(false);
     }
-  }, [filters, page, rowsPerPage, scaffolderApi]);
+  }, [filters, page, rowsPerPage, scaffolderApi, demoTasks]);
 
   useEffect(() => {
     fetchTasks();
@@ -217,50 +369,157 @@ export const TaskList = () => {
     }).format(date);
   };
 
+  const typeLabels: Record<string, string> = {
+    'workflow-job-template': 'Workflow template',
+    service: 'Job template',
+    project: 'Project',
+    'execution-environment': 'Execution environment',
+  };
+
+  const getTemplateType = (task: ScaffolderTask): string => {
+    const specType = (
+      task.spec?.templateInfo?.entity as
+        | { spec?: { type?: string } }
+        | undefined
+    )?.spec?.type;
+    if (specType && typeLabels[specType]) return typeLabels[specType];
+    if (specType) return specType;
+    return 'Template';
+  };
+
+  const theme = useTheme();
+  const isDark = theme.palette.type === 'dark';
+
   const navigate = useNavigate();
   const navigateToTaskDetails = (id: string) => {
-    navigate(`${rootLink()}/create/tasks/${id}`);
+    navigate(`${rootLink()}/create/tasks/${id}`, {
+      state: { from: 'activity' },
+    });
   };
-  const navigateToItemDetails = (
-    name?: string,
-    namespace: string = 'default',
-  ) => {
-    if (!name) {
-      return;
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
+  const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
+  const [typeAnchor, setTypeAnchor] = useState<null | HTMLElement>(null);
+  const [statusAnchor, setStatusAnchor] = useState<null | HTMLElement>(null);
+
+  const typeOptions = [
+    { value: 'Execution environment', label: 'Execution environment' },
+    { value: 'Project', label: 'Project' },
+    { value: 'Job template', label: 'Job template' },
+    { value: 'Workflow template', label: 'Workflow template' },
+  ];
+  const statusOptions = [
+    { value: 'completed', label: 'Completed' },
+    { value: 'failed', label: 'Failed' },
+    { value: 'processing', label: 'Running' },
+    { value: 'awaiting_approval', label: 'Awaiting approval' },
+    { value: 'cancelled', label: 'Cancelled' },
+  ];
+
+  const toggleType = (type: string) => {
+    setSelectedTypes(prev =>
+      prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type],
+    );
+    setPage(0);
+  };
+  const toggleStatus = (status: string) => {
+    setSelectedStatuses(prev =>
+      prev.includes(status) ? prev.filter(s => s !== status) : [...prev, status],
+    );
+    setPage(0);
+  };
+
+  const hasActiveFilters = searchQuery.length > 0 || selectedTypes.length > 0 || selectedStatuses.length > 0;
+
+  const filteredTasks = useMemo(() => {
+    return tasks.filter(task => {
+      const name = (
+        task.spec?.templateInfo?.entity?.metadata?.title ||
+        task.spec?.templateInfo?.entity?.metadata?.name ||
+        ''
+      ).toLowerCase();
+      const taskId = task.id.toLowerCase();
+      if (searchQuery && !name.includes(searchQuery.toLowerCase()) && !taskId.includes(searchQuery.toLowerCase())) {
+        return false;
+      }
+      if (selectedTypes.length > 0) {
+        const taskType = getTemplateType(task);
+        if (!selectedTypes.includes(taskType)) return false;
+      }
+      if (selectedStatuses.length > 0) {
+        const effectiveStatus = getEffectiveStatus(task);
+        if (!selectedStatuses.includes(effectiveStatus)) return false;
+      }
+      return true;
+    });
+  }, [tasks, searchQuery, selectedTypes, selectedStatuses]);
+
+  const getEffectiveStatus = (task: ScaffolderTask): string => {
+    if (task.status === 'processing') {
+      const logs = Object.values((task as any).stepLogs ?? {}).flat() as string[];
+      const outputStr = logs.join(' ').toLowerCase();
+      if (
+        outputStr.includes('awaiting approval') ||
+        outputStr.includes('waiting') ||
+        outputStr.includes('approval')
+      ) {
+        return 'awaiting_approval';
+      }
     }
-    navigate(`${rootLink()}/catalog/${namespace}/${name}`);
+    return task.status;
   };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'failed':
-        return <ErrorOutlineIcon style={{ color: 'red' }} />;
+        return <ErrorOutlineIcon style={{ color: '#f44336' }} />;
       case 'completed':
-        return <CheckCircleOutlineIcon style={{ color: 'green' }} />;
+        return <CheckCircleOutlineIcon style={{ color: '#4caf50' }} />;
       case 'processing':
-        return <PlayCircleOutlineIcon style={{ color: 'blue' }} />;
+        return <PlayCircleOutlineIcon style={{ color: '#42a5f5' }} />;
+      case 'awaiting_approval':
+        return <PauseCircleOutlineIcon style={{ color: '#ff9800' }} />;
       case 'open':
-        return <AddCircleOutlineIcon style={{ color: 'blue' }} />;
+        return <AddCircleOutlineIcon style={{ color: '#42a5f5' }} />;
       case 'cancelled':
-        return <BlockIcon style={{ color: 'yellow' }} />;
+        return <BlockIcon style={{ color: '#ff9800' }} />;
       default:
         return <></>;
+    }
+  };
+
+  const getStatusLabel = (status: string): string => {
+    switch (status) {
+      case 'processing':
+        return 'Running';
+      case 'awaiting_approval':
+        return 'Awaiting approval';
+      case 'completed':
+        return 'Completed';
+      case 'failed':
+        return 'Failed';
+      case 'cancelled':
+        return 'Cancelled';
+      case 'open':
+        return 'Open';
+      default:
+        return status;
     }
   };
 
   return (
     <Page themeId="tool">
       <Header
-        pageTitleOverride="Tasks"
+        pageTitleOverride="Activity"
         title={
           <span data-testid="taskHeader" className={classes.header_title_color}>
-            Task List
+            Activity
           </span>
         }
         subtitle={
           <span className={classes.header_subtitle}>
-            View all your past tasks launched from self-service automation
-            portal.
+            Track your active and completed automation tasks.
           </span>
         }
         style={{ background: 'inherit' }}
@@ -276,47 +535,204 @@ export const TaskList = () => {
             )}
             {!loading && !error && (
               <Box>
+                {/* Toolbar — search + filters */}
+                <Box
+                  display="flex"
+                  alignItems="center"
+                  style={{
+                    gap: 8,
+                    padding: '8px 0',
+                    flexWrap: 'wrap',
+                  }}
+                >
+                  <Box
+                    display="flex"
+                    alignItems="center"
+                    style={{
+                      flex: '1 1 240px',
+                      maxWidth: 360,
+                      border: `1px solid ${isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.23)'}`,
+                      borderRadius: 4,
+                      padding: '2px 8px',
+                      background: isDark ? 'rgba(255,255,255,0.05)' : 'transparent',
+                    }}
+                  >
+                    <SearchIcon style={{ color: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.4)', fontSize: 20, marginRight: 6 }} />
+                    <InputBase
+                      placeholder="Search by name or task ID"
+                      value={searchQuery}
+                      onChange={e => { setSearchQuery(e.target.value); setPage(0); }}
+                      style={{ flex: 1, fontSize: 14, color: 'inherit' }}
+                      inputProps={{ 'aria-label': 'Search tasks' }}
+                    />
+                    {searchQuery && (
+                      <IconButton size="small" onClick={() => { setSearchQuery(''); setPage(0); }} aria-label="Clear search">
+                        <CloseIcon style={{ fontSize: 16 }} />
+                      </IconButton>
+                    )}
+                  </Box>
+
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={e => setTypeAnchor(e.currentTarget)}
+                    endIcon={<ArrowDropDownIcon />}
+                    style={{
+                      textTransform: 'none',
+                      fontSize: 13,
+                      borderColor: selectedTypes.length > 0 ? theme.palette.primary.main : (isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.23)'),
+                      color: isDark ? '#ffffff' : 'inherit',
+                    }}
+                  >
+                    Type{selectedTypes.length > 0 ? ` (${selectedTypes.length})` : ''}
+                  </Button>
+                  <Menu
+                    anchorEl={typeAnchor}
+                    open={Boolean(typeAnchor)}
+                    onClose={() => setTypeAnchor(null)}
+                    PaperProps={{ style: { minWidth: 200 } }}
+                  >
+                    {typeOptions.map(opt => (
+                      <MenuItem key={opt.value} dense onClick={() => toggleType(opt.value)}>
+                        <Checkbox
+                          checked={selectedTypes.includes(opt.value)}
+                          size="small"
+                          color="primary"
+                          style={{ padding: '2px 8px 2px 0' }}
+                        />
+                        <ListItemText primary={opt.label} />
+                      </MenuItem>
+                    ))}
+                  </Menu>
+
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={e => setStatusAnchor(e.currentTarget)}
+                    endIcon={<ArrowDropDownIcon />}
+                    style={{
+                      textTransform: 'none',
+                      fontSize: 13,
+                      borderColor: selectedStatuses.length > 0 ? theme.palette.primary.main : (isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.23)'),
+                      color: isDark ? '#ffffff' : 'inherit',
+                    }}
+                  >
+                    Status{selectedStatuses.length > 0 ? ` (${selectedStatuses.length})` : ''}
+                  </Button>
+                  <Menu
+                    anchorEl={statusAnchor}
+                    open={Boolean(statusAnchor)}
+                    onClose={() => setStatusAnchor(null)}
+                    PaperProps={{ style: { minWidth: 200 } }}
+                  >
+                    {statusOptions.map(opt => (
+                      <MenuItem key={opt.value} dense onClick={() => toggleStatus(opt.value)}>
+                        <Checkbox
+                          checked={selectedStatuses.includes(opt.value)}
+                          size="small"
+                          color="primary"
+                          style={{ padding: '2px 8px 2px 0' }}
+                        />
+                        <ListItemText primary={opt.label} />
+                      </MenuItem>
+                    ))}
+                  </Menu>
+                </Box>
+
+                {/* Active filter chips */}
+                {hasActiveFilters && (
+                  <Box display="flex" alignItems="center" style={{ gap: 6, padding: '4px 0 8px', flexWrap: 'wrap' }}>
+                    {selectedTypes.map(t => (
+                      <Chip
+                        key={`type-${t}`}
+                        label={t}
+                        size="small"
+                        onDelete={() => toggleType(t)}
+                        color="primary"
+                        variant="outlined"
+                      />
+                    ))}
+                    {selectedStatuses.map(s => (
+                      <Chip
+                        key={`status-${s}`}
+                        label={statusOptions.find(o => o.value === s)?.label || s}
+                        size="small"
+                        onDelete={() => toggleStatus(s)}
+                        color="primary"
+                        variant="outlined"
+                      />
+                    ))}
+                    {searchQuery && (
+                      <Chip
+                        label={`"${searchQuery}"`}
+                        size="small"
+                        onDelete={() => { setSearchQuery(''); setPage(0); }}
+                        color="primary"
+                        variant="outlined"
+                      />
+                    )}
+                    <Button
+                      size="small"
+                      onClick={() => { setSearchQuery(''); setSelectedTypes([]); setSelectedStatuses([]); setPage(0); }}
+                      style={{ textTransform: 'none', fontSize: 12, minWidth: 'auto', padding: '2px 8px' }}
+                    >
+                      Clear all filters
+                    </Button>
+                  </Box>
+                )}
+
                 <TableContainer>
                   <Table>
                     <TableHead>
                       <TableRow>
-                        <TableCell>Task ID</TableCell>
-                        <TableCell>Template</TableCell>
+                        <TableCell>Run</TableCell>
+                        <TableCell>Type</TableCell>
                         <TableCell>Created at</TableCell>
                         <TableCell>Owner</TableCell>
                         <TableCell>Status</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {tasks.map(task => (
-                        <TableRow key={task.id}>
+                      {filteredTasks
+                        .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                        .map(task => {
+                        const displayName =
+                          task.spec?.templateInfo?.entity?.metadata?.title ||
+                          task.spec?.templateInfo?.entity?.metadata?.name ||
+                          'Untitled';
+                        const shortTaskId = task.id.length > 8 ? task.id.substring(0, 8) : task.id;
+                        const templateTypeLabel = getTemplateType(task);
+                        return (
+                        <TableRow
+                          key={task.id}
+                          hover
+                          style={{ cursor: 'pointer' }}
+                          onClick={() => navigateToTaskDetails(task.id)}
+                        >
                           <TableCell>
                             <Link
                               component="button"
                               variant="body2"
-                              onClick={() => navigateToTaskDetails(task.id)}
-                              style={{ textDecoration: 'none' }}
+                              onClick={e => {
+                                e.stopPropagation();
+                                navigateToTaskDetails(task.id);
+                              }}
+                              style={{ textDecoration: 'none', textAlign: 'left' }}
                             >
-                              {task.id}
+                              {displayName}
                             </Link>
+                            <Typography
+                              variant="caption"
+                              color="textSecondary"
+                              display="block"
+                            >
+                              Task {shortTaskId}
+                            </Typography>
                           </TableCell>
                           <TableCell>
-                            <Link
-                              component="button"
-                              variant="body2"
-                              onClick={() =>
-                                navigateToItemDetails(
-                                  task.spec?.templateInfo?.entity?.metadata
-                                    ?.name,
-                                  task.spec?.templateInfo?.entity?.metadata
-                                    ?.namespace,
-                                )
-                              }
-                              style={{ textDecoration: 'none' }}
-                            >
-                              {task.spec?.templateInfo?.entity?.metadata
-                                ?.title || 'Untitled'}
-                            </Link>
+                            <Typography variant="body2" color="textSecondary">
+                              {templateTypeLabel}
+                            </Typography>
                           </TableCell>
                           <TableCell>
                             {formatCustomDate(task.createdAt)}
@@ -324,30 +740,47 @@ export const TaskList = () => {
                           <TableCell>
                             {task.spec?.user?.entity?.metadata?.title}
                           </TableCell>
-                          <TableCell
-                            style={{
-                              textTransform: 'capitalize',
-                              display: 'flex',
-                              alignItems: 'center',
-                            }}
-                          >
-                            <Box
-                              sx={{
-                                marginRight: 1,
-                                display: 'flex',
-                                alignItems: 'center',
-                              }}
-                            >
-                              {getStatusIcon(task.status)}
-                            </Box>{' '}
-                            {task.status}
+                          <TableCell>
+                            {(() => {
+                              const effectiveStatus = getEffectiveStatus(task);
+                              return (
+                                <Box
+                                  display="flex"
+                                  alignItems="center"
+                                >
+                                  <Box
+                                    display="flex"
+                                    alignItems="center"
+                                    marginRight={1}
+                                  >
+                                    {getStatusIcon(effectiveStatus)}
+                                  </Box>
+                                  {getStatusLabel(effectiveStatus)}
+                                </Box>
+                              );
+                            })()}
                           </TableCell>
                         </TableRow>
-                      ))}
-                      {totalTasks === 0 && (
+                        );
+                      })}
+                      {filteredTasks.length === 0 && (
                         <TableRow>
                           <TableCell colSpan={5} align="center">
-                            No tasks found
+                            <Box paddingY={4}>
+                              <Typography variant="body1" color="textSecondary">
+                                {hasActiveFilters ? 'No tasks match the current filters.' : 'No tasks found.'}
+                              </Typography>
+                              {hasActiveFilters && (
+                                <Button
+                                  size="small"
+                                  color="primary"
+                                  onClick={() => { setSearchQuery(''); setSelectedTypes([]); setSelectedStatuses([]); setPage(0); }}
+                                  style={{ textTransform: 'none', marginTop: 8 }}
+                                >
+                                  Clear all filters
+                                </Button>
+                              )}
+                            </Box>
                           </TableCell>
                         </TableRow>
                       )}
@@ -355,7 +788,7 @@ export const TaskList = () => {
                   </Table>
                   <TablePagination
                     component="div"
-                    count={totalTasks}
+                    count={filteredTasks.length}
                     page={page}
                     onPageChange={handlePageChange}
                     rowsPerPage={rowsPerPage}

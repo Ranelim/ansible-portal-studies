@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, useEffect } from 'react';
+import { useCallback, useMemo, useState, useEffect, useRef } from 'react';
 import {
   Page,
   Header,
@@ -22,70 +22,737 @@ import {
 import {
   Button,
   CircularProgress,
+  Link,
   makeStyles,
   Typography,
   Box,
   IconButton,
+  Snackbar,
+  Tab,
+  Tabs,
+  Tooltip,
+  useTheme,
 } from '@material-ui/core';
 import GetAppIcon from '@material-ui/icons/GetApp';
 import ArrowBack from '@material-ui/icons/ArrowBack';
+import CheckCircleOutlineIcon from '@material-ui/icons/CheckCircleOutline';
+import ErrorOutlineIcon from '@material-ui/icons/ErrorOutline';
+import PauseCircleOutlineIcon from '@material-ui/icons/PauseCircleOutline';
+import MoreHorizIcon from '@material-ui/icons/MoreHoriz';
+import OpenInNewIcon from '@material-ui/icons/OpenInNew';
+import HelpOutlineIcon from '@material-ui/icons/HelpOutline';
+import BlockIcon from '@material-ui/icons/Block';
+import LoopIcon from '@material-ui/icons/Loop';
 import { rootRouteRef, selectedTemplateRouteRef } from '../../routes';
 import { createTarArchive } from '../utils/tarArchiveUtils';
 import {
   resolveEeFileNameFromParameters,
   resolvePublishToScmFromParameters,
 } from './runTaskParameters';
+import { WorkflowJobTaskSection } from './WorkflowJobTaskSection';
+import { JobTaskSection } from './JobTaskSection';
+import { WorkflowGraph } from './WorkflowGraph';
+import type { AapLogEntry } from './buildWorkflowLayers';
 
-const headerStyles = makeStyles(theme => ({
-  header_title_color: {
-    color: theme.palette.type === 'light' ? 'rgba(0, 0, 0, 0.87)' : '#ffffff',
+const typeLabels: Record<string, string> = {
+  'workflow-job-template': 'Workflow template',
+  service: 'Job template',
+  project: 'Project',
+  'execution-environment': 'Execution environment',
+};
+
+function getTypeLabel(type?: string): string {
+  if (!type) return 'Template';
+  return typeLabels[type] || 'Template';
+}
+
+function getStatusLabel(status: string): string {
+  switch (status) {
+    case 'processing':
+      return 'Running';
+    case 'completed':
+      return 'Completed';
+    case 'failed':
+      return 'Failed';
+    case 'cancelled':
+      return 'Cancelled';
+    default:
+      return 'Running';
+  }
+}
+
+function StatusIcon({ status }: { status: string }) {
+  const size = 18;
+  switch (status) {
+    case 'completed':
+      return <CheckCircleOutlineIcon style={{ fontSize: size, color: '#4caf50' }} />;
+    case 'failed':
+      return <ErrorOutlineIcon style={{ fontSize: size, color: '#f44336' }} />;
+    case 'cancelled':
+      return <BlockIcon style={{ fontSize: size, color: '#ff9800' }} />;
+    default:
+      return <LoopIcon style={{ fontSize: size, color: '#42a5f5' }} />;
+  }
+}
+
+function shortId(id: string): string {
+  return id.length > 8 ? id.substring(0, 8) : id;
+}
+
+const useStyles = makeStyles(theme => {
+  const textColor =
+    theme.palette.type === 'light' ? 'rgba(0, 0, 0, 0.87)' : '#ffffff';
+  return {
+    headerRow: {
+      display: 'flex',
+      alignItems: 'flex-start',
+      justifyContent: 'space-between',
+      flexWrap: 'wrap',
+      gap: theme.spacing(2),
+    },
+    headerLeft: {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: theme.spacing(0.5),
+      minWidth: 0,
+      flex: 1,
+    },
+    breadcrumb: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: theme.spacing(0.5),
+      color: textColor,
+      opacity: 0.7,
+      fontSize: '0.875rem',
+    },
+    breadcrumbLink: {
+      color: textColor,
+      cursor: 'pointer',
+      textDecoration: 'none',
+      '&:hover': {
+        textDecoration: 'underline',
+      },
+    },
+    titleRow: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: theme.spacing(1.5),
+      flexWrap: 'wrap',
+    },
+    pageTitle: {
+      color: textColor,
+      fontSize: '1.5rem',
+      fontWeight: 700,
+      lineHeight: 1.3,
+    },
+    metaLine: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: theme.spacing(1),
+      flexWrap: 'wrap',
+      color: textColor,
+      opacity: 0.7,
+      fontSize: '0.875rem',
+    },
+    headerActions: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: theme.spacing(1),
+      flexShrink: 0,
+    },
+  };
+});
+
+const DEMO_TASKS: Record<string, {
+  templateName: string;
+  templateTitle: string;
+  templateType: string;
+  status: string;
+  steps: Array<{ id: string; name: string; status: string }>;
+  stepLogs: Record<string, string[]>;
+  outputText?: Array<{ title?: string; content: string }>;
+  outputLinks?: Array<{ title: string; url?: string; entityRef?: string }>;
+  readme?: string;
+}> = {
+  'demo-ee-success': {
+    templateName: 'build-ee-rhel9',
+    templateTitle: 'Build Execution Environment (RHEL 9)',
+    templateType: 'execution-environment',
+    status: 'completed',
+    steps: [
+      { id: 'validate-input', name: 'Validate input parameters', status: 'completed' },
+      { id: 'create-ee-definition', name: 'Create EE definition', status: 'completed' },
+      { id: 'register-catalog', name: 'Register in catalog', status: 'completed' },
+    ],
+    stepLogs: {
+      'validate-input': [
+        'Validating execution environment parameters...',
+        'Base image: registry.redhat.io/ansible-automation-platform-25/ee-minimal-rhel9:latest',
+        'Python version: 3.11',
+        'All parameters valid.',
+      ],
+      'create-ee-definition': [
+        'Generating execution-environment.yml definition...',
+        'Adding collections: ansible.netcommon, ansible.utils, cisco.ios',
+        'Adding Python dependencies: netaddr, paramiko',
+        'EE definition created successfully.',
+      ],
+      'register-catalog': [
+        'Registering EE component in Backstage catalog...',
+        'Entity ref: Component:default/build-ee-rhel9',
+        'Registration complete.',
+      ],
+    },
+    outputText: [
+      {
+        title: 'Execution environment created',
+        content: 'Your execution environment definition has been created and registered in the catalog. You can download the files to build locally, or push to a container registry.',
+      },
+    ],
+    outputLinks: [
+      { title: 'View in catalog', entityRef: 'Component:default/build-ee-rhel9' },
+      { title: 'View on Automation Hub', url: 'https://aap.example.com/hub/ee/build-ee-rhel9' },
+    ],
+    readme: `# Build Execution Environment (RHEL 9)
+
+## Overview
+
+This execution environment is built on \`ee-minimal-rhel9:latest\` and includes collections and Python dependencies for network automation workflows.
+
+## Included Collections
+
+| Collection | Version |
+|---|---|
+| ansible.netcommon | latest |
+| ansible.utils | latest |
+| cisco.ios | latest |
+
+## Python Dependencies
+
+- \`netaddr\` — IP address manipulation
+- \`paramiko\` — SSH connectivity
+
+## Building Locally
+
+\`\`\`bash
+ansible-builder build -f execution-environment.yml -t my-ee:latest
+\`\`\`
+
+## Usage
+
+Reference this EE in your \`ansible-navigator.yml\`:
+
+\`\`\`yaml
+ansible-navigator:
+  execution-environment:
+    image: my-ee:latest
+    pull:
+      policy: missing
+\`\`\`
+
+## Files Included
+
+- \`execution-environment.yml\` — EE definition
+- \`ansible.cfg\` — Ansible configuration
+- \`requirements.yml\` — Collection requirements
+- \`requirements.txt\` — Python requirements
+`,
   },
-  header_subtitle: {
-    display: 'inline-block',
-    color: theme.palette.type === 'light' ? 'rgba(0, 0, 0, 0.87)' : '#ffffff',
-    opacity: 0.8,
-    maxWidth: '75ch',
-    marginTop: '8px',
-    fontWeight: 500,
-    lineHeight: 1.57,
+  'demo-project-success': {
+    templateName: 'create-ansible-project',
+    templateTitle: 'Create Ansible Project',
+    templateType: 'project',
+    status: 'completed',
+    steps: [
+      { id: 'fetch-template', name: 'Fetch project template', status: 'completed' },
+      { id: 'generate-files', name: 'Generate project files', status: 'completed' },
+      { id: 'publish-git', name: 'Publish to Git repository', status: 'completed' },
+      { id: 'register-catalog', name: 'Register in catalog', status: 'completed' },
+    ],
+    stepLogs: {
+      'fetch-template': [
+        'Fetching project skeleton from template...',
+        'Template: ansible-project-starter v2.1',
+        'Files fetched successfully.',
+      ],
+      'generate-files': [
+        'Generating project structure...',
+        'Created: playbooks/site.yml',
+        'Created: roles/common/tasks/main.yml',
+        'Created: inventory/hosts.yml',
+        'Created: ansible.cfg',
+        'Created: requirements.yml',
+        'Created: README.md',
+        'Project files generated.',
+      ],
+      'publish-git': [
+        'Creating Git repository: ansible/network-automation-project',
+        'Pushing initial commit...',
+        'Repository created and published.',
+      ],
+      'register-catalog': [
+        'Registering project component in Backstage catalog...',
+        'Entity ref: Component:default/network-automation-project',
+        'Registration complete.',
+      ],
+    },
+    outputText: [
+      {
+        title: 'Project created successfully',
+        content: 'Your Ansible project has been scaffolded and published to Git. The project includes a standard layout with playbooks, roles, and inventory ready for development.',
+      },
+    ],
+    outputLinks: [
+      { title: 'Open project', entityRef: 'Component:default/network-automation-project' },
+      { title: 'View repository', url: 'https://github.com/ansible/network-automation-project' },
+    ],
   },
-  headerTitleContainer: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'flex-start',
-  },
-  backButtonContainer: {
-    marginBottom: theme.spacing(1),
-    marginLeft: theme.spacing(-1),
-    [theme.breakpoints.up('sm')]: {
-      marginLeft: theme.spacing(-1.5),
+  'demo-workflow-approval': {
+    templateName: 'employee-onboarding-workflow',
+    templateTitle: 'Employee Onboarding Workflow',
+    templateType: 'workflow-job-template',
+    status: 'processing',
+    steps: [
+      { id: 'launch-workflow', name: 'Launch workflow', status: 'completed' },
+      { id: 'awaiting-approval', name: 'Awaiting approval', status: 'awaiting_approval' },
+    ],
+    stepLogs: {
+      'launch-workflow': [
+        'Beginning step Employee Onboarding Workflow',
+        'Launching workflow job template id 2001.',
+        'RHAAP_WORKFLOW_LAUNCH_DATA {"id":2050,"url":"https://aap.example.com/execution/workflows/2050/output"}',
+        'Workflow job 2050 status: waiting',
+        'Workflow is awaiting approval at node "Manager Approval".',
+      ],
     },
   },
-  backButton: {
-    color: theme.palette.type === 'light' ? 'rgba(0, 0, 0, 0.87)' : '#ffffff',
-    '&:hover': {
-      backgroundColor: 'rgba(0, 0, 0, 0.04)',
+  'demo-project-failed': {
+    templateName: 'provision-cloud-infra',
+    templateTitle: 'Provision Cloud Infrastructure',
+    templateType: 'project',
+    status: 'failed',
+    steps: [
+      { id: 'fetch-template', name: 'Fetch project template', status: 'completed' },
+      { id: 'create-resources', name: 'Create cloud resources', status: 'failed' },
+      { id: 'register-catalog', name: 'Register in catalog', status: 'open' },
+    ],
+    stepLogs: {
+      'fetch-template': [
+        'Fetching project skeleton from template...',
+        'Template: cloud-infra-starter v1.3',
+        'Files fetched successfully.',
+      ],
+      'create-resources': [
+        'Provisioning cloud resources...',
+        'Creating VPC: vpc-ansible-prod',
+        'Error: AWS credentials expired. Unable to authenticate with the target account.',
+        'Resource creation failed.',
+      ],
     },
   },
-}));
+  'demo-workflow-denied': {
+    templateName: 'employee-onboarding-workflow',
+    templateTitle: 'Employee Onboarding Workflow',
+    templateType: 'workflow-job-template',
+    status: 'failed',
+    steps: [
+      { id: 'launch-workflow', name: 'Launch workflow', status: 'completed' },
+    ],
+    stepLogs: {
+      'launch-workflow': [
+        'Beginning step Employee Onboarding Workflow',
+        'Launching workflow job template id 2001.',
+        'RHAAP_WORKFLOW_LAUNCH_DATA {"id":2051,"url":"https://aap.example.com/execution/workflows/2051/output"}',
+        'Workflow job 2051 status: waiting',
+        'Workflow is awaiting approval at node "Manager Approval".',
+        'Approval denied at node "Manager Approval" by admin@example.com.',
+        'Reason: "Budget not approved for Q3. Resubmit after finance review."',
+        'Workflow job 2051 status: failed',
+      ],
+    },
+  },
+  'demo-workflow-approved': {
+    templateName: 'employee-onboarding-workflow',
+    templateTitle: 'Employee Onboarding Workflow',
+    templateType: 'workflow-job-template',
+    status: 'completed',
+    steps: [
+      { id: 'launch-workflow', name: 'Launch workflow', status: 'completed' },
+    ],
+    stepLogs: {
+      'launch-workflow': [
+        'Beginning step Employee Onboarding Workflow',
+        'Launching workflow job template id 2001.',
+        'RHAAP_WORKFLOW_LAUNCH_DATA {"id":2052,"url":"https://aap.example.com/execution/workflows/2052/output"}',
+        'Workflow job 2052 status: waiting',
+        'Workflow is awaiting approval at node "Manager Approval".',
+        'Approval granted at node "Manager Approval" by admin@example.com.',
+        'Workflow job 2052 status: running',
+        'Workflow job 2052 status: successful',
+        'Finished step Employee Onboarding Workflow',
+      ],
+    },
+    outputText: [
+      {
+        title: 'Workflow executed successfully',
+        content: 'The Employee Onboarding Workflow has completed. All approval gates were passed and all nodes executed successfully.',
+      },
+    ],
+    outputLinks: [
+      { title: 'View workflow in AAP', url: 'https://aap.example.com/execution/workflows/2052/output' },
+    ],
+  },
+  'demo-job-completing': {
+    templateName: 'deploy-database-update',
+    templateTitle: 'Deploy Database Update',
+    templateType: 'service',
+    status: 'completed',
+    steps: [
+      { id: 'launch-job', name: 'Launch job template', status: 'completed' },
+    ],
+    stepLogs: {
+      'launch-job': [
+        'Beginning step Deploy Database Update',
+        'Launching job template id 1500.',
+        'Job 1500 status: successful',
+        'Finished step Deploy Database Update',
+      ],
+    },
+    outputText: [
+      {
+        title: 'Job template executed successfully',
+        content: 'The database update has been deployed to the staging environment.',
+      },
+    ],
+    outputLinks: [
+      { title: 'View job in AAP', url: 'https://aap.example.com/jobs/1500/output' },
+    ],
+  },
+};
+
+function DemoAapNodeIcon({ status, isDark }: { status?: string; isDark: boolean }) {
+  const s = status?.toLowerCase();
+  if (s === 'successful') return <CheckCircleOutlineIcon style={{ fontSize: 18, color: '#4caf50' }} />;
+  if (s === 'failed') return <ErrorOutlineIcon style={{ fontSize: 18, color: '#f44336' }} />;
+  if (s === 'pending' || s === 'waiting') {
+    return (
+      <Box
+        style={{
+          width: 18,
+          height: 18,
+          borderRadius: '50%',
+          border: `2px solid ${isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.25)'}`,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <MoreHorizIcon style={{ fontSize: 12, color: isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.35)' }} />
+      </Box>
+    );
+  }
+  if (s === 'canceled' || s === 'cancelled') return <BlockIcon style={{ fontSize: 18, color: isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)' }} />;
+  if (s === 'running') return <CircularProgress size={16} />;
+  return <MoreHorizIcon style={{ fontSize: 18, color: isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.25)' }} />;
+}
+
+function DemoAapTab({ specType, aapLogs, isDark, workflowUrl, workflowStatus }: { specType?: string; aapLogs: AapLogEntry[]; isDark: boolean; workflowUrl?: string; workflowStatus?: string }) {
+  const [viewMode, setViewMode] = useState<'strip' | 'logs' | 'graph'>('strip');
+  const [expandedNodes, setExpandedNodes] = useState<Record<number, boolean>>({});
+
+  const toggleNode = (id: number) => {
+    setExpandedNodes(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const statusColor = (s?: string) => {
+    if (!s) return isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.25)';
+    const sl = s.toLowerCase();
+    if (sl === 'successful') return '#4caf50';
+    if (sl === 'failed') return '#f44336';
+    if (sl === 'running') return '#42a5f5';
+    if (sl === 'pending' || sl === 'waiting') return isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.25)';
+    return isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.25)';
+  };
+
+  const wfStatusColor = workflowStatus === 'successful' ? '#4caf50' : workflowStatus === 'failed' ? '#f44336' : workflowStatus === 'running' ? '#42a5f5' : '#ff9800';
+  const jobIdMatch = workflowUrl?.match(/\/(\d+)\//);
+  const jobId = jobIdMatch?.[1] || '—';
+
+  const viewLabels: Record<string, string> = { strip: 'Pipeline', logs: 'Logs', graph: 'Graph' };
+
+  return (
+    <Box>
+      <Box display="flex" alignItems="center" style={{ gap: 6 }}>
+        <Typography variant="h6" color="textPrimary">
+          {specType === 'workflow-job-template' ? 'AAP Automation workflow' : 'AAP Automation job'}
+        </Typography>
+        <Tooltip title={specType === 'workflow-job-template'
+          ? 'This section shows the execution details of the AAP Workflow Job Template, including node status, approval gates, and per-node logs from Ansible Automation Platform.'
+          : 'This section shows the execution details of the AAP Job Template, including playbook output and status from Ansible Automation Platform.'
+        }>
+          <HelpOutlineIcon style={{ fontSize: 16, color: isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.35)', cursor: 'help' }} />
+        </Tooltip>
+      </Box>
+      <Box display="flex" alignItems="center" style={{ gap: 8, marginBottom: 12, marginTop: 4 }}>
+        {workflowUrl ? (
+          <Link
+            href={workflowUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            variant="body2"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
+          >
+            {specType === 'workflow-job-template' ? `Workflow job ${jobId}` : `Job ${jobId}`}
+            <OpenInNewIcon style={{ fontSize: 14 }} />
+          </Link>
+        ) : (
+          <Typography variant="body2" color="textSecondary">
+            {specType === 'workflow-job-template' ? 'Workflow job' : 'Job'}
+          </Typography>
+        )}
+        <Typography variant="body2" color="textSecondary">—</Typography>
+        <Typography variant="body2" style={{ color: wfStatusColor, fontWeight: 500 }}>
+          {workflowStatus || '—'}
+        </Typography>
+      </Box>
+
+      <Box display="flex" alignItems="center" justifyContent="flex-end" marginBottom={1}>
+
+        <Box display="flex" style={{ gap: 0, border: `1px solid ${isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.23)'}`, borderRadius: 4, overflow: 'hidden' }}>
+          {(['strip', 'logs', 'graph'] as const).map(mode => (
+            <Button
+              key={mode}
+              size="small"
+              onClick={() => setViewMode(mode)}
+              style={{
+                textTransform: 'none',
+                fontSize: 12,
+                padding: '3px 12px',
+                minWidth: 0,
+                borderRadius: 0,
+                background: viewMode === mode ? (isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)') : 'transparent',
+                color: viewMode === mode ? (isDark ? '#fff' : '#000') : (isDark ? '#b0b0b0' : 'rgba(0,0,0,0.5)'),
+                fontWeight: viewMode === mode ? 600 : 400,
+              }}
+            >
+              {viewLabels[mode]}
+            </Button>
+          ))}
+        </Box>
+      </Box>
+
+      {/* === STRIP VIEW (default) === */}
+      {viewMode === 'strip' && (
+        <Box>
+          <Box
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              overflowX: 'auto',
+              padding: '12px 8px',
+              marginBottom: 16,
+              border: `1px solid ${isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)'}`,
+              borderRadius: 4,
+              background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)',
+            }}
+          >
+            {aapLogs.map((log, idx) => (
+              <Box key={log.id} display="flex" alignItems="center">
+                {idx > 0 && (
+                  <Box style={{ width: 32, height: 2, background: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)', flexShrink: 0 }} />
+                )}
+                <Box
+                  display="flex"
+                  alignItems="center"
+                  style={{
+                    gap: 6,
+                    padding: '4px 10px',
+                    borderRadius: 16,
+                    border: `1px solid ${statusColor(log.status)}`,
+                    background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)',
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0,
+                  }}
+                >
+                  <DemoAapNodeIcon status={log.status} isDark={isDark} />
+                  <Typography variant="caption" color="textPrimary" style={{ fontWeight: 500 }}>
+                    {log.label}
+                  </Typography>
+                </Box>
+              </Box>
+            ))}
+          </Box>
+
+          {/* Node cards with expandable logs */}
+          {aapLogs.map(log => (
+            <Box
+              key={log.id}
+              style={{
+                borderRadius: 4,
+                border: `1px solid ${isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)'}`,
+                marginBottom: 8,
+                overflow: 'hidden',
+              }}
+            >
+              <Box
+                display="flex"
+                alignItems="center"
+                style={{
+                  gap: 8,
+                  padding: '10px 12px',
+                  background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                  borderLeft: `3px solid ${statusColor(log.status)}`,
+                }}
+              >
+                <DemoAapNodeIcon status={log.status} isDark={isDark} />
+                <Typography variant="subtitle2" color="textPrimary">{log.label}</Typography>
+                <Typography variant="caption" style={{ color: isDark ? '#b0b0b0' : 'rgba(0,0,0,0.5)' }}>{log.status}</Typography>
+                <Box style={{ flex: 1 }} />
+                {log.content ? (
+                  <Button
+                    size="small"
+                    onClick={() => toggleNode(log.id)}
+                    style={{ textTransform: 'none', fontSize: 12, padding: '2px 8px', minWidth: 0, color: isDark ? '#90caf9' : undefined }}
+                  >
+                    {expandedNodes[log.id] ? 'Hide log' : 'View log'}
+                  </Button>
+                ) : log.hasPlaybookOutput === false ? (
+                  <Typography variant="caption" style={{ color: isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)', fontStyle: 'italic' }}>
+                    No playbook output
+                  </Typography>
+                ) : null}
+              </Box>
+              {expandedNodes[log.id] && log.content && (
+                <Box
+                  component="pre"
+                  style={{
+                    margin: 0,
+                    padding: '10px 12px 10px 15px',
+                    borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
+                    background: isDark ? 'rgba(0,0,0,0.25)' : 'rgba(0,0,0,0.03)',
+                    color: isDark ? '#e0e0e0' : '#1e1e1e',
+                    fontSize: 12,
+                    fontFamily: 'monospace',
+                    whiteSpace: 'pre-wrap',
+                    overflowX: 'auto',
+                  }}
+                >
+                  {log.content}
+                </Box>
+              )}
+            </Box>
+          ))}
+        </Box>
+      )}
+
+      {/* === LOGS VIEW (flat, all logs visible) === */}
+      {viewMode === 'logs' && (
+        <Box>
+          {aapLogs.map(log => (
+            <Box key={log.id} marginBottom={2}>
+              <Box display="flex" alignItems="center" style={{ gap: 8, marginBottom: 6 }}>
+                <DemoAapNodeIcon status={log.status} isDark={isDark} />
+                <Typography variant="subtitle2" color="textPrimary">{log.label}</Typography>
+                <Typography variant="caption" style={{ color: isDark ? '#b0b0b0' : 'rgba(0,0,0,0.5)' }}>{log.status}</Typography>
+              </Box>
+              {log.content ? (
+                <Box
+                  component="pre"
+                  style={{
+                    margin: 0,
+                    padding: '10px 12px',
+                    borderRadius: 4,
+                    background: isDark ? 'rgba(0,0,0,0.25)' : 'rgba(0,0,0,0.03)',
+                    color: isDark ? '#e0e0e0' : '#1e1e1e',
+                    fontSize: 12,
+                    fontFamily: 'monospace',
+                    whiteSpace: 'pre-wrap',
+                    overflowX: 'auto',
+                    border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
+                  }}
+                >
+                  {log.content}
+                </Box>
+              ) : (
+                <Typography variant="body2" style={{ color: isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)', fontStyle: 'italic', paddingLeft: 26 }}>
+                  {log.hasPlaybookOutput === false ? 'No playbook output (approval or inventory update node).' : 'No output available.'}
+                </Typography>
+              )}
+            </Box>
+          ))}
+        </Box>
+      )}
+
+      {/* === GRAPH VIEW (React Flow DAG from seeded logs) === */}
+      {viewMode === 'graph' && (
+        <Box style={{ minHeight: 350 }}>
+          <WorkflowGraph
+            layeredNodes={aapLogs.map(log => [{
+              id: log.id,
+              level: 0,
+              label: log.label,
+              statusLabel: log.status,
+            }])}
+            edges={aapLogs.slice(1).map((log, idx) => ({
+              from: aapLogs[idx].id,
+              to: log.id,
+              type: 'success' as const,
+            }))}
+            selectedNodeId={null}
+            hasRuntime
+            onNodeClick={() => {}}
+          />
+        </Box>
+      )}
+    </Box>
+  );
+}
 
 export const RunTask = () => {
-  const classes = headerStyles();
+  const classes = useStyles();
+  const theme = useTheme();
+  const isDark = theme.palette.type === 'dark';
+  const logBg = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)';
+  const logColor = isDark ? '#e0e0e0' : undefined;
   const { taskId } = useParams<{ taskId: string }>();
   if (!taskId) throw new Error('Task ID is required');
 
-  const { task, completed, loading, error, output, steps, stepLogs } =
-    useTaskEventStream(taskId);
+  const demoTask = DEMO_TASKS[taskId];
+
+  const realStream = useTaskEventStream(taskId);
+  const task = demoTask ? ({
+    spec: {
+      steps: demoTask.steps.map(s => ({ id: s.id, name: s.name, action: '' })),
+      templateInfo: {
+        entityRef: `template:default/${demoTask.templateName}`,
+        entity: {
+          metadata: { name: demoTask.templateName, title: demoTask.templateTitle },
+          spec: { type: demoTask.templateType },
+        },
+      },
+      parameters: {},
+    },
+    status: demoTask.status === 'failed' ? 'failed' : demoTask.status === 'processing' ? 'processing' : 'completed',
+    id: taskId,
+    createdAt: new Date().toISOString(),
+  } as any) : realStream.task;
+  const completed = demoTask ? demoTask.status !== 'processing' : realStream.completed;
+  const loading = demoTask ? false : realStream.loading;
+  const error = demoTask ? (demoTask.status === 'failed' ? 'An error occurred during execution.' : undefined) : realStream.error;
+  const output = demoTask ? { text: demoTask.outputText, links: demoTask.outputLinks } as any : realStream.output;
+  const steps = demoTask
+    ? Object.fromEntries(demoTask.steps.map(s => [s.id, { status: s.status }]))
+    : realStream.steps;
+  const stepLogs = demoTask ? demoTask.stepLogs : realStream.stepLogs;
   const taskMetadata = task?.spec?.templateInfo?.entity?.metadata;
-  const [showLogs, setShowLogs] = useState(false);
+  const [activeTab, setActiveTab] = useState(0);
+  const [aapLogs, setAapLogs] = useState<AapLogEntry[]>([]);
   const [isCanceling, setIsCanceling] = useState(false);
+  const [toast, setToast] = useState<{ title: string; description?: string; severity: 'success' | 'error' | 'warning' | 'info'; open: boolean; linkUrl?: string; linkLabel?: string }>({ title: '', severity: 'info', open: false });
   const [matchingEntity, setMatchingEntity] = useState<any | null>(null);
-  const [expandedTextIndex, setExpandedTextIndex] = useState<number | null>(
-    null,
-  );
   const [templateEntity, setTemplateEntity] = useState<{
     spec?: { type?: string };
-  } | null>(null);
+  } | null>(demoTask ? { spec: { type: demoTask.templateType } } : null);
   const scaffolderApi = useApi(scaffolderApiRef);
   const catalogApi = useApi(catalogApiRef);
   const navigate = useNavigate();
@@ -119,6 +786,77 @@ export const RunTask = () => {
       setIsCanceling(false);
     }
   }, [taskStatus, isCanceling]);
+
+  const prevTaskStatusRef = useRef(taskStatus);
+  useEffect(() => {
+    const prev = prevTaskStatusRef.current;
+    prevTaskStatusRef.current = taskStatus;
+    if (prev === 'processing' && taskStatus !== 'processing' && taskStatus !== 'unknown') {
+      const name = taskMetadata?.title || taskMetadata?.name || 'Task';
+      if (taskStatus === 'completed') {
+        setToast({ title: `${name} completed`, description: 'The task has finished successfully.', severity: 'success', open: true });
+      } else if (taskStatus === 'failed') {
+        setToast({ title: `${name} failed`, description: 'An error occurred during execution. View the logs for details.', severity: 'error', open: true });
+      } else if (taskStatus === 'cancelled') {
+        setToast({ title: `${name} cancelled`, description: 'The task was cancelled before completion.', severity: 'warning', open: true });
+      }
+    }
+  }, [taskStatus, taskMetadata]);
+
+  useEffect(() => {
+    if (!demoTask) return;
+    const type = demoTask.templateType;
+    if (type === 'service') {
+      setAapLogs([{
+        id: 1,
+        label: demoTask.templateTitle,
+        status: demoTask.status === 'completed' ? 'successful' : demoTask.status === 'failed' ? 'failed' : 'running',
+        hasPlaybookOutput: true,
+        content: (demoTask.stepLogs?.['launch-job'] || []).join('\n'),
+      }]);
+    } else if (type === 'workflow-job-template') {
+      const isDenied = taskId === 'demo-workflow-denied';
+      const isPending = demoTask.status === 'processing';
+      const approvalStatus = isPending ? 'pending' : isDenied ? 'failed' : 'successful';
+      const postApprovalStatus = isPending ? 'waiting' : isDenied ? 'canceled' : 'successful';
+      setAapLogs([
+        { id: 1, label: 'Inventory Sync', status: 'successful', hasPlaybookOutput: true, content: 'Syncing inventory from source...\nInventory sync completed successfully.' },
+        { id: 2, label: 'Manager Approval', status: approvalStatus, hasPlaybookOutput: false, content: isDenied ? 'Approval denied by admin@example.com.\nReason: "Budget not approved for Q3. Resubmit after finance review."' : undefined },
+        { id: 3, label: 'Deploy Configuration', status: postApprovalStatus, hasPlaybookOutput: true, content: postApprovalStatus === 'successful' ? 'Deploying configuration to targets...\nConfiguration applied successfully.' : undefined },
+      ]);
+    }
+  }, [demoTask]);
+
+  const demoToastFired = useRef(false);
+  useEffect(() => {
+    if (demoTask && !demoToastFired.current) {
+      demoToastFired.current = true;
+      const name = demoTask.templateTitle;
+      if (demoTask.status === 'completed') {
+        setTimeout(() => {
+          setToast({ title: `${name} completed`, description: 'The task has finished successfully.', severity: 'success', open: true });
+        }, 1500);
+      } else if (demoTask.status === 'failed') {
+        const isDenied = taskId === 'demo-workflow-denied';
+        setTimeout(() => {
+          setToast({
+            title: isDenied ? 'Approval denied' : `${name} failed`,
+            description: isDenied
+              ? `${name} was denied at the Manager Approval node. The workflow has been canceled.`
+              : 'An error occurred during execution. View the logs for details.',
+            severity: 'error',
+            open: true,
+            linkUrl: isDenied ? (aapWorkflowUrl || undefined) : undefined,
+            linkLabel: isDenied ? 'View in AAP' : undefined,
+          });
+        }, 1500);
+      } else if (demoTask.status === 'processing') {
+        setTimeout(() => {
+          setToast({ title: 'Awaiting approval', description: `${name} is paused at an approval node. An AAP administrator needs to approve or deny the request.`, severity: 'warning', open: true, linkUrl: aapWorkflowUrl || undefined, linkLabel: 'View in AAP' });
+        }, 1500);
+      }
+    }
+  }, [demoTask]);
 
   useEffect(() => {
     const fetchTemplateEntity = async () => {
@@ -174,13 +912,24 @@ export const RunTask = () => {
     );
   };
 
+  const specType = (task?.spec?.templateInfo?.entity as any)?.spec?.type;
   const allSteps = useMemo(
     () =>
-      task?.spec.steps.map(step => ({
-        ...step,
-        ...steps?.[step.id],
-      })) ?? [],
-    [task, steps],
+      task?.spec.steps.map((step, idx, arr) => {
+        const merged = { ...step, ...steps?.[step.id] };
+        if (specType === 'workflow-job-template') {
+          if (/launch[-_]?workflow/i.test(step.id) || (arr.length === 1)) {
+            return { ...merged, name: 'Execute workflow' };
+          }
+        }
+        if (specType === 'service') {
+          if (/launch[-_]?(job|template)/i.test(step.id) || (arr.length === 1)) {
+            return { ...merged, name: 'Execute job' };
+          }
+        }
+        return merged;
+      }) ?? [],
+    [task, steps, specType],
   );
 
   const activeStep = useMemo(() => {
@@ -229,20 +978,8 @@ export const RunTask = () => {
   }, [task, canStartOver, isStartOverDisabled, navigate, templateRouteRef]);
 
   const handleBack = useCallback(() => {
-    if (!task?.spec?.templateInfo?.entity?.metadata || !templateEntity) {
-      navigate(-1);
-      return;
-    }
-
-    const isExecutionEnvironment =
-      templateEntity?.spec?.type === 'execution-environment';
-
-    if (isExecutionEnvironment) {
-      navigate(`${rootLink()}/ee/create`);
-    } else {
-      navigate(`${rootLink()}/catalog`);
-    }
-  }, [task, templateEntity, navigate, rootLink]);
+    navigate(`${rootLink()}/create/tasks`);
+  }, [navigate, rootLink]);
 
   const handleEntityLinkClick = useCallback(
     (entityRef: string) => {
@@ -445,10 +1182,24 @@ export const RunTask = () => {
     }
   }, [getMatchingEntity]);
 
+  const templateDisplayName = taskMetadata?.title || taskMetadata?.name || 'Untitled template';
+  const templateType = templateEntity?.spec?.type;
+  const readmeContent = demoTask?.readme || (matchingEntity?.spec?.readme as string | undefined);
+
+  const aapWorkflowUrl = useMemo(() => {
+    const allLogText = Object.values(stepLogs).flat().join(' ');
+    const urlMatch = /RHAAP_WORKFLOW_LAUNCH_DATA\s*\{[^}]*"url"\s*:\s*"([^"]+)"/.exec(allLogText);
+    return urlMatch?.[1] || null;
+  }, [stepLogs]);
+
   if (loading) {
     return (
       <Page themeId="tool">
-        <Header title="Template in Progress" />
+        <Header
+          pageTitleOverride="Activity"
+          title=""
+          style={{ background: 'inherit', paddingTop: 0, display: 'none' }}
+        />
         <Content>
           <div
             style={{
@@ -458,7 +1209,9 @@ export const RunTask = () => {
               marginTop: '20px',
             }}
           >
-            <Typography variant="h6">Executing Template...</Typography>
+            <Typography variant="h6" color="textPrimary">
+              Loading task...
+            </Typography>
             <CircularProgress style={{ marginTop: '10px' }} />
           </div>
         </Content>
@@ -469,93 +1222,218 @@ export const RunTask = () => {
   return (
     <Page themeId="tool">
       <Header
-        pageTitleOverride="Run Task"
-        title={
-          <Box className={classes.headerTitleContainer}>
-            <Box className={classes.backButtonContainer}>
-              <IconButton
-                onClick={handleBack}
-                className={classes.backButton}
-                aria-label="go back"
-                data-testid="back-button"
-              >
-                <ArrowBack />
-              </IconButton>
-            </Box>
-            <span className={classes.header_title_color}>
-              {taskMetadata?.title}
-            </span>
-          </Box>
-        }
-        subtitle={
-          <span className={classes.header_subtitle}>
-            {taskMetadata?.description}
-          </span>
-        }
-        style={{ background: 'inherit', paddingTop: 0 }}
+        pageTitleOverride="Activity"
+        title=""
+        style={{ background: 'inherit', paddingTop: 0, display: 'none' }}
       />
       <Content>
-        <TaskSteps
-          steps={allSteps}
-          activeStep={activeStep}
-          isComplete={completed}
-          isError={Boolean(error)}
-        />
-        <Box
-          display="flex"
-          flexDirection="column"
-          marginTop="20px"
-          style={{ gap: '16px' }}
-        >
+        {/* Page header area */}
+        <Box className={classes.headerRow} marginBottom={3}>
+          <Box className={classes.headerLeft}>
+            {/* Breadcrumb: always Activity */}
+            <Box className={classes.breadcrumb}>
+              <IconButton
+                onClick={handleBack}
+                size="small"
+                aria-label="go back"
+                data-testid="back-button"
+                style={{ marginLeft: -4, marginRight: 4 }}
+              >
+                <ArrowBack fontSize="small" />
+              </IconButton>
+              <Link
+                component="button"
+                onClick={handleBack}
+                className={classes.breadcrumbLink}
+                underline="none"
+              >
+                Activity
+              </Link>
+            </Box>
+
+            {/* Title row: "Run of [name]" + status */}
+            <Box className={classes.titleRow}>
+              <Typography className={classes.pageTitle}>
+                Run of {templateDisplayName}
+              </Typography>
+              <Box
+                display="inline-flex"
+                alignItems="center"
+                style={{ gap: 4 }}
+              >
+                <StatusIcon status={taskStatus} />
+                <Typography
+                  variant="body2"
+                  style={{
+                    fontWeight: 600,
+                    color:
+                      taskStatus === 'failed'
+                        ? '#f44336'
+                        : taskStatus === 'completed'
+                          ? '#4caf50'
+                          : taskStatus === 'cancelled'
+                            ? '#ff9800'
+                            : '#42a5f5',
+                  }}
+                >
+                  {getStatusLabel(taskStatus)}
+                </Typography>
+              </Box>
+            </Box>
+
+            {/* Meta line: type · Task ID */}
+            <Box className={classes.metaLine}>
+              <span>{getTypeLabel(templateType)}</span>
+              <span style={{ opacity: 0.4 }}>&middot;</span>
+              <span>Task {shortId(taskId)}</span>
+            </Box>
+          </Box>
+
+          {/* Header actions — utility only */}
+          <Box className={classes.headerActions}>
+            {showCancel && taskStatus === 'processing' && (
+              <Button
+                onClick={handleCancel}
+                disabled={isCancelDisabled || isCanceling}
+                variant="outlined"
+                size="small"
+              >
+                {isCanceling ? 'Canceling...' : 'Cancel'}
+              </Button>
+            )}
+            {showStartOver && (
+              <Button
+                onClick={handleStartOver}
+                disabled={isStartOverDisabled}
+                variant="outlined"
+                size="small"
+              >
+                Start Over
+              </Button>
+            )}
+          </Box>
+        </Box>
+
+        {/* Awaiting approval zone — visible when workflow is waiting for approval */}
+        {taskStatus === 'processing' && (() => {
+          const allLogs = Object.values(stepLogs).flat().join(' ').toLowerCase();
+          return allLogs.includes('awaiting approval') || allLogs.includes('waiting');
+        })() && (
           <Box
-            display="flex"
-            alignItems="flex-start"
-            paddingBottom={showLogs ? 2 : 0}
+            marginBottom={2}
             style={{
-              borderBottom: showLogs ? '1px solid #E4E4E4' : 'none',
+              borderRadius: 4,
+              padding: 20,
+              border: `1px solid ${isDark ? 'rgba(255,152,0,0.3)' : 'rgba(255,152,0,0.2)'}`,
+              background: isDark ? 'rgba(255,152,0,0.08)' : 'rgba(255,152,0,0.04)',
             }}
           >
-            <Box flex={1} />
+            <Box display="flex" alignItems="center" style={{ gap: 8, marginBottom: 4 }}>
+              <Typography variant="subtitle2" color="textPrimary">
+                Awaiting approval
+              </Typography>
+            </Box>
+            <Typography variant="body2" color="textSecondary" style={{ marginBottom: aapWorkflowUrl ? 12 : 0 }}>
+              This workflow is paused at an approval node. An AAP administrator needs to approve or deny the request before execution can continue. Contact your AAP admin if this is unexpected.
+            </Typography>
+            {aapWorkflowUrl && (
+              <Button
+                href={aapWorkflowUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                variant="outlined"
+                color="primary"
+                size="small"
+              >
+                View in AAP
+              </Button>
+            )}
+          </Box>
+        )}
+
+        {/* Results zone — visible on completion */}
+        {completed && !error && (
+          <Box
+            marginBottom={2}
+            style={{
+              borderRadius: 4,
+              padding: 20,
+              border: `1px solid ${isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)'}`,
+              background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)',
+            }}
+          >
+            {/* For job/workflow templates, show a clean summary instead of raw template output */}
+            {(templateType === 'service' || templateType === 'workflow-job-template') ? (
+              <Box marginBottom={1}>
+                <Typography variant="subtitle2" color="textPrimary" style={{ marginBottom: 4 }}>
+                  {templateType === 'workflow-job-template'
+                    ? 'Workflow executed successfully'
+                    : 'Job template executed successfully'}
+                </Typography>
+                <Typography variant="body2" color="textSecondary">
+                  {templateType === 'workflow-job-template'
+                    ? 'The AAP workflow has completed. View execution details and node logs in the AAP tab.'
+                    : 'The AAP job has completed. View execution output in the AAP tab.'}
+                </Typography>
+              </Box>
+            ) : (
+              output?.text?.map((textItem: { title?: string; content?: string }, index: number) => (
+                <Box key={textItem.title || `text-${index}`} marginBottom={1}>
+                  {textItem.title && (
+                    <Typography
+                      variant="subtitle2"
+                      color="textPrimary"
+                      style={{ marginBottom: 4 }}
+                    >
+                      {textItem.title}
+                    </Typography>
+                  )}
+                  <Typography component="div" variant="body2" color="textSecondary">
+                    <MarkdownContent content={textItem.content || ''} />
+                  </Typography>
+                </Box>
+              ))
+            )}
 
             <Box
               display="flex"
               flexWrap="wrap"
-              justifyContent="flex-start"
-              style={{
-                gap: '8px',
-                flexShrink: 1,
-                flex: '1 1 auto',
-                minWidth: 0,
-                marginLeft: '50px',
-                marginRight: '50px',
-              }}
+              alignItems="center"
+              style={{ gap: 8, marginTop: 12 }}
             >
+              {/* For job/workflow templates, add a "View in AAP" CTA that switches to AAP tab */}
+              {(templateType === 'service' || templateType === 'workflow-job-template') && aapLogs.length > 0 && (
+                <Button
+                  onClick={() => setActiveTab(1)}
+                  variant="contained"
+                  color="primary"
+                  size="small"
+                >
+                  View AAP details
+                </Button>
+              )}
               {output?.links
-                ?.filter(link => {
-                  if ('if' in link && link.if === false) {
-                    return false;
-                  }
-                  if ('entityRef' in link) {
+                ?.filter((link: any) => {
+                  if ('if' in link && link.if === false) return false;
+                  if ('entityRef' in link)
                     return !!link.entityRef && link.entityRef.trim() !== '';
-                  }
                   if ('url' in link) {
                     const url = link.url;
                     return !!url && url !== '#' && url.trim() !== '';
                   }
                   return false;
                 })
-                ?.map((link, index) => {
+                ?.map((link: any, index: number) => {
+                  const isFirstLink = index === 0 && templateType !== 'service' && templateType !== 'workflow-job-template';
                   if ('entityRef' in link && link.entityRef) {
                     const entityRef = link.entityRef;
                     return (
                       <Button
                         key={entityRef || link.title || `link-${index}`}
                         onClick={() => handleEntityLinkClick(entityRef)}
-                        variant="contained"
-                        style={{
-                          flex: '0 0 calc(33.333% - 6px)',
-                          maxWidth: 'calc(33.333% - 6px)',
-                        }}
+                        variant={isFirstLink ? 'contained' : 'outlined'}
+                        color="primary"
+                        size="small"
                       >
                         {link.title}
                       </Button>
@@ -567,11 +1445,9 @@ export const RunTask = () => {
                       href={link.url ?? '#'}
                       target="_blank"
                       rel="noopener noreferrer"
-                      variant="contained"
-                      style={{
-                        flex: '0 0 calc(33.333% - 6px)',
-                        maxWidth: 'calc(33.333% - 6px)',
-                      }}
+                      variant={isFirstLink ? 'contained' : 'outlined'}
+                      color="primary"
+                      size="small"
                     >
                       {link.title}
                     </Button>
@@ -580,8 +1456,9 @@ export const RunTask = () => {
               {showDownloadButton && (
                 <Button
                   onClick={handleDownloadArchive}
-                  variant="contained"
+                  variant="outlined"
                   color="primary"
+                  size="small"
                   startIcon={<GetAppIcon />}
                   disabled={!matchingEntity}
                   title={
@@ -589,148 +1466,340 @@ export const RunTask = () => {
                       ? 'Download EE files as tar archive'
                       : 'Waiting for entity...'
                   }
-                  style={{
-                    flex: '0 0 calc(33.333% - 6px)',
-                    maxWidth: 'calc(33.333% - 6px)',
-                  }}
                 >
                   Download EE Files
                 </Button>
               )}
-              {completed &&
-                !error &&
-                output?.text &&
-                output.text.length > 0 && (
-                  <>
-                    {output.text.map((textItem, index) => (
-                      <Button
-                        key={textItem.title || `text-${index}`}
-                        onClick={() => {
-                          const newIndex =
-                            expandedTextIndex === index ? null : index;
-                          setExpandedTextIndex(newIndex);
-                          if (newIndex !== null && showLogs) {
-                            setShowLogs(false);
-                          }
-                        }}
-                        variant="contained"
-                        color={
-                          expandedTextIndex === index ? 'secondary' : 'default'
-                        }
-                        style={{
-                          flex: '0 0 calc(33.333% - 6px)',
-                          maxWidth: 'calc(33.333% - 6px)',
-                        }}
-                      >
-                        {textItem.title}
-                      </Button>
-                    ))}
-                  </>
-                )}
-            </Box>
-
-            <Box
-              display="flex"
-              style={{ gap: '8px' }}
-              flexShrink={0}
-              flex="0 0 auto"
-              justifyContent="flex-end"
-            >
-              {showCancel && (
+              {readmeContent && (
                 <Button
-                  onClick={handleCancel}
-                  disabled={isCancelDisabled || isCanceling}
+                  onClick={() => setActiveTab(2)}
                   variant="outlined"
-                  color="secondary"
+                  color="primary"
+                  size="small"
                 >
-                  {isCanceling ? 'Canceling...' : 'Cancel'}
+                  View README
                 </Button>
               )}
+            </Box>
+          </Box>
+        )}
+
+        {/* Failure zone — visible on error */}
+        {completed && error && (
+          <Box
+            marginBottom={2}
+            style={{
+              borderRadius: 4,
+              padding: 20,
+              border: `1px solid ${isDark ? 'rgba(244,67,54,0.3)' : 'rgba(244,67,54,0.2)'}`,
+              background: isDark ? 'rgba(244,67,54,0.08)' : 'rgba(244,67,54,0.04)',
+            }}
+          >
+            <Typography variant="subtitle2" style={{ color: '#f44336', marginBottom: 4 }}>
+              {taskId === 'demo-workflow-denied'
+                ? 'Approval denied'
+                : templateType === 'workflow-job-template'
+                  ? 'Workflow execution failed'
+                  : templateType === 'service'
+                    ? 'Job template execution failed'
+                    : 'Template execution failed'}
+            </Typography>
+            <Typography variant="body2" color="textSecondary" style={{ marginBottom: 12 }}>
+              {taskId === 'demo-workflow-denied'
+                ? 'The workflow was denied at the Manager Approval node. An AAP administrator declined the request. Contact your admin for details or start over to resubmit.'
+                : typeof error === 'string' ? error : 'An error occurred during execution. Check the logs for details.'}
+            </Typography>
+            <Box display="flex" style={{ gap: 8 }}>
               <Button
                 onClick={() => {
-                  const newShowLogs = !showLogs;
-                  setShowLogs(newShowLogs);
-                  if (newShowLogs && expandedTextIndex !== null) {
-                    setExpandedTextIndex(null);
-                  }
+                  setActiveTab(0);
+                  setTimeout(() => {
+                    const el = document.querySelector('[class*="logBg"], [style*="background"]');
+                    const logSection = document.getElementById('scaffolder-logs');
+                    (logSection || el)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }, 100);
                 }}
-                variant="contained"
+                variant="outlined"
+                color="primary"
+                size="small"
               >
-                {showLogs ? 'Hide Logs' : 'Show Logs'}
+                View logs
               </Button>
               {showStartOver && (
                 <Button
                   onClick={handleStartOver}
                   disabled={isStartOverDisabled}
-                  variant="contained"
+                  variant="outlined"
                   color="primary"
+                  size="small"
                 >
                   Start Over
                 </Button>
               )}
             </Box>
           </Box>
-        </Box>
-        {completed &&
-          !error &&
-          output?.text &&
-          expandedTextIndex !== null &&
-          output.text[expandedTextIndex] && (
-            <Box
-              marginTop="20px"
-              style={{
-                borderRadius: '4px',
-                padding: '24px',
-                boxShadow:
-                  '0px 3px 1px -2px rgba(0,0,0,0.2),0px 2px 2px 0px rgba(0,0,0,0.14),0px 1px 5px 0px rgba(0,0,0,0.12)',
-              }}
-            >
-              <Typography
-                variant="h6"
-                style={{ fontWeight: 'bold', marginBottom: '12px' }}
-              >
-                {output.text[expandedTextIndex].title}
-              </Typography>
-              <MarkdownContent
-                content={output.text[expandedTextIndex].content || ''}
-              />
-            </Box>
+        )}
+
+        {/* Tab bar */}
+        <Tabs
+          value={activeTab}
+          onChange={(_, v) => setActiveTab(v)}
+          indicatorColor="primary"
+          textColor="primary"
+          style={{ minHeight: 40, borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)'}`, marginBottom: 16 }}
+        >
+          <Tab label="Template" value={0} style={{ minHeight: 40, textTransform: 'none', fontSize: 13 }} />
+          {aapLogs.length > 0 && (
+            <Tab label="AAP" value={1} style={{ minHeight: 40, textTransform: 'none', fontSize: 13 }} />
           )}
-        {showLogs && (
-          <div
+          {readmeContent && (
+            <Tab label="README" value={2} style={{ minHeight: 40, textTransform: 'none', fontSize: 13 }} />
+          )}
+        </Tabs>
+
+        {/* AAP sections — always mounted to report logs; visible only on AAP tab */}
+        <Box display={activeTab === 1 ? 'block' : 'none'}>
+          {demoTask ? (
+            <DemoAapTab
+              specType={specType}
+              aapLogs={aapLogs}
+              isDark={isDark}
+              workflowUrl={aapWorkflowUrl || undefined}
+              workflowStatus={demoTask.status === 'completed' ? 'successful' : demoTask.status === 'failed' ? 'failed' : demoTask.status === 'processing' ? 'pending' : demoTask.status}
+            />
+          ) : (
+            <>
+              <WorkflowJobTaskSection onLogsChange={setAapLogs} />
+              <JobTaskSection onLogsChange={setAapLogs} />
+            </>
+          )}
+        </Box>
+
+        {/* Output tab — template pipeline + logs + CTAs */}
+        {activeTab === 0 && (
+          <Box>
+            {/* Scaffolder progress steps */}
+            {allSteps.some(s => s.status === 'awaiting_approval') ? (
+              <Box
+                style={{
+                  border: `1px solid ${isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)'}`,
+                  borderRadius: 8,
+                  overflow: 'hidden',
+                }}
+              >
+                {/* Top stripe — amber for awaiting approval */}
+                <Box style={{ height: 4, background: '#ff9800' }} />
+                <Box
+                  style={{
+                    padding: '24px 16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  {allSteps.map((step, idx) => {
+                    let icon: React.ReactNode;
+                    if (step.status === 'completed') {
+                      icon = <CheckCircleOutlineIcon style={{ color: '#4caf50', fontSize: 28 }} />;
+                    } else if (step.status === 'awaiting_approval') {
+                      icon = <PauseCircleOutlineIcon style={{ color: '#ff9800', fontSize: 28 }} />;
+                    } else if (step.status === 'failed') {
+                      icon = <ErrorOutlineIcon style={{ color: '#f44336', fontSize: 28 }} />;
+                    } else if (step.status === 'processing') {
+                      icon = <CircularProgress size={24} />;
+                    } else {
+                      icon = (
+                        <Box
+                          style={{
+                            width: 24,
+                            height: 24,
+                            borderRadius: '50%',
+                            border: `2px solid ${isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.2)'}`,
+                          }}
+                        />
+                      );
+                    }
+                    return (
+                      <Box key={step.id} display="flex" alignItems="center">
+                        {idx > 0 && (
+                          <Box
+                            style={{
+                              width: 48,
+                              height: 2,
+                              background: isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)',
+                            }}
+                          />
+                        )}
+                        <Box display="flex" flexDirection="column" alignItems="center" style={{ minWidth: 100 }}>
+                          {icon}
+                          <Typography
+                            variant="caption"
+                            color="textSecondary"
+                            style={{
+                              marginTop: 6,
+                              textAlign: 'center',
+                            }}
+                          >
+                            {step.name}
+                          </Typography>
+                        </Box>
+                      </Box>
+                    );
+                  })}
+                </Box>
+              </Box>
+            ) : (
+              <TaskSteps
+                steps={allSteps}
+                activeStep={activeStep}
+                isComplete={completed}
+                isError={Boolean(error)}
+              />
+            )}
+
+            {/* Scaffolder activity logs */}
+            <Box marginTop={2} id="scaffolder-logs">
+              <Box
+                style={{
+                  borderRadius: 4,
+                  padding: 16,
+                  background: logBg,
+                  color: logColor,
+                }}
+              >
+                {Object.entries(stepLogs).length === 0 ||
+                Object.values(stepLogs).every(logs => logs.length === 0) ? (
+                  <Typography variant="body2" color="textSecondary">
+                    No logs available yet.
+                  </Typography>
+                ) : (
+                  Object.entries(stepLogs).map(
+                    ([step, logs]) =>
+                      logs.length > 0 && (
+                        <div key={step}>
+                          <Typography
+                            variant="body2"
+                            style={{ fontWeight: 'bold', marginTop: 10 }}
+                            color="textPrimary"
+                          >
+                            {step}:
+                          </Typography>
+                          {logs.map((log, index) => (
+                            <Typography
+                              key={`${step}-log-${index}`}
+                              variant="body2"
+                              color="textSecondary"
+                              style={{ whiteSpace: 'break-spaces' }}
+                            >
+                              <MarkdownContent content={cleanLogContent(log)} />
+                            </Typography>
+                          ))}
+                        </div>
+                      ),
+                  )
+                )}
+              </Box>
+            </Box>
+
+          </Box>
+        )}
+
+        {/* README tab */}
+        {activeTab === 2 && readmeContent && (
+          <Box
             style={{
-              marginBottom: 30,
-              borderRadius: '4px',
-              padding: '24px',
-              boxShadow:
-                '0px 3px 1px -2px rgba(0,0,0,0.2),0px 2px 2px 0px rgba(0,0,0,0.14),0px 1px 5px 0px rgba(0,0,0,0.12)',
+              borderRadius: 4,
+              padding: 24,
+              border: `1px solid ${isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)'}`,
+              background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)',
+              color: isDark ? '#e0e0e0' : undefined,
             }}
           >
-            {Object.entries(stepLogs).map(
-              ([step, logs]) =>
-                logs.length > 0 && (
-                  <div key={step}>
-                    <Typography
-                      variant="body2"
-                      style={{ fontWeight: 'bold', marginTop: '10px' }}
-                    >
-                      {step}:
-                    </Typography>
-                    {logs.map((log, index) => (
-                      <Typography
-                        key={`${step}-log-${index}`}
-                        variant="body2"
-                        style={{ whiteSpace: 'break-spaces' }}
-                      >
-                        <MarkdownContent content={cleanLogContent(log)} />
-                      </Typography>
-                    ))}
-                  </div>
-                ),
-            )}
-          </div>
+            <MarkdownContent content={readmeContent} />
+          </Box>
         )}
       </Content>
+      <Snackbar
+        open={toast.open}
+        autoHideDuration={toast.severity === 'success' ? 8000 : null}
+        onClose={() => setToast(prev => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+        style={{ top: 80 }}
+      >
+        <Box
+          style={{
+            minWidth: 320,
+            maxWidth: 420,
+            borderRadius: 4,
+            boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
+            background: isDark ? '#1e1e1e' : '#ffffff',
+            borderLeft: `4px solid ${
+              toast.severity === 'success' ? '#4caf50'
+              : toast.severity === 'error' ? '#f44336'
+              : toast.severity === 'warning' ? '#ff9800'
+              : '#2196f3'
+            }`,
+            padding: '12px 16px',
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: 12,
+          }}
+        >
+          <Box style={{ marginTop: 2, flexShrink: 0 }}>
+            {toast.severity === 'success' && <CheckCircleOutlineIcon style={{ fontSize: 20, color: '#4caf50' }} />}
+            {toast.severity === 'error' && <ErrorOutlineIcon style={{ fontSize: 20, color: '#f44336' }} />}
+            {toast.severity === 'warning' && <ErrorOutlineIcon style={{ fontSize: 20, color: '#ff9800' }} />}
+            {toast.severity === 'info' && <ErrorOutlineIcon style={{ fontSize: 20, color: '#2196f3' }} />}
+          </Box>
+          <Box style={{ flex: 1, minWidth: 0 }}>
+            <Typography
+              variant="subtitle2"
+              style={{
+                fontWeight: 600,
+                color: isDark ? '#ffffff' : '#151515',
+                lineHeight: 1.4,
+              }}
+            >
+              {toast.title}
+            </Typography>
+            {toast.description && (
+              <Typography
+                variant="body2"
+                style={{
+                  color: isDark ? '#b0b0b0' : '#6a6e73',
+                  marginTop: 2,
+                  lineHeight: 1.4,
+                }}
+              >
+                {toast.description}
+              </Typography>
+            )}
+            {toast.linkUrl && (
+              <Link
+                href={toast.linkUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                variant="body2"
+                style={{ marginTop: 6, display: 'inline-block' }}
+              >
+                {toast.linkLabel || 'View details'}
+              </Link>
+            )}
+          </Box>
+          <IconButton
+            size="small"
+            onClick={() => setToast(prev => ({ ...prev, open: false }))}
+            style={{
+              marginTop: -4,
+              marginRight: -8,
+              color: isDark ? '#b0b0b0' : '#6a6e73',
+            }}
+            aria-label="Close notification"
+          >
+            <Typography style={{ fontSize: 18, lineHeight: 1 }}>✕</Typography>
+          </IconButton>
+        </Box>
+      </Snackbar>
     </Page>
   );
 };

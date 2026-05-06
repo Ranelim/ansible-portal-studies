@@ -33,7 +33,7 @@ export const LinksCard: React.FC<LinksCardProps> = ({ onDownloadArchive }) => {
   return (
     <Card
       variant="outlined"
-      style={{ borderRadius: 16, borderColor: '#D3D3D3' }}
+      style={{ borderRadius: 16 }}
     >
       <CardContent>
         <Typography
