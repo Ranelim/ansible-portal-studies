@@ -64,7 +64,8 @@ import {
   type GovernanceStatus,
   type DiscoveredResourceSummary,
 } from './unifiedDemoData';
-import { getProjectViolationCount, getProjectAapVersion } from '../../Projects/detail/qualityDemoData';
+import { getProjectViolationCount, getProjectSeverityBreakdown, getProjectAapVersion, SEVERITY_COLORS } from '../../Projects/detail/qualityDemoData';
+import type { SeverityClass } from '../../Projects/detail/qualityDemoData';
 import { MigrateToAnsibleWizard } from './MigrateToAnsibleWizard';
 import { GOVERNANCE_TEMPLATE } from '../create/templatesDemoData';
 
@@ -605,7 +606,6 @@ export const GitRepositoriesContent = () => {
       render: (row: GitRepository) => {
         const isScanning = scanningRepos.has(row.name);
         const isNeverScanned = neverScannedRepos.has(row.name);
-        const violationCount = isNeverScanned ? undefined : getProjectViolationCount(row.name);
 
         if (isScanning) {
           return (
@@ -615,28 +615,65 @@ export const GitRepositoriesContent = () => {
             }} />
           );
         }
-        if (violationCount === undefined) {
+        if (isNeverScanned) {
+          return (
+            <Link
+              style={{ fontSize: 12, cursor: 'pointer', color: statusColors.info }}
+              onClick={(e: React.MouseEvent) => e.stopPropagation()}
+            >
+              Scan now
+            </Link>
+          );
+        }
+
+        const breakdown = getProjectSeverityBreakdown(row.name);
+        if (!breakdown) {
           return (
             <Typography variant="body2" color="textSecondary" style={{ fontSize: 12 }}>
               Not scanned
             </Typography>
           );
         }
-        if (violationCount === 0) {
+
+        const total = getProjectViolationCount(row.name) ?? 0;
+        if (total === 0) {
           return (
-            <Chip size="small" label="0" style={{
-              fontSize: 11, height: 20, minWidth: 28,
-              backgroundColor: `${statusColors.success}15`,
-              color: statusColors.success, fontWeight: 600,
-            }} />
+            <Typography variant="body2" style={{ fontSize: 12, color: statusColors.success, fontWeight: 500 }}>
+              Clean
+            </Typography>
           );
         }
+
+        const highest: SeverityClass = breakdown.critical > 0 ? 'critical'
+          : breakdown.high > 0 ? 'high'
+          : breakdown.medium > 0 ? 'medium'
+          : 'low';
+        const highestCount = breakdown[highest];
+        const color = SEVERITY_COLORS[highest];
+
         return (
-          <Chip size="small" label={`${violationCount}`} style={{
-            fontSize: 11, height: 20, minWidth: 28,
-            backgroundColor: `${statusColors.error}15`,
-            color: statusColors.error, fontWeight: 600,
-          }} />
+          <Box
+            display="flex"
+            alignItems="center"
+            style={{ gap: 6, cursor: 'pointer' }}
+            onClick={(e: React.MouseEvent) => {
+              e.stopPropagation();
+              navigate(`/self-service/projects/${row.name}`);
+            }}
+          >
+            <Chip size="small" label={`${highestCount} ${highest}`} style={{
+              fontSize: 11, height: 20,
+              backgroundColor: `${color}18`,
+              color,
+              fontWeight: 600,
+              cursor: 'pointer',
+            }} />
+            {total > highestCount && (
+              <Typography variant="body2" color="textSecondary" style={{ fontSize: 11 }}>
+                +{total - highestCount}
+              </Typography>
+            )}
+          </Box>
         );
       },
     },
@@ -743,20 +780,6 @@ export const GitRepositoriesContent = () => {
       </CatalogFilterLayout.Filters>
 
       <CatalogFilterLayout.Content>
-        <DismissibleBanner
-          storageKey="git-repositories"
-          message="Projects are Git repositories discovered from your connected sources, containing Ansible automation content. Enable governance on any project to add quality scans, CI/CD pipelines, and connect to Ansible Automation Platform."
-          ctaText="New here? Follow the getting started guide →"
-          ctaHref="/self-service/learning"
-        />
-        <Box className={classes.contentHeader}>
-          <Box>
-            <Typography variant="h6" style={{ fontWeight: 600 }}>
-              {filteredRepos.length} {filteredRepos.length === 1 ? 'repository' : 'repositories'}
-            </Typography>
-            <LastSyncedIndicator source="GitHub and GitLab" timeAgo="3 minutes ago" />
-          </Box>
-        </Box>
 
         {hasActiveFilters(filters) && (
           <Box className={classes.activeFiltersRow}>

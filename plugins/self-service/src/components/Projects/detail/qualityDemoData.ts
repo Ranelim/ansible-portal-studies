@@ -336,6 +336,10 @@ export function getProjectViolationCount(repoName: string): number | undefined {
   return QUALITY_DATA[repoName]?.totalViolations;
 }
 
+export function getProjectSeverityBreakdown(repoName: string): Record<SeverityClass, number> | undefined {
+  return QUALITY_DATA[repoName]?.severityBreakdown;
+}
+
 export const SEVERITY_COLORS: Record<SeverityClass, string> = {
   critical: '#A30000',
   high: '#C9190B',
