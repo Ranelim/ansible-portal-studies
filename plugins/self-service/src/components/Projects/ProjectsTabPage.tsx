@@ -8,14 +8,17 @@ import { PageHelpIcon } from '../common/PageHelpIcon';
 import { AddActionButton } from '../common/AddActionButton';
 import { GitRepositoriesContent } from './catalog/GitRepositoriesContent';
 import { ProjectsCreateContent } from './create/ProjectsCreateContent';
+import { CIActivityContent } from './ci/CIActivityContent';
 
 const tabs = [
   { id: 'repositories', label: 'Repositories', path: 'repositories' },
+  { id: 'ci-activity', label: 'CI Activity', path: 'ci-activity' },
   { id: 'templates', label: 'Templates', path: 'create' },
 ];
 
 const getTabIndexFromPath = (pathname: string): number => {
-  if (pathname.includes('/projects/create')) return 1;
+  if (pathname.includes('/projects/ci-activity')) return 1;
+  if (pathname.includes('/projects/create')) return 2;
   return 0;
 };
 
@@ -40,6 +43,9 @@ export const ProjectsTabs: React.FC = () => {
 
   const content = useMemo(() => {
     if (selectedTab === 1) {
+      return <CIActivityContent key="ci-activity" />;
+    }
+    if (selectedTab === 2) {
       return <ProjectsCreateContent key="create" />;
     }
     return <GitRepositoriesContent key="repositories" />;

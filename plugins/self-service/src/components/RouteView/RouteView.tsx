@@ -131,6 +131,7 @@ const RouteViewContent = () => {
           <Route index element={<ProjectsTabs />} />
           <Route path="catalog" element={<ProjectsTabs />} />
           <Route path="repositories" element={<ProjectsTabs />} />
+          <Route path="ci-activity" element={<ProjectsTabs />} />
           <Route path="create" element={<ProjectsTabs />} />
           <Route path="migrate" element={<ProjectsTabs />} />
           <Route path="repositories/:repoName" element={<RepositoryDetailPage />} />

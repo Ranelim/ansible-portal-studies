@@ -141,8 +141,9 @@ const useStyles = makeStyles(theme => ({
   },
   resourceBadges: {
     display: 'flex',
-    gap: 6,
-    flexWrap: 'wrap' as const,
+    gap: 8,
+    flexWrap: 'nowrap' as const,
+    alignItems: 'center',
   },
   resourceBadge: {
     display: 'inline-flex',
@@ -514,6 +515,7 @@ export const GitRepositoriesContent = () => {
   const [migrateRepoName, setMigrateRepoName] = useState<string | null>(null);
   const [migrateWizardOpen, setMigrateWizardOpen] = useState(false);
   const [scanningRepos] = useState<Set<string>>(() => new Set(['network-firewall-rules']));
+  const neverScannedRepos = useMemo(() => new Set(['backup-automation']), []);
 
   useEffect(() => {
     if (location.pathname.includes('/projects/migrate')) {
@@ -563,58 +565,83 @@ export const GitRepositoriesContent = () => {
     {
       title: 'Repository',
       field: 'name',
+      cellStyle: { paddingRight: 24 },
+      render: (row: GitRepository) => (
+        <Box display="flex" alignItems="center" style={{ gap: 8 }}>
+          {row.provider === 'github' ? (
+            <GitHubIcon className={classes.providerIcon} />
+          ) : (
+            <GitLabIcon />
+          )}
+          <Link
+            className={classes.repoLink}
+            onClick={(e: React.MouseEvent) => {
+              e.stopPropagation();
+              if (row.governance !== 'discovered') {
+                navigate(`/self-service/projects/${row.name}`);
+              } else {
+                navigate(`/self-service/projects/repositories/${row.name}`);
+              }
+            }}
+          >
+            {row.org}/{row.name}
+          </Link>
+        </Box>
+      ),
+    },
+    {
+      title: 'Violations',
+      width: '100px',
+      cellStyle: { width: 100 },
+      headerStyle: { width: 100 },
       render: (row: GitRepository) => {
-        const violationCount = getProjectViolationCount(row.name);
         const isScanning = scanningRepos.has(row.name);
+        const isNeverScanned = neverScannedRepos.has(row.name);
+        const violationCount = isNeverScanned ? undefined : getProjectViolationCount(row.name);
+
+        if (isScanning) {
+          return (
+            <Chip size="small" label="Scanning" style={{
+              fontSize: 11, height: 20, backgroundColor: `${statusColors.info}15`,
+              color: statusColors.info, fontWeight: 500,
+            }} />
+          );
+        }
+        if (violationCount === undefined) {
+          return (
+            <Typography variant="body2" color="textSecondary" style={{ fontSize: 13 }}>
+              —
+            </Typography>
+          );
+        }
+        if (violationCount === 0) {
+          return (
+            <Typography variant="body2" style={{ fontSize: 13, color: statusColors.success }}>
+              0
+            </Typography>
+          );
+        }
         return (
-          <Box display="flex" alignItems="center" style={{ gap: 8 }}>
-            {row.provider === 'github' ? (
-              <GitHubIcon className={classes.providerIcon} />
-            ) : (
-              <GitLabIcon />
-            )}
-            <Link
-              className={classes.repoLink}
-              onClick={(e: React.MouseEvent) => {
-                e.stopPropagation();
-                if (row.governance !== 'discovered') {
-                  navigate(`/self-service/projects/${row.name}`);
-                } else {
-                  navigate(`/self-service/projects/repositories/${row.name}`);
-                }
-              }}
-            >
-              {row.org}/{row.name}
-            </Link>
-            {isScanning && (
-              <Chip size="small" label="Scanning" style={{
-                fontSize: 10, height: 18, backgroundColor: `${statusColors.info}15`,
-                color: statusColors.info, fontWeight: 500,
-              }} />
-            )}
-            {!isScanning && violationCount !== undefined && violationCount > 0 && (
-              <Chip size="small" label={`${violationCount}`} style={{
-                fontSize: 10, height: 18, minWidth: 20,
-                backgroundColor: `${statusColors.error}15`,
-                color: statusColors.error, fontWeight: 600,
-              }} />
-            )}
-          </Box>
+          <Typography variant="body2" style={{ fontSize: 13, fontWeight: 600, color: statusColors.error }}>
+            {violationCount}
+          </Typography>
         );
       },
     },
     {
       title: 'Content',
-      width: '200px',
+      width: '120px',
+      cellStyle: { width: 120 },
+      headerStyle: { width: 120 },
       sorting: false,
       render: (row: GitRepository) => <ResourceBadges resources={row.resources} repoName={row.name} />,
     },
     {
       title: '',
-      width: '70px',
+      width: '64px',
+      cellStyle: { width: 64, textAlign: 'right' as const, paddingRight: 8 },
+      headerStyle: { width: 64, textAlign: 'right' as const, paddingRight: 8 },
       sorting: false,
-      cellStyle: { textAlign: 'right' as const, paddingRight: 8 },
-      headerStyle: { textAlign: 'right' as const, paddingRight: 8 },
       render: (row: GitRepository) => (
         <Box className={classes.actionsCell}>
           <IconButton size="small" onClick={(e) => { e.stopPropagation(); toggleStar(row.name); }}>
