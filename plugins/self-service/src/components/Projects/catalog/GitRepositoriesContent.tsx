@@ -63,7 +63,6 @@ import {
   type DiscoveredResourceSummary,
 } from './unifiedDemoData';
 import { getProjectViolationCount, getProjectAapVersion } from '../../Projects/detail/qualityDemoData';
-import { HealthScorePopover } from './HealthScorePopover';
 import { MigrateToAnsibleWizard } from './MigrateToAnsibleWizard';
 import { GOVERNANCE_TEMPLATE } from '../create/templatesDemoData';
 
@@ -604,48 +603,38 @@ export const GitRepositoriesContent = () => {
       ),
     },
     {
-      title: 'Health',
-      width: '80px',
-      sorting: false,
-      render: (row: GitRepository) => (
-        <HealthScorePopover
-          repoName={row.name}
-          scanning={scanningRepos.has(row.name)}
-          onNavigateToQuality={() => {
-            if (row.governance !== 'discovered') {
-              navigate(`/self-service/projects/${row.name}`, { state: { tab: 'quality' } });
-            } else {
-              navigate(`/self-service/projects/repositories/${row.name}`);
-            }
-          }}
-        />
-      ),
-    },
-    {
-      title: 'Violations',
-      width: '100px',
+      title: 'Scan',
+      width: '160px',
       sorting: false,
       render: (row: GitRepository) => {
         if (scanningRepos.has(row.name)) {
-          return <Typography style={{ fontSize: 11, color: statusColors.info, fontStyle: 'italic' }}>checking…</Typography>;
+          return (
+            <Typography style={{ fontSize: 11, color: statusColors.info, fontStyle: 'italic' }}>
+              Scanning…
+            </Typography>
+          );
         }
         const count = getProjectViolationCount(row.name);
         if (count === undefined) {
-          return <Typography variant="body2" color="textSecondary" style={{ fontSize: 12 }}>—</Typography>;
+          return (
+            <Typography variant="body2" color="textSecondary" style={{ fontSize: 12 }}>
+              Not scanned
+            </Typography>
+          );
         }
         if (count === 0) {
           return (
-            <Chip size="small" label="Clean" style={{
+            <Chip size="small" label="No violations" style={{
               fontSize: 11, height: 20, backgroundColor: `${statusColors.success}20`,
               color: statusColors.success, fontWeight: 500,
             }} />
           );
         }
         return (
-          <Chip size="small" label={`${count}`} style={{
-            fontSize: 11, height: 20, backgroundColor: `${statusColors.error}20`,
-            color: statusColors.error, fontWeight: 500,
-          }} />
+          <Typography style={{ fontSize: 12 }}>
+            <span style={{ fontWeight: 600, color: statusColors.error }}>{count}</span>
+            <span style={{ color: 'inherit', opacity: 0.7 }}> violations</span>
+          </Typography>
         );
       },
     },

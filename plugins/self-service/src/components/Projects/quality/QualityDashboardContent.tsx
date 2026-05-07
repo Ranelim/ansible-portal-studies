@@ -17,23 +17,15 @@ import {
   getProjectQuality,
 } from '../detail/qualityDemoData';
 import { GIT_REPOSITORIES } from '../catalog/unifiedDemoData';
-import { HealthScorePopover } from '../catalog/HealthScorePopover';
 
 type RepoQualitySummary = {
   repoName: string;
   org: string;
-  healthScore: number;
   totalViolations: number;
   lastScannedAt: string;
   scanCount: number;
   criticalCount: number;
   highCount: number;
-};
-
-const healthColor = (score: number): string => {
-  if (score >= 80) return statusColors.success;
-  if (score >= 50) return statusColors.warning;
-  return statusColors.error;
 };
 
 const FleetStatCard = ({
@@ -71,7 +63,6 @@ export const QualityDashboardContent = () => {
         return {
           repoName: repo.name,
           org: repo.org,
-          healthScore: q.healthScore,
           totalViolations: q.totalViolations,
           lastScannedAt: q.lastScannedAt,
           scanCount: q.scanCount,
@@ -85,9 +76,6 @@ export const QualityDashboardContent = () => {
   const totalReposScanned = repoSummaries.length;
   const totalViolations = repoSummaries.reduce((sum, r) => sum + r.totalViolations, 0);
   const reposWithCritical = repoSummaries.filter(r => r.criticalCount > 0).length;
-  const avgHealthScore = totalReposScanned > 0
-    ? Math.round(repoSummaries.reduce((sum, r) => sum + r.healthScore, 0) / totalReposScanned)
-    : 0;
 
   const handleNavigateToProject = useCallback((repoName: string) => {
     const repo = GIT_REPOSITORIES.find(r => r.name === repoName);
@@ -111,13 +99,12 @@ export const QualityDashboardContent = () => {
       ),
     },
     {
-      title: 'Health',
-      field: 'healthScore',
+      title: 'Violations',
+      field: 'totalViolations',
       render: (row: RepoQualitySummary) => (
-        <HealthScorePopover
-          repoName={row.repoName}
-          onNavigateToQuality={() => handleNavigateToProject(row.repoName)}
-        />
+        <Typography style={{ fontSize: 13, fontWeight: 600, color: row.totalViolations > 0 ? statusColors.error : statusColors.success }}>
+          {row.totalViolations === 0 ? 'Clean' : `${row.totalViolations}`}
+        </Typography>
       ),
     },
     {
@@ -173,9 +160,10 @@ export const QualityDashboardContent = () => {
           sublabel={`of ${GIT_REPOSITORIES.length} total`}
         />
         <FleetStatCard
-          value={avgHealthScore}
-          label="Average health"
-          color={healthColor(avgHealthScore)}
+          value={totalViolations > 0 ? Math.round(totalViolations * 0.6) : 0}
+          label="Auto-fixed"
+          sublabel="By remediation"
+          color={statusColors.success}
         />
         <FleetStatCard
           value={totalViolations}
@@ -193,7 +181,7 @@ export const QualityDashboardContent = () => {
       <Card variant="outlined" style={{ borderRadius: 12, marginBottom: 24 }}>
         <CardContent style={{ padding: 20 }}>
           <Typography style={{ fontWeight: 600, fontSize: '1.25rem', marginBottom: 16 }}>
-            Repository health ({repoSummaries.length})
+            Scanned repositories ({repoSummaries.length})
           </Typography>
           <Table<RepoQualitySummary>
             columns={repoColumns}
