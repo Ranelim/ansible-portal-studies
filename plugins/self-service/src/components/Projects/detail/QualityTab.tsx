@@ -10,6 +10,7 @@ import {
   LinearProgress,
   Tooltip,
   Collapse,
+  IconButton,
 } from '@material-ui/core';
 import { Table, TableColumn } from '@backstage/core-components';
 import CheckCircleIcon from '@material-ui/icons/CheckCircle';
@@ -20,6 +21,7 @@ import BuildIcon from '@material-ui/icons/Build';
 import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
 import ExpandLessIcon from '@material-ui/icons/ExpandLess';
 import OpenInNewIcon from '@material-ui/icons/OpenInNew';
+import CodeIcon from '@material-ui/icons/Code';
 import AutorenewIcon from '@material-ui/icons/Autorenew';
 import { useProjectDetailStyles } from './styles';
 import { statusColors } from '../../common/statusColors';
@@ -336,9 +338,10 @@ export const ProgressPanel = () => (
 // Violation row — matches APME's row style
 // ---------------------------------------------------------------------------
 const ViolationRowItem = ({
-  v, selected, onToggle,
+  v, selected, onToggle, repoUrl, branch,
 }: {
   v: QualityViolation; selected: boolean; onToggle: () => void;
+  repoUrl?: string; branch?: string;
 }) => {
   const [expanded, setExpanded] = useState(false);
   const confidencePct = v.fixTier === 'deterministic' ? 95 : v.fixTier === 'ai' ? 78 : 0;
@@ -395,6 +398,20 @@ const ViolationRowItem = ({
         >
           {expanded ? 'Hide' : 'Show'}
         </Button>
+        {repoUrl && (
+          <Tooltip title={`Open ${v.file}:${v.lineStart} in IDE`}>
+            <IconButton
+              size="small"
+              onClick={(e: React.MouseEvent) => {
+                e.stopPropagation();
+                window.open(`https://devspaces.example.com/#${repoUrl}/tree/${branch || 'main'}/${v.file}?line=${v.lineStart}`, '_blank');
+              }}
+              style={{ padding: 4 }}
+            >
+              <CodeIcon style={{ fontSize: 14, color: '#666' }} />
+            </IconButton>
+          </Tooltip>
+        )}
       </Box>
       <Collapse in={expanded}>
         <Box style={{ padding: '4px 16px 12px 42px', display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -433,11 +450,15 @@ const ScanDetailView = ({
   quality,
   onBack,
   hideBackButton = false,
+  repoUrl,
+  branch,
 }: {
   scan: ScanResult;
   quality: ProjectQualityData;
   onBack: () => void;
   hideBackButton?: boolean;
+  repoUrl?: string;
+  branch?: string;
 }) => {
   const isLatest = scan.scanId === quality.latestScan.scanId;
   const fixableViolations = quality.violations.filter(v => v.fixTier !== 'manual');
@@ -565,6 +586,8 @@ const ScanDetailView = ({
               key={i} v={v}
               selected={selected.has(i)}
               onToggle={() => { if (v.fixTier !== 'manual') toggleItem(i); }}
+              repoUrl={repoUrl}
+              branch={branch}
             />
           ))}
         </Card>
@@ -744,11 +767,15 @@ export const QualityTab = ({
   projectName,
   initialView,
   initialScanId,
+  repoUrl,
+  branch,
 }: {
   quality: ProjectQualityData | null;
   projectName: string;
   initialView?: 'latest-scan';
   initialScanId?: string | null;
+  repoUrl?: string;
+  branch?: string;
 }) => {
   const [showHistory, setShowHistory] = useState(false);
   const [selectedScanId, setSelectedScanId] = useState<string | null>(() => {
@@ -790,7 +817,7 @@ export const QualityTab = ({
 
   // Drill-down: viewing a specific historical scan
   if (selectedScan) {
-    return <ScanDetailView scan={selectedScan} quality={quality} onBack={() => setSelectedScanId(null)} />;
+    return <ScanDetailView scan={selectedScan} quality={quality} onBack={() => setSelectedScanId(null)} repoUrl={repoUrl} branch={branch} />;
   }
 
   // Drill-down: scan history list
@@ -820,6 +847,8 @@ export const QualityTab = ({
         quality={quality}
         onBack={() => {}}
         hideBackButton
+        repoUrl={repoUrl}
+        branch={branch}
       />
 
       {/* Footer: link to scan history */}

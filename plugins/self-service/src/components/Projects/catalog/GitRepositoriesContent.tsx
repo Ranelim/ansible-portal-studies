@@ -364,12 +364,10 @@ const RowActionsMenu = ({
         transformOrigin={{ vertical: 'top', horizontal: 'right' }}
         getContentAnchorEl={null}
       >
-        {isGoverned && (
-          <MenuItem onClick={() => handleAction('edit-workspace')}>
-            <ListItemIcon><CodeIcon fontSize="small" /></ListItemIcon>
-            <ListItemText primary="Edit in Workspace" />
-          </MenuItem>
-        )}
+        <MenuItem onClick={() => handleAction('open-in-ide')}>
+          <ListItemIcon><CodeIcon fontSize="small" /></ListItemIcon>
+          <ListItemText primary="Open in IDE" secondary="Open in Dev Spaces" />
+        </MenuItem>
         <MenuItem onClick={() => handleAction('view-source')}>
           <ListItemIcon><VisibilityIcon fontSize="small" /></ListItemIcon>
           <ListItemText primary="View source" />

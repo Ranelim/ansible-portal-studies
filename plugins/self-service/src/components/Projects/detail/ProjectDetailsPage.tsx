@@ -1933,11 +1933,14 @@ const ActionsMenu = ({
         transformOrigin={{ vertical: 'top', horizontal: 'right' }}
         getContentAnchorEl={null}
       >
-        <MenuItem onClick={() => setAnchorEl(null)}>
+        <MenuItem onClick={() => {
+          window.open(`https://devspaces.example.com/#${project.repo.url}/tree/${project.repo.branch}`, '_blank');
+          setAnchorEl(null);
+        }}>
           <ListItemIcon>
             <CodeIcon fontSize="small" />
           </ListItemIcon>
-          <ListItemText primary="Edit in Workspace" />
+          <ListItemText primary="Open in IDE" secondary="Open in Dev Spaces" />
         </MenuItem>
         <MenuItem
           onClick={() => {
@@ -2144,9 +2147,11 @@ export const ProjectDetailsPage = () => {
               startIcon={<CodeIcon />}
               size="small"
               style={{ textTransform: 'none', fontWeight: 500 }}
-              onClick={() => setWorkspaceSnackbar(true)}
+              onClick={() => {
+                window.open(`https://devspaces.example.com/#${project.repo.url}/tree/${project.repo.branch}`, '_blank');
+              }}
             >
-              Edit in Workspace
+              Open in IDE
             </Button>
             <ActionsMenu
               project={project}
@@ -2377,6 +2382,8 @@ export const ProjectDetailsPage = () => {
             projectName={project.name}
             initialView={qualityInitialView}
             initialScanId={initialScanId}
+            repoUrl={project.repo.url}
+            branch={project.repo.branch}
           />
         )}
         {selectedTab === 2 && <DependenciesTab quality={quality} />}
