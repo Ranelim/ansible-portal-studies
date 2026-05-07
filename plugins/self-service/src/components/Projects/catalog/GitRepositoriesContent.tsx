@@ -369,20 +369,9 @@ const RowActionsMenu = ({
           <ListItemText primary="Open in IDE" secondary="Open in Dev Spaces" />
         </MenuItem>
         <MenuItem onClick={() => handleAction('view-source')}>
-          <ListItemIcon><VisibilityIcon fontSize="small" /></ListItemIcon>
+          <ListItemIcon><OpenInNewIcon fontSize="small" /></ListItemIcon>
           <ListItemText primary="View source" />
         </MenuItem>
-        <MenuItem onClick={() => { handleClose(); onMigrate(repo.name); }}>
-          <ListItemIcon><TransformIcon fontSize="small" /></ListItemIcon>
-          <ListItemText primary="Migrate to Ansible" secondary="Convert Chef or Puppet content" />
-        </MenuItem>
-        {isGoverned && <Divider />}
-        {isGoverned && (
-          <MenuItem onClick={() => { handleClose(); onChangeProfile(repo.name); }}>
-            <ListItemIcon><EditIcon fontSize="small" /></ListItemIcon>
-            <ListItemText primary="Change pipeline profile" />
-          </MenuItem>
-        )}
         {isGoverned && (
           isPushed ? (
             <MenuItem onClick={() => handleAction('view-in-aap')}>
@@ -396,13 +385,11 @@ const RowActionsMenu = ({
             </MenuItem>
           )
         )}
-        {isGoverned && <Divider />}
-        {isGoverned && (
-          <MenuItem onClick={() => { onDelete(repo.name); handleClose(); }}>
-            <ListItemIcon><DeleteOutlineIcon fontSize="small" style={{ color: statusColors.error }} /></ListItemIcon>
-            <ListItemText primary="Remove governance" primaryTypographyProps={{ style: { color: statusColors.error } }} />
-          </MenuItem>
-        )}
+        <Divider />
+        <MenuItem onClick={() => { onDelete(repo.name); handleClose(); }}>
+          <ListItemIcon><DeleteOutlineIcon fontSize="small" style={{ color: statusColors.error }} /></ListItemIcon>
+          <ListItemText primary="Remove" primaryTypographyProps={{ style: { color: statusColors.error } }} />
+        </MenuItem>
       </Menu>
     </>
   );
