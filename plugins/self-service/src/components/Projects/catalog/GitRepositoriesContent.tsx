@@ -563,9 +563,11 @@ export const GitRepositoriesContent = () => {
     {
       title: 'Repository',
       field: 'name',
-      render: (row: GitRepository) => (
-        <Box>
-          <Box display="flex" alignItems="center" style={{ gap: 4 }}>
+      render: (row: GitRepository) => {
+        const violationCount = getProjectViolationCount(row.name);
+        const isScanning = scanningRepos.has(row.name);
+        return (
+          <Box display="flex" alignItems="center" style={{ gap: 8 }}>
             {row.provider === 'github' ? (
               <GitHubIcon className={classes.providerIcon} />
             ) : (
@@ -584,78 +586,44 @@ export const GitRepositoriesContent = () => {
             >
               {row.org}/{row.name}
             </Link>
+            {isScanning && (
+              <Chip size="small" label="Scanning" style={{
+                fontSize: 10, height: 18, backgroundColor: `${statusColors.info}15`,
+                color: statusColors.info, fontWeight: 500,
+              }} />
+            )}
+            {!isScanning && violationCount !== undefined && violationCount > 0 && (
+              <Chip size="small" label={`${violationCount}`} style={{
+                fontSize: 10, height: 18, minWidth: 20,
+                backgroundColor: `${statusColors.error}15`,
+                color: statusColors.error, fontWeight: 600,
+              }} />
+            )}
           </Box>
-        </Box>
-      ),
-    },
-    {
-      title: 'Scan',
-      width: '160px',
-      sorting: false,
-      render: (row: GitRepository) => {
-        if (scanningRepos.has(row.name)) {
-          return (
-            <Typography style={{ fontSize: 11, color: statusColors.info, fontStyle: 'italic' }}>
-              Scanning…
-            </Typography>
-          );
-        }
-        const count = getProjectViolationCount(row.name);
-        if (count === undefined) {
-          return (
-            <Typography variant="body2" color="textSecondary" style={{ fontSize: 12 }}>
-              Not scanned
-            </Typography>
-          );
-        }
-        if (count === 0) {
-          return (
-            <Chip size="small" label="No violations" style={{
-              fontSize: 11, height: 20, backgroundColor: `${statusColors.success}20`,
-              color: statusColors.success, fontWeight: 500,
-            }} />
-          );
-        }
-        return (
-          <Typography style={{ fontSize: 12 }}>
-            <span style={{ fontWeight: 600, color: statusColors.error }}>{count}</span>
-            <span style={{ color: 'inherit', opacity: 0.7 }}> violations</span>
-          </Typography>
         );
       },
     },
     {
-      title: 'Last commit',
-      sorting: false,
-      render: (row: GitRepository) => (
-        <Typography className={classes.commitInfo}>
-          <code style={{ fontSize: 11 }}>{row.lastCommit.hash.substring(0, 7)}</code>{' '}
-          {row.lastCommit.message}
-        </Typography>
-      ),
-    },
-    {
       title: 'Content',
+      width: '200px',
       sorting: false,
       render: (row: GitRepository) => <ResourceBadges resources={row.resources} repoName={row.name} />,
     },
     {
       title: '',
-      width: '90px',
+      width: '70px',
       sorting: false,
       cellStyle: { textAlign: 'right' as const, paddingRight: 8 },
       headerStyle: { textAlign: 'right' as const, paddingRight: 8 },
       render: (row: GitRepository) => (
         <Box className={classes.actionsCell}>
-          {row.governance !== 'discovered' && (
-            <IconButton size="small" onClick={(e) => { e.stopPropagation(); toggleStar(row.name); }}>
-              {row.starred ? (
-                <StarIcon style={{ color: statusColors.star }} />
-              ) : (
-                <StarBorderIcon />
-              )}
-            </IconButton>
-          )}
+          <IconButton size="small" onClick={(e) => { e.stopPropagation(); toggleStar(row.name); }}>
+            {row.starred ? (
+              <StarIcon style={{ color: statusColors.star }} />
+            ) : (
+              <StarBorderIcon />
+            )}
+          </IconButton>
           <RowActionsMenu repo={row} onDelete={deleteProject} onChangeProfile={handleOpenChangeProfile} onMigrate={handleMigrate} />
         </Box>
       ),
