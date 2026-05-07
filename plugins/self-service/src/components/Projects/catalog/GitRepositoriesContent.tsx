@@ -589,20 +589,6 @@ export const GitRepositoriesContent = () => {
       ),
     },
     {
-      title: 'Status',
-      width: '100px',
-      field: 'governance',
-      render: (row: GitRepository) => (
-        <GovernanceStatusBadge
-          status={row.governance}
-          variant="minimal"
-          onAction={(action) => {
-            if (action === 'enable-governance') handleEnableGovernance(row);
-          }}
-        />
-      ),
-    },
-    {
       title: 'Scan',
       width: '160px',
       sorting: false,
@@ -635,21 +621,6 @@ export const GitRepositoriesContent = () => {
             <span style={{ fontWeight: 600, color: statusColors.error }}>{count}</span>
             <span style={{ color: 'inherit', opacity: 0.7 }}> violations</span>
           </Typography>
-        );
-      },
-    },
-    {
-      title: 'AAP',
-      width: '80px',
-      sorting: false,
-      render: (row: GitRepository) => {
-        const version = getProjectAapVersion(row.name);
-        if (!version) return <Typography variant="body2" color="textSecondary" style={{ fontSize: 12 }}>—</Typography>;
-        return (
-          <Chip size="small" label={`v${version}`} variant="outlined" style={{
-            fontSize: 11, height: 20, fontWeight: 500,
-            color: statusColors.warning, borderColor: `${statusColors.warning}60`,
-          }} />
         );
       },
     },
