@@ -568,7 +568,7 @@ export const GitRepositoriesContent = () => {
     {
       title: 'Repository',
       field: 'name',
-      width: '50%',
+      width: '48%',
       render: (row: GitRepository) => (
         <Box display="flex" alignItems="center" style={{ gap: 8 }}>
           {row.provider === 'github' ? (
@@ -601,7 +601,7 @@ export const GitRepositoriesContent = () => {
           </Tooltip>
         </Box>
       ) as unknown as string,
-      width: '16%',
+      width: '20%',
       sorting: false,
       render: (row: GitRepository) => {
         const isScanning = scanningRepos.has(row.name);
@@ -686,7 +686,7 @@ export const GitRepositoriesContent = () => {
           </Tooltip>
         </Box>
       ) as unknown as string,
-      width: '24%',
+      width: '22%',
       sorting: false,
       render: (row: GitRepository) => <ResourceBadges resources={row.resources} repoName={row.name} />,
     },
