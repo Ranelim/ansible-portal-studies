@@ -80,6 +80,7 @@ import { getProjectQuality, getProjectUpgradeData } from './qualityDemoData';
 import { QualityTab, type OperationStatus } from './QualityTab';
 import { DependenciesTab } from './DependenciesTab';
 import { AapUpgradeWizard } from './AapUpgradeWizard';
+import { IdeMockView } from './IdeMockView';
 import PlayArrowIcon from '@material-ui/icons/PlayArrow';
 import BuildIcon from '@material-ui/icons/Build';
 import SystemUpdateIcon from '@material-ui/icons/SystemUpdate';
@@ -2021,6 +2022,7 @@ export const ProjectDetailsPage = () => {
   const [showPushModal, setShowPushModal] = useState(false);
   const [showUpgradeWizard, setShowUpgradeWizard] = useState(false);
   const [upgradeSnackbar, setUpgradeSnackbar] = useState(false);
+  const [showIdeMock, setShowIdeMock] = useState(false);
 
   const handlePushToAap = useCallback(() => {
     setIsPushedToAap(true);
@@ -2147,9 +2149,7 @@ export const ProjectDetailsPage = () => {
               startIcon={<CodeIcon />}
               size="small"
               style={{ textTransform: 'none', fontWeight: 500 }}
-              onClick={() => {
-                window.open(`https://devspaces.example.com/#${project.repo.url}/tree/${project.repo.branch}`, '_blank');
-              }}
+              onClick={() => setShowIdeMock(true)}
             >
               Open in IDE
             </Button>
@@ -2434,6 +2434,11 @@ export const ProjectDetailsPage = () => {
         onClose={() => setUpgradeSnackbar(false)}
         message={`AAP upgrade changes applied to ${project.title}. Pull request created.`}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      />
+      <IdeMockView
+        open={showIdeMock}
+        onClose={() => setShowIdeMock(false)}
+        projectName={project.name}
       />
     </Page>
   );
