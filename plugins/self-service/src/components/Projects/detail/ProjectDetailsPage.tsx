@@ -110,7 +110,7 @@ const tabs = [
   { id: 'readme', label: 'README' },
   { id: 'yaml', label: 'YAML' },
   { id: 'pipeline', label: 'Pipeline' },
-  { id: 'aap-activity', label: 'AAP Activity' },
+  { id: 'aap-activity', label: 'Deployments' },
   { id: 'resources', label: 'Resources' },
 ];
 
@@ -1370,145 +1370,187 @@ const AapActivityTab = ({
   const classes = useProjectDetailStyles();
   const isPushed = isPushedToAap;
 
+  const latestCommit = project.repo.lastCommit;
+  const lastRunCommit = project.jobHistory.length > 0 ? 'b2a7e3d' : undefined;
+  const hasNewerCode = lastRunCommit && latestCommit.hash !== lastRunCommit;
+  const lastRun = project.jobHistory[0];
+
+  const DEMO_FAILURE_REASONS: Record<number, string> = {
+    201: 'Task "Install patches" failed — UNREACHABLE: host db-02.internal not responding',
+    198: 'Task "Validate config" failed — assertion error: expected port 8443, got undefined',
+  };
+
   const jobColumns: TableColumn<JobRunEntry>[] = [
-    {
-      title: 'Job ID',
-      field: 'id',
-      render: (row: JobRunEntry) => (
-        <Typography variant="body2" style={{ fontWeight: 500 }}>
-          #{row.id}
-        </Typography>
-      ),
-    },
     {
       title: 'Status',
       field: 'status',
+      width: '100px',
       render: (row: JobRunEntry) => (
         <Box display="flex" alignItems="center" style={{ gap: 6 }}>
           <StageIcon
-            status={
-              row.status === 'success'
-                ? 'passed'
-                : (row.status as PipelineStage['status'])
-            }
+            status={row.status === 'success' ? 'passed' : (row.status as PipelineStage['status'])}
             size={16}
           />
           <Typography variant="body2">{statusLabel(row.status)}</Typography>
         </Box>
       ),
     },
-    { title: 'Started', field: 'startedAt' },
+    {
+      title: 'Job',
+      field: 'id',
+      render: (row: JobRunEntry) => (
+        <Link
+          href={`https://controller.example.com/#/jobs/${row.id}/output`}
+          target="_blank"
+          rel="noopener"
+          style={{ fontSize: 13, fontWeight: 500 }}
+        >
+          #{row.id}
+        </Link>
+      ),
+    },
+    {
+      title: 'Commit',
+      render: (row: JobRunEntry) => (
+        <Typography variant="body2" style={{ fontFamily: 'monospace', fontSize: 12 }}>
+          {row.id === lastRun?.id ? (lastRunCommit ?? '—') : 'c4b3a9f'}
+        </Typography>
+      ),
+    },
     { title: 'Duration', field: 'duration' },
+    { title: 'Started', field: 'startedAt' },
     { title: 'Launched by', field: 'launchedBy' },
   ];
 
-  const AapStatusIcon = ({
-    status,
-  }: {
-    status: 'pushed' | 'not-pushed' | 'error';
-  }) => {
-    if (status === 'pushed')
-      return <CheckCircleIcon style={{ color: statusColors.success, fontSize: 20 }} />;
-    if (status === 'error')
-      return <ErrorIcon style={{ color: statusColors.error, fontSize: 20 }} />;
+  if (!isPushed) {
     return (
-      <RadioButtonUncheckedIcon style={{ color: statusColors.pending, fontSize: 20 }} />
+      <Box style={{ marginTop: 24 }}>
+        <Card className={classes.card} variant="outlined">
+          <CardContent className={classes.cardContent}>
+            <Box display="flex" flexDirection="column" alignItems="center" style={{ padding: '40px 0' }}>
+              <CloudUploadIcon style={{ fontSize: 48, color: statusColors.pending, marginBottom: 16 }} />
+              <Typography variant="h6" style={{ fontWeight: 600, marginBottom: 8 }}>
+                Not connected to AAP
+              </Typography>
+              <Typography variant="body2" color="textSecondary" style={{ marginBottom: 20, maxWidth: 400, textAlign: 'center' }}>
+                Push this project to Ansible Automation Platform to create an AAP project and job template. Once connected, you can run automation and monitor executions here.
+              </Typography>
+              <Button
+                variant="contained"
+                color="primary"
+                startIcon={<CloudUploadIcon />}
+                style={{ textTransform: 'none', fontWeight: 600 }}
+                onClick={onPushToAap}
+              >
+                Push to AAP
+              </Button>
+            </Box>
+          </CardContent>
+        </Card>
+      </Box>
     );
-  };
-
-  const aapStatusText = (status: 'pushed' | 'not-pushed' | 'error') => {
-    if (status === 'pushed') return 'Pushed';
-    if (status === 'error') return 'Error';
-    return 'Not pushed';
-  };
+  }
 
   return (
     <Box style={{ marginTop: 24 }}>
-      {/* Push status */}
-      <Card className={classes.card} variant="outlined" style={{ marginBottom: 24 }}>
-        <CardContent className={classes.cardContent}>
-          <Typography className={classes.cardTitle}>
-            AAP push status
-          </Typography>
-          <Typography variant="body2" color="textSecondary" style={{ marginBottom: 16 }}>
-            Pushing to AAP creates or updates the project and job template in
-            your Ansible Controller based on the manifest in your repository.
-          </Typography>
+      {/* Commit gap detection */}
+      {hasNewerCode && lastRun && lastRun.status === 'failed' && (
+        <Card className={classes.card} variant="outlined" style={{
+          marginBottom: 16,
+          borderLeft: `3px solid ${statusColors.info}`,
+          backgroundColor: 'rgba(43, 154, 243, 0.04)',
+        }}>
+          <CardContent className={classes.cardContent} style={{ padding: '12px 16px' }}>
+            <Box display="flex" alignItems="center" justifyContent="space-between">
+              <Box>
+                <Typography variant="body2" style={{ fontWeight: 600, fontSize: 13 }}>
+                  Newer code available
+                </Typography>
+                <Typography variant="body2" color="textSecondary" style={{ fontSize: 12 }}>
+                  Last run failed against <code style={{ fontSize: 11 }}>{lastRunCommit}</code>.
+                  Your latest commit <code style={{ fontSize: 11 }}>{latestCommit.hash.slice(0, 7)}</code> hasn't been tested yet.
+                </Typography>
+              </Box>
+              <Button
+                variant="contained"
+                color="primary"
+                size="small"
+                startIcon={<PlayArrowIcon />}
+                style={{ textTransform: 'none', fontWeight: 600, borderRadius: 16 }}
+              >
+                Run now
+              </Button>
+            </Box>
+          </CardContent>
+        </Card>
+      )}
 
-          <Box className={classes.summaryGrid}>
-            <Paper className={classes.summaryCard} variant="outlined">
-              <Typography className={classes.summaryLabel}>
-                AAP Project
-              </Typography>
-              <Box display="flex" alignItems="center" style={{ gap: 8 }}>
-                <AapStatusIcon status={isPushed ? 'pushed' : 'not-pushed'} />
-                <Typography className={classes.summaryValue}>
-                  {aapStatusText(isPushed ? 'pushed' : 'not-pushed')}
-                </Typography>
-              </Box>
-            </Paper>
-            <Paper className={classes.summaryCard} variant="outlined">
-              <Typography className={classes.summaryLabel}>
-                Job Template
-              </Typography>
-              <Box display="flex" alignItems="center" style={{ gap: 8 }}>
-                <AapStatusIcon status={isPushed ? 'pushed' : 'not-pushed'} />
-                <Typography className={classes.summaryValue}>
-                  {aapStatusText(isPushed ? 'pushed' : 'not-pushed')}
-                </Typography>
-              </Box>
-            </Paper>
-            <Paper className={classes.summaryCard} variant="outlined">
-              <Typography className={classes.summaryLabel}>
-                Last Job Run
-              </Typography>
-              <Box display="flex" alignItems="center" style={{ gap: 8 }}>
-                {project.lastJobRun.status !== 'none' ? (
-                  <>
-                    <StageIcon
-                      status={
-                        project.lastJobRun.status === 'success'
-                          ? 'passed'
-                          : (project.lastJobRun.status as PipelineStage['status'])
-                      }
-                      size={20}
-                    />
-                    <Typography className={classes.summaryValue}>
-                      {statusLabel(project.lastJobRun.status)}
-                    </Typography>
-                  </>
-                ) : (
-                  <Typography
-                    className={classes.summaryValue}
-                    color="textSecondary"
-                  >
-                    No runs yet
+      {/* Last run summary */}
+      {lastRun && (
+        <Card className={classes.card} variant="outlined" style={{ marginBottom: 16 }}>
+          <CardContent className={classes.cardContent}>
+            <Box display="flex" alignItems="center" justifyContent="space-between" style={{ marginBottom: lastRun.status === 'failed' ? 12 : 0 }}>
+              <Box display="flex" alignItems="center" style={{ gap: 10 }}>
+                <StageIcon
+                  status={lastRun.status === 'success' ? 'passed' : (lastRun.status as PipelineStage['status'])}
+                  size={22}
+                />
+                <Box>
+                  <Typography variant="body2" style={{ fontWeight: 600, fontSize: 14 }}>
+                    Last run: {statusLabel(lastRun.status)}
                   </Typography>
+                  <Typography variant="body2" color="textSecondary" style={{ fontSize: 12 }}>
+                    Job #{lastRun.id} · {lastRun.startedAt} · {lastRun.duration} · by {lastRun.launchedBy}
+                  </Typography>
+                </Box>
+              </Box>
+              <Box display="flex" style={{ gap: 8 }}>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  href={`https://controller.example.com/#/jobs/${lastRun.id}/output`}
+                  target="_blank"
+                  style={{ textTransform: 'none', fontSize: 12, borderRadius: 16 }}
+                >
+                  View in AAP
+                </Button>
+                {!hasNewerCode && (
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    size="small"
+                    startIcon={<PlayArrowIcon />}
+                    style={{ textTransform: 'none', fontSize: 12, fontWeight: 600, borderRadius: 16 }}
+                  >
+                    Run now
+                  </Button>
                 )}
               </Box>
-            </Paper>
-          </Box>
-
-          {!isPushed && (
-            <Button
-              variant="contained"
-              color="primary"
-              startIcon={<CloudUploadIcon />}
-              style={{ textTransform: 'none', fontWeight: 600 }}
-              onClick={onPushToAap}
-            >
-              Push to AAP
-            </Button>
-          )}
-        </CardContent>
-      </Card>
+            </Box>
+            {lastRun.status === 'failed' && DEMO_FAILURE_REASONS[lastRun.id] && (
+              <Box style={{
+                padding: '8px 12px',
+                backgroundColor: `${statusColors.error}08`,
+                borderRadius: 4,
+                borderLeft: `3px solid ${statusColors.error}`,
+              }}>
+                <Typography variant="body2" style={{ fontSize: 12, fontFamily: 'monospace', color: statusColors.error }}>
+                  {DEMO_FAILURE_REASONS[lastRun.id]}
+                </Typography>
+              </Box>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Job run history */}
       <Card className={classes.card} variant="outlined">
         <CardContent className={classes.cardContent}>
-          <Typography className={classes.cardTitle}>
-            Job run history
-          </Typography>
+          <Box display="flex" alignItems="center" justifyContent="space-between" style={{ marginBottom: 12 }}>
+            <Typography className={classes.cardTitle} style={{ marginBottom: 0 }}>
+              Run history
+            </Typography>
+          </Box>
           {project.jobHistory.length > 0 ? (
             <Table<JobRunEntry>
               columns={jobColumns}
@@ -1525,8 +1567,7 @@ const AapActivityTab = ({
             />
           ) : (
             <Typography variant="body2" color="textSecondary">
-              No job runs yet. Push this project to AAP and run a job template
-              to see execution history here.
+              No job runs yet. Use "Run now" to trigger your first execution.
             </Typography>
           )}
         </CardContent>
