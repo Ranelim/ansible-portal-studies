@@ -19,7 +19,9 @@ import {
   TextField,
   InputAdornment,
   Link,
+  Tooltip,
 } from '@material-ui/core';
+import HelpOutlineIcon from '@material-ui/icons/HelpOutline';
 import SearchIcon from '@material-ui/icons/Search';
 import ClearIcon from '@material-ui/icons/Clear';
 import StarIcon from '@material-ui/icons/Star';
@@ -565,7 +567,7 @@ export const GitRepositoriesContent = () => {
     {
       title: 'Repository',
       field: 'name',
-      cellStyle: { paddingRight: 24 },
+      width: '50%',
       render: (row: GitRepository) => (
         <Box display="flex" alignItems="center" style={{ gap: 8 }}>
           {row.provider === 'github' ? (
@@ -590,10 +592,16 @@ export const GitRepositoriesContent = () => {
       ),
     },
     {
-      title: 'Violations',
-      width: '100px',
-      cellStyle: { width: 100 },
-      headerStyle: { width: 100 },
+      title: (
+        <Box display="flex" alignItems="center" style={{ gap: 4 }}>
+          Violations
+          <Tooltip title="Policy violations detected by automated quality scans. Fix violations to improve content reliability and compliance." arrow>
+            <HelpOutlineIcon style={{ fontSize: 14, color: '#999', cursor: 'help' }} />
+          </Tooltip>
+        </Box>
+      ) as unknown as string,
+      width: '16%',
+      sorting: false,
       render: (row: GitRepository) => {
         const isScanning = scanningRepos.has(row.name);
         const isNeverScanned = neverScannedRepos.has(row.name);
@@ -609,39 +617,48 @@ export const GitRepositoriesContent = () => {
         }
         if (violationCount === undefined) {
           return (
-            <Typography variant="body2" color="textSecondary" style={{ fontSize: 13 }}>
-              —
+            <Typography variant="body2" color="textSecondary" style={{ fontSize: 12 }}>
+              Not scanned
             </Typography>
           );
         }
         if (violationCount === 0) {
           return (
-            <Typography variant="body2" style={{ fontSize: 13, color: statusColors.success }}>
-              0
-            </Typography>
+            <Chip size="small" label="0" style={{
+              fontSize: 11, height: 20, minWidth: 28,
+              backgroundColor: `${statusColors.success}15`,
+              color: statusColors.success, fontWeight: 600,
+            }} />
           );
         }
         return (
-          <Typography variant="body2" style={{ fontSize: 13, fontWeight: 600, color: statusColors.error }}>
-            {violationCount}
-          </Typography>
+          <Chip size="small" label={`${violationCount}`} style={{
+            fontSize: 11, height: 20, minWidth: 28,
+            backgroundColor: `${statusColors.error}15`,
+            color: statusColors.error, fontWeight: 600,
+          }} />
         );
       },
     },
     {
-      title: 'Content',
-      width: '120px',
-      cellStyle: { width: 120 },
-      headerStyle: { width: 120 },
+      title: (
+        <Box display="flex" alignItems="center" style={{ gap: 4 }}>
+          Content
+          <Tooltip title="Automation content discovered in this repository: playbooks, roles, collection dependencies, and execution environments." arrow>
+            <HelpOutlineIcon style={{ fontSize: 14, color: '#999', cursor: 'help' }} />
+          </Tooltip>
+        </Box>
+      ) as unknown as string,
+      width: '24%',
       sorting: false,
       render: (row: GitRepository) => <ResourceBadges resources={row.resources} repoName={row.name} />,
     },
     {
       title: '',
-      width: '64px',
-      cellStyle: { width: 64, textAlign: 'right' as const, paddingRight: 8 },
-      headerStyle: { width: 64, textAlign: 'right' as const, paddingRight: 8 },
+      width: '10%',
       sorting: false,
+      cellStyle: { textAlign: 'right' as const, paddingRight: 8 },
+      headerStyle: { textAlign: 'right' as const, paddingRight: 8 },
       render: (row: GitRepository) => (
         <Box className={classes.actionsCell}>
           <IconButton size="small" onClick={(e) => { e.stopPropagation(); toggleStar(row.name); }}>

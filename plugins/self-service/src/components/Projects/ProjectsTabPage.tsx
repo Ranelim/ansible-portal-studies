@@ -65,7 +65,7 @@ export const ProjectsTabs: React.FC = () => {
               />
             </Box>
             <AddActionButton
-              label="Add repository"
+              label="Add project"
               options={[
                 {
                   label: 'Create from template',
