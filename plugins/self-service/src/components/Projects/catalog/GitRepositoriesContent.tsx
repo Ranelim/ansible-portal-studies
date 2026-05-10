@@ -364,9 +364,12 @@ const RowActionsMenu = ({
         transformOrigin={{ vertical: 'top', horizontal: 'right' }}
         getContentAnchorEl={null}
       >
-        <MenuItem onClick={() => handleAction('open-in-ide')}>
+        <MenuItem onClick={() => {
+          window.open(`https://devspaces.example.com/#${repo.url}/tree/${repo.branch}`, '_blank');
+          handleClose();
+        }}>
           <ListItemIcon><CodeIcon fontSize="small" /></ListItemIcon>
-          <ListItemText primary="Open in IDE" secondary="Open in Dev Spaces" />
+          <ListItemText primary="Edit in Dev Spaces" secondary={`Branch: ${repo.branch}`} />
         </MenuItem>
         <MenuItem onClick={() => handleAction('view-source')}>
           <ListItemIcon><OpenInNewIcon fontSize="small" /></ListItemIcon>

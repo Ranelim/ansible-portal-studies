@@ -80,7 +80,6 @@ import { getProjectQuality, getProjectUpgradeData } from './qualityDemoData';
 import { QualityTab, type OperationStatus } from './QualityTab';
 import { DependenciesTab } from './DependenciesTab';
 import { AapUpgradeWizard } from './AapUpgradeWizard';
-import { IdeMockView } from './IdeMockView';
 import PlayArrowIcon from '@material-ui/icons/PlayArrow';
 import BuildIcon from '@material-ui/icons/Build';
 import SystemUpdateIcon from '@material-ui/icons/SystemUpdate';
@@ -434,6 +433,7 @@ const OverviewTab = ({
         <AapConnectionCard project={project} isPushedToAap={isPushedToAap} onPushToAap={onPushToAap} />
         <AboutCard project={project} />
         <SourceCard project={project} />
+        <DevSpacesCard project={project} />
         <LinksCard project={project} />
       </Box>
     </Box>
@@ -967,22 +967,6 @@ const LinksCard = ({ project }: { project: DemoProject }) => {
             </Typography>
           </Box>
         </Box>
-        <Box
-          className={classes.linkItem}
-          onClick={() =>
-            window.open(project.repo.url, '_blank')
-          }
-        >
-          <CodeIcon className={classes.linkIcon} />
-          <Box>
-            <Typography className={classes.linkText}>
-              Edit in Workspace
-            </Typography>
-            <Typography className={classes.linkDescription}>
-              Open this project in a dev workspace
-            </Typography>
-          </Box>
-        </Box>
         {isPushed && (
           <Box className={classes.linkItem}>
             <OpenInNewIcon className={classes.linkIcon} />
@@ -996,6 +980,52 @@ const LinksCard = ({ project }: { project: DemoProject }) => {
             </Box>
           </Box>
         )}
+      </CardContent>
+    </Card>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// Dev Spaces Card (sidebar)
+// ---------------------------------------------------------------------------
+const DevSpacesCard = ({ project }: { project: DemoProject }) => {
+  const classes = useProjectDetailStyles();
+  return (
+    <Card className={classes.linksCard} variant="outlined">
+      <CardContent className={classes.cardContent}>
+        <Typography className={classes.cardTitle}>Development environment</Typography>
+        <Box
+          className={classes.linkItem}
+          onClick={() =>
+            window.open(`https://devspaces.example.com/#${project.repo.url}/tree/${project.repo.branch}`, '_blank')
+          }
+        >
+          <CodeIcon className={classes.linkIcon} />
+          <Box>
+            <Typography className={classes.linkText}>
+              Edit in Dev Spaces
+            </Typography>
+            <Typography className={classes.linkDescription}>
+              Open a workspace for branch: {project.repo.branch}
+            </Typography>
+          </Box>
+        </Box>
+        <Box
+          className={classes.linkItem}
+          onClick={() =>
+            window.open('https://devspaces.example.com/dashboard/#/workspaces', '_blank')
+          }
+        >
+          <OpenInNewIcon className={classes.linkIcon} />
+          <Box>
+            <Typography className={classes.linkText}>
+              Manage workspaces
+            </Typography>
+            <Typography className={classes.linkDescription}>
+              Open the Dev Spaces dashboard
+            </Typography>
+          </Box>
+        </Box>
       </CardContent>
     </Card>
   );
@@ -1941,7 +1971,7 @@ const ActionsMenu = ({
           <ListItemIcon>
             <CodeIcon fontSize="small" />
           </ListItemIcon>
-          <ListItemText primary="Open in IDE" secondary="Open in Dev Spaces" />
+          <ListItemText primary="Edit in Dev Spaces" secondary={`Branch: ${project.repo.branch}`} />
         </MenuItem>
         <MenuItem
           onClick={() => {
@@ -2012,7 +2042,6 @@ export const ProjectDetailsPage = () => {
   const [initialScanId] = useState<string | null>(urlScan);
   const [pipelineRunId] = useState<number | null>(null);
   const [starred, setStarred] = useState(false);
-  const [workspaceSnackbar, setWorkspaceSnackbar] = useState(false);
   const [opStatus, setOpStatus] = useState<OperationStatus>('idle');
   const [showResult, setShowResult] = useState(false);
   const [isPushedToAap, setIsPushedToAap] = useState(() =>
@@ -2022,7 +2051,6 @@ export const ProjectDetailsPage = () => {
   const [showPushModal, setShowPushModal] = useState(false);
   const [showUpgradeWizard, setShowUpgradeWizard] = useState(false);
   const [upgradeSnackbar, setUpgradeSnackbar] = useState(false);
-  const [showIdeMock, setShowIdeMock] = useState(false);
 
   const handlePushToAap = useCallback(() => {
     setIsPushedToAap(true);
@@ -2143,16 +2171,6 @@ export const ProjectDetailsPage = () => {
                 {opStatus === 'running' ? 'Checking...' : 'Check'}
               </Button>
             )}
-            <Button
-              variant="outlined"
-              color="primary"
-              startIcon={<CodeIcon />}
-              size="small"
-              style={{ textTransform: 'none', fontWeight: 500 }}
-              onClick={() => setShowIdeMock(true)}
-            >
-              Open in IDE
-            </Button>
             <ActionsMenu
               project={project}
               isPushedToAap={isPushedToAap}
@@ -2394,13 +2412,6 @@ export const ProjectDetailsPage = () => {
         {selectedTab === 7 && <ResourcesTab project={project} />}
       </Content>
       <Snackbar
-        open={workspaceSnackbar}
-        autoHideDuration={3000}
-        onClose={() => setWorkspaceSnackbar(false)}
-        message={`Opening workspace for ${project.title}...`}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      />
-      <Snackbar
         open={pushSnackbar}
         autoHideDuration={4000}
         onClose={() => setPushSnackbar(false)}
@@ -2434,11 +2445,6 @@ export const ProjectDetailsPage = () => {
         onClose={() => setUpgradeSnackbar(false)}
         message={`AAP upgrade changes applied to ${project.title}. Pull request created.`}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      />
-      <IdeMockView
-        open={showIdeMock}
-        onClose={() => setShowIdeMock(false)}
-        projectName={project.name}
       />
     </Page>
   );

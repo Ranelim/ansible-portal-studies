@@ -40,7 +40,7 @@ If you have AAP access, edit `app-config.local.yaml` and fill in the `auth.provi
 | **Software Templates** | Template cards with starring, template detail page, 4-step creation wizard (AI Jumpstart → Git → Pipeline → AAP) |
 | **Execution Environments** | Catalog with sidebar filters, EE detail pages, favoriting, sync status |
 | **Collections** | Collection catalog with version filtering, collection detail pages |
-| **Workspaces** | Dev Spaces management page — create, start, stop, delete browser-based IDEs for projects |
+| **Dev Spaces** | Context-aware "Edit in Dev Spaces" actions on projects, deep links from quality violations |
 | **Getting Started** | Course catalog with an interactive getting-started checklist (progress persisted to localStorage) |
 | **Search** | Omnibar dropdown with instant results, dedicated search page with sidebar filters |
 | **Documentation** | TechDocs with custom empty state (consistent with other empty states) |
@@ -118,7 +118,7 @@ Most UI data is defined directly in frontend components and requires no external
 |------|----------|
 | Projects (6 projects with full pipeline/AAP state) | `plugins/self-service/.../catalog/projectsDemoData.ts` |
 | Discovered repositories (8 repos) | `plugins/self-service/.../repositories/RepositoriesContent.tsx` |
-| Workspaces (4 demo workspaces) | `plugins/self-service/.../Workspaces/workspacesDemoData.ts` |
+| Dev Spaces integration (launch URLs) | `plugins/self-service/.../Projects/detail/ProjectDetailsPage.tsx` |
 | Sync history, connections, admin data | `plugins/self-service/.../Admin/` |
 | Search results, notifications | `packages/app/src/components/` |
 
@@ -147,7 +147,7 @@ plugins/self-service/src/
 │   ├── ExecutionEnvironments/ # EE catalog + create + detail
 │   ├── CollectionsCatalog/    # Collections list + detail
 │   ├── Learning/              # LearningPage (course catalog + checklist)
-│   ├── Workspaces/            # WorkspacesPage + WorkspaceIDEPage + demo data
+│   ├── Workspaces/            # (disconnected) Legacy workspace management files
 │   ├── Admin/                 # Connections, Sync Activity, Sync Job Detail
 │   ├── CatalogItemDetails/    # Template entity detail page
 │   ├── common/                # PageHelpIcon, statusColors, DismissibleBanner, EmptyStateLayout
@@ -180,7 +180,7 @@ plugins/self-service/src/
 | No dedicated Home page | Projects list serves as the landing; avoids a dashboard that duplicates navigation |
 | Dismissible banners + persistent help icons | Contextual onboarding that can be dismissed but still accessible via `?` icon |
 | Getting Started as a course catalog | Structured learning with progress tracking; extensible to future courses |
-| Workspaces (Dev Spaces) management | Browser-based IDEs integrated into the portal for edit-and-commit workflows |
+| Dev Spaces as launcher, not control plane | Dev Spaces has its own management dashboard; Portal provides context-aware launch links that Dev Spaces can't generate on its own |
 | Lightspeed AI as overlay panel | Non-blocking AI assistance without leaving the current context |
 
 ---
@@ -204,7 +204,7 @@ These components are used consistently across the prototype and should be reused
 - **Demo data only** — Most table data, sync history, and pipeline statuses are hardcoded. They demonstrate the UI but don't reflect live state.
 - **Template wizard is visual only** — The creation wizard renders all steps but does not execute scaffolder actions.
 - **Lightspeed panel is a shell** — The AI panel renders but does not connect to a real LLM backend.
-- **Workspaces are simulated** — Start/stop/delete actions update local state only. No real Dev Spaces are created.
+- **Dev Spaces links are placeholder URLs** — "Edit in Dev Spaces" actions open `devspaces.example.com` URLs. In production, the base URL comes from `ansible.devSpaces.baseUrl` config.
 - **Notification drawer is static** — Shows demo notifications; no real event system.
 - **No RBAC simulation** — All pages are visible to all users. In production, Administration pages would be gated by role.
 - **Pipeline logs are placeholder text** — Stage logs show simulated output, not real pipeline output.
@@ -220,7 +220,7 @@ These components are used consistently across the prototype and should be reused
 3. Click into a project to see the detail page (Overview, Pipeline, AAP Activity)
 4. Try the Repositories tab to see discovered Git repos
 5. Visit Getting Started (sidebar) to see the onboarding checklist
-6. Visit Workspaces to see the Dev Spaces management page
+6. Open a project and use "Edit in Dev Spaces" from the sidebar card or kebab menu
 7. Try the search (masthead) and Lightspeed AI toggle
 
 ### If you're an engineer

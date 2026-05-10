@@ -35,8 +35,6 @@ import { SyncJobDetailPage } from '../Admin/SyncJobDetailPage';
 import { PipelinePoliciesPage } from '../Admin/PipelinePoliciesPage';
 import { ContentSourcesPage } from '../Admin/ContentSourcesPage';
 import { LearningPage } from '../Learning/LearningPage';
-import { WorkspacesPage } from '../Workspaces/WorkspacesPage';
-import { WorkspaceIDEPage } from '../Workspaces/WorkspaceIDEPage';
 import { SetupWizardPage } from '../Setup/SetupWizardPage';
 import { GeneralPage } from '../Admin/GeneralPage';
 import { QualityDashboardPage } from '../Projects/quality/QualityDashboardPage';
@@ -148,8 +146,6 @@ const RouteViewContent = () => {
           }
         />
         <Route path="learning" element={<LearningPage />} />
-        <Route path="workspaces" element={<WorkspacesPage />} />
-        <Route path="workspaces/:workspaceId/ide" element={<WorkspaceIDEPage />} />
         <Route path="admin/general" element={<GeneralPage />} />
         <Route path="admin/integrations" element={<ConnectionsPage />} />
         <Route path="admin/integrations/:providerId" element={<ConnectionDetailPage />} />

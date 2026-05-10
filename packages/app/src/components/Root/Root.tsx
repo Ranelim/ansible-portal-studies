@@ -6,7 +6,6 @@ import { RestartProvider, useRestartRequired } from '@ansible/plugin-backstage-s
 import LibraryBooks from '@material-ui/icons/LibraryBooks';
 import CategoryIcon from '@material-ui/icons/Category';
 import CodeIcon from '@material-ui/icons/Code';
-import BuildIcon from '@material-ui/icons/Build';
 import { SidebarSectionLabel } from '@ansible/plugin-backstage-rhaap';
 import { SidebarSearchModal } from '@backstage/plugin-search';
 import {
@@ -159,11 +158,6 @@ export const Root = ({ children }: PropsWithChildren<{}>) => {
               icon={HistoryIcon}
               to="/self-service/create/tasks"
               text="Activity"
-            />
-            <SidebarItem
-              icon={BuildIcon}
-              to="/self-service/workspaces"
-              text="Workspaces"
             />
             <SidebarDivider />
             <SidebarSectionLabel text="Learn" />
