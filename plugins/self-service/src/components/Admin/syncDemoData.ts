@@ -51,7 +51,7 @@ export type SyncScheduleEntry = {
 export type ConnectionProvider = {
   id: string;
   name: string;
-  type: 'aap' | 'pah' | 'git' | 'registry';
+  type: 'aap' | 'pah' | 'git' | 'registry' | 'devtools';
   status: 'Active' | 'Not configured' | 'Error';
   lastSync?: string;
   host?: string;
@@ -102,6 +102,14 @@ export const DEMO_CONNECTIONS: ConnectionProvider[] = [
     name: 'Public Registries (internet required)',
     type: 'registry',
     status: 'Not configured',
+    syncJobs: [],
+  },
+  {
+    id: 'devspaces',
+    name: 'OpenShift Dev Spaces',
+    type: 'devtools',
+    status: 'Active',
+    host: 'devspaces.apps.example.com',
     syncJobs: [],
   },
 ];

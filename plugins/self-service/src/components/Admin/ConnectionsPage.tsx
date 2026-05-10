@@ -17,6 +17,8 @@ import LinkOffIcon from '@material-ui/icons/LinkOff';
 import ArrowForwardIcon from '@material-ui/icons/ArrowForward';
 import WarningAmberIcon from '@material-ui/icons/ReportProblemOutlined';
 import PublicIcon from '@material-ui/icons/Public';
+import ComputerIcon from '@material-ui/icons/Computer';
+import OpenInNewIcon from '@material-ui/icons/OpenInNew';
 import { SvgIcon } from '@material-ui/core';
 
 const AnsibleIcon = (props: any) => (
@@ -135,6 +137,8 @@ const providerIcon = (id: string): { icon: React.ReactNode; bg: string } => {
       return { icon: <GitLabIcon style={{ fontSize: 20, color: '#fff' }} />, bg: '#FC6D26' };
     case 'registries':
       return { icon: <PublicIcon style={{ fontSize: 20, color: '#fff' }} />, bg: '#4A4A4A' };
+    case 'devspaces':
+      return { icon: <ComputerIcon style={{ fontSize: 20, color: '#fff' }} />, bg: '#0066CC' };
     default:
       return { icon: <AnsibleIcon style={{ fontSize: 20, color: '#fff' }} />, bg: '#757575' };
   }
@@ -146,6 +150,7 @@ const providerTypeLabel = (type: ConnectionProvider['type']): string => {
     case 'pah': return 'Content Registry';
     case 'git': return 'Source Control';
     case 'registry': return 'Public Content';
+    case 'devtools': return 'Development Environment';
     default: return '';
   }
 };
@@ -154,6 +159,7 @@ const getCardDescription = (id: string, isConfigured: boolean): string => {
   if (isConfigured) {
     switch (id) {
       case 'aap': return '3 organizations · 42 job templates · 60 users';
+      case 'devspaces': return 'Browser-based VS Code environments with the Ansible extension and Lightspeed AI. When connected, "Edit in Dev Spaces" actions appear on all projects.';
       default: return '';
     }
   }
@@ -162,6 +168,7 @@ const getCardDescription = (id: string, isConfigured: boolean): string => {
     case 'github': return 'Import repositories containing playbooks, roles, and automation projects.';
     case 'gitlab': return 'Import repositories containing playbooks, roles, and automation projects.';
     case 'registries': return 'Index certified and validated content from Ansible Galaxy and Red Hat.';
+    case 'devspaces': return 'Provide your OpenShift Dev Spaces URL to enable browser-based editing directly from projects in the portal.';
     default: return '';
   }
 };
@@ -292,28 +299,129 @@ const ProviderCard = ({ provider }: { provider: ConnectionProvider }) => {
   );
 };
 
+const DevToolsCard = ({ provider }: { provider: ConnectionProvider }) => {
+  const classes = useStyles();
+  const isConfigured = provider.status !== 'Not configured';
+  const isActive = provider.status === 'Active';
+  const { icon, bg } = providerIcon(provider.id);
+  const description = getCardDescription(provider.id, isConfigured);
+
+  return (
+    <Card
+      className={`${classes.card} ${!isConfigured ? classes.notConfiguredCard : ''}`}
+      variant="outlined"
+    >
+      <CardActionArea>
+        <CardContent className={classes.cardContent}>
+          <Box className={classes.cardHeader}>
+            <Box display="flex" alignItems="center">
+              <Box className={classes.providerIcon} style={{ backgroundColor: bg }}>
+                {icon}
+              </Box>
+              <Box>
+                <Typography className={classes.providerName}>
+                  {provider.name}
+                </Typography>
+                <Typography className={classes.providerType}>
+                  {providerTypeLabel(provider.type)}
+                </Typography>
+              </Box>
+            </Box>
+            <Tooltip title={isConfigured ? 'Dev Spaces is connected and available to developers.' : 'Dev Spaces has not been configured yet.'} arrow>
+              <Chip
+                label={isConfigured ? 'Connected' : 'Not connected'}
+                size="small"
+                style={{
+                  fontSize: 11,
+                  height: 22,
+                  backgroundColor: isConfigured
+                    ? 'rgba(99,153,61,0.15)'
+                    : 'rgba(255,255,255,0.08)',
+                  color: isConfigured
+                    ? statusColors.success
+                    : '#999',
+                }}
+              />
+            </Tooltip>
+          </Box>
+
+          {isConfigured ? (
+            <>
+              <Typography className={classes.cardMeta}>
+                {provider.host}
+              </Typography>
+              {description && (
+                <Typography className={classes.cardMeta} style={{ lineHeight: 1.5 }}>
+                  {description}
+                </Typography>
+              )}
+              <Box className={classes.cardFooter}>
+                <Button
+                  size="small"
+                  color="primary"
+                  startIcon={<OpenInNewIcon style={{ fontSize: 14 }} />}
+                  onClick={(e: React.MouseEvent) => {
+                    e.stopPropagation();
+                    window.open(`https://${provider.host}/dashboard/#/workspaces`, '_blank');
+                  }}
+                  style={{ textTransform: 'none', fontSize: 12 }}
+                >
+                  Open dashboard
+                </Button>
+                <Box display="flex" alignItems="center" style={{ gap: 4, color: '#0066CC', fontSize: 12 }}>
+                  Configure <ArrowForwardIcon style={{ fontSize: 14 }} />
+                </Box>
+              </Box>
+            </>
+          ) : (
+            <>
+              {description && (
+                <Typography className={classes.cardMeta}>
+                  {description}
+                </Typography>
+              )}
+              <Box className={classes.cardFooter}>
+                <Box display="flex" alignItems="center" style={{ gap: 6 }}>
+                  <LinkOffIcon style={{ fontSize: 14, color: '#999' }} />
+                  <Typography style={{ fontSize: 12, color: '#999' }}>
+                    Not configured
+                  </Typography>
+                </Box>
+                <Box display="flex" alignItems="center" style={{ gap: 4, color: '#0066CC', fontSize: 12 }}>
+                  Connect <ArrowForwardIcon style={{ fontSize: 14 }} />
+                </Box>
+              </Box>
+            </>
+          )}
+        </CardContent>
+      </CardActionArea>
+    </Card>
+  );
+};
+
 export const ConnectionsPage = () => {
   const classes = useStyles();
 
   const automationPlatforms = DEMO_CONNECTIONS.filter(
     c => c.type === 'aap' || c.type === 'pah' || c.type === 'registry',
   );
+  const devTools = DEMO_CONNECTIONS.filter(c => c.type === 'devtools');
 
   return (
     <Page themeId="app">
       <Header
         title={
           <Box display="flex" alignItems="center">
-            Connections
+            Integrations
             <PageHelpIcon
-              tooltipLabel="What are connections?"
-              title="What are Connections?"
-              description="Connections link the portal to the automation platforms and content registries that power your catalog. Configure credentials, choose what content to sync, and control how often updates are pulled. Changes here determine what your developers can discover and use."
+              tooltipLabel="What are integrations?"
+              title="What are Integrations?"
+              description="Integrations connect the portal to the automation platforms, content registries, and developer tools that power your workflows. Configure credentials, choose what content to sync, and enable optional tools for your team."
             />
           </Box>
         }
-        pageTitleOverride="Connections"
-        subtitle="Manage credentials, content discovery, and sync schedules for your automation platforms and content registries"
+        pageTitleOverride="Integrations"
+        subtitle="Manage connections to automation platforms, content registries, and developer tools"
       />
       <Content>
         <Box className={classes.cardGrid}>
@@ -321,6 +429,22 @@ export const ConnectionsPage = () => {
             <ProviderCard key={provider.id} provider={provider} />
           ))}
         </Box>
+
+        {devTools.length > 0 && (
+          <>
+            <Typography className={classes.sectionTitle}>
+              Developer tools
+            </Typography>
+            <Typography className={classes.sectionDescription}>
+              Connect optional tools that enhance the developer workflow — browser-based IDEs, AI assistants, and content analysis services.
+            </Typography>
+            <Box className={classes.cardGrid}>
+              {devTools.map(provider => (
+                <DevToolsCard key={provider.id} provider={provider} />
+              ))}
+            </Box>
+          </>
+        )}
       </Content>
     </Page>
   );
