@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Page, Header, HeaderTabs, Content } from '@backstage/core-components';
+import { Page, Header, Content } from '@backstage/core-components';
 import {
   Box,
   Typography,
@@ -434,14 +434,6 @@ const DevToolsCard = ({ provider }: { provider: ConnectionProvider }) => {
   );
 };
 
-const CATEGORY_TABS = [
-  { id: 'all', label: 'All' },
-  { id: 'connections', label: 'Connections' },
-  { id: 'source-control', label: 'Source control' },
-  { id: 'container-registries', label: 'Container registries' },
-  { id: 'developer-tools', label: 'Developer tools' },
-];
-
 const SyncFailureBanner = ({ classes }: { classes: ReturnType<typeof useStyles> }) => {
   const [dismissed, setDismissed] = useState(false);
   if (dismissed) return null;
@@ -470,31 +462,17 @@ const SyncFailureBanner = ({ classes }: { classes: ReturnType<typeof useStyles> 
 
 export const ConnectionsPage = () => {
   const classes = useStyles();
-  const [selectedTab, setSelectedTab] = useState(0);
   const [syncing, setSyncing] = useState(false);
 
   const connections = DEMO_CONNECTIONS.filter(c => c.type === 'aap' || c.type === 'pah');
   const sourceControl = DEMO_CONNECTIONS.filter(c => c.type === 'git');
   const containerRegistries = DEMO_CONNECTIONS.filter(c => c.type === 'registry');
   const devTools = DEMO_CONNECTIONS.filter(c => c.type === 'devtools');
-  const allProviders = DEMO_CONNECTIONS.filter(c => c.type !== 'devtools');
-
-  const getVisibleProviders = () => {
-    switch (selectedTab) {
-      case 1: return connections;
-      case 2: return sourceControl;
-      case 3: return containerRegistries;
-      default: return allProviders;
-    }
-  };
 
   const handleSyncAll = () => {
     setSyncing(true);
     setTimeout(() => setSyncing(false), 2500);
   };
-
-  const visibleProviders = getVisibleProviders();
-  const showDevTools = selectedTab === 0 || selectedTab === 4;
 
   return (
     <Page themeId="app">
@@ -534,34 +512,41 @@ export const ConnectionsPage = () => {
           </Button>
         </Box>
       </Header>
-      <HeaderTabs
-        selectedIndex={selectedTab}
-        onChange={setSelectedTab}
-        tabs={CATEGORY_TABS}
-      />
       <Content>
         <SyncFailureBanner classes={classes} />
 
-        {selectedTab !== 4 && (
-          <Box className={classes.cardGrid}>
-            {visibleProviders.map(provider => (
-              <ProviderCard key={provider.id} provider={provider} />
-            ))}
-          </Box>
-        )}
+        <Typography className={classes.sectionTitle}>
+          Automation platforms
+        </Typography>
+        <Box className={classes.cardGrid}>
+          {connections.map(provider => (
+            <ProviderCard key={provider.id} provider={provider} />
+          ))}
+        </Box>
 
-        {showDevTools && devTools.length > 0 && (
+        <Typography className={classes.sectionTitle}>
+          Source control
+        </Typography>
+        <Box className={classes.cardGrid}>
+          {sourceControl.map(provider => (
+            <ProviderCard key={provider.id} provider={provider} />
+          ))}
+        </Box>
+
+        <Typography className={classes.sectionTitle}>
+          Container registries
+        </Typography>
+        <Box className={classes.cardGrid}>
+          {containerRegistries.map(provider => (
+            <ProviderCard key={provider.id} provider={provider} />
+          ))}
+        </Box>
+
+        {devTools.length > 0 && (
           <>
-            {selectedTab === 0 && (
-              <>
-                <Typography className={classes.sectionTitle}>
-                  Developer tools
-                </Typography>
-                <Typography className={classes.sectionDescription}>
-                  Connect optional tools that enhance the developer workflow — browser-based IDEs, AI assistants, and content analysis services.
-                </Typography>
-              </>
-            )}
+            <Typography className={classes.sectionTitle}>
+              Developer tools
+            </Typography>
             <Box className={classes.cardGrid}>
               {devTools.map(provider => (
                 <DevToolsCard key={provider.id} provider={provider} />
