@@ -199,10 +199,189 @@ const providerDescription = (id: string): string => {
 
 
 // ---------------------------------------------------------------------------
+// Disconnect section — tiered by risk
+// ---------------------------------------------------------------------------
+
+type DisconnectRisk = 'low' | 'medium' | 'high';
+
+interface DisconnectConfig {
+  risk: DisconnectRisk;
+  title: string;
+  consequences: string[];
+  reassurance?: string;
+  confirmName?: string;
+}
+
+const disconnectConfigs: Record<string, DisconnectConfig> = {
+  aap: {
+    risk: 'high',
+    title: 'Disconnect Ansible Automation Platform?',
+    consequences: [
+      'OAuth-based login will stop working — users will not be able to sign in.',
+      'Job template sync will stop. Existing templates remain but will go stale.',
+      'User and team sync from AAP organizations will stop.',
+    ],
+    reassurance: 'Credentials and configuration are removed from the portal only. Your AAP Controller is not affected. You can reconnect at any time.',
+    confirmName: 'Ansible Automation Platform',
+  },
+  pah: {
+    risk: 'medium',
+    title: 'Disconnect Private Automation Hub?',
+    consequences: [
+      'Collection and execution environment sync will stop.',
+      'Existing content remains in the catalog but will not receive updates.',
+    ],
+    reassurance: 'Your Private Automation Hub is not affected. You can reconnect at any time.',
+  },
+  github: {
+    risk: 'medium',
+    title: 'Disconnect GitHub?',
+    consequences: [
+      'Repository scanning and import will stop.',
+      'Existing projects remain in the catalog but will not receive updates.',
+    ],
+    reassurance: 'Your GitHub repositories are not affected. You can reconnect at any time.',
+  },
+  gitlab: {
+    risk: 'medium',
+    title: 'Disconnect GitLab?',
+    consequences: [
+      'Repository scanning and import will stop.',
+      'Existing projects remain in the catalog but will not receive updates.',
+    ],
+    reassurance: 'Your GitLab repositories are not affected. You can reconnect at any time.',
+  },
+  registries: {
+    risk: 'low',
+    title: 'Disconnect public registries?',
+    consequences: [
+      'Public content indexing will stop. Existing collection entries remain but will go stale.',
+    ],
+    reassurance: 'You can re-enable registries at any time.',
+  },
+};
+
+const DisconnectSection = ({
+  providerId,
+  providerName,
+  isConfigured,
+  onDisconnect,
+}: {
+  providerId: string;
+  providerName: string;
+  isConfigured: boolean;
+  onDisconnect: () => void;
+}) => {
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [typedName, setTypedName] = useState('');
+
+  if (!isConfigured) return null;
+
+  const config = disconnectConfigs[providerId] ?? {
+    risk: 'low' as DisconnectRisk,
+    title: `Disconnect ${providerName}?`,
+    consequences: ['This integration will be removed from the portal.'],
+    reassurance: 'You can reconnect at any time.',
+  };
+
+  const canConfirm = config.risk === 'high'
+    ? typedName === config.confirmName
+    : true;
+
+  return (
+    <>
+      <Divider style={{ margin: '24px 0 20px' }} />
+      <Box display="flex" justifyContent="space-between" alignItems="center">
+        <Box>
+          <Typography style={{ fontSize: 13, fontWeight: 500, color: statusColors.error }}>
+            Disconnect this integration
+          </Typography>
+          <Typography style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', lineHeight: 1.5 }}>
+            Remove credentials and stop all sync from {providerName}.
+          </Typography>
+        </Box>
+        <Button
+          variant="outlined"
+          size="small"
+          startIcon={<DeleteOutlineIcon style={{ fontSize: 14 }} />}
+          onClick={() => { setConfirmOpen(true); setTypedName(''); }}
+          style={{
+            textTransform: 'none',
+            fontSize: 12,
+            flexShrink: 0,
+            marginLeft: 16,
+            borderColor: 'rgba(201,25,11,0.4)',
+            color: statusColors.error,
+          }}
+        >
+          Disconnect
+        </Button>
+      </Box>
+
+      <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle style={{ fontSize: 16 }}>{config.title}</DialogTitle>
+        <DialogContent>
+          <Box style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
+            {config.consequences.map((c, i) => (
+              <Box key={i} display="flex" alignItems="flex-start" style={{ gap: 8 }}>
+                <Typography style={{ fontSize: 13, lineHeight: 1.6, color: 'rgba(255,255,255,0.85)' }}>
+                  •
+                </Typography>
+                <Typography style={{ fontSize: 13, lineHeight: 1.6, color: 'rgba(255,255,255,0.85)' }}>
+                  {c}
+                </Typography>
+              </Box>
+            ))}
+          </Box>
+          {config.reassurance && (
+            <Typography style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', lineHeight: 1.5, marginBottom: config.risk === 'high' ? 16 : 0 }}>
+              {config.reassurance}
+            </Typography>
+          )}
+          {config.risk === 'high' && config.confirmName && (
+            <Box style={{ marginTop: 4 }}>
+              <Typography style={{ fontSize: 12, fontWeight: 500, marginBottom: 6 }}>
+                Type <strong>{config.confirmName}</strong> to confirm
+              </Typography>
+              <TextField
+                fullWidth
+                variant="outlined"
+                size="small"
+                placeholder={config.confirmName}
+                value={typedName}
+                onChange={e => setTypedName(e.target.value)}
+                inputProps={{ style: { fontSize: 13 } }}
+              />
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions style={{ justifyContent: 'flex-start', padding: '16px 24px' }}>
+          <Button
+            variant="contained"
+            disabled={!canConfirm}
+            onClick={() => { setConfirmOpen(false); onDisconnect(); }}
+            style={{
+              textTransform: 'none',
+              backgroundColor: canConfirm ? statusColors.error : undefined,
+              color: canConfirm ? '#fff' : undefined,
+            }}
+          >
+            Disconnect
+          </Button>
+          <Button onClick={() => setConfirmOpen(false)} style={{ textTransform: 'none' }}>
+            Cancel
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </>
+  );
+};
+
+// ---------------------------------------------------------------------------
 // Connection Tab content per provider type
 // ---------------------------------------------------------------------------
 
-const AAPConnectionTab = ({ provider, onSave }: { provider: ConnectionProvider; onSave: () => void }) => {
+const AAPConnectionTab = ({ provider, onSave, onDisconnect }: { provider: ConnectionProvider; onSave: () => void; onDisconnect: () => void }) => {
   const classes = useStyles();
   const isConfigured = provider.status !== 'Not configured';
 
@@ -256,13 +435,15 @@ const AAPConnectionTab = ({ provider, onSave }: { provider: ConnectionProvider; 
           {isConfigured ? 'Save changes' : 'Connect'}
         </Button>
       </StickyFooter>
+      <DisconnectSection providerId={provider.id} providerName={provider.name} isConfigured={isConfigured} onDisconnect={onDisconnect} />
     </>
   );
 };
 
-const PAHConnectionTab = ({ onSave }: { onSave: () => void }) => {
+const PAHConnectionTab = ({ provider, onSave, onDisconnect }: { provider: ConnectionProvider; onSave: () => void; onDisconnect: () => void }) => {
   const classes = useStyles();
   const [inherit, setInherit] = useState(true);
+  const isConfigured = provider.status !== 'Not configured';
   return (
     <>
       <FormControlLabel
@@ -328,14 +509,16 @@ const PAHConnectionTab = ({ onSave }: { onSave: () => void }) => {
         <Button variant="outlined" style={{ textTransform: 'none', fontSize: 13 }}>Test connection</Button>
         <Button variant="contained" color="primary" onClick={onSave} style={{ textTransform: 'none', fontSize: 13 }}>Save changes</Button>
       </StickyFooter>
+      <DisconnectSection providerId={provider.id} providerName={provider.name} isConfigured={isConfigured} onDisconnect={onDisconnect} />
     </>
   );
 };
 
-const GitConnectionTab = ({ provider, onSave }: { provider: ConnectionProvider; onSave: () => void }) => {
+const GitConnectionTab = ({ provider, onSave, onDisconnect }: { provider: ConnectionProvider; onSave: () => void; onDisconnect: () => void }) => {
   const classes = useStyles();
   const [authMethod, setAuthMethod] = useState<'token' | 'oauth'>('token');
   const providerLabel = provider.id === 'github' ? 'GitHub' : 'GitLab';
+  const isConfigured = provider.status !== 'Not configured';
 
   return (
     <>
@@ -414,15 +597,17 @@ const GitConnectionTab = ({ provider, onSave }: { provider: ConnectionProvider; 
         <Button variant="outlined" style={{ textTransform: 'none', fontSize: 13 }}>Test connection</Button>
         <Button variant="contained" color="primary" onClick={onSave} style={{ textTransform: 'none', fontSize: 13 }}>Save changes</Button>
       </StickyFooter>
+      <DisconnectSection providerId={provider.id} providerName={provider.name} isConfigured={isConfigured} onDisconnect={onDisconnect} />
     </>
   );
 };
 
-const RegistryConnectionTab = ({ onSave }: { onSave: () => void }) => {
+const RegistryConnectionTab = ({ provider, onSave, onDisconnect }: { provider: ConnectionProvider; onSave: () => void; onDisconnect: () => void }) => {
   const classes = useStyles();
   const [certified, setCertified] = useState(true);
   const [validated, setValidated] = useState(true);
   const [galaxy, setGalaxy] = useState(false);
+  const isConfigured = provider.status !== 'Not configured';
   return (
     <>
       <Typography style={{ fontSize: 13, color: '#999', marginBottom: 16, lineHeight: 1.5 }}>
@@ -462,6 +647,7 @@ const RegistryConnectionTab = ({ onSave }: { onSave: () => void }) => {
         <Button variant="outlined" style={{ textTransform: 'none', fontSize: 13 }}>Reset</Button>
         <Button variant="contained" color="primary" onClick={onSave} style={{ textTransform: 'none', fontSize: 13 }}>Save changes</Button>
       </StickyFooter>
+      <DisconnectSection providerId={provider.id} providerName={provider.name} isConfigured={isConfigured} onDisconnect={onDisconnect} />
     </>
   );
 };
@@ -964,6 +1150,10 @@ export const ConnectionDetailPage = () => {
   const { providerId } = useParams<{ providerId: string }>();
   const { setRestartRequired } = useRestartRequired();
   const handleSave = () => setRestartRequired(true);
+  const handleDisconnect = () => {
+    setRestartRequired(true);
+    navigate(parentLink);
+  };
 
   const isScmRoute = location.pathname.includes('/admin/scm/');
   const parentLabel = isScmRoute ? 'SCM Integration' : 'Integrations';
@@ -1058,10 +1248,10 @@ export const ConnectionDetailPage = () => {
 
         {activeTab === 'connection' && (
           <>
-            {provider.type === 'aap' && <AAPConnectionTab provider={provider} onSave={handleSave} />}
-            {provider.type === 'pah' && <PAHConnectionTab onSave={handleSave} />}
-            {provider.type === 'git' && <GitConnectionTab provider={provider} onSave={handleSave} />}
-            {provider.type === 'registry' && <RegistryConnectionTab onSave={handleSave} />}
+            {provider.type === 'aap' && <AAPConnectionTab provider={provider} onSave={handleSave} onDisconnect={handleDisconnect} />}
+            {provider.type === 'pah' && <PAHConnectionTab provider={provider} onSave={handleSave} onDisconnect={handleDisconnect} />}
+            {provider.type === 'git' && <GitConnectionTab provider={provider} onSave={handleSave} onDisconnect={handleDisconnect} />}
+            {provider.type === 'registry' && <RegistryConnectionTab provider={provider} onSave={handleSave} onDisconnect={handleDisconnect} />}
           </>
         )}
 

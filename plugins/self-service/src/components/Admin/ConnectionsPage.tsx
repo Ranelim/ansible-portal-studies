@@ -406,6 +406,7 @@ export const ConnectionsPage = () => {
   const automationPlatforms = DEMO_CONNECTIONS.filter(
     c => c.type === 'aap' || c.type === 'pah' || c.type === 'registry',
   );
+  const sourceControl = DEMO_CONNECTIONS.filter(c => c.type === 'git');
   const devTools = DEMO_CONNECTIONS.filter(c => c.type === 'devtools');
 
   return (
@@ -427,6 +428,18 @@ export const ConnectionsPage = () => {
       <Content>
         <Box className={classes.cardGrid}>
           {automationPlatforms.map(provider => (
+            <ProviderCard key={provider.id} provider={provider} />
+          ))}
+        </Box>
+
+        <Typography className={classes.sectionTitle}>
+          Source control
+        </Typography>
+        <Typography className={classes.sectionDescription}>
+          Connect Git providers to scan and index playbooks, roles, and collections from your repositories.
+        </Typography>
+        <Box className={classes.cardGrid}>
+          {sourceControl.map(provider => (
             <ProviderCard key={provider.id} provider={provider} />
           ))}
         </Box>

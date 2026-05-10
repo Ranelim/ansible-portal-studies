@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Page, Header, Content } from '@backstage/core-components';
+import { Page, Header, HeaderTabs, Content } from '@backstage/core-components';
 import {
   Box,
   Typography,
@@ -10,12 +10,27 @@ import {
   Divider,
   Checkbox,
   FormControlLabel,
+  Stepper,
+  Step,
+  StepLabel,
+  LinearProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Tooltip,
+  Link,
 } from '@material-ui/core';
 import CheckCircleOutlineIcon from '@material-ui/icons/CheckCircleOutline';
+import CheckCircleIcon from '@material-ui/icons/CheckCircle';
 import OpenInNewIcon from '@material-ui/icons/OpenInNew';
 import ErrorOutlineIcon from '@material-ui/icons/ErrorOutline';
 import PlayArrowIcon from '@material-ui/icons/PlayArrow';
 import BuildIcon from '@material-ui/icons/Build';
+import LinkIcon from '@material-ui/icons/Link';
+import DeleteOutlineIcon from '@material-ui/icons/DeleteOutline';
+import ArrowBackIcon from '@material-ui/icons/ArrowBack';
+import InsertDriveFileOutlinedIcon from '@material-ui/icons/InsertDriveFileOutlined';
 import { statusColors } from '../common/statusColors';
 
 const useStyles = makeStyles(theme => ({
@@ -68,26 +83,6 @@ const useStyles = makeStyles(theme => ({
     marginTop: 4,
     lineHeight: 1.5,
   },
-  stickyFooter: {
-    display: 'flex',
-    justifyContent: 'flex-end',
-    gap: theme.spacing(1.5),
-    padding: theme.spacing(2, 0),
-    borderTop: `1px solid ${theme.palette.divider}`,
-    marginTop: theme.spacing(3),
-  },
-  stickyFooterFixed: {
-    position: 'fixed' as const,
-    bottom: 0,
-    display: 'flex',
-    justifyContent: 'flex-end',
-    gap: theme.spacing(1.5),
-    padding: theme.spacing(2, 3),
-    borderTop: `1px solid ${theme.palette.divider}`,
-    backgroundColor: theme.palette.background.default,
-    zIndex: 100,
-    backdropFilter: 'blur(8px)',
-  },
   testResult: {
     display: 'flex',
     alignItems: 'center',
@@ -105,154 +100,720 @@ const useStyles = makeStyles(theme => ({
   setupOptionCard: {
     border: `1px solid ${theme.palette.divider}`,
     borderRadius: 8,
-    padding: theme.spacing(2.5),
+    padding: theme.spacing(3),
     cursor: 'pointer',
     transition: 'border-color 0.15s, box-shadow 0.15s',
-    '&:hover': { borderColor: theme.palette.primary.light },
+    flex: 1,
+    '&:hover': {
+      borderColor: theme.palette.primary.light,
+      boxShadow: `0 0 0 1px ${theme.palette.primary.light}`,
+    },
   },
-  setupOptionCardSelected: {
-    borderColor: '#4DA3FF',
-    boxShadow: '0 0 0 1px #4DA3FF',
+  stepper: {
+    padding: theme.spacing(2, 0),
+    backgroundColor: 'transparent',
   },
-  templateFieldGroup: {
-    marginBottom: theme.spacing(2),
+  wizardFooter: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: theme.spacing(2, 0),
+    borderTop: `1px solid ${theme.palette.divider}`,
+    marginTop: theme.spacing(3),
+  },
+  connectedCard: {
+    border: `1px solid rgba(99,153,61,0.3)`,
+    borderRadius: 8,
+    padding: theme.spacing(3),
+    marginBottom: theme.spacing(3),
+    backgroundColor: 'rgba(99,153,61,0.04)',
+  },
+  connectedRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: theme.spacing(1, 0),
+    '&:not(:last-child)': {
+      borderBottom: `1px solid ${theme.palette.divider}`,
+    },
+  },
+  dangerButton: {
+    color: statusColors.error,
+    borderColor: 'rgba(201,25,11,0.4)',
+    '&:hover': {
+      borderColor: statusColors.error,
+      backgroundColor: 'rgba(201,25,11,0.08)',
+    },
+  },
+  configRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: theme.spacing(1.5, 0),
+    '&:not(:last-child)': {
+      borderBottom: `1px solid ${theme.palette.divider}`,
+    },
+  },
+  configLabel: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.5)',
+  },
+  configValue: {
+    fontSize: 13,
+    fontWeight: 500,
+  },
+  readOnlyBadge: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 4,
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.35)',
+    fontStyle: 'italic',
   },
 }));
 
-const StickyFooter = ({ children }: { children: React.ReactNode }) => {
+// ---- Connection tab: Connected state ----
+
+const ConnectionConnected = ({
+  url,
+  onDisconnect,
+}: {
+  url: string;
+  onDisconnect: () => void;
+}) => {
   const classes = useStyles();
-  const sentinelRef = useRef<HTMLDivElement>(null);
-  const [isStuck, setIsStuck] = useState(false);
-  const [leftOffset, setLeftOffset] = useState(0);
-
-  const measure = useCallback(() => {
-    if (sentinelRef.current) {
-      setLeftOffset(sentinelRef.current.getBoundingClientRect().left);
-    }
-  }, []);
-
-  useEffect(() => {
-    const sentinel = sentinelRef.current;
-    if (!sentinel) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        const stuck = !entry.isIntersecting;
-        setIsStuck(stuck);
-        if (stuck) measure();
-      },
-      { threshold: 0 },
-    );
-    observer.observe(sentinel);
-    window.addEventListener('resize', measure);
-    return () => {
-      observer.disconnect();
-      window.removeEventListener('resize', measure);
-    };
-  }, [measure]);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   return (
     <>
-      {isStuck && (
-        <Box className={classes.stickyFooterFixed} style={{ left: leftOffset, right: 0 }}>
-          {children}
+      <Box className={classes.connectedCard}>
+        <Box display="flex" alignItems="center" style={{ gap: 10, marginBottom: 16 }}>
+          <CheckCircleIcon style={{ fontSize: 22, color: statusColors.success }} />
+          <Typography style={{ fontSize: 16, fontWeight: 600 }}>
+            Dev Spaces is connected
+          </Typography>
         </Box>
-      )}
-      <Box ref={sentinelRef as any} className={classes.stickyFooter} style={isStuck ? { visibility: 'hidden' } : undefined}>
-        {children}
+
+        <Box className={classes.connectedRow}>
+          <Typography style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>Dashboard URL</Typography>
+          <Typography style={{ fontSize: 13, fontFamily: 'monospace' }}>{url}</Typography>
+        </Box>
+        <Box className={classes.connectedRow}>
+          <Typography style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>Status</Typography>
+          <Box display="flex" alignItems="center" style={{ gap: 6 }}>
+            <CheckCircleOutlineIcon style={{ fontSize: 14, color: statusColors.success }} />
+            <Typography style={{ fontSize: 13, color: statusColors.success }}>Reachable</Typography>
+          </Box>
+        </Box>
+        <Box className={classes.connectedRow} style={{ borderBottom: 'none' }}>
+          <Typography style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>Authentication</Typography>
+          <Typography style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)' }}>
+            Handled by OpenShift OAuth (no portal credentials needed)
+          </Typography>
+        </Box>
+
+        <Box display="flex" style={{ gap: 12, marginTop: 20 }}>
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<OpenInNewIcon style={{ fontSize: 14 }} />}
+            onClick={() => window.open(`${url}/dashboard/#/workspaces`, '_blank')}
+            style={{ textTransform: 'none', fontSize: 12 }}
+          >
+            Open dashboard
+          </Button>
+          <Button
+            variant="outlined"
+            size="small"
+            className={classes.dangerButton}
+            startIcon={<DeleteOutlineIcon style={{ fontSize: 14 }} />}
+            onClick={() => setConfirmOpen(true)}
+            style={{ textTransform: 'none', fontSize: 12 }}
+          >
+            Disconnect
+          </Button>
+        </Box>
+      </Box>
+
+      <Box className={classes.infoBox}>
+        <Typography style={{ fontSize: 12, lineHeight: 1.6, opacity: 0.8 }}>
+          <strong>Operator updates:</strong> The Dev Spaces Operator is managed directly in
+          OpenShift via OLM (Operator Lifecycle Manager). Version upgrades are not handled
+          through the portal.
+        </Typography>
+      </Box>
+
+      <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle style={{ fontSize: 16 }}>Disconnect Dev Spaces?</DialogTitle>
+        <DialogContent>
+          <Typography style={{ fontSize: 13, lineHeight: 1.6 }}>
+            This removes the Dev Spaces URL from the portal configuration.
+            "Edit in Dev Spaces" actions will no longer appear on projects.
+          </Typography>
+          <Typography style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginTop: 8, lineHeight: 1.5 }}>
+            This does not uninstall the Dev Spaces Operator from OpenShift.
+            You can reconnect at any time.
+          </Typography>
+        </DialogContent>
+        <DialogActions style={{ justifyContent: 'flex-start', padding: '16px 24px' }}>
+          <Button
+            variant="contained"
+            onClick={() => { setConfirmOpen(false); onDisconnect(); }}
+            style={{ textTransform: 'none', backgroundColor: statusColors.error, color: '#fff' }}
+          >
+            Disconnect
+          </Button>
+          <Button onClick={() => setConfirmOpen(false)} style={{ textTransform: 'none' }}>
+            Cancel
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </>
+  );
+};
+
+// ---- Connection tab: Setup picker (not connected) ----
+
+const SetupPicker = ({
+  onChoose,
+}: {
+  onChoose: (path: 'existing' | 'template') => void;
+}) => {
+  const classes = useStyles();
+
+  return (
+    <>
+      <Typography style={{ fontSize: 15, fontWeight: 600, marginBottom: 4 }}>
+        Connect Dev Spaces to the portal
+      </Typography>
+      <Typography style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', lineHeight: 1.5, marginBottom: 20 }}>
+        OpenShift Dev Spaces gives developers browser-based VS Code environments with the Ansible
+        extension and Lightspeed AI. Choose how to connect.
+      </Typography>
+
+      <Box style={{ display: 'flex', gap: 16, marginBottom: 24 }}>
+        <Box className={classes.setupOptionCard} onClick={() => onChoose('existing')}>
+          <Box display="flex" alignItems="center" style={{ gap: 10, marginBottom: 10 }}>
+            <LinkIcon style={{ fontSize: 22, color: '#4DA3FF' }} />
+            <Typography style={{ fontSize: 14, fontWeight: 600 }}>Connect existing instance</Typography>
+          </Box>
+          <Typography style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', lineHeight: 1.6 }}>
+            Your OpenShift team already set up Dev Spaces.
+            You have the dashboard URL and just need to paste it here.
+          </Typography>
+          <Typography style={{ fontSize: 11, color: '#4DA3FF', marginTop: 10, fontWeight: 500 }}>
+            Takes about 30 seconds →
+          </Typography>
+        </Box>
+
+        <Box className={classes.setupOptionCard} onClick={() => onChoose('template')}>
+          <Box display="flex" alignItems="center" style={{ gap: 10, marginBottom: 10 }}>
+            <BuildIcon style={{ fontSize: 22, color: '#4DA3FF' }} />
+            <Typography style={{ fontSize: 14, fontWeight: 600 }}>Install on OpenShift</Typography>
+          </Box>
+          <Typography style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', lineHeight: 1.6 }}>
+            You have cluster-admin access. A guided setup installs
+            the Operator, creates the instance, and connects automatically.
+          </Typography>
+          <Typography style={{ fontSize: 11, color: '#4DA3FF', marginTop: 10, fontWeight: 500 }}>
+            Takes about 5 minutes →
+          </Typography>
+        </Box>
+      </Box>
+
+      <Typography style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
+        What this enables for developers
+      </Typography>
+      <Box style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {[
+          '"Edit in Dev Spaces" actions in project kebab menus and detail pages',
+          'Deep links from quality violations to the exact file and line in Dev Spaces',
+          '"Manage workspaces" link to the Dev Spaces dashboard from project sidebars',
+        ].map((item, i) => (
+          <Box key={i} display="flex" alignItems="flex-start" style={{ gap: 8 }}>
+            <CheckCircleOutlineIcon style={{ fontSize: 14, color: 'rgba(255,255,255,0.3)', marginTop: 2, flexShrink: 0 }} />
+            <Typography style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', lineHeight: 1.5 }}>
+              {item}
+            </Typography>
+          </Box>
+        ))}
       </Box>
     </>
   );
 };
 
-const TestResultInline = ({ status }: { status: 'idle' | 'testing' | 'success' | 'error' }) => {
+// ---- Connect existing wizard ----
+
+const CONNECT_STEPS = ['Enter URL', 'Verify', 'Connected'];
+
+const ConnectExistingWizard = ({ onComplete, onCancel }: { onComplete: (url: string) => void; onCancel: () => void }) => {
   const classes = useStyles();
-  if (status === 'testing') {
-    return (
-      <Box className={classes.testResult}>
-        <Typography style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>
-          Testing connection…
-        </Typography>
-      </Box>
-    );
-  }
-  if (status === 'success') {
-    return (
-      <Box className={classes.testResult}>
-        <CheckCircleOutlineIcon style={{ fontSize: 16, color: statusColors.success }} />
-        <Typography style={{ fontSize: 12, color: statusColors.success }}>
-          Dev Spaces dashboard is reachable
-        </Typography>
-      </Box>
-    );
-  }
-  if (status === 'error') {
-    return (
-      <Box className={classes.testResult}>
-        <ErrorOutlineIcon style={{ fontSize: 16, color: statusColors.error }} />
-        <Typography style={{ fontSize: 12, color: statusColors.error }}>
-          Could not reach the Dev Spaces dashboard. Check the URL and try again.
-        </Typography>
-      </Box>
-    );
-  }
-  return null;
-};
+  const [step, setStep] = useState(0);
+  const [url, setUrl] = useState('');
+  const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
 
-export const DevSpacesDetailPage = () => {
-  const classes = useStyles();
-  const [setupPath, setSetupPath] = useState<'existing' | 'template'>('existing');
-  const [url, setUrl] = useState('https://devspaces.apps.example.com');
-  const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('success');
-  const [saved, setSaved] = useState(true);
-  const testTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const [clusterUrl, setClusterUrl] = useState('');
-  const [clusterToken, setClusterToken] = useState('');
-  const [addAnsibleSample, setAddAnsibleSample] = useState(true);
-  const [templateRunning, setTemplateRunning] = useState(false);
-  const [templateDone, setTemplateDone] = useState(false);
-
-  const runTest = useCallback((targetUrl: string) => {
-    if (!targetUrl.trim()) return;
-    if (testTimeoutRef.current) clearTimeout(testTimeoutRef.current);
-    setTestStatus('testing');
-    testTimeoutRef.current = setTimeout(() => {
-      setTestStatus(targetUrl.trim() ? 'success' : 'error');
-    }, 1200);
-  }, []);
-
-  const handleUrlBlur = () => {
-    if (url.trim() && testStatus === 'idle') {
-      runTest(url);
+  const handleNext = () => {
+    if (step === 0 && url.trim()) {
+      setStep(1);
+      setTestStatus('testing');
+      setTimeout(() => setTestStatus(url.trim() ? 'success' : 'error'), 1500);
     }
   };
 
-  const handleUrlChange = (value: string) => {
-    setUrl(value);
-    setSaved(false);
-    setTestStatus('idle');
+  useEffect(() => {
+    if (testStatus === 'success' && step === 1) {
+      setTimeout(() => setStep(2), 800);
+    }
+  }, [testStatus, step]);
+
+  return (
+    <>
+      <Box display="flex" alignItems="center" style={{ gap: 8, marginBottom: 8 }}>
+        <Button size="small" startIcon={<ArrowBackIcon style={{ fontSize: 14 }} />} onClick={onCancel}
+          style={{ textTransform: 'none', fontSize: 12, minWidth: 0, color: 'rgba(255,255,255,0.5)' }}>Back</Button>
+      </Box>
+      <Typography style={{ fontSize: 16, fontWeight: 600, marginBottom: 4 }}>Connect existing Dev Spaces instance</Typography>
+      <Stepper activeStep={step} className={classes.stepper} alternativeLabel>
+        {CONNECT_STEPS.map(label => <Step key={label}><StepLabel>{label}</StepLabel></Step>)}
+      </Stepper>
+
+      {step === 0 && (
+        <>
+          <Box className={classes.sectionCard}>
+            <Typography style={{ fontSize: 15, fontWeight: 600, marginBottom: 4 }}>Prerequisites</Typography>
+            <Typography style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', lineHeight: 1.5, marginBottom: 16 }}>
+              Before connecting, your OpenShift platform team must have:
+            </Typography>
+            <Box className={classes.prerequisiteStep}>
+              <Box className={classes.stepNumber}>1</Box>
+              <Box>
+                <Typography style={{ fontSize: 13, fontWeight: 500 }}>Installed the OpenShift Dev Spaces Operator</Typography>
+                <Typography style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', lineHeight: 1.5 }}>
+                  Available in OperatorHub on any OpenShift 4.16+ cluster.
+                </Typography>
+                <a href="https://docs.redhat.com/en/documentation/red_hat_openshift_dev_spaces/3.27/html/administration_guide/assembly_installing-dev-spaces_administration_guide"
+                  target="_blank" rel="noopener noreferrer" className={classes.docLink}>View installation guide →</a>
+              </Box>
+            </Box>
+            <Box className={classes.prerequisiteStep}>
+              <Box className={classes.stepNumber}>2</Box>
+              <Box>
+                <Typography style={{ fontSize: 13, fontWeight: 500 }}>Created a CheCluster instance</Typography>
+                <Typography style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', lineHeight: 1.5 }}>
+                  Provisions the Dev Spaces dashboard and workspace infrastructure.
+                </Typography>
+              </Box>
+            </Box>
+            <Box className={classes.prerequisiteStep} style={{ borderBottom: 'none' }}>
+              <Box className={classes.stepNumber}>3</Box>
+              <Box>
+                <Typography style={{ fontSize: 13, fontWeight: 500 }}>
+                  Provided you with the dashboard URL
+                  <Chip label="You are here" size="small" style={{ fontSize: 10, height: 18, marginLeft: 8, backgroundColor: 'rgba(0,102,204,0.15)', color: '#4DA3FF' }} />
+                </Typography>
+              </Box>
+            </Box>
+          </Box>
+          <Box className={classes.fieldGroup}>
+            <Typography className={classes.fieldLabel}>Dev Spaces URL *</Typography>
+            <TextField fullWidth variant="outlined" size="small" value={url} onChange={e => setUrl(e.target.value)}
+              placeholder="https://devspaces.apps.your-cluster.example.com" autoFocus
+              onKeyDown={e => { if (e.key === 'Enter' && url.trim()) handleNext(); }} />
+            <Typography className={classes.helperText}>
+              Usually looks like <code style={{ fontSize: 11 }}>https://devspaces.apps.&lt;cluster-domain&gt;</code>
+            </Typography>
+          </Box>
+          <Box className={classes.infoBox}>
+            <Typography style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Why only a URL?</Typography>
+            <Typography style={{ fontSize: 12, lineHeight: 1.6, opacity: 0.8 }}>
+              The portal constructs redirect URLs — it doesn't call the Dev Spaces API.
+              Authentication is handled by OpenShift OAuth in the developer's browser. No tokens or secrets needed.
+            </Typography>
+          </Box>
+          <Box className={classes.wizardFooter}>
+            <Button onClick={onCancel} style={{ textTransform: 'none', fontSize: 13 }}>Cancel</Button>
+            <Button variant="contained" color="primary" onClick={handleNext} disabled={!url.trim()}
+              style={{ textTransform: 'none', fontSize: 13 }}>Test and connect</Button>
+          </Box>
+        </>
+      )}
+
+      {step === 1 && (
+        <Box style={{ textAlign: 'center', padding: '48px 0' }}>
+          {testStatus === 'testing' && (
+            <>
+              <LinearProgress style={{ marginBottom: 24, borderRadius: 2 }} />
+              <Typography style={{ fontSize: 14, fontWeight: 500, marginBottom: 8 }}>Verifying connection…</Typography>
+              <Typography style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>Checking if the Dev Spaces dashboard is reachable at {url}</Typography>
+            </>
+          )}
+          {testStatus === 'success' && (
+            <>
+              <CheckCircleIcon style={{ fontSize: 40, color: statusColors.success, marginBottom: 12 }} />
+              <Typography style={{ fontSize: 14, fontWeight: 500, color: statusColors.success }}>Dashboard is reachable</Typography>
+            </>
+          )}
+          {testStatus === 'error' && (
+            <>
+              <ErrorOutlineIcon style={{ fontSize: 40, color: statusColors.error, marginBottom: 12 }} />
+              <Typography style={{ fontSize: 14, fontWeight: 500, color: statusColors.error, marginBottom: 8 }}>Could not reach the dashboard</Typography>
+              <Typography style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginBottom: 20 }}>
+                Check the URL and make sure the Dev Spaces dashboard is accessible from this network.
+              </Typography>
+              <Box display="flex" justifyContent="center" style={{ gap: 12 }}>
+                <Button variant="outlined" onClick={() => { setStep(0); setTestStatus('idle'); }} style={{ textTransform: 'none', fontSize: 13 }}>Edit URL</Button>
+                <Button variant="outlined" onClick={() => { setTestStatus('testing'); setTimeout(() => setTestStatus('success'), 1500); }}
+                  style={{ textTransform: 'none', fontSize: 13 }}>Retry</Button>
+              </Box>
+            </>
+          )}
+        </Box>
+      )}
+
+      {step === 2 && (
+        <Box style={{ textAlign: 'center', padding: '48px 0' }}>
+          <CheckCircleIcon style={{ fontSize: 48, color: statusColors.success, marginBottom: 16 }} />
+          <Typography style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>Dev Spaces is connected</Typography>
+          <Typography style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', lineHeight: 1.6, maxWidth: 400, margin: '0 auto 24px' }}>
+            "Edit in Dev Spaces" actions are now available on all projects.
+            Developers can open browser-based workspaces directly from the portal.
+          </Typography>
+          <Typography style={{ fontSize: 12, fontFamily: 'monospace', color: '#4DA3FF', marginBottom: 24 }}>{url}</Typography>
+          <Button variant="contained" color="primary" onClick={() => onComplete(url)} style={{ textTransform: 'none', fontSize: 13 }}>Done</Button>
+        </Box>
+      )}
+    </>
+  );
+};
+
+// ---- Install on OpenShift wizard ----
+
+const INSTALL_STEPS = ['Cluster access', 'Options', 'Installing', 'Connected'];
+
+const InstallWizard = ({ onComplete, onCancel }: { onComplete: (url: string) => void; onCancel: () => void }) => {
+  const classes = useStyles();
+  const [step, setStep] = useState(0);
+  const [clusterUrl, setClusterUrl] = useState('');
+  const [clusterToken, setClusterToken] = useState('');
+  const [addAnsibleSample, setAddAnsibleSample] = useState(true);
+  const [progress, setProgress] = useState(0);
+  const [progressLabel, setProgressLabel] = useState('');
+  const derivedUrl = `https://devspaces.apps.${clusterUrl.replace(/^https?:\/\/api\./, '').replace(/:6443$/, '')}`;
+
+  const runInstall = useCallback(() => {
+    const stages = [
+      { pct: 15, label: 'Subscribing to Dev Spaces Operator…' },
+      { pct: 35, label: 'Waiting for Operator to become ready…' },
+      { pct: 55, label: 'Creating CheCluster instance…' },
+      { pct: 70, label: addAnsibleSample ? 'Adding Ansible workspace sample…' : 'Waiting for Dev Spaces route…' },
+      { pct: 85, label: 'Waiting for Dev Spaces route…' },
+      { pct: 95, label: 'Verifying dashboard is reachable…' },
+      { pct: 100, label: 'Done' },
+    ];
+    let i = 0;
+    const tick = () => {
+      if (i < stages.length) {
+        setProgress(stages[i].pct);
+        setProgressLabel(stages[i].label);
+        i++;
+        setTimeout(tick, 600 + Math.random() * 400);
+      } else {
+        setTimeout(() => setStep(3), 500);
+      }
+    };
+    tick();
+  }, [addAnsibleSample]);
+
+  useEffect(() => {
+    if (step === 2) runInstall();
+  }, [step, runInstall]);
+
+  return (
+    <>
+      <Box display="flex" alignItems="center" style={{ gap: 8, marginBottom: 8 }}>
+        {step < 2 && (
+          <Button size="small" startIcon={<ArrowBackIcon style={{ fontSize: 14 }} />}
+            onClick={step === 0 ? onCancel : () => setStep(step - 1)}
+            style={{ textTransform: 'none', fontSize: 12, minWidth: 0, color: 'rgba(255,255,255,0.5)' }}>Back</Button>
+        )}
+      </Box>
+      <Typography style={{ fontSize: 16, fontWeight: 600, marginBottom: 4 }}>Install Dev Spaces on OpenShift</Typography>
+      <Stepper activeStep={step} className={classes.stepper} alternativeLabel>
+        {INSTALL_STEPS.map(label => <Step key={label}><StepLabel>{label}</StepLabel></Step>)}
+      </Stepper>
+
+      {step === 0 && (
+        <>
+          <Box className={classes.fieldGroup}>
+            <Typography className={classes.fieldLabel}>OpenShift API URL *</Typography>
+            <TextField fullWidth variant="outlined" size="small" value={clusterUrl} onChange={e => setClusterUrl(e.target.value)}
+              placeholder="https://api.cluster.example.com:6443" autoFocus />
+            <Typography className={classes.helperText}>
+              The API endpoint of your OpenShift cluster (from <code style={{ fontSize: 11 }}>oc whoami --show-server</code>).
+            </Typography>
+          </Box>
+          <Box className={classes.fieldGroup}>
+            <Typography className={classes.fieldLabel}>Cluster admin token *</Typography>
+            <TextField fullWidth variant="outlined" size="small" type="password" value={clusterToken}
+              onChange={e => setClusterToken(e.target.value)} placeholder="sha256~..." />
+            <Typography className={classes.helperText}>
+              A token with cluster-admin privileges (from <code style={{ fontSize: 11 }}>oc whoami -t</code>). Used only during setup — not stored by the portal.
+            </Typography>
+          </Box>
+          <Box style={{ padding: '10px 14px', borderRadius: 6, backgroundColor: 'rgba(255,171,0,0.06)', border: '1px solid rgba(255,171,0,0.2)' }}>
+            <Typography style={{ fontSize: 12, lineHeight: 1.6, color: 'rgba(255,255,255,0.7)' }}>
+              <strong>Requires cluster-admin.</strong> This template creates namespaces and installs an Operator. If you don't have this access, use "Connect existing instance" instead.
+            </Typography>
+          </Box>
+          <Box className={classes.wizardFooter}>
+            <Button onClick={onCancel} style={{ textTransform: 'none', fontSize: 13 }}>Cancel</Button>
+            <Button variant="contained" color="primary" onClick={() => setStep(1)} disabled={!clusterUrl.trim() || !clusterToken.trim()}
+              style={{ textTransform: 'none', fontSize: 13 }}>Next</Button>
+          </Box>
+        </>
+      )}
+
+      {step === 1 && (
+        <>
+          <Typography style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', lineHeight: 1.5, marginBottom: 20 }}>
+            Configure what the setup template will install on your cluster.
+          </Typography>
+          <FormControlLabel control={<Checkbox checked color="primary" size="small" disabled />}
+            label={<Box>
+              <Typography style={{ fontSize: 13, fontWeight: 500 }}>Install Dev Spaces Operator
+                <Chip label="Required" size="small" style={{ fontSize: 10, height: 18, marginLeft: 8, backgroundColor: 'rgba(0,102,204,0.15)', color: '#4DA3FF' }} />
+              </Typography>
+              <Typography style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>Subscribes to the Operator via OLM and creates a CheCluster instance.</Typography>
+            </Box>} style={{ alignItems: 'flex-start', marginLeft: 0, marginBottom: 16 }} />
+          <FormControlLabel control={<Checkbox checked={addAnsibleSample} onChange={(_, v) => setAddAnsibleSample(v)} color="primary" size="small" />}
+            label={<Box>
+              <Typography style={{ fontSize: 13, fontWeight: 500 }}>Add Ansible workspace sample</Typography>
+              <Typography style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>
+                Adds a getting-started card in the Dev Spaces dashboard with VS Code, the Ansible extension, and Lightspeed AI pre-configured.
+              </Typography>
+            </Box>} style={{ alignItems: 'flex-start', marginLeft: 0, marginBottom: 16 }} />
+          <Divider style={{ margin: '8px 0 16px' }} />
+          <Typography style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>What will happen</Typography>
+          <Box style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 8 }}>
+            {['Subscribe to the OpenShift Dev Spaces Operator in OperatorHub', 'Create a CheCluster custom resource with default settings',
+              addAnsibleSample ? 'Add an Ansible workspace sample with VS Code + Ansible extension' : null,
+              'Wait for the Dev Spaces route to become available', 'Verify the dashboard and save the connection automatically',
+            ].filter(Boolean).map((item, i) => (
+              <Typography key={i} style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', lineHeight: 1.5 }}>{i + 1}. {item}</Typography>
+            ))}
+          </Box>
+          <Box className={classes.wizardFooter}>
+            <Button onClick={() => setStep(0)} style={{ textTransform: 'none', fontSize: 13 }}>Back</Button>
+            <Button variant="contained" color="primary" startIcon={<PlayArrowIcon style={{ fontSize: 16 }} />}
+              onClick={() => setStep(2)} style={{ textTransform: 'none', fontSize: 13 }}>Start installation</Button>
+          </Box>
+        </>
+      )}
+
+      {step === 2 && (
+        <Box style={{ padding: '48px 0' }}>
+          <LinearProgress variant="determinate" value={progress} style={{ marginBottom: 24, borderRadius: 2, height: 6 }} />
+          <Typography style={{ fontSize: 14, fontWeight: 500, marginBottom: 8, textAlign: 'center' }}>Installing Dev Spaces…</Typography>
+          <Typography style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', textAlign: 'center' }}>{progressLabel}</Typography>
+        </Box>
+      )}
+
+      {step === 3 && (
+        <Box style={{ textAlign: 'center', padding: '48px 0' }}>
+          <CheckCircleIcon style={{ fontSize: 48, color: statusColors.success, marginBottom: 16 }} />
+          <Typography style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>Dev Spaces is installed and connected</Typography>
+          <Typography style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', lineHeight: 1.6, maxWidth: 420, margin: '0 auto 12px' }}>
+            The Operator is installed, the CheCluster instance is running
+            {addAnsibleSample ? ', the Ansible workspace sample is available,' : ''}
+            {' '}and the portal is connected. "Edit in Dev Spaces" actions are now live on all projects.
+          </Typography>
+          <Typography style={{ fontSize: 12, fontFamily: 'monospace', color: '#4DA3FF', marginBottom: 24 }}>{derivedUrl}</Typography>
+          <Button variant="contained" color="primary" onClick={() => onComplete(derivedUrl)} style={{ textTransform: 'none', fontSize: 13 }}>Done</Button>
+        </Box>
+      )}
+    </>
+  );
+};
+
+// ---- Configuration tab ----
+
+const ConfigurationTab = ({ url, connected }: { url: string; connected: boolean }) => {
+  const classes = useStyles();
+
+  if (!connected) {
+    return (
+      <Box style={{ textAlign: 'center', padding: '64px 24px' }}>
+        <BuildIcon style={{ fontSize: 48, color: 'rgba(255,255,255,0.2)', marginBottom: 16 }} />
+        <Typography style={{ fontSize: 16, fontWeight: 500, marginBottom: 8 }}>
+          Not connected
+        </Typography>
+        <Typography style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', maxWidth: 400, margin: '0 auto' }}>
+          Connect to a Dev Spaces instance first. Configuration details
+          will appear here once the connection is established.
+        </Typography>
+      </Box>
+    );
+  }
+
+  return (
+    <>
+      {/* Workspace limits */}
+      <Box className={classes.sectionCard}>
+        <Box display="flex" justifyContent="space-between" alignItems="flex-start" style={{ marginBottom: 16 }}>
+          <Box>
+            <Typography style={{ fontSize: 15, fontWeight: 600, marginBottom: 4 }}>
+              Workspace limits
+            </Typography>
+            <Typography style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', lineHeight: 1.5 }}>
+              Controls how many workspaces each developer can run and how long they stay active.
+              Configured in the CheCluster custom resource on OpenShift.
+            </Typography>
+          </Box>
+          <Box className={classes.readOnlyBadge}>
+            <InsertDriveFileOutlinedIcon style={{ fontSize: 12 }} />
+            Read-only
+          </Box>
+        </Box>
+
+        <Box className={classes.configRow}>
+          <Typography className={classes.configLabel}>Running workspaces per user</Typography>
+          <Typography className={classes.configValue}>3</Typography>
+        </Box>
+        <Box className={classes.configRow}>
+          <Typography className={classes.configLabel}>Idle timeout</Typography>
+          <Typography className={classes.configValue}>30 minutes</Typography>
+        </Box>
+        <Box className={classes.configRow}>
+          <Typography className={classes.configLabel}>Run timeout</Typography>
+          <Typography className={classes.configValue}>12 hours</Typography>
+        </Box>
+        <Box className={classes.configRow} style={{ borderBottom: 'none' }}>
+          <Typography className={classes.configLabel}>Storage strategy</Typography>
+          <Typography className={classes.configValue}>per-user (PVC)</Typography>
+        </Box>
+      </Box>
+
+      {/* Resource quotas */}
+      <Box className={classes.sectionCard}>
+        <Box display="flex" justifyContent="space-between" alignItems="flex-start" style={{ marginBottom: 16 }}>
+          <Box>
+            <Typography style={{ fontSize: 15, fontWeight: 600, marginBottom: 4 }}>
+              Resource quotas
+            </Typography>
+            <Typography style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', lineHeight: 1.5 }}>
+              Default CPU and memory limits applied to each workspace container.
+            </Typography>
+          </Box>
+          <Box className={classes.readOnlyBadge}>
+            <InsertDriveFileOutlinedIcon style={{ fontSize: 12 }} />
+            Read-only
+          </Box>
+        </Box>
+
+        <Box className={classes.configRow}>
+          <Typography className={classes.configLabel}>CPU request / limit</Typography>
+          <Typography className={classes.configValue}>500m / 2 cores</Typography>
+        </Box>
+        <Box className={classes.configRow}>
+          <Typography className={classes.configLabel}>Memory request / limit</Typography>
+          <Typography className={classes.configValue}>1 Gi / 4 Gi</Typography>
+        </Box>
+        <Box className={classes.configRow} style={{ borderBottom: 'none' }}>
+          <Typography className={classes.configLabel}>Storage per workspace</Typography>
+          <Typography className={classes.configValue}>10 Gi</Typography>
+        </Box>
+      </Box>
+
+      {/* Workspace samples */}
+      <Box className={classes.sectionCard}>
+        <Box display="flex" justifyContent="space-between" alignItems="flex-start" style={{ marginBottom: 16 }}>
+          <Box>
+            <Typography style={{ fontSize: 15, fontWeight: 600, marginBottom: 4 }}>
+              Workspace samples
+            </Typography>
+            <Typography style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', lineHeight: 1.5 }}>
+              Getting-started templates available in the Dev Spaces dashboard. Developers see these when
+              creating a new workspace without a Git URL.
+            </Typography>
+          </Box>
+          <Box className={classes.readOnlyBadge}>
+            <InsertDriveFileOutlinedIcon style={{ fontSize: 12 }} />
+            Read-only
+          </Box>
+        </Box>
+
+        <Box className={classes.configRow}>
+          <Box>
+            <Typography className={classes.configValue}>Ansible Automation</Typography>
+            <Typography style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>
+              VS Code + Ansible extension + Lightspeed AI
+            </Typography>
+          </Box>
+          <Chip label="Active" size="small" style={{ fontSize: 10, height: 20, backgroundColor: 'rgba(99,153,61,0.15)', color: statusColors.success }} />
+        </Box>
+        <Box className={classes.configRow}>
+          <Box>
+            <Typography className={classes.configValue}>Python</Typography>
+            <Typography style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>VS Code + Python extension</Typography>
+          </Box>
+          <Chip label="Active" size="small" style={{ fontSize: 10, height: 20, backgroundColor: 'rgba(99,153,61,0.15)', color: statusColors.success }} />
+        </Box>
+        <Box className={classes.configRow} style={{ borderBottom: 'none' }}>
+          <Box>
+            <Typography className={classes.configValue}>Go</Typography>
+            <Typography style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>VS Code + Go extension</Typography>
+          </Box>
+          <Chip label="Active" size="small" style={{ fontSize: 10, height: 20, backgroundColor: 'rgba(99,153,61,0.15)', color: statusColors.success }} />
+        </Box>
+      </Box>
+
+      {/* Read-only explanation */}
+      <Box className={classes.infoBox}>
+        <Typography style={{ fontSize: 12, lineHeight: 1.6, opacity: 0.8 }}>
+          These settings are read from the CheCluster custom resource on OpenShift.
+          To change them, open the{' '}
+          <Link
+            href={`${url}/dashboard/#/admin`}
+            target="_blank"
+            rel="noopener"
+            style={{ color: '#4DA3FF', fontWeight: 500 }}
+          >
+            Dev Spaces admin dashboard
+          </Link>
+          {' '}or edit the CheCluster CR directly.
+        </Typography>
+      </Box>
+    </>
+  );
+};
+
+// ---- Main page with HeaderTabs ----
+
+const TABS = [
+  { id: 'connection', label: 'Connection' },
+  { id: 'configuration', label: 'Configuration' },
+];
+
+export const DevSpacesDetailPage = () => {
+  const [connected, setConnected] = useState(true);
+  const [savedUrl, setSavedUrl] = useState('https://devspaces.apps.example.com');
+  const [wizardMode, setWizardMode] = useState<'none' | 'existing' | 'template'>('none');
+  const [selectedTab, setSelectedTab] = useState(0);
+
+  const handleConnect = (url: string) => {
+    setSavedUrl(url);
+    setConnected(true);
+    setWizardMode('none');
   };
 
-  const handleSave = () => {
-    setSaved(true);
+  const handleDisconnect = () => {
+    setConnected(false);
+    setSavedUrl('');
+    setWizardMode('none');
+    setSelectedTab(0);
   };
 
-  const handleRunTemplate = () => {
-    setTemplateRunning(true);
-    setTimeout(() => {
-      const derivedUrl = `https://devspaces.apps.${clusterUrl.replace(/^https?:\/\/api\./, '').replace(/:6443$/, '')}`;
-      setTemplateRunning(false);
-      setTemplateDone(true);
-      setUrl(derivedUrl);
-      setTestStatus('testing');
-      setTimeout(() => {
-        setTestStatus('success');
-        setSaved(true);
-      }, 1500);
-    }, 3000);
-  };
-
-  const isDirty = !saved && url.trim();
+  const activeTab = TABS[selectedTab]?.id ?? 'connection';
 
   return (
     <Page themeId="app">
@@ -264,390 +825,58 @@ export const DevSpacesDetailPage = () => {
         subtitle="Browser-based development environments for automation content"
       >
         <Box style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <Chip
-            label={saved ? 'Connected' : 'Not connected'}
-            size="small"
-            style={{
-              fontSize: 11,
-              height: 22,
-              fontWeight: 500,
-              backgroundColor: saved ? 'rgba(99,153,61,0.15)' : 'rgba(255,255,255,0.08)',
-              color: saved ? statusColors.success : 'rgba(255,255,255,0.5)',
-            }}
-          />
-          {saved && (
+          <Tooltip title={connected ? 'Dev Spaces is connected and available to developers.' : 'Dev Spaces has not been configured yet.'} arrow>
+            <Chip
+              label={connected ? 'Connected' : 'Not connected'}
+              size="small"
+              style={{
+                fontSize: 11,
+                height: 22,
+                fontWeight: 500,
+                backgroundColor: connected ? 'rgba(99,153,61,0.15)' : 'rgba(255,255,255,0.08)',
+                color: connected ? statusColors.success : 'rgba(255,255,255,0.5)',
+              }}
+            />
+          </Tooltip>
+          {connected && (
             <Button
               size="small"
               variant="outlined"
               startIcon={<OpenInNewIcon style={{ fontSize: 14 }} />}
-              onClick={() => window.open(`${url}/dashboard/#/workspaces`, '_blank')}
+              onClick={() => window.open(`${savedUrl}/dashboard/#/admin`, '_blank')}
               style={{ textTransform: 'none', fontSize: 12, borderColor: 'rgba(255,255,255,0.2)', color: '#fff' }}
             >
-              Open dashboard
+              Admin dashboard
             </Button>
           )}
         </Box>
       </Header>
+      <HeaderTabs
+        selectedIndex={selectedTab}
+        onChange={setSelectedTab}
+        tabs={TABS}
+      />
       <Content>
         <Box style={{ maxWidth: 720 }}>
-
-          {/* Setup path picker */}
-          <Typography style={{ fontSize: 15, fontWeight: 600, marginBottom: 4 }}>
-            How do you want to set up Dev Spaces?
-          </Typography>
-          <Typography style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', lineHeight: 1.5, marginBottom: 16 }}>
-            Choose how to connect the portal to OpenShift Dev Spaces. You can point to an existing
-            instance, or use a template to install it on your OpenShift cluster.
-          </Typography>
-
-          <Box style={{ display: 'flex', gap: 16, marginBottom: 24 }}>
-            <Box
-              className={`${classes.setupOptionCard} ${setupPath === 'existing' ? classes.setupOptionCardSelected : ''}`}
-              onClick={() => setSetupPath('existing')}
-            >
-              <Box display="flex" alignItems="center" style={{ gap: 10, marginBottom: 8 }}>
-                <OpenInNewIcon style={{ fontSize: 20, color: setupPath === 'existing' ? '#4DA3FF' : 'rgba(255,255,255,0.4)' }} />
-                <Typography style={{ fontSize: 14, fontWeight: 600 }}>
-                  Connect existing instance
-                </Typography>
-              </Box>
-              <Typography style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', lineHeight: 1.5 }}>
-                Your OpenShift team already installed Dev Spaces. Paste the URL to connect it to the portal.
-              </Typography>
-            </Box>
-
-            <Box
-              className={`${classes.setupOptionCard} ${setupPath === 'template' ? classes.setupOptionCardSelected : ''}`}
-              onClick={() => setSetupPath('template')}
-            >
-              <Box display="flex" alignItems="center" style={{ gap: 10, marginBottom: 8 }}>
-                <BuildIcon style={{ fontSize: 20, color: setupPath === 'template' ? '#4DA3FF' : 'rgba(255,255,255,0.4)' }} />
-                <Typography style={{ fontSize: 14, fontWeight: 600 }}>
-                  Install on OpenShift
-                </Typography>
-              </Box>
-              <Typography style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', lineHeight: 1.5 }}>
-                You have cluster-admin access to an OpenShift cluster. A template will install the Operator,
-                create the instance, and connect automatically.
-              </Typography>
-            </Box>
-          </Box>
-
-          {/* ---- PATH A: Connect existing instance ---- */}
-          {setupPath === 'existing' && (
+          {activeTab === 'connection' && (
             <>
-              <Box className={classes.sectionCard}>
-                <Typography style={{ fontSize: 15, fontWeight: 600, marginBottom: 4 }}>
-                  Prerequisites
-                </Typography>
-                <Typography style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', lineHeight: 1.5, marginBottom: 16 }}>
-                  These steps are performed by your OpenShift platform team. Once complete, they provide
-                  you with the Dev Spaces dashboard URL to enter below.
-                </Typography>
-
-                <Box className={classes.prerequisiteStep}>
-                  <Box className={classes.stepNumber}>1</Box>
-                  <Box>
-                    <Typography style={{ fontSize: 13, fontWeight: 500 }}>
-                      Install the OpenShift Dev Spaces Operator
-                    </Typography>
-                    <Typography style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', lineHeight: 1.5 }}>
-                      Available in OperatorHub on any OpenShift 4.16+ cluster. Creates the Dev Workspace
-                      Operator as a dependency.
-                    </Typography>
-                    <a
-                      href="https://docs.redhat.com/en/documentation/red_hat_openshift_dev_spaces/3.27/html/administration_guide/assembly_installing-dev-spaces_administration_guide"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={classes.docLink}
-                    >
-                      View installation guide →
-                    </a>
-                  </Box>
-                </Box>
-
-                <Box className={classes.prerequisiteStep}>
-                  <Box className={classes.stepNumber}>2</Box>
-                  <Box>
-                    <Typography style={{ fontSize: 13, fontWeight: 500 }}>
-                      Create a CheCluster instance
-                    </Typography>
-                    <Typography style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', lineHeight: 1.5 }}>
-                      After installing the Operator, create a CheCluster custom resource with default settings.
-                      This provisions the Dev Spaces dashboard and workspace infrastructure.
-                    </Typography>
-                  </Box>
-                </Box>
-
-                <Box className={classes.prerequisiteStep} style={{ borderBottom: 'none' }}>
-                  <Box className={classes.stepNumber}>3</Box>
-                  <Box>
-                    <Typography style={{ fontSize: 13, fontWeight: 500 }}>
-                      Add an Ansible workspace sample
-                      <Chip label="Optional" size="small" variant="outlined" style={{ fontSize: 10, height: 18, marginLeft: 8 }} />
-                    </Typography>
-                    <Typography style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', lineHeight: 1.5 }}>
-                      Add a getting-started sample that points to a repository with an Ansible devfile.
-                      This gives developers a one-click "Ansible workspace" card in the Dev Spaces dashboard.
-                    </Typography>
-                    <a
-                      href="https://github.com/redhat-cop/ansible-devspaces"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={classes.docLink}
-                    >
-                      Ansible Dev Spaces reference repo →
-                    </a>
-                  </Box>
-                </Box>
-              </Box>
-
-              <Divider style={{ margin: '8px 0 24px' }} />
-
-              <Typography style={{ fontSize: 15, fontWeight: 600, marginBottom: 4 }}>
-                Connection
-              </Typography>
-              <Typography style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', lineHeight: 1.5, marginBottom: 16 }}>
-                Paste the Dev Spaces URL below. The portal will automatically verify the connection.
-              </Typography>
-
-              <Box className={classes.fieldGroup}>
-                <Typography className={classes.fieldLabel}>Dev Spaces URL *</Typography>
-                <TextField
-                  fullWidth
-                  variant="outlined"
-                  size="small"
-                  value={url}
-                  onChange={e => handleUrlChange(e.target.value)}
-                  onBlur={handleUrlBlur}
-                  placeholder="https://devspaces.apps.your-cluster.example.com"
-                />
-                <Typography className={classes.helperText}>
-                  The base URL of your OpenShift Dev Spaces dashboard.
-                  Usually looks like <code style={{ fontSize: 11 }}>https://devspaces.apps.&lt;cluster-domain&gt;</code>
-                </Typography>
-                <TestResultInline status={testStatus} />
-              </Box>
-
-              <Box className={classes.infoBox}>
-                <Typography style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
-                  Why only a URL?
-                </Typography>
-                <Typography style={{ fontSize: 12, lineHeight: 1.6, opacity: 0.8 }}>
-                  The portal does not call the Dev Spaces API. It constructs redirect URLs that open
-                  workspaces in the developer's browser. Dev Spaces handles its own authentication
-                  through OpenShift OAuth — no tokens or secrets are needed here.
-                </Typography>
-              </Box>
-            </>
-          )}
-
-          {/* ---- PATH B: Install via software template ---- */}
-          {setupPath === 'template' && (
-            <>
-              <Box className={classes.sectionCard}>
-                <Typography style={{ fontSize: 15, fontWeight: 600, marginBottom: 4 }}>
-                  Install Dev Spaces on OpenShift
-                </Typography>
-                <Typography style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', lineHeight: 1.5, marginBottom: 16 }}>
-                  This template installs the Dev Spaces Operator, creates a CheCluster instance, and
-                  optionally adds an Ansible workspace sample. You need <strong>cluster-admin</strong> access
-                  to the target OpenShift cluster.
-                </Typography>
-
-                <Box className={classes.templateFieldGroup}>
-                  <Typography className={classes.fieldLabel}>OpenShift API URL *</Typography>
-                  <TextField
-                    fullWidth
-                    variant="outlined"
-                    size="small"
-                    value={clusterUrl}
-                    onChange={e => setClusterUrl(e.target.value)}
-                    placeholder="https://api.cluster.example.com:6443"
-                    disabled={templateDone}
-                  />
-                  <Typography className={classes.helperText}>
-                    The API endpoint of your OpenShift cluster (from <code style={{ fontSize: 11 }}>oc whoami --show-server</code>).
-                  </Typography>
-                </Box>
-
-                <Box className={classes.templateFieldGroup}>
-                  <Typography className={classes.fieldLabel}>Cluster admin token *</Typography>
-                  <TextField
-                    fullWidth
-                    variant="outlined"
-                    size="small"
-                    type="password"
-                    value={clusterToken}
-                    onChange={e => setClusterToken(e.target.value)}
-                    placeholder="sha256~..."
-                    disabled={templateDone}
-                  />
-                  <Typography className={classes.helperText}>
-                    A token with cluster-admin privileges (from <code style={{ fontSize: 11 }}>oc whoami -t</code>).
-                    Used only during setup — not stored by the portal.
-                  </Typography>
-                </Box>
-
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={addAnsibleSample}
-                      onChange={(_, v) => setAddAnsibleSample(v)}
-                      color="primary"
-                      size="small"
-                      disabled={templateDone}
-                    />
-                  }
-                  label={
-                    <Box>
-                      <Typography style={{ fontSize: 13, fontWeight: 500 }}>
-                        Add Ansible workspace sample
-                      </Typography>
-                      <Typography style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>
-                        Adds a getting-started card in the Dev Spaces dashboard with VS Code, the Ansible
-                        extension, and Lightspeed AI pre-configured.
-                      </Typography>
-                    </Box>
-                  }
-                  style={{ alignItems: 'flex-start', marginLeft: 0, marginBottom: 16 }}
-                />
-
-                {!templateDone && (
-                  <Box style={{
-                    padding: '10px 14px',
-                    borderRadius: 6,
-                    backgroundColor: 'rgba(255,171,0,0.06)',
-                    border: '1px solid rgba(255,171,0,0.2)',
-                    marginBottom: 16,
-                  }}>
-                    <Typography style={{ fontSize: 12, lineHeight: 1.6, color: 'rgba(255,255,255,0.7)' }}>
-                      <strong>Requires cluster-admin.</strong> This template creates namespaces and installs
-                      an Operator. If you don't have cluster-admin access, ask your OpenShift platform team
-                      to install Dev Spaces and use the "Connect existing instance" option instead.
-                    </Typography>
-                  </Box>
-                )}
-
-                {templateDone ? (
-                  <Box style={{
-                    padding: '16px 20px',
-                    borderRadius: 8,
-                    backgroundColor: 'rgba(99,153,61,0.08)',
-                    border: '1px solid rgba(99,153,61,0.25)',
-                  }}>
-                    <Box display="flex" alignItems="center" style={{ gap: 8, marginBottom: 8 }}>
-                      <CheckCircleOutlineIcon style={{ fontSize: 20, color: statusColors.success }} />
-                      <Typography style={{ fontSize: 14, fontWeight: 600, color: statusColors.success }}>
-                        Dev Spaces is installed and connected
-                      </Typography>
-                    </Box>
-                    <Typography style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', lineHeight: 1.5 }}>
-                      The template installed the Operator, created a CheCluster instance
-                      {addAnsibleSample ? ', added the Ansible workspace sample,' : ','} verified the dashboard is
-                      reachable, and saved the connection. "Edit in Dev Spaces" actions are now available
-                      on all projects.
-                    </Typography>
-                    <Box display="flex" alignItems="center" style={{ gap: 8, marginTop: 12 }}>
-                      <Typography style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>
-                        Dashboard URL:
-                      </Typography>
-                      <Typography style={{ fontSize: 12, fontFamily: 'monospace', color: '#4DA3FF' }}>
-                        {url}
-                      </Typography>
-                    </Box>
-                  </Box>
-                ) : (
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    startIcon={<PlayArrowIcon style={{ fontSize: 16 }} />}
-                    onClick={handleRunTemplate}
-                    disabled={!clusterUrl.trim() || !clusterToken.trim() || templateRunning}
-                    style={{ textTransform: 'none', fontSize: 13 }}
-                  >
-                    {templateRunning ? 'Installing… this may take a few minutes' : 'Run setup template'}
-                  </Button>
-                )}
-              </Box>
-
-              {!templateDone && (
-                <Box className={classes.infoBox}>
-                  <Typography style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
-                    What this template does
-                  </Typography>
-                  <Box style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                    {[
-                      'Subscribes to the OpenShift Dev Spaces Operator in OperatorHub',
-                      'Creates a CheCluster custom resource with default settings',
-                      addAnsibleSample ? 'Adds an Ansible workspace sample with VS Code + Ansible extension' : null,
-                      'Waits for the Dev Spaces route to become available',
-                      'Verifies the dashboard, saves the URL, and connects automatically',
-                    ].filter(Boolean).map((item, i) => (
-                      <Box key={i} display="flex" alignItems="flex-start" style={{ gap: 8 }}>
-                        <Typography style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', lineHeight: 1.5 }}>
-                          {i + 1}. {item}
-                        </Typography>
-                      </Box>
-                    ))}
-                  </Box>
-                </Box>
+              {connected && wizardMode === 'none' && (
+                <ConnectionConnected url={savedUrl} onDisconnect={handleDisconnect} />
+              )}
+              {!connected && wizardMode === 'none' && (
+                <SetupPicker onChoose={setWizardMode} />
+              )}
+              {wizardMode === 'existing' && (
+                <ConnectExistingWizard onComplete={handleConnect} onCancel={() => setWizardMode('none')} />
+              )}
+              {wizardMode === 'template' && (
+                <InstallWizard onComplete={handleConnect} onCancel={() => setWizardMode('none')} />
               )}
             </>
           )}
-
-          {/* What this enables — shared */}
-          <Box className={classes.sectionCard} style={{ backgroundColor: 'rgba(99,153,61,0.04)' }}>
-            <Typography style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
-              What this enables for developers
-            </Typography>
-            <Box style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {[
-                '"Edit in Dev Spaces" actions in project kebab menus and detail pages',
-                'Deep links from quality violations to the exact file and line in Dev Spaces',
-                '"Manage workspaces" link to the Dev Spaces dashboard from project sidebars',
-              ].map((item, i) => (
-                <Box key={i} display="flex" alignItems="flex-start" style={{ gap: 8 }}>
-                  <CheckCircleOutlineIcon style={{ fontSize: 14, color: statusColors.success, marginTop: 2, flexShrink: 0 }} />
-                  <Typography style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', lineHeight: 1.5 }}>
-                    {item}
-                  </Typography>
-                </Box>
-              ))}
-            </Box>
-          </Box>
-
-          <Box className={classes.infoBox}>
-            <Typography style={{ fontSize: 12, lineHeight: 1.6, opacity: 0.8 }}>
-              <strong>Operator updates:</strong> The Dev Spaces Operator is managed directly in
-              OpenShift via OLM (Operator Lifecycle Manager). Version upgrades are not handled
-              through the portal.
-            </Typography>
-          </Box>
-
-          {/* Sticky footer — only for the manual path when there are unsaved changes */}
-          {setupPath === 'existing' && (
-            <StickyFooter>
-              <Button
-                variant="outlined"
-                onClick={() => runTest(url)}
-                disabled={!url.trim() || testStatus === 'testing'}
-                style={{ textTransform: 'none', fontSize: 13 }}
-              >
-                {testStatus === 'testing' ? 'Testing…' : 'Retest connection'}
-              </Button>
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={handleSave}
-                disabled={!url.trim() || !isDirty}
-                style={{ textTransform: 'none', fontSize: 13 }}
-              >
-                {saved ? 'Saved' : 'Save'}
-              </Button>
-            </StickyFooter>
+          {activeTab === 'configuration' && (
+            <ConfigurationTab url={savedUrl} connected={connected} />
           )}
-
         </Box>
       </Content>
     </Page>
