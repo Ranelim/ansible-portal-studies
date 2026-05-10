@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Page, Header, Content } from '@backstage/core-components';
+import { Page, Header, HeaderTabs, Content } from '@backstage/core-components';
 import {
   Box,
   Typography,
@@ -10,6 +10,7 @@ import {
   makeStyles,
   Chip,
   Tooltip,
+  IconButton,
 } from '@material-ui/core';
 import SyncIcon from '@material-ui/icons/Sync';
 import ErrorOutlineIcon from '@material-ui/icons/ErrorOutline';
@@ -19,6 +20,8 @@ import WarningAmberIcon from '@material-ui/icons/ReportProblemOutlined';
 import PublicIcon from '@material-ui/icons/Public';
 import ComputerIcon from '@material-ui/icons/Computer';
 import OpenInNewIcon from '@material-ui/icons/OpenInNew';
+import AddIcon from '@material-ui/icons/Add';
+import CloseIcon from '@material-ui/icons/Close';
 import { SvgIcon } from '@material-ui/core';
 
 const AnsibleIcon = (props: any) => (
@@ -122,6 +125,28 @@ const useStyles = makeStyles(theme => ({
   },
   notConfiguredCard: {
     opacity: 0.7,
+  },
+  syncDot: {
+    width: 7,
+    height: 7,
+    borderRadius: '50%',
+    display: 'inline-block',
+    marginRight: 5,
+  },
+  failureBanner: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: theme.spacing(1),
+    padding: theme.spacing(1.5, 2),
+    borderRadius: 6,
+    border: `1px solid rgba(201,25,11,0.3)`,
+    backgroundColor: 'rgba(201,25,11,0.06)',
+    marginBottom: theme.spacing(2),
+  },
+  headerActions: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: theme.spacing(1.5),
   },
 }));
 
@@ -242,7 +267,16 @@ const ProviderCard = ({ provider }: { provider: ConnectionProvider }) => {
             <>
               <Typography className={classes.cardMeta}>
                 {provider.host}
-                {provider.lastSync && ` · Last sync ${provider.lastSync}`}
+                {provider.lastSync && (
+                  <>
+                    {' · '}
+                    <span
+                      className={classes.syncDot}
+                      style={{ backgroundColor: isActive ? statusColors.success : statusColors.error }}
+                    />
+                    Last sync {provider.lastSync}
+                  </>
+                )}
               </Typography>
               {description && (
                 <Typography className={classes.cardMeta} style={{ fontWeight: 500, color: 'inherit' }}>
@@ -400,14 +434,67 @@ const DevToolsCard = ({ provider }: { provider: ConnectionProvider }) => {
   );
 };
 
+const CATEGORY_TABS = [
+  { id: 'all', label: 'All' },
+  { id: 'connections', label: 'Connections' },
+  { id: 'source-control', label: 'Source control' },
+  { id: 'container-registries', label: 'Container registries' },
+  { id: 'developer-tools', label: 'Developer tools' },
+];
+
+const SyncFailureBanner = ({ classes }: { classes: ReturnType<typeof useStyles> }) => {
+  const [dismissed, setDismissed] = useState(false);
+  if (dismissed) return null;
+
+  const aapProvider = DEMO_CONNECTIONS.find(c => c.id === 'aap');
+  if (!aapProvider || aapProvider.status !== 'Active') return null;
+
+  return (
+    <Box className={classes.failureBanner}>
+      <ErrorOutlineIcon style={{ fontSize: 18, color: statusColors.error, marginTop: 1 }} />
+      <Box flex={1}>
+        <Typography style={{ fontSize: 13, fontWeight: 500, color: statusColors.error }}>
+          Sync failure detected
+        </Typography>
+        <Typography style={{ fontSize: 12, color: '#999', marginTop: 2 }}>
+          GitHub — ansible-network: Repository scan failed (rate limit exceeded).{' '}
+          <span style={{ color: '#4DA3FF', cursor: 'pointer' }}>View details</span>
+        </Typography>
+      </Box>
+      <IconButton size="small" onClick={() => setDismissed(true)} style={{ marginTop: -4 }}>
+        <CloseIcon style={{ fontSize: 16, color: '#999' }} />
+      </IconButton>
+    </Box>
+  );
+};
+
 export const ConnectionsPage = () => {
   const classes = useStyles();
+  const [selectedTab, setSelectedTab] = useState(0);
+  const [syncing, setSyncing] = useState(false);
 
-  const automationPlatforms = DEMO_CONNECTIONS.filter(
-    c => c.type === 'aap' || c.type === 'pah' || c.type === 'registry',
-  );
+  const connections = DEMO_CONNECTIONS.filter(c => c.type === 'aap' || c.type === 'pah');
   const sourceControl = DEMO_CONNECTIONS.filter(c => c.type === 'git');
+  const containerRegistries = DEMO_CONNECTIONS.filter(c => c.type === 'registry');
   const devTools = DEMO_CONNECTIONS.filter(c => c.type === 'devtools');
+  const allProviders = DEMO_CONNECTIONS.filter(c => c.type !== 'devtools');
+
+  const getVisibleProviders = () => {
+    switch (selectedTab) {
+      case 1: return connections;
+      case 2: return sourceControl;
+      case 3: return containerRegistries;
+      default: return allProviders;
+    }
+  };
+
+  const handleSyncAll = () => {
+    setSyncing(true);
+    setTimeout(() => setSyncing(false), 2500);
+  };
+
+  const visibleProviders = getVisibleProviders();
+  const showDevTools = selectedTab === 0 || selectedTab === 4;
 
   return (
     <Page themeId="app">
@@ -424,34 +511,57 @@ export const ConnectionsPage = () => {
         }
         pageTitleOverride="Integrations"
         subtitle="Manage connections to automation platforms, content registries, and developer tools"
+      >
+        <Box className={classes.headerActions}>
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<SyncIcon style={{ fontSize: 16 }} />}
+            onClick={handleSyncAll}
+            disabled={syncing}
+            style={{ textTransform: 'none', fontSize: 13 }}
+          >
+            {syncing ? 'Syncing…' : 'Sync all'}
+          </Button>
+          <Button
+            variant="contained"
+            color="primary"
+            size="small"
+            startIcon={<AddIcon style={{ fontSize: 16 }} />}
+            style={{ textTransform: 'none', fontSize: 13 }}
+          >
+            Add integration
+          </Button>
+        </Box>
+      </Header>
+      <HeaderTabs
+        selectedIndex={selectedTab}
+        onChange={setSelectedTab}
+        tabs={CATEGORY_TABS}
       />
       <Content>
-        <Box className={classes.cardGrid}>
-          {automationPlatforms.map(provider => (
-            <ProviderCard key={provider.id} provider={provider} />
-          ))}
-        </Box>
+        <SyncFailureBanner classes={classes} />
 
-        <Typography className={classes.sectionTitle}>
-          Source control
-        </Typography>
-        <Typography className={classes.sectionDescription}>
-          Connect Git providers to scan and index playbooks, roles, and collections from your repositories.
-        </Typography>
-        <Box className={classes.cardGrid}>
-          {sourceControl.map(provider => (
-            <ProviderCard key={provider.id} provider={provider} />
-          ))}
-        </Box>
+        {selectedTab !== 4 && (
+          <Box className={classes.cardGrid}>
+            {visibleProviders.map(provider => (
+              <ProviderCard key={provider.id} provider={provider} />
+            ))}
+          </Box>
+        )}
 
-        {devTools.length > 0 && (
+        {showDevTools && devTools.length > 0 && (
           <>
-            <Typography className={classes.sectionTitle}>
-              Developer tools
-            </Typography>
-            <Typography className={classes.sectionDescription}>
-              Connect optional tools that enhance the developer workflow — browser-based IDEs, AI assistants, and content analysis services.
-            </Typography>
+            {selectedTab === 0 && (
+              <>
+                <Typography className={classes.sectionTitle}>
+                  Developer tools
+                </Typography>
+                <Typography className={classes.sectionDescription}>
+                  Connect optional tools that enhance the developer workflow — browser-based IDEs, AI assistants, and content analysis services.
+                </Typography>
+              </>
+            )}
             <Box className={classes.cardGrid}>
               {devTools.map(provider => (
                 <DevToolsCard key={provider.id} provider={provider} />
