@@ -203,7 +203,7 @@ const ProviderCard = ({ provider }: { provider: ConnectionProvider }) => {
       variant="outlined"
     >
       <CardActionArea
-        onClick={() => navigate(`/self-service/admin/${provider.type === 'git' ? 'scm' : 'integrations'}/${provider.id}`)}
+        onClick={() => navigate(`/self-service/admin/integrations/${provider.id}`)}
       >
         <CardContent className={classes.cardContent}>
           <Box className={classes.cardHeader}>
