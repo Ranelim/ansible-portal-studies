@@ -37,6 +37,7 @@ import { ContentSourcesPage } from '../Admin/ContentSourcesPage';
 import { LearningPage } from '../Learning/LearningPage';
 import { SetupWizardPage } from '../Setup/SetupWizardPage';
 import { GeneralPage } from '../Admin/GeneralPage';
+import { DevSpacesDetailPage } from '../Admin/DevSpacesDetailPage';
 import { QualityDashboardPage } from '../Projects/quality/QualityDashboardPage';
 import {
   NotificationProvider,
@@ -148,6 +149,7 @@ const RouteViewContent = () => {
         <Route path="learning" element={<LearningPage />} />
         <Route path="admin/general" element={<GeneralPage />} />
         <Route path="admin/integrations" element={<ConnectionsPage />} />
+        <Route path="admin/integrations/devspaces" element={<DevSpacesDetailPage />} />
         <Route path="admin/integrations/:providerId" element={<ConnectionDetailPage />} />
         <Route path="admin/connections" element={<Navigate to="/self-service/admin/integrations" replace />} />
         <Route path="admin/ee-builder" element={<EEBuilderPlaceholderPage />} />

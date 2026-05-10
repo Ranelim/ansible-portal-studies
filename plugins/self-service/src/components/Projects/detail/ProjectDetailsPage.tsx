@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
+import { DEVSPACES_BASE_URL, DEMO_CONNECTIONS } from '../../Admin/syncDemoData';
 import { useParams, useNavigate, useSearchParams, Link as RouterLink } from 'react-router-dom';
 import {
   Page,
@@ -988,8 +989,28 @@ const LinksCard = ({ project }: { project: DemoProject }) => {
 // ---------------------------------------------------------------------------
 // Dev Spaces Card (sidebar)
 // ---------------------------------------------------------------------------
+const devSpacesConnection = DEMO_CONNECTIONS.find(c => c.id === 'devspaces');
+const isDevSpacesConfigured = devSpacesConnection?.status === 'Active';
+
 const DevSpacesCard = ({ project }: { project: DemoProject }) => {
   const classes = useProjectDetailStyles();
+
+  if (!isDevSpacesConfigured) {
+    return (
+      <Card className={classes.linksCard} variant="outlined" style={{ opacity: 0.6 }}>
+        <CardContent className={classes.cardContent}>
+          <Typography className={classes.cardTitle}>Development environment</Typography>
+          <Typography style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', lineHeight: 1.5 }}>
+            OpenShift Dev Spaces is not configured. Ask your admin to connect it in{' '}
+            <RouterLink to="/self-service/admin/integrations/devspaces" style={{ color: '#4DA3FF' }}>
+              Integrations
+            </RouterLink>.
+          </Typography>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card className={classes.linksCard} variant="outlined">
       <CardContent className={classes.cardContent}>
@@ -997,7 +1018,7 @@ const DevSpacesCard = ({ project }: { project: DemoProject }) => {
         <Box
           className={classes.linkItem}
           onClick={() =>
-            window.open(`https://devspaces.example.com/#${project.repo.url}/tree/${project.repo.branch}`, '_blank')
+            window.open(`${DEVSPACES_BASE_URL}/#${project.repo.url}/tree/${project.repo.branch}`, '_blank')
           }
         >
           <CodeIcon className={classes.linkIcon} />
@@ -1013,7 +1034,7 @@ const DevSpacesCard = ({ project }: { project: DemoProject }) => {
         <Box
           className={classes.linkItem}
           onClick={() =>
-            window.open('https://devspaces.example.com/dashboard/#/workspaces', '_blank')
+            window.open(`${DEVSPACES_BASE_URL}/dashboard/#/workspaces`, '_blank')
           }
         >
           <OpenInNewIcon className={classes.linkIcon} />
@@ -1965,7 +1986,7 @@ const ActionsMenu = ({
         getContentAnchorEl={null}
       >
         <MenuItem onClick={() => {
-          window.open(`https://devspaces.example.com/#${project.repo.url}/tree/${project.repo.branch}`, '_blank');
+          window.open(`${DEVSPACES_BASE_URL}/#${project.repo.url}/tree/${project.repo.branch}`, '_blank');
           setAnchorEl(null);
         }}>
           <ListItemIcon>

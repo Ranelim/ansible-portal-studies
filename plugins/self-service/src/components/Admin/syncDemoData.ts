@@ -60,6 +60,9 @@ export type ConnectionProvider = {
   syncJobs: { name: string; interval: string; enabled: boolean }[];
 };
 
+/** Central Dev Spaces base URL used by all prototype touchpoints. */
+export const DEVSPACES_BASE_URL = 'https://devspaces.apps.example.com';
+
 export const DEMO_CONNECTIONS: ConnectionProvider[] = [
   {
     id: 'aap',

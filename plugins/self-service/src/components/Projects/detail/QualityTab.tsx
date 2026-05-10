@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo } from 'react';
+import { DEVSPACES_BASE_URL } from '../../Admin/syncDemoData';
 import {
   Box,
   Typography,
@@ -399,12 +400,12 @@ const ViolationRowItem = ({
           {expanded ? 'Hide' : 'Show'}
         </Button>
         {repoUrl && (
-          <Tooltip title={`Open ${v.file}:${v.lineStart} in IDE`}>
+          <Tooltip title={`Edit ${v.file}:${v.lineStart} in Dev Spaces`}>
             <IconButton
               size="small"
               onClick={(e: React.MouseEvent) => {
                 e.stopPropagation();
-                window.open(`https://devspaces.example.com/#${repoUrl}/tree/${branch || 'main'}/${v.file}?line=${v.lineStart}`, '_blank');
+                window.open(`${DEVSPACES_BASE_URL}/#${repoUrl}/tree/${branch || 'main'}/${v.file}?line=${v.lineStart}`, '_blank');
               }}
               style={{ padding: 4 }}
             >

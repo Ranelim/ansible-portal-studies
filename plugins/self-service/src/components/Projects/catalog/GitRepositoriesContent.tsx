@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
+import { DEVSPACES_BASE_URL } from '../../Admin/syncDemoData';
 import { Table, TableColumn } from '@backstage/core-components';
 import {
   Box,
@@ -365,7 +366,7 @@ const RowActionsMenu = ({
         getContentAnchorEl={null}
       >
         <MenuItem onClick={() => {
-          window.open(`https://devspaces.example.com/#${repo.url}/tree/${repo.branch}`, '_blank');
+          window.open(`${DEVSPACES_BASE_URL}/#${repo.url}/tree/${repo.branch}`, '_blank');
           handleClose();
         }}>
           <ListItemIcon><CodeIcon fontSize="small" /></ListItemIcon>

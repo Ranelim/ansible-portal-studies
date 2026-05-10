@@ -966,8 +966,8 @@ export const ConnectionDetailPage = () => {
   const handleSave = () => setRestartRequired(true);
 
   const isScmRoute = location.pathname.includes('/admin/scm/');
-  const parentLabel = isScmRoute ? 'SCM Integration' : 'Connections';
-  const parentLink = isScmRoute ? '/self-service/admin/scm' : '/self-service/admin/connections';
+  const parentLabel = isScmRoute ? 'SCM Integration' : 'Integrations';
+  const parentLink = isScmRoute ? '/self-service/admin/scm' : '/self-service/admin/integrations';
 
   const provider = DEMO_CONNECTIONS.find(c => c.id === providerId);
 

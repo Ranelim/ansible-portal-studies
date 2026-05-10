@@ -203,7 +203,7 @@ const ProviderCard = ({ provider }: { provider: ConnectionProvider }) => {
       variant="outlined"
     >
       <CardActionArea
-        onClick={() => navigate(`/self-service/admin/${provider.type === 'git' ? 'scm' : 'connections'}/${provider.id}`)}
+        onClick={() => navigate(`/self-service/admin/${provider.type === 'git' ? 'scm' : 'integrations'}/${provider.id}`)}
       >
         <CardContent className={classes.cardContent}>
           <Box className={classes.cardHeader}>
@@ -301,6 +301,7 @@ const ProviderCard = ({ provider }: { provider: ConnectionProvider }) => {
 
 const DevToolsCard = ({ provider }: { provider: ConnectionProvider }) => {
   const classes = useStyles();
+  const navigate = useNavigate();
   const isConfigured = provider.status !== 'Not configured';
   const isActive = provider.status === 'Active';
   const { icon, bg } = providerIcon(provider.id);
@@ -311,7 +312,7 @@ const DevToolsCard = ({ provider }: { provider: ConnectionProvider }) => {
       className={`${classes.card} ${!isConfigured ? classes.notConfiguredCard : ''}`}
       variant="outlined"
     >
-      <CardActionArea>
+      <CardActionArea onClick={() => navigate(`/self-service/admin/integrations/${provider.id}`)}>
         <CardContent className={classes.cardContent}>
           <Box className={classes.cardHeader}>
             <Box display="flex" alignItems="center">
