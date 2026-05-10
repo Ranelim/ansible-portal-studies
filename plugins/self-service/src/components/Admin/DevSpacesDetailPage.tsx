@@ -20,7 +20,13 @@ import {
   DialogActions,
   Tooltip,
   Link,
+  IconButton,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  ListItemText,
 } from '@material-ui/core';
+import MoreVertIcon from '@material-ui/icons/MoreVert';
 import CheckCircleOutlineIcon from '@material-ui/icons/CheckCircleOutline';
 import CheckCircleIcon from '@material-ui/icons/CheckCircle';
 import OpenInNewIcon from '@material-ui/icons/OpenInNew';
@@ -176,13 +182,12 @@ const useStyles = makeStyles(theme => ({
 
 const ConnectionConnected = ({
   url,
-  onDisconnect,
+  onRequestDisconnect,
 }: {
   url: string;
-  onDisconnect: () => void;
+  onRequestDisconnect: () => void;
 }) => {
   const classes = useStyles();
-  const [confirmOpen, setConfirmOpen] = useState(false);
 
   return (
     <>
@@ -227,7 +232,7 @@ const ConnectionConnected = ({
             size="small"
             className={classes.dangerButton}
             startIcon={<DeleteOutlineIcon style={{ fontSize: 14 }} />}
-            onClick={() => setConfirmOpen(true)}
+            onClick={onRequestDisconnect}
             style={{ textTransform: 'none', fontSize: 12 }}
           >
             Disconnect
@@ -242,32 +247,6 @@ const ConnectionConnected = ({
           through the portal.
         </Typography>
       </Box>
-
-      <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)} maxWidth="xs" fullWidth>
-        <DialogTitle style={{ fontSize: 16 }}>Disconnect Dev Spaces?</DialogTitle>
-        <DialogContent>
-          <Typography style={{ fontSize: 13, lineHeight: 1.6 }}>
-            This removes the Dev Spaces URL from the portal configuration.
-            "Edit in Dev Spaces" actions will no longer appear on projects.
-          </Typography>
-          <Typography style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginTop: 8, lineHeight: 1.5 }}>
-            This does not uninstall the Dev Spaces Operator from OpenShift.
-            You can reconnect at any time.
-          </Typography>
-        </DialogContent>
-        <DialogActions style={{ justifyContent: 'flex-start', padding: '16px 24px' }}>
-          <Button
-            variant="contained"
-            onClick={() => { setConfirmOpen(false); onDisconnect(); }}
-            style={{ textTransform: 'none', backgroundColor: statusColors.error, color: '#fff' }}
-          >
-            Disconnect
-          </Button>
-          <Button onClick={() => setConfirmOpen(false)} style={{ textTransform: 'none' }}>
-            Cancel
-          </Button>
-        </DialogActions>
-      </Dialog>
     </>
   );
 };
@@ -799,6 +778,8 @@ export const DevSpacesDetailPage = () => {
   const [savedUrl, setSavedUrl] = useState('https://devspaces.apps.example.com');
   const [wizardMode, setWizardMode] = useState<'none' | 'existing' | 'template'>('none');
   const [selectedTab, setSelectedTab] = useState(0);
+  const [disconnectOpen, setDisconnectOpen] = useState(false);
+  const [kebabAnchor, setKebabAnchor] = useState<null | HTMLElement>(null);
 
   const handleConnect = (url: string) => {
     setSavedUrl(url);
@@ -811,6 +792,11 @@ export const DevSpacesDetailPage = () => {
     setSavedUrl('');
     setWizardMode('none');
     setSelectedTab(0);
+  };
+
+  const openDisconnectDialog = () => {
+    setKebabAnchor(null);
+    setDisconnectOpen(true);
   };
 
   const activeTab = TABS[selectedTab]?.id ?? 'connection';
@@ -839,15 +825,42 @@ export const DevSpacesDetailPage = () => {
             />
           </Tooltip>
           {connected && (
-            <Button
-              size="small"
-              variant="outlined"
-              startIcon={<OpenInNewIcon style={{ fontSize: 14 }} />}
-              onClick={() => window.open(`${savedUrl}/dashboard/#/admin`, '_blank')}
-              style={{ textTransform: 'none', fontSize: 12, borderColor: 'rgba(255,255,255,0.2)', color: '#fff' }}
-            >
-              Admin dashboard
-            </Button>
+            <>
+              <Button
+                size="small"
+                variant="outlined"
+                startIcon={<OpenInNewIcon style={{ fontSize: 14 }} />}
+                onClick={() => window.open(`${savedUrl}/dashboard/#/admin`, '_blank')}
+                style={{ textTransform: 'none', fontSize: 12, borderColor: 'currentColor', color: 'inherit', opacity: 0.8 }}
+              >
+                Admin dashboard
+              </Button>
+              <IconButton
+                size="small"
+                onClick={e => setKebabAnchor(e.currentTarget)}
+                style={{ color: 'inherit', opacity: 0.7 }}
+              >
+                <MoreVertIcon style={{ fontSize: 20 }} />
+              </IconButton>
+              <Menu
+                anchorEl={kebabAnchor}
+                open={Boolean(kebabAnchor)}
+                onClose={() => setKebabAnchor(null)}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+                getContentAnchorEl={null}
+              >
+                <MenuItem onClick={openDisconnectDialog}>
+                  <ListItemIcon style={{ minWidth: 32 }}>
+                    <DeleteOutlineIcon style={{ fontSize: 18, color: statusColors.error }} />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary="Disconnect Dev Spaces"
+                    primaryTypographyProps={{ style: { fontSize: 13, color: statusColors.error } }}
+                  />
+                </MenuItem>
+              </Menu>
+            </>
           )}
         </Box>
       </Header>
@@ -861,7 +874,7 @@ export const DevSpacesDetailPage = () => {
           {activeTab === 'connection' && (
             <>
               {connected && wizardMode === 'none' && (
-                <ConnectionConnected url={savedUrl} onDisconnect={handleDisconnect} />
+                <ConnectionConnected url={savedUrl} onRequestDisconnect={openDisconnectDialog} />
               )}
               {!connected && wizardMode === 'none' && (
                 <SetupPicker onChoose={setWizardMode} />
@@ -879,6 +892,38 @@ export const DevSpacesDetailPage = () => {
           )}
         </Box>
       </Content>
+      <Dialog open={disconnectOpen} onClose={() => setDisconnectOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle style={{ fontSize: 16 }}>Disconnect Dev Spaces?</DialogTitle>
+        <DialogContent>
+          <Box style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
+            {[
+              '"Edit in Dev Spaces" actions will no longer appear on projects.',
+              'Deep links from quality violations will be removed.',
+              '"Manage workspaces" links will be removed from project sidebars.',
+            ].map((c, i) => (
+              <Box key={i} display="flex" alignItems="flex-start" style={{ gap: 8 }}>
+                <Typography style={{ fontSize: 13, lineHeight: 1.6, color: 'rgba(255,255,255,0.85)' }}>•</Typography>
+                <Typography style={{ fontSize: 13, lineHeight: 1.6, color: 'rgba(255,255,255,0.85)' }}>{c}</Typography>
+              </Box>
+            ))}
+          </Box>
+          <Typography style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', lineHeight: 1.5 }}>
+            This does not uninstall the Dev Spaces Operator from OpenShift. You can reconnect at any time.
+          </Typography>
+        </DialogContent>
+        <DialogActions style={{ justifyContent: 'flex-start', padding: '16px 24px' }}>
+          <Button
+            variant="contained"
+            onClick={() => { setDisconnectOpen(false); handleDisconnect(); }}
+            style={{ textTransform: 'none', backgroundColor: statusColors.error, color: '#fff' }}
+          >
+            Disconnect
+          </Button>
+          <Button onClick={() => setDisconnectOpen(false)} style={{ textTransform: 'none' }}>
+            Cancel
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Page>
   );
 };

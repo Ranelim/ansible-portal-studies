@@ -43,7 +43,12 @@ import SyncIcon from '@material-ui/icons/Sync';
 import {
   Select,
   MenuItem as MuiMenuItem,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  ListItemText,
 } from '@material-ui/core';
+import MoreVertIcon from '@material-ui/icons/MoreVert';
 
 const useStyles = makeStyles(theme => ({
   fieldGroup: {
@@ -262,31 +267,15 @@ const disconnectConfigs: Record<string, DisconnectConfig> = {
 };
 
 const DisconnectSection = ({
-  providerId,
   providerName,
   isConfigured,
-  onDisconnect,
+  onRequestDisconnect,
 }: {
-  providerId: string;
   providerName: string;
   isConfigured: boolean;
-  onDisconnect: () => void;
+  onRequestDisconnect: () => void;
 }) => {
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [typedName, setTypedName] = useState('');
-
   if (!isConfigured) return null;
-
-  const config = disconnectConfigs[providerId] ?? {
-    risk: 'low' as DisconnectRisk,
-    title: `Disconnect ${providerName}?`,
-    consequences: ['This integration will be removed from the portal.'],
-    reassurance: 'You can reconnect at any time.',
-  };
-
-  const canConfirm = config.risk === 'high'
-    ? typedName === config.confirmName
-    : true;
 
   return (
     <>
@@ -304,7 +293,7 @@ const DisconnectSection = ({
           variant="outlined"
           size="small"
           startIcon={<DeleteOutlineIcon style={{ fontSize: 14 }} />}
-          onClick={() => { setConfirmOpen(true); setTypedName(''); }}
+          onClick={onRequestDisconnect}
           style={{
             textTransform: 'none',
             fontSize: 12,
@@ -317,63 +306,94 @@ const DisconnectSection = ({
           Disconnect
         </Button>
       </Box>
-
-      <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)} maxWidth="xs" fullWidth>
-        <DialogTitle style={{ fontSize: 16 }}>{config.title}</DialogTitle>
-        <DialogContent>
-          <Box style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
-            {config.consequences.map((c, i) => (
-              <Box key={i} display="flex" alignItems="flex-start" style={{ gap: 8 }}>
-                <Typography style={{ fontSize: 13, lineHeight: 1.6, color: 'rgba(255,255,255,0.85)' }}>
-                  •
-                </Typography>
-                <Typography style={{ fontSize: 13, lineHeight: 1.6, color: 'rgba(255,255,255,0.85)' }}>
-                  {c}
-                </Typography>
-              </Box>
-            ))}
-          </Box>
-          {config.reassurance && (
-            <Typography style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', lineHeight: 1.5, marginBottom: config.risk === 'high' ? 16 : 0 }}>
-              {config.reassurance}
-            </Typography>
-          )}
-          {config.risk === 'high' && config.confirmName && (
-            <Box style={{ marginTop: 4 }}>
-              <Typography style={{ fontSize: 12, fontWeight: 500, marginBottom: 6 }}>
-                Type <strong>{config.confirmName}</strong> to confirm
-              </Typography>
-              <TextField
-                fullWidth
-                variant="outlined"
-                size="small"
-                placeholder={config.confirmName}
-                value={typedName}
-                onChange={e => setTypedName(e.target.value)}
-                inputProps={{ style: { fontSize: 13 } }}
-              />
-            </Box>
-          )}
-        </DialogContent>
-        <DialogActions style={{ justifyContent: 'flex-start', padding: '16px 24px' }}>
-          <Button
-            variant="contained"
-            disabled={!canConfirm}
-            onClick={() => { setConfirmOpen(false); onDisconnect(); }}
-            style={{
-              textTransform: 'none',
-              backgroundColor: canConfirm ? statusColors.error : undefined,
-              color: canConfirm ? '#fff' : undefined,
-            }}
-          >
-            Disconnect
-          </Button>
-          <Button onClick={() => setConfirmOpen(false)} style={{ textTransform: 'none' }}>
-            Cancel
-          </Button>
-        </DialogActions>
-      </Dialog>
     </>
+  );
+};
+
+const DisconnectDialog = ({
+  open,
+  onClose,
+  onConfirm,
+  providerId,
+  providerName,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  providerId: string;
+  providerName: string;
+}) => {
+  const [typedName, setTypedName] = useState('');
+
+  const config = disconnectConfigs[providerId] ?? {
+    risk: 'low' as DisconnectRisk,
+    title: `Disconnect ${providerName}?`,
+    consequences: ['This integration will be removed from the portal.'],
+    reassurance: 'You can reconnect at any time.',
+  };
+
+  const canConfirm = config.risk === 'high'
+    ? typedName === config.confirmName
+    : true;
+
+  const handleClose = () => { setTypedName(''); onClose(); };
+
+  return (
+    <Dialog open={open} onClose={handleClose} maxWidth="xs" fullWidth>
+      <DialogTitle style={{ fontSize: 16 }}>{config.title}</DialogTitle>
+      <DialogContent>
+        <Box style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
+          {config.consequences.map((c, i) => (
+            <Box key={i} display="flex" alignItems="flex-start" style={{ gap: 8 }}>
+              <Typography style={{ fontSize: 13, lineHeight: 1.6, color: 'rgba(255,255,255,0.85)' }}>
+                •
+              </Typography>
+              <Typography style={{ fontSize: 13, lineHeight: 1.6, color: 'rgba(255,255,255,0.85)' }}>
+                {c}
+              </Typography>
+            </Box>
+          ))}
+        </Box>
+        {config.reassurance && (
+          <Typography style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', lineHeight: 1.5, marginBottom: config.risk === 'high' ? 16 : 0 }}>
+            {config.reassurance}
+          </Typography>
+        )}
+        {config.risk === 'high' && config.confirmName && (
+          <Box style={{ marginTop: 4 }}>
+            <Typography style={{ fontSize: 12, fontWeight: 500, marginBottom: 6 }}>
+              Type <strong>{config.confirmName}</strong> to confirm
+            </Typography>
+            <TextField
+              fullWidth
+              variant="outlined"
+              size="small"
+              placeholder={config.confirmName}
+              value={typedName}
+              onChange={e => setTypedName(e.target.value)}
+              inputProps={{ style: { fontSize: 13 } }}
+            />
+          </Box>
+        )}
+      </DialogContent>
+      <DialogActions style={{ justifyContent: 'flex-start', padding: '16px 24px' }}>
+        <Button
+          variant="contained"
+          disabled={!canConfirm}
+          onClick={() => { handleClose(); onConfirm(); }}
+          style={{
+            textTransform: 'none',
+            backgroundColor: canConfirm ? statusColors.error : undefined,
+            color: canConfirm ? '#fff' : undefined,
+          }}
+        >
+          Disconnect
+        </Button>
+        <Button onClick={handleClose} style={{ textTransform: 'none' }}>
+          Cancel
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 };
 
@@ -381,7 +401,7 @@ const DisconnectSection = ({
 // Connection Tab content per provider type
 // ---------------------------------------------------------------------------
 
-const AAPConnectionTab = ({ provider, onSave, onDisconnect }: { provider: ConnectionProvider; onSave: () => void; onDisconnect: () => void }) => {
+const AAPConnectionTab = ({ provider, onSave, onRequestDisconnect }: { provider: ConnectionProvider; onSave: () => void; onRequestDisconnect: () => void }) => {
   const classes = useStyles();
   const isConfigured = provider.status !== 'Not configured';
 
@@ -435,12 +455,12 @@ const AAPConnectionTab = ({ provider, onSave, onDisconnect }: { provider: Connec
           {isConfigured ? 'Save changes' : 'Connect'}
         </Button>
       </StickyFooter>
-      <DisconnectSection providerId={provider.id} providerName={provider.name} isConfigured={isConfigured} onDisconnect={onDisconnect} />
+      <DisconnectSection providerName={provider.name} isConfigured={isConfigured} onRequestDisconnect={onRequestDisconnect} />
     </>
   );
 };
 
-const PAHConnectionTab = ({ provider, onSave, onDisconnect }: { provider: ConnectionProvider; onSave: () => void; onDisconnect: () => void }) => {
+const PAHConnectionTab = ({ provider, onSave, onRequestDisconnect }: { provider: ConnectionProvider; onSave: () => void; onRequestDisconnect: () => void }) => {
   const classes = useStyles();
   const [inherit, setInherit] = useState(true);
   const isConfigured = provider.status !== 'Not configured';
@@ -509,12 +529,12 @@ const PAHConnectionTab = ({ provider, onSave, onDisconnect }: { provider: Connec
         <Button variant="outlined" style={{ textTransform: 'none', fontSize: 13 }}>Test connection</Button>
         <Button variant="contained" color="primary" onClick={onSave} style={{ textTransform: 'none', fontSize: 13 }}>Save changes</Button>
       </StickyFooter>
-      <DisconnectSection providerId={provider.id} providerName={provider.name} isConfigured={isConfigured} onDisconnect={onDisconnect} />
+      <DisconnectSection providerName={provider.name} isConfigured={isConfigured} onRequestDisconnect={onRequestDisconnect} />
     </>
   );
 };
 
-const GitConnectionTab = ({ provider, onSave, onDisconnect }: { provider: ConnectionProvider; onSave: () => void; onDisconnect: () => void }) => {
+const GitConnectionTab = ({ provider, onSave, onRequestDisconnect }: { provider: ConnectionProvider; onSave: () => void; onRequestDisconnect: () => void }) => {
   const classes = useStyles();
   const [authMethod, setAuthMethod] = useState<'token' | 'oauth'>('token');
   const providerLabel = provider.id === 'github' ? 'GitHub' : 'GitLab';
@@ -597,12 +617,12 @@ const GitConnectionTab = ({ provider, onSave, onDisconnect }: { provider: Connec
         <Button variant="outlined" style={{ textTransform: 'none', fontSize: 13 }}>Test connection</Button>
         <Button variant="contained" color="primary" onClick={onSave} style={{ textTransform: 'none', fontSize: 13 }}>Save changes</Button>
       </StickyFooter>
-      <DisconnectSection providerId={provider.id} providerName={provider.name} isConfigured={isConfigured} onDisconnect={onDisconnect} />
+      <DisconnectSection providerName={provider.name} isConfigured={isConfigured} onRequestDisconnect={onRequestDisconnect} />
     </>
   );
 };
 
-const RegistryConnectionTab = ({ provider, onSave, onDisconnect }: { provider: ConnectionProvider; onSave: () => void; onDisconnect: () => void }) => {
+const RegistryConnectionTab = ({ provider, onSave, onRequestDisconnect }: { provider: ConnectionProvider; onSave: () => void; onRequestDisconnect: () => void }) => {
   const classes = useStyles();
   const [certified, setCertified] = useState(true);
   const [validated, setValidated] = useState(true);
@@ -647,7 +667,7 @@ const RegistryConnectionTab = ({ provider, onSave, onDisconnect }: { provider: C
         <Button variant="outlined" style={{ textTransform: 'none', fontSize: 13 }}>Reset</Button>
         <Button variant="contained" color="primary" onClick={onSave} style={{ textTransform: 'none', fontSize: 13 }}>Save changes</Button>
       </StickyFooter>
-      <DisconnectSection providerId={provider.id} providerName={provider.name} isConfigured={isConfigured} onDisconnect={onDisconnect} />
+      <DisconnectSection providerName={provider.name} isConfigured={isConfigured} onRequestDisconnect={onRequestDisconnect} />
     </>
   );
 };
@@ -1150,9 +1170,16 @@ export const ConnectionDetailPage = () => {
   const { providerId } = useParams<{ providerId: string }>();
   const { setRestartRequired } = useRestartRequired();
   const handleSave = () => setRestartRequired(true);
+  const [disconnectOpen, setDisconnectOpen] = useState(false);
+  const [kebabAnchor, setKebabAnchor] = useState<null | HTMLElement>(null);
+
   const handleDisconnect = () => {
     setRestartRequired(true);
     navigate(parentLink);
+  };
+  const openDisconnectDialog = () => {
+    setKebabAnchor(null);
+    setDisconnectOpen(true);
   };
 
   const isScmRoute = location.pathname.includes('/admin/scm/');
@@ -1229,13 +1256,42 @@ export const ConnectionDetailPage = () => {
           </Tooltip>
           {isConfigured && provider.lastSync && (
             <Box>
-              <Typography style={{ fontSize: 11, textTransform: 'uppercase', color: 'rgba(255,255,255,0.5)', letterSpacing: 0.5 }}>
+              <Typography style={{ fontSize: 11, textTransform: 'uppercase', color: 'inherit', opacity: 0.5, letterSpacing: 0.5 }}>
                 Last sync
               </Typography>
-              <Typography style={{ fontSize: 13, color: '#fff' }}>
+              <Typography style={{ fontSize: 13, color: 'inherit' }}>
                 {provider.lastSync}
               </Typography>
             </Box>
+          )}
+          {isConfigured && (
+            <>
+              <IconButton
+                size="small"
+                onClick={e => setKebabAnchor(e.currentTarget)}
+                style={{ color: 'inherit', opacity: 0.7 }}
+              >
+                <MoreVertIcon style={{ fontSize: 20 }} />
+              </IconButton>
+              <Menu
+                anchorEl={kebabAnchor}
+                open={Boolean(kebabAnchor)}
+                onClose={() => setKebabAnchor(null)}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+                getContentAnchorEl={null}
+              >
+                <MenuItem onClick={openDisconnectDialog}>
+                  <ListItemIcon style={{ minWidth: 32 }}>
+                    <DeleteOutlineIcon style={{ fontSize: 18, color: statusColors.error }} />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary={`Disconnect ${provider.name}`}
+                    primaryTypographyProps={{ style: { fontSize: 13, color: statusColors.error } }}
+                  />
+                </MenuItem>
+              </Menu>
+            </>
           )}
         </Box>
       </Header>
@@ -1248,10 +1304,10 @@ export const ConnectionDetailPage = () => {
 
         {activeTab === 'connection' && (
           <>
-            {provider.type === 'aap' && <AAPConnectionTab provider={provider} onSave={handleSave} onDisconnect={handleDisconnect} />}
-            {provider.type === 'pah' && <PAHConnectionTab provider={provider} onSave={handleSave} onDisconnect={handleDisconnect} />}
-            {provider.type === 'git' && <GitConnectionTab provider={provider} onSave={handleSave} onDisconnect={handleDisconnect} />}
-            {provider.type === 'registry' && <RegistryConnectionTab provider={provider} onSave={handleSave} onDisconnect={handleDisconnect} />}
+            {provider.type === 'aap' && <AAPConnectionTab provider={provider} onSave={handleSave} onRequestDisconnect={openDisconnectDialog} />}
+            {provider.type === 'pah' && <PAHConnectionTab provider={provider} onSave={handleSave} onRequestDisconnect={openDisconnectDialog} />}
+            {provider.type === 'git' && <GitConnectionTab provider={provider} onSave={handleSave} onRequestDisconnect={openDisconnectDialog} />}
+            {provider.type === 'registry' && <RegistryConnectionTab provider={provider} onSave={handleSave} onRequestDisconnect={openDisconnectDialog} />}
           </>
         )}
 
@@ -1268,6 +1324,13 @@ export const ConnectionDetailPage = () => {
         )}
 
       </Content>
+      <DisconnectDialog
+        open={disconnectOpen}
+        onClose={() => setDisconnectOpen(false)}
+        onConfirm={handleDisconnect}
+        providerId={provider.id}
+        providerName={provider.name}
+      />
     </Page>
   );
 };
