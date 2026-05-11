@@ -188,6 +188,16 @@ const ConnectionConnected = ({
   onRequestDisconnect: () => void;
 }) => {
   const classes = useStyles();
+  const [lastChecked, setLastChecked] = useState('Just now');
+  const [rechecking, setRechecking] = useState(false);
+
+  const handleRecheck = () => {
+    setRechecking(true);
+    setTimeout(() => {
+      setRechecking(false);
+      setLastChecked('Just now');
+    }, 1200);
+  };
 
   return (
     <>
@@ -205,9 +215,20 @@ const ConnectionConnected = ({
         </Box>
         <Box className={classes.connectedRow}>
           <Typography style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>Status</Typography>
-          <Box display="flex" alignItems="center" style={{ gap: 6 }}>
-            <CheckCircleOutlineIcon style={{ fontSize: 14, color: statusColors.success }} />
-            <Typography style={{ fontSize: 13, color: statusColors.success }}>Reachable</Typography>
+          <Box display="flex" alignItems="center" style={{ gap: 8 }}>
+            {rechecking ? (
+              <Typography style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>Checking…</Typography>
+            ) : (
+              <>
+                <CheckCircleOutlineIcon style={{ fontSize: 14, color: statusColors.success }} />
+                <Typography style={{ fontSize: 13, color: statusColors.success }}>Reachable</Typography>
+                <Typography style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>· {lastChecked}</Typography>
+                <Button size="small" onClick={handleRecheck}
+                  style={{ textTransform: 'none', fontSize: 11, minWidth: 0, padding: '0 4px', color: '#4DA3FF' }}>
+                  Recheck
+                </Button>
+              </>
+            )}
           </Box>
         </Box>
         <Box className={classes.connectedRow} style={{ borderBottom: 'none' }}>
@@ -289,6 +310,7 @@ const SetupPicker = ({
           <Box display="flex" alignItems="center" style={{ gap: 10, marginBottom: 10 }}>
             <BuildIcon style={{ fontSize: 22, color: '#4DA3FF' }} />
             <Typography style={{ fontSize: 14, fontWeight: 600 }}>Install on OpenShift</Typography>
+            <Chip label="Preview" size="small" style={{ fontSize: 10, height: 18, backgroundColor: 'rgba(255,171,0,0.15)', color: '#FFAB00', fontWeight: 600 }} />
           </Box>
           <Typography style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', lineHeight: 1.6 }}>
             You have cluster-admin access. A guided setup installs
@@ -307,7 +329,7 @@ const SetupPicker = ({
         {[
           '"Edit in Dev Spaces" actions in project kebab menus and detail pages',
           'Deep links from quality violations to the exact file and line in Dev Spaces',
-          '"Manage workspaces" link to the Dev Spaces dashboard from project sidebars',
+          '"Dev Spaces dashboard" link from project sidebars',
         ].map((item, i) => (
           <Box key={i} display="flex" alignItems="flex-start" style={{ gap: 8 }}>
             <CheckCircleOutlineIcon style={{ fontSize: 14, color: 'rgba(255,255,255,0.3)', marginTop: 2, flexShrink: 0 }} />
@@ -626,10 +648,21 @@ const ConfigurationTab = ({ url, connected }: { url: string; connected: boolean 
         <Typography style={{ fontSize: 16, fontWeight: 500, marginBottom: 8 }}>
           Not connected
         </Typography>
-        <Typography style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', maxWidth: 400, margin: '0 auto' }}>
-          Connect to a Dev Spaces instance first. Configuration details
-          will appear here once the connection is established.
+        <Typography style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', maxWidth: 420, margin: '0 auto 16px' }}>
+          Connect to a Dev Spaces instance first. Once connected, this tab will show:
         </Typography>
+        <Box style={{ display: 'inline-flex', flexDirection: 'column', gap: 6, textAlign: 'left' }}>
+          {[
+            'Workspace limits — max running workspaces, idle and run timeouts',
+            'Resource quotas — CPU, memory, and storage per workspace',
+            'Workspace samples — getting-started templates available to developers',
+          ].map((item, i) => (
+            <Box key={i} display="flex" alignItems="flex-start" style={{ gap: 8 }}>
+              <Typography style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)' }}>•</Typography>
+              <Typography style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', lineHeight: 1.5 }}>{item}</Typography>
+            </Box>
+          ))}
+        </Box>
       </Box>
     );
   }
@@ -899,7 +932,7 @@ export const DevSpacesDetailPage = () => {
             {[
               '"Edit in Dev Spaces" actions will no longer appear on projects.',
               'Deep links from quality violations will be removed.',
-              '"Manage workspaces" links will be removed from project sidebars.',
+              '"Dev Spaces dashboard" links will be removed from project sidebars.',
             ].map((c, i) => (
               <Box key={i} display="flex" alignItems="flex-start" style={{ gap: 8 }}>
                 <Typography style={{ fontSize: 13, lineHeight: 1.6, color: 'rgba(255,255,255,0.85)' }}>•</Typography>

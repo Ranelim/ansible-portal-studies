@@ -1,5 +1,7 @@
 import { useState, useCallback, useMemo } from 'react';
-import { DEVSPACES_BASE_URL } from '../../Admin/syncDemoData';
+import { DEVSPACES_BASE_URL, DEMO_CONNECTIONS } from '../../Admin/syncDemoData';
+
+const isDevSpacesConnected = DEMO_CONNECTIONS.find(c => c.id === 'devspaces')?.status === 'Active';
 import {
   Box,
   Typography,
@@ -399,7 +401,7 @@ const ViolationRowItem = ({
         >
           {expanded ? 'Hide' : 'Show'}
         </Button>
-        {repoUrl && (
+        {repoUrl && isDevSpacesConnected && (
           <Tooltip title={`Edit ${v.file}:${v.lineStart} in Dev Spaces`}>
             <IconButton
               size="small"

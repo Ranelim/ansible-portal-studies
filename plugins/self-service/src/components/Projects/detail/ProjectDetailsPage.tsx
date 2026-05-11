@@ -1040,10 +1040,10 @@ const DevSpacesCard = ({ project }: { project: DemoProject }) => {
           <OpenInNewIcon className={classes.linkIcon} />
           <Box>
             <Typography className={classes.linkText}>
-              Manage workspaces
+              Dev Spaces dashboard
             </Typography>
             <Typography className={classes.linkDescription}>
-              Open the Dev Spaces dashboard
+              View and manage all your workspaces
             </Typography>
           </Box>
         </Box>
@@ -1985,15 +1985,17 @@ const ActionsMenu = ({
         transformOrigin={{ vertical: 'top', horizontal: 'right' }}
         getContentAnchorEl={null}
       >
-        <MenuItem onClick={() => {
-          window.open(`${DEVSPACES_BASE_URL}/#${project.repo.url}/tree/${project.repo.branch}`, '_blank');
-          setAnchorEl(null);
-        }}>
-          <ListItemIcon>
-            <CodeIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText primary="Edit in Dev Spaces" secondary={`Branch: ${project.repo.branch}`} />
-        </MenuItem>
+        {isDevSpacesConfigured && (
+          <MenuItem onClick={() => {
+            openInDevSpaces(`${DEVSPACES_BASE_URL}/#${project.repo.url}/tree/${project.repo.branch}`);
+            setAnchorEl(null);
+          }}>
+            <ListItemIcon>
+              <CodeIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText primary="Edit in Dev Spaces" secondary={`Branch: ${project.repo.branch}`} />
+          </MenuItem>
+        )}
         <MenuItem
           onClick={() => {
             window.open(project.repo.url, '_blank');
@@ -2072,6 +2074,12 @@ export const ProjectDetailsPage = () => {
   const [showPushModal, setShowPushModal] = useState(false);
   const [showUpgradeWizard, setShowUpgradeWizard] = useState(false);
   const [upgradeSnackbar, setUpgradeSnackbar] = useState(false);
+  const [devSpacesSnackbar, setDevSpacesSnackbar] = useState(false);
+
+  const openInDevSpaces = useCallback((targetUrl: string) => {
+    window.open(targetUrl, '_blank');
+    setDevSpacesSnackbar(true);
+  }, []);
 
   const handlePushToAap = useCallback(() => {
     setIsPushedToAap(true);
@@ -2465,6 +2473,13 @@ export const ProjectDetailsPage = () => {
         autoHideDuration={5000}
         onClose={() => setUpgradeSnackbar(false)}
         message={`AAP upgrade changes applied to ${project.title}. Pull request created.`}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      />
+      <Snackbar
+        open={devSpacesSnackbar}
+        autoHideDuration={3000}
+        onClose={() => setDevSpacesSnackbar(false)}
+        message="Opening Dev Spaces workspace… This may take a moment if the workspace is starting."
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       />
     </Page>

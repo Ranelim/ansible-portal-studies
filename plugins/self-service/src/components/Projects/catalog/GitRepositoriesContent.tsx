@@ -1,5 +1,7 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import { DEVSPACES_BASE_URL } from '../../Admin/syncDemoData';
+import { DEVSPACES_BASE_URL, DEMO_CONNECTIONS } from '../../Admin/syncDemoData';
+
+const isDevSpacesConnected = DEMO_CONNECTIONS.find(c => c.id === 'devspaces')?.status === 'Active';
 import { Table, TableColumn } from '@backstage/core-components';
 import {
   Box,
@@ -365,13 +367,15 @@ const RowActionsMenu = ({
         transformOrigin={{ vertical: 'top', horizontal: 'right' }}
         getContentAnchorEl={null}
       >
-        <MenuItem onClick={() => {
-          window.open(`${DEVSPACES_BASE_URL}/#${repo.url}/tree/${repo.branch}`, '_blank');
-          handleClose();
-        }}>
-          <ListItemIcon><CodeIcon fontSize="small" /></ListItemIcon>
-          <ListItemText primary="Edit in Dev Spaces" secondary={`Branch: ${repo.branch}`} />
-        </MenuItem>
+        {isDevSpacesConnected && (
+          <MenuItem onClick={() => {
+            window.open(`${DEVSPACES_BASE_URL}/#${repo.url}/tree/${repo.branch}`, '_blank');
+            handleClose();
+          }}>
+            <ListItemIcon><CodeIcon fontSize="small" /></ListItemIcon>
+            <ListItemText primary="Edit in Dev Spaces" secondary={`Branch: ${repo.branch}`} />
+          </MenuItem>
+        )}
         <MenuItem onClick={() => handleAction('view-source')}>
           <ListItemIcon><OpenInNewIcon fontSize="small" /></ListItemIcon>
           <ListItemText primary="View source" />
