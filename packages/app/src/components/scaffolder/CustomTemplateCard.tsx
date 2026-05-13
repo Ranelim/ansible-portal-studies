@@ -136,7 +136,7 @@ export const CustomTemplateCard = ({
     template.metadata.annotations?.['ansible.redhat.com/requires-approval'] === 'true';
 
   const detailUrl = `/self-service/catalog/${namespace}/${name}`;
-  const wizardUrl = `/create/templates/${namespace}/${name}`;
+  const wizardUrl = `/self-service/create/templates/${namespace}/${name}`;
 
   const handleTitleClick = useCallback(
     (e: React.MouseEvent) => {

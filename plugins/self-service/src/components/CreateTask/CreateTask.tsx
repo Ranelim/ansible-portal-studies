@@ -1,7 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
 import {
-  Header,
-  Page,
   Content,
   MarkdownContent,
 } from '@backstage/core-components';
@@ -20,47 +18,62 @@ import {
   CardContent,
   CardHeader,
   Grid,
-  IconButton,
+  Typography,
   makeStyles,
+  useTheme,
 } from '@material-ui/core';
-import ArrowBack from '@material-ui/icons/ArrowBack';
+import InfoOutlinedIcon from '@material-ui/icons/InfoOutlined';
+import ArrowBackIcon from '@material-ui/icons/ArrowBack';
 import { rootRouteRef } from '../../routes';
 
-const headerStyles = makeStyles(theme => ({
-  header_title_color: {
-    color: theme.palette.type === 'light' ? 'rgba(0, 0, 0, 0.87)' : '#ffffff',
-  },
-  header_subtitle: {
-    display: 'inline-block',
-    color: theme.palette.type === 'light' ? 'rgba(0, 0, 0, 0.87)' : '#ffffff',
-    opacity: 0.8,
-    maxWidth: '75ch',
-    marginTop: '8px',
-    fontWeight: 500,
-    lineHeight: 1.57,
-  },
-  headerTitleContainer: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'flex-start',
-  },
-  backButtonContainer: {
-    marginBottom: theme.spacing(1),
-    marginLeft: theme.spacing(-1),
-    [theme.breakpoints.up('sm')]: {
-      marginLeft: theme.spacing(-1.5),
-    },
+const useStyles = makeStyles(theme => ({
+  root: {
+    padding: theme.spacing(3),
   },
   backButton: {
-    color: theme.palette.type === 'light' ? 'rgba(0, 0, 0, 0.87)' : '#ffffff',
-    '&:hover': {
-      backgroundColor: 'rgba(0, 0, 0, 0.04)',
-    },
+    textTransform: 'none',
+    fontWeight: 500,
+    marginBottom: theme.spacing(2),
+  },
+  title: {
+    fontSize: '1.5rem',
+    fontWeight: 600,
+    marginBottom: theme.spacing(0.5),
+  },
+  description: {
+    color: theme.palette.text.secondary,
+    maxWidth: '75ch',
+    lineHeight: 1.57,
+    marginBottom: theme.spacing(3),
   },
 }));
 
+const ApprovalDisclaimer = () => {
+  const theme = useTheme();
+  const isDark = theme.palette.type === 'dark';
+  return (
+    <Box
+      display="flex"
+      alignItems="flex-start"
+      style={{
+        gap: 10,
+        padding: '12px 16px',
+        marginBottom: 16,
+        borderRadius: 4,
+        backgroundColor: isDark ? 'rgba(41, 121, 255, 0.08)' : 'rgba(41, 121, 255, 0.06)',
+        border: `1px solid ${isDark ? 'rgba(41, 121, 255, 0.25)' : 'rgba(41, 121, 255, 0.2)'}`,
+      }}
+    >
+      <InfoOutlinedIcon style={{ fontSize: 18, color: '#2979ff', marginTop: 2, flexShrink: 0 }} />
+      <Typography variant="body2" style={{ color: isDark ? '#e0e0e0' : 'rgba(0,0,0,0.7)', lineHeight: 1.5 }}>
+        This workflow requires approval at one or more steps. Completion time depends on when approvals are granted.
+      </Typography>
+    </Box>
+  );
+};
+
 export const CreateTask = () => {
-  const classes = headerStyles();
+  const classes = useStyles();
   const { namespace, templateName } = useParams<{
     namespace: string;
     templateName: string;
@@ -86,12 +99,25 @@ export const CreateTask = () => {
     return state?.initialFormData;
   }, [location.state]);
 
+  const demoTaskRoutes: Record<string, string> = {
+    'workflow-trigger-demo': 'demo-aws-workflow-approved',
+    'aws-provisioning-workflow': 'demo-aws-workflow-approved',
+    'deploy-database-update': 'demo-job-completing',
+    'rhel-server-patching': 'demo-patching-completed',
+  };
+
   const finalSubmit = async (
     formData: Record<string, any>,
     secrets?: Record<string, string>,
   ) => {
     if (!namespace || !templateName) {
       throw new Error('Missing namespace or name in URL parameters');
+    }
+
+    const demoTaskId = demoTaskRoutes[templateName];
+    if (demoTaskId) {
+      navigate(`${rootLink()}/create/tasks/${demoTaskId}`);
+      return;
     }
 
     try {
@@ -141,34 +167,31 @@ export const CreateTask = () => {
 
   if (loading) {
     return (
-      <Page themeId="tool">
-        <Header title="Loading..." />
-        <Content>
-          <p>Loading entity...</p>
-        </Content>
-      </Page>
+      <Content>
+        <Box className={classes.root}>
+          <Typography variant="body1">Loading entity...</Typography>
+        </Box>
+      </Content>
     );
   }
 
   if (error) {
     return (
-      <Page themeId="tool">
-        <Header title="Error" />
-        <Content>
-          <p>{error}</p>
-        </Content>
-      </Page>
+      <Content>
+        <Box className={classes.root}>
+          <Typography variant="body1">{error}</Typography>
+        </Box>
+      </Content>
     );
   }
 
   if (!entityTemplate) {
     return (
-      <Page themeId="tool">
-        <Header title="No Data" />
-        <Content>
-          <p>No entity data available.</p>
-        </Content>
-      </Page>
+      <Content>
+        <Box className={classes.root}>
+          <Typography variant="body1">No entity data available.</Typography>
+        </Box>
+      </Content>
     );
   }
 
@@ -188,39 +211,34 @@ export const CreateTask = () => {
   };
 
   return (
-    <Page themeId="website">
-      <Header
-        pageTitleOverride="Create Task"
-        title={
-          <Box className={classes.headerTitleContainer}>
-            <Box className={classes.backButtonContainer}>
-              <IconButton
-                onClick={handleBack}
-                className={classes.backButton}
-                aria-label="go back"
-                data-testid="back-button"
-              >
-                <ArrowBack />
-              </IconButton>
-            </Box>
-            <span
-              className={classes.header_title_color}
-              data-testid="template-task--title"
-            >
-              {entityTemplate.title}
-            </span>
-          </Box>
-        }
-        subtitle={
-          <span className={classes.header_subtitle}>{description}</span>
-        }
-        style={{ background: 'inherit', paddingTop: 0 }}
-      />
-      <Content>
-        <Grid container direction="row-reverse">
+    <Content>
+      <Box className={classes.root}>
+        <Button
+          startIcon={<ArrowBackIcon />}
+          onClick={handleBack}
+          className={classes.backButton}
+          data-testid="back-button"
+        >
+          Templates
+        </Button>
+        <Typography
+          className={classes.title}
+          data-testid="template-task--title"
+        >
+          {entityTemplate.title}
+        </Typography>
+        {description && (
+          <Typography className={classes.description}>
+            {description}
+          </Typography>
+        )}
+        {templateEntity?.spec?.type === 'workflow-job-template' && (
+          <ApprovalDisclaimer />
+        )}
+        <Grid container direction="row-reverse" spacing={3}>
           {templateInfo && (
             <Grid item xs={12} sm={12} md={5} lg={5}>
-              <Card>
+              <Card variant="outlined">
                 <CardHeader title="About Template" />
                 <CardContent>
                   <MarkdownContent content={templateInfo} />
@@ -235,12 +253,16 @@ export const CreateTask = () => {
             md={templateInfo ? 7 : 12}
             lg={templateInfo ? 7 : 12}
           >
-            <StepForm
-              steps={entityTemplate.steps}
-              submitFunction={finalSubmit}
-              initialFormData={initialFormData}
-              storageKey={`${namespace}/${templateName}`}
-            />
+            <Card variant="outlined">
+              <CardContent>
+                <StepForm
+                  steps={entityTemplate.steps}
+                  submitFunction={finalSubmit}
+                  initialFormData={initialFormData}
+                  storageKey={`${namespace}/${templateName}`}
+                />
+              </CardContent>
+            </Card>
             <Box
               display="flex"
               justifyContent="flex-end"
@@ -248,18 +270,7 @@ export const CreateTask = () => {
               marginBottom={4}
             >
               <Button
-                onClick={() => {
-                  const isExecutionEnvironment =
-                    templateEntity?.spec?.type?.includes(
-                      'execution-environment',
-                    ) ?? false;
-
-                  if (isExecutionEnvironment) {
-                    navigate(`${rootLink()}/ee/create`);
-                  } else {
-                    navigate(`${rootLink()}`);
-                  }
-                }}
+                onClick={handleBack}
                 variant="text"
                 color="primary"
               >
@@ -268,7 +279,7 @@ export const CreateTask = () => {
             </Box>
           </Grid>
         </Grid>
-      </Content>
-    </Page>
+      </Box>
+    </Content>
   );
 };
