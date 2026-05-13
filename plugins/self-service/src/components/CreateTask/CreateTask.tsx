@@ -22,7 +22,7 @@ import {
   makeStyles,
   useTheme,
 } from '@material-ui/core';
-import InfoOutlinedIcon from '@material-ui/icons/InfoOutlined';
+import WarningAmberIcon from '@material-ui/icons/ReportProblemOutlined';
 import ArrowBackIcon from '@material-ui/icons/ArrowBack';
 import { rootRouteRef } from '../../routes';
 
@@ -58,15 +58,15 @@ const ApprovalDisclaimer = () => {
       style={{
         gap: 10,
         padding: '12px 16px',
-        marginBottom: 16,
+        marginBottom: 24,
         borderRadius: 4,
-        backgroundColor: isDark ? 'rgba(41, 121, 255, 0.08)' : 'rgba(41, 121, 255, 0.06)',
-        border: `1px solid ${isDark ? 'rgba(41, 121, 255, 0.25)' : 'rgba(41, 121, 255, 0.2)'}`,
+        backgroundColor: isDark ? 'rgba(249, 168, 37, 0.08)' : 'rgba(249, 168, 37, 0.06)',
+        border: `1px solid ${isDark ? 'rgba(249, 168, 37, 0.3)' : 'rgba(249, 168, 37, 0.4)'}`,
       }}
     >
-      <InfoOutlinedIcon style={{ fontSize: 18, color: '#2979ff', marginTop: 2, flexShrink: 0 }} />
+      <WarningAmberIcon style={{ fontSize: 18, color: '#f9a825', marginTop: 2, flexShrink: 0 }} />
       <Typography variant="body2" style={{ color: isDark ? '#e0e0e0' : 'rgba(0,0,0,0.7)', lineHeight: 1.5 }}>
-        This workflow requires approval at one or more steps. Completion time depends on when approvals are granted.
+        This template includes a step that waits for someone to review and approve before it continues. After launching, you may need to wait for approval before the automation completes.
       </Typography>
     </Box>
   );
@@ -86,6 +86,7 @@ export const CreateTask = () => {
   const [entityTemplate, setEntityTemplate] =
     useState<TemplateParameterSchema | null>(null);
   const [templateEntity, setTemplateEntity] = useState<{
+    metadata?: { annotations?: Record<string, string> };
     spec?: { type?: string };
   } | null>(null);
   const [loading, setLoading] = useState(true);
@@ -232,7 +233,7 @@ export const CreateTask = () => {
             {description}
           </Typography>
         )}
-        {templateEntity?.spec?.type === 'workflow-job-template' && (
+        {templateEntity?.metadata?.annotations?.['ansible.redhat.com/requires-approval'] === 'true' && (
           <ApprovalDisclaimer />
         )}
         <Grid container direction="row-reverse" spacing={3}>
