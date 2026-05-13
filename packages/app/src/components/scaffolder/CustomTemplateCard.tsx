@@ -10,6 +10,7 @@ import {
   ListItemText,
   Divider,
   Typography,
+  Tooltip,
   Button,
   makeStyles,
 } from '@material-ui/core';
@@ -128,6 +129,12 @@ export const CustomTemplateCard = ({
   const owner = (template.spec as Record<string, unknown>)?.owner as string | undefined;
   const namespace = template.metadata.namespace ?? 'default';
 
+  const typeLabel = specType
+    ? specType.charAt(0).toUpperCase() + specType.slice(1)
+    : undefined;
+  const requiresApproval =
+    template.metadata.annotations?.['ansible.redhat.com/requires-approval'] === 'true';
+
   const detailUrl = `/self-service/catalog/${namespace}/${name}`;
   const wizardUrl = `/create/templates/${namespace}/${name}`;
 
@@ -146,9 +153,9 @@ export const CustomTemplateCard = ({
   return (
     <Card className={classes.card} variant="outlined">
       <Box className={classes.cardHeader}>
-        {specType && (
+        {typeLabel && (
           <Chip
-            label={specType}
+            label={typeLabel}
             size="small"
             variant="outlined"
             className={classes.typeBadge}
@@ -194,9 +201,20 @@ export const CustomTemplateCard = ({
         )}
       </CardContent>
 
-      {tags.length > 0 && (
+      {(tags.length > 0 || requiresApproval) && (
         <Box className={classes.tags}>
-          {tags.slice(0, 5).map(tag => (
+          {requiresApproval && (
+            <Tooltip title="This template includes a step that waits for someone to review and approve before it continues. You may need to wait for approval after launching.">
+              <Chip
+                label="requires-approval"
+                size="small"
+                variant="outlined"
+                className={classes.tag}
+                style={{ borderColor: '#f9a825', color: '#f9a825' }}
+              />
+            </Tooltip>
+          )}
+          {tags.slice(0, requiresApproval ? 4 : 5).map(tag => (
             <Chip
               key={tag}
               label={tag}

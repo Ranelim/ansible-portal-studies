@@ -20,14 +20,9 @@ import { usePermission } from '@backstage/plugin-permission-react';
 import { taskCreatePermission } from '@backstage/plugin-scaffolder-common/alpha';
 import { rootRouteRef } from '../../../routes';
 
-const typeLabels: Record<string, string> = {
-  'workflow-job-template': 'Workflow template',
-  service: 'Job template',
-};
-
 function getTypeLabel(specType?: string): string {
   if (!specType) return 'Template';
-  return typeLabels[specType] ?? specType;
+  return specType.charAt(0).toUpperCase() + specType.slice(1);
 }
 
 export function WizardCard({ template }: { template: TemplateEntityV1beta3 }) {
@@ -41,7 +36,8 @@ export function WizardCard({ template }: { template: TemplateEntityV1beta3 }) {
   });
 
   const specType = template?.spec?.type?.toString();
-  const isWorkflow = specType === 'workflow-job-template';
+  const requiresApproval =
+    template.metadata.annotations?.['ansible.redhat.com/requires-approval'] === 'true';
 
   const chooseWizardItem = () =>
     navigate(`${rootLink()}/create/templates/${namespace}/${name}`);
@@ -83,16 +79,17 @@ export function WizardCard({ template }: { template: TemplateEntityV1beta3 }) {
           </Typography>
         </div>
         <Divider />
-        {((template?.metadata?.tags ?? []).length > 0 || isWorkflow) && (
+        {((template?.metadata?.tags ?? []).length > 0 || requiresApproval) && (
           <div className="tags" data-testid="template--tags">
             <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-              {isWorkflow && (
-                <Tooltip title="One or more steps in this workflow pause for approval in Ansible Automation Platform before continuing.">
+              {requiresApproval && (
+                <Tooltip title="This template includes a step that waits for someone to review and approve before it continues. You may need to wait for approval after launching.">
                   <Chip
-                    label="Includes approval"
+                    label="requires-approval"
                     size="small"
                     variant="outlined"
                     data-testid="template-tags--approval"
+                    style={{ borderColor: '#f9a825', color: '#f9a825' }}
                   />
                 </Tooltip>
               )}
