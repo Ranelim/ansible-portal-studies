@@ -405,7 +405,7 @@ ansible-navigator:
   'demo-job-completing': {
     templateName: 'deploy-database-update',
     templateTitle: 'Deploy Database Update',
-    templateType: 'service',
+    templateType: 'job-template',
     status: 'completed',
     steps: [
       { id: 'launch-job', name: 'Launch job template', status: 'completed' },
@@ -414,13 +414,14 @@ ansible-navigator:
       'launch-job': [
         'Beginning step Deploy Database Update',
         'Launching job template id 1500.',
+        'RHAAP_JOB_LAUNCH_DATA {"id":1500,"url":"https://aap.example.com/jobs/1500/output"}',
         'Job 1500 status: successful',
         'Finished step Deploy Database Update',
       ],
     },
     outputText: [
       {
-        title: 'Job template executed successfully',
+        title: 'Automation completed',
         content: 'The database update has been deployed to the staging environment.',
       },
     ],
@@ -428,35 +429,149 @@ ansible-navigator:
       { title: 'View job in AAP', url: 'https://aap.example.com/jobs/1500/output' },
     ],
   },
+  'demo-job-running': {
+    templateName: 'deploy-database-update',
+    templateTitle: 'Deploy Database Update',
+    templateType: 'job-template',
+    status: 'processing',
+    steps: [
+      { id: 'launch-job', name: 'Launch job template', status: 'processing' },
+    ],
+    stepLogs: {
+      'launch-job': [
+        'Beginning step Deploy Database Update',
+        'Launching job template id 1501.',
+        'RHAAP_JOB_LAUNCH_DATA {"id":1501,"url":"https://aap.example.com/jobs/1501/output"}',
+        'Job 1501 status: running',
+        'Applying migration v2.4.1 to orders-db...',
+      ],
+    },
+  },
+  'demo-job-failed': {
+    templateName: 'deploy-database-update',
+    templateTitle: 'Deploy Database Update',
+    templateType: 'job-template',
+    status: 'failed',
+    steps: [
+      { id: 'launch-job', name: 'Launch job template', status: 'failed' },
+    ],
+    stepLogs: {
+      'launch-job': [
+        'Beginning step Deploy Database Update',
+        'Launching job template id 1502.',
+        'RHAAP_JOB_LAUNCH_DATA {"id":1502,"url":"https://aap.example.com/jobs/1502/output"}',
+        'Job 1502 status: running',
+        'Applying migration v2.4.1 to analytics-db...',
+        'Error: Migration script failed — column "user_email" already exists in target schema.',
+        'Job 1502 status: failed',
+      ],
+    },
+  },
+  'demo-patching-completed': {
+    templateName: 'rhel-server-patching',
+    templateTitle: 'RHEL Server Patching',
+    templateType: 'job-template',
+    status: 'completed',
+    steps: [
+      { id: 'launch-job', name: 'Launch job template', status: 'completed' },
+    ],
+    stepLogs: {
+      'launch-job': [
+        'Beginning step RHEL Server Patching',
+        'Launching job template id 1600.',
+        'RHAAP_JOB_LAUNCH_DATA {"id":1600,"url":"https://aap.example.com/jobs/1600/output"}',
+        'Job 1600 status: running',
+        'Applying security patches to 12 servers in staging...',
+        'Rebooting 4 servers (reboot policy: if-required)...',
+        'Job 1600 status: successful',
+        'Finished step RHEL Server Patching',
+      ],
+    },
+    outputText: [
+      {
+        title: 'Automation completed',
+        content: 'Security patches have been applied to all 12 servers in the staging environment. 4 servers were rebooted.',
+      },
+    ],
+    outputLinks: [
+      { title: 'View job in AAP', url: 'https://aap.example.com/jobs/1600/output' },
+    ],
+  },
+  'demo-aws-workflow-approval': {
+    templateName: 'aws-provisioning-workflow',
+    templateTitle: 'AWS Provisioning Workflow',
+    templateType: 'workflow-job-template',
+    status: 'processing',
+    steps: [
+      { id: 'launch-workflow', name: 'Launch workflow', status: 'completed' },
+      { id: 'awaiting-approval', name: 'Awaiting approval', status: 'awaiting_approval' },
+    ],
+    stepLogs: {
+      'launch-workflow': [
+        'Beginning step AWS Provisioning Workflow',
+        'Launching workflow job template id 3001.',
+        'RHAAP_WORKFLOW_LAUNCH_DATA {"id":3050,"url":"https://aap.example.com/execution/workflows/3050/output"}',
+        'Workflow job 3050 status: waiting',
+        'Workflow is awaiting approval at node "Production Gate".',
+      ],
+    },
+  },
+  'demo-aws-workflow-approved': {
+    templateName: 'aws-provisioning-workflow',
+    templateTitle: 'AWS Provisioning Workflow',
+    templateType: 'workflow-job-template',
+    status: 'completed',
+    steps: [
+      { id: 'launch-workflow', name: 'Launch workflow', status: 'completed' },
+    ],
+    stepLogs: {
+      'launch-workflow': [
+        'Beginning step AWS Provisioning Workflow',
+        'Launching workflow job template id 3001.',
+        'RHAAP_WORKFLOW_LAUNCH_DATA {"id":3051,"url":"https://aap.example.com/execution/workflows/3051/output"}',
+        'Workflow job 3051 status: waiting',
+        'Workflow is awaiting approval at node "Production Gate".',
+        'Approval granted at node "Production Gate".',
+        'Workflow job 3051 status: running',
+        'Workflow job 3051 status: successful',
+        'Finished step AWS Provisioning Workflow',
+      ],
+    },
+    outputText: [
+      {
+        title: 'Automation completed',
+        content: 'The AWS Provisioning Workflow has completed. All approval gates were passed and all steps executed successfully.',
+      },
+    ],
+    outputLinks: [
+      { title: 'View workflow in AAP', url: 'https://aap.example.com/execution/workflows/3051/output' },
+    ],
+  },
+  'demo-aws-workflow-denied': {
+    templateName: 'aws-provisioning-workflow',
+    templateTitle: 'AWS Provisioning Workflow',
+    templateType: 'workflow-job-template',
+    status: 'failed',
+    steps: [
+      { id: 'launch-workflow', name: 'Launch workflow', status: 'completed' },
+    ],
+    stepLogs: {
+      'launch-workflow': [
+        'Beginning step AWS Provisioning Workflow',
+        'Launching workflow job template id 3001.',
+        'RHAAP_WORKFLOW_LAUNCH_DATA {"id":3052,"url":"https://aap.example.com/execution/workflows/3052/output"}',
+        'Workflow job 3052 status: waiting',
+        'Workflow is awaiting approval at node "Production Gate".',
+        'Approval denied at node "Production Gate".',
+        'Reason: "Staging validation incomplete. Complete staging tests before production."',
+        'Workflow job 3052 status: failed',
+      ],
+    },
+  },
 };
 
-function DemoAapNodeIcon({ status, isDark }: { status?: string; isDark: boolean }) {
-  const s = status?.toLowerCase();
-  if (s === 'successful') return <CheckCircleOutlineIcon style={{ fontSize: 18, color: '#4caf50' }} />;
-  if (s === 'failed') return <ErrorOutlineIcon style={{ fontSize: 18, color: '#f44336' }} />;
-  if (s === 'pending' || s === 'waiting') {
-    return (
-      <Box
-        style={{
-          width: 18,
-          height: 18,
-          borderRadius: '50%',
-          border: `2px solid ${isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.25)'}`,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <MoreHorizIcon style={{ fontSize: 12, color: isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.35)' }} />
-      </Box>
-    );
-  }
-  if (s === 'canceled' || s === 'cancelled') return <BlockIcon style={{ fontSize: 18, color: isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)' }} />;
-  if (s === 'running') return <CircularProgress size={16} />;
-  return <MoreHorizIcon style={{ fontSize: 18, color: isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.25)' }} />;
-}
-
-function DemoAapTab({ specType, aapLogs, isDark, workflowUrl, workflowStatus }: { specType?: string; aapLogs: AapLogEntry[]; isDark: boolean; workflowUrl?: string; workflowStatus?: string }) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function _removedDemoAapTab({ specType, aapLogs, isDark, workflowUrl, workflowStatus }: { specType?: string; aapLogs: AapLogEntry[]; isDark: boolean; workflowUrl?: string; workflowStatus?: string }) {
   const [viewMode, setViewMode] = useState<'strip' | 'logs' | 'graph'>('strip');
   const [expandedNodes, setExpandedNodes] = useState<Record<number, boolean>>({});
 
@@ -806,7 +921,7 @@ export const RunTask = () => {
   useEffect(() => {
     if (!demoTask) return;
     const type = demoTask.templateType;
-    if (type === 'service') {
+    if (type === 'service' || type === 'job-template') {
       setAapLogs([{
         id: 1,
         label: demoTask.templateTitle,
@@ -815,13 +930,20 @@ export const RunTask = () => {
         content: (demoTask.stepLogs?.['launch-job'] || []).join('\n'),
       }]);
     } else if (type === 'workflow-job-template') {
-      const isDenied = taskId === 'demo-workflow-denied';
+      const isDenied = taskId === 'demo-workflow-denied' || taskId === 'demo-aws-workflow-denied';
       const isPending = demoTask.status === 'processing';
       const approvalStatus = isPending ? 'pending' : isDenied ? 'failed' : 'successful';
       const postApprovalStatus = isPending ? 'waiting' : isDenied ? 'canceled' : 'successful';
-      setAapLogs([
+      const isAws = taskId.startsWith('demo-aws-');
+      setAapLogs(isAws ? [
+        { id: 1, label: 'Validate Network', status: 'successful', hasPlaybookOutput: true, content: 'Validating VPC and subnet configuration...\nNetwork validation passed.' },
+        { id: 2, label: 'Provision Instances', status: isPending ? 'waiting' : 'successful', hasPlaybookOutput: true, content: isPending ? undefined : 'Launching 2 × t3.small in us-east-1...\nInstances provisioned successfully.' },
+        { id: 3, label: 'Production Gate', status: approvalStatus, hasPlaybookOutput: false, content: isDenied ? 'Approval denied.\nReason: "Staging validation incomplete. Complete staging tests before production."' : undefined },
+        { id: 4, label: 'Configure Servers', status: postApprovalStatus, hasPlaybookOutput: true, content: postApprovalStatus === 'successful' ? 'Applying Ansible roles to new instances...\nServer configuration complete.' : undefined },
+        { id: 5, label: 'Validate Deployment', status: postApprovalStatus, hasPlaybookOutput: true, content: postApprovalStatus === 'successful' ? 'Running smoke tests...\nAll health checks passed.' : undefined },
+      ] : [
         { id: 1, label: 'Inventory Sync', status: 'successful', hasPlaybookOutput: true, content: 'Syncing inventory from source...\nInventory sync completed successfully.' },
-        { id: 2, label: 'Manager Approval', status: approvalStatus, hasPlaybookOutput: false, content: isDenied ? 'Approval denied by admin@example.com.\nReason: "Budget not approved for Q3. Resubmit after finance review."' : undefined },
+        { id: 2, label: 'Manager Approval', status: approvalStatus, hasPlaybookOutput: false, content: isDenied ? 'Approval denied.\nReason: "Budget not approved for Q3. Resubmit after finance review."' : undefined },
         { id: 3, label: 'Deploy Configuration', status: postApprovalStatus, hasPlaybookOutput: true, content: postApprovalStatus === 'successful' ? 'Deploying configuration to targets...\nConfiguration applied successfully.' : undefined },
       ]);
     }
@@ -837,22 +959,22 @@ export const RunTask = () => {
           setToast({ title: `${name} completed`, description: 'The task has finished successfully.', severity: 'success', open: true });
         }, 1500);
       } else if (demoTask.status === 'failed') {
-        const isDenied = taskId === 'demo-workflow-denied';
+        const isDenied = taskId === 'demo-workflow-denied' || taskId === 'demo-aws-workflow-denied';
         setTimeout(() => {
           setToast({
             title: isDenied ? 'Approval denied' : `${name} failed`,
             description: isDenied
-              ? `${name} was denied at the Manager Approval node. The workflow has been canceled.`
+              ? `${name} was denied at an approval step.`
               : 'An error occurred during execution. View the logs for details.',
             severity: 'error',
             open: true,
             linkUrl: isDenied ? (aapWorkflowUrl || undefined) : undefined,
-            linkLabel: isDenied ? 'View in AAP' : undefined,
+            linkLabel: isDenied ? 'View details' : undefined,
           });
         }, 1500);
       } else if (demoTask.status === 'processing') {
         setTimeout(() => {
-          setToast({ title: 'Awaiting approval', description: `${name} is paused at an approval node. An AAP administrator needs to approve or deny the request.`, severity: 'warning', open: true, linkUrl: aapWorkflowUrl || undefined, linkLabel: 'View in AAP' });
+          setToast({ title: 'Awaiting approval', description: `${name} is paused at an approval step. An administrator needs to approve or deny the request.`, severity: 'warning', open: true, linkUrl: aapWorkflowUrl || undefined, linkLabel: 'View details' });
         }, 1500);
       }
     }
@@ -922,7 +1044,7 @@ export const RunTask = () => {
             return { ...merged, name: 'Execute workflow' };
           }
         }
-        if (specType === 'service') {
+        if (specType === 'service' || specType === 'job-template') {
           if (/launch[-_]?(job|template)/i.test(step.id) || (arr.length === 1)) {
             return { ...merged, name: 'Execute job' };
           }
@@ -1334,7 +1456,7 @@ export const RunTask = () => {
               </Typography>
             </Box>
             <Typography variant="body2" color="textSecondary" style={{ marginBottom: aapWorkflowUrl ? 12 : 0 }}>
-              This workflow is paused at an approval node. An AAP administrator needs to approve or deny the request before execution can continue. Contact your AAP admin if this is unexpected.
+              This automation is paused at an approval step. An administrator needs to approve or deny the request before execution can continue.
             </Typography>
             {aapWorkflowUrl && (
               <Button
@@ -1344,8 +1466,9 @@ export const RunTask = () => {
                 variant="outlined"
                 color="primary"
                 size="small"
+                endIcon={<OpenInNewIcon style={{ fontSize: 14 }} />}
               >
-                View in AAP
+                View in Ansible Automation Platform
               </Button>
             )}
           </Box>
@@ -1363,17 +1486,13 @@ export const RunTask = () => {
             }}
           >
             {/* For job/workflow templates, show a clean summary instead of raw template output */}
-            {(templateType === 'service' || templateType === 'workflow-job-template') ? (
+            {(templateType === 'service' || templateType === 'job-template' || templateType === 'workflow-job-template') ? (
               <Box marginBottom={1}>
                 <Typography variant="subtitle2" color="textPrimary" style={{ marginBottom: 4 }}>
-                  {templateType === 'workflow-job-template'
-                    ? 'Workflow executed successfully'
-                    : 'Job template executed successfully'}
+                  {templateDisplayName} completed successfully
                 </Typography>
                 <Typography variant="body2" color="textSecondary">
-                  {templateType === 'workflow-job-template'
-                    ? 'The AAP workflow has completed. View execution details and node logs in the AAP tab.'
-                    : 'The AAP job has completed. View execution output in the AAP tab.'}
+                  All steps have finished. Review the automation activity below for details.
                 </Typography>
               </Box>
             ) : (
@@ -1401,15 +1520,17 @@ export const RunTask = () => {
               alignItems="center"
               style={{ gap: 8, marginTop: 12 }}
             >
-              {/* For job/workflow templates, add a "View in AAP" CTA that switches to AAP tab */}
-              {(templateType === 'service' || templateType === 'workflow-job-template') && aapLogs.length > 0 && (
+              {(templateType === 'service' || templateType === 'job-template' || templateType === 'workflow-job-template') && aapWorkflowUrl && (
                 <Button
-                  onClick={() => setActiveTab(1)}
-                  variant="contained"
+                  href={aapWorkflowUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  variant="outlined"
                   color="primary"
                   size="small"
+                  endIcon={<OpenInNewIcon style={{ fontSize: 14 }} />}
                 >
-                  View AAP details
+                  View in Ansible Automation Platform
                 </Button>
               )}
               {output?.links
@@ -1424,7 +1545,7 @@ export const RunTask = () => {
                   return false;
                 })
                 ?.map((link: any, index: number) => {
-                  const isFirstLink = index === 0 && templateType !== 'service' && templateType !== 'workflow-job-template';
+                  const isFirstLink = index === 0 && templateType !== 'service' && templateType !== 'job-template' && templateType !== 'workflow-job-template';
                   if ('entityRef' in link && link.entityRef) {
                     const entityRef = link.entityRef;
                     return (
@@ -1496,17 +1617,13 @@ export const RunTask = () => {
             }}
           >
             <Typography variant="subtitle2" style={{ color: '#f44336', marginBottom: 4 }}>
-              {taskId === 'demo-workflow-denied'
+              {(taskId === 'demo-workflow-denied' || taskId === 'demo-aws-workflow-denied')
                 ? 'Approval denied'
-                : templateType === 'workflow-job-template'
-                  ? 'Workflow execution failed'
-                  : templateType === 'service'
-                    ? 'Job template execution failed'
-                    : 'Template execution failed'}
+                : `${templateDisplayName} failed`}
             </Typography>
             <Typography variant="body2" color="textSecondary" style={{ marginBottom: 12 }}>
-              {taskId === 'demo-workflow-denied'
-                ? 'The workflow was denied at the Manager Approval node. An AAP administrator declined the request. Contact your admin for details or start over to resubmit.'
+              {(taskId === 'demo-workflow-denied' || taskId === 'demo-aws-workflow-denied')
+                ? 'The request was denied at an approval step. Contact your administrator for details or start over to resubmit.'
                 : typeof error === 'string' ? error : 'An error occurred during execution. Check the logs for details.'}
             </Typography>
             <Box display="flex" style={{ gap: 8 }}>
@@ -1540,6 +1657,16 @@ export const RunTask = () => {
           </Box>
         )}
 
+        {/* Hidden AAP sections — always mounted to collect logs for the activity summary */}
+        <Box display="none">
+          {demoTask ? null : (
+            <>
+              <WorkflowJobTaskSection onLogsChange={setAapLogs} />
+              <JobTaskSection onLogsChange={setAapLogs} />
+            </>
+          )}
+        </Box>
+
         {/* Tab bar */}
         <Tabs
           value={activeTab}
@@ -1549,33 +1676,12 @@ export const RunTask = () => {
           style={{ minHeight: 40, borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)'}`, marginBottom: 16 }}
         >
           <Tab label="Template" value={0} style={{ minHeight: 40, textTransform: 'none', fontSize: 13 }} />
-          {aapLogs.length > 0 && (
-            <Tab label="AAP" value={1} style={{ minHeight: 40, textTransform: 'none', fontSize: 13 }} />
-          )}
           {readmeContent && (
             <Tab label="README" value={2} style={{ minHeight: 40, textTransform: 'none', fontSize: 13 }} />
           )}
         </Tabs>
 
-        {/* AAP sections — always mounted to report logs; visible only on AAP tab */}
-        <Box display={activeTab === 1 ? 'block' : 'none'}>
-          {demoTask ? (
-            <DemoAapTab
-              specType={specType}
-              aapLogs={aapLogs}
-              isDark={isDark}
-              workflowUrl={aapWorkflowUrl || undefined}
-              workflowStatus={demoTask.status === 'completed' ? 'successful' : demoTask.status === 'failed' ? 'failed' : demoTask.status === 'processing' ? 'pending' : demoTask.status}
-            />
-          ) : (
-            <>
-              <WorkflowJobTaskSection onLogsChange={setAapLogs} />
-              <JobTaskSection onLogsChange={setAapLogs} />
-            </>
-          )}
-        </Box>
-
-        {/* Output tab — template pipeline + logs + CTAs */}
+        {/* Template tab — pipeline steps + logs + automation activity */}
         {activeTab === 0 && (
           <Box>
             {/* Scaffolder progress steps */}
@@ -1700,6 +1806,94 @@ export const RunTask = () => {
                 )}
               </Box>
             </Box>
+
+            {/* Automation activity — inline step list with status for job/workflow templates */}
+            {aapLogs.length > 0 && (
+              <Box marginTop={3}>
+                <Box display="flex" alignItems="center" justifyContent="space-between" style={{ marginBottom: 12 }}>
+                  <Typography variant="subtitle2" color="textPrimary">
+                    Automation activity
+                  </Typography>
+                  {aapWorkflowUrl && (
+                    <Link
+                      href={aapWorkflowUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      variant="body2"
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '0.8125rem' }}
+                    >
+                      View in Ansible Automation Platform
+                      <OpenInNewIcon style={{ fontSize: 13 }} />
+                    </Link>
+                  )}
+                </Box>
+                <Box
+                  style={{
+                    borderRadius: 4,
+                    border: `1px solid ${isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)'}`,
+                    overflow: 'hidden',
+                  }}
+                >
+                  {aapLogs.map((node, idx) => {
+                    const nodeStatus = node.status?.toLowerCase() || 'pending';
+                    let statusIcon: React.ReactNode;
+                    let statusLabel: string;
+                    let statusColor: string;
+                    if (nodeStatus === 'successful') {
+                      statusIcon = <CheckCircleOutlineIcon style={{ fontSize: 18, color: '#4caf50' }} />;
+                      statusLabel = 'Completed';
+                      statusColor = '#4caf50';
+                    } else if (nodeStatus === 'failed') {
+                      statusIcon = <ErrorOutlineIcon style={{ fontSize: 18, color: '#f44336' }} />;
+                      statusLabel = 'Failed';
+                      statusColor = '#f44336';
+                    } else if (nodeStatus === 'running') {
+                      statusIcon = <CircularProgress size={16} style={{ color: '#42a5f5' }} />;
+                      statusLabel = 'Running';
+                      statusColor = '#42a5f5';
+                    } else if (nodeStatus === 'pending' || nodeStatus === 'waiting') {
+                      statusIcon = <PauseCircleOutlineIcon style={{ fontSize: 18, color: '#ff9800' }} />;
+                      statusLabel = nodeStatus === 'waiting' ? 'Waiting for approval' : 'Pending';
+                      statusColor = '#ff9800';
+                    } else if (nodeStatus === 'canceled') {
+                      statusIcon = <BlockIcon style={{ fontSize: 18, color: isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.35)' }} />;
+                      statusLabel = 'Canceled';
+                      statusColor = isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.35)';
+                    } else {
+                      statusIcon = <MoreHorizIcon style={{ fontSize: 18, color: isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.25)' }} />;
+                      statusLabel = 'Pending';
+                      statusColor = isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.25)';
+                    }
+                    return (
+                      <Box
+                        key={node.id}
+                        display="flex"
+                        alignItems="center"
+                        style={{
+                          padding: '10px 16px',
+                          gap: 12,
+                          borderTop: idx > 0 ? `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}` : undefined,
+                          background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)',
+                        }}
+                      >
+                        {statusIcon}
+                        <Typography variant="body2" color="textPrimary" style={{ flex: 1, fontWeight: 500 }}>
+                          {node.label}
+                        </Typography>
+                        <Typography variant="caption" style={{ color: statusColor, fontWeight: 500 }}>
+                          {statusLabel}
+                        </Typography>
+                      </Box>
+                    );
+                  })}
+                </Box>
+                {aapLogs.length > 1 && (
+                  <Typography variant="caption" color="textSecondary" style={{ marginTop: 6, display: 'block' }}>
+                    {aapLogs.filter(n => n.status?.toLowerCase() === 'successful').length} of {aapLogs.length} steps complete
+                  </Typography>
+                )}
+              </Box>
+            )}
 
           </Box>
         )}

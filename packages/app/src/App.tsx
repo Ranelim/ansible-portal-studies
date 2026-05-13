@@ -10,6 +10,7 @@ import {
   catalogImportPlugin,
 } from '@backstage/plugin-catalog-import';
 import { ScaffolderPage, scaffolderPlugin } from '@backstage/plugin-scaffolder';
+import { WorkflowApprovalBanner } from './components/scaffolder/CustomTemplateWizardPage';
 import { ScaffolderFieldExtensions } from '@backstage/plugin-scaffolder-react';
 import { orgPlugin } from '@backstage/plugin-org';
 import {
@@ -110,20 +111,23 @@ const routes = (
     <Route
       path="/create"
       element={
-        <ScaffolderPage
-          headerOptions={{
-            title: 'Templates',
-            subtitle:
-              'Create new projects and automation content from curated templates',
-          }}
-          components={{
-            TemplateCardComponent: CustomTemplateCard,
-          }}
-          contextMenu={{
-            editor: false,
-            actions: false,
-          }}
-        />
+        <>
+          <WorkflowApprovalBanner />
+          <ScaffolderPage
+            headerOptions={{
+              title: 'Templates',
+              subtitle:
+                'Create new projects and automation content from curated templates',
+            }}
+            components={{
+              TemplateCardComponent: CustomTemplateCard,
+            }}
+            contextMenu={{
+              editor: false,
+              actions: false,
+            }}
+          />
+        </>
       }
     >
       <ScaffolderFieldExtensions>

@@ -297,13 +297,127 @@ export const TaskList = () => {
           entityRef: 'template:default/deploy-database-update',
           entity: {
             metadata: { name: 'deploy-database-update', title: 'Deploy Database Update' },
-            spec: { type: 'service' },
+            spec: { type: 'job-template' },
           } as any,
         },
         user: { entity: { metadata: { title: 'Guest User' } } as any },
       },
       status: 'completed',
       createdAt: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
+      createdBy: 'user:default/guest',
+    } as unknown as ScaffolderTask,
+    {
+      id: 'demo-job-running',
+      spec: {
+        apiVersion: 'scaffolder.backstage.io/v1beta3',
+        steps: [],
+        parameters: {},
+        templateInfo: {
+          entityRef: 'template:default/deploy-database-update',
+          entity: {
+            metadata: { name: 'deploy-database-update', title: 'Deploy Database Update' },
+            spec: { type: 'job-template' },
+          } as any,
+        },
+        user: { entity: { metadata: { title: 'Guest User' } } as any },
+      },
+      status: 'processing',
+      createdAt: new Date(Date.now() - 2 * 60 * 1000).toISOString(),
+      createdBy: 'user:default/guest',
+    } as unknown as ScaffolderTask,
+    {
+      id: 'demo-job-failed',
+      spec: {
+        apiVersion: 'scaffolder.backstage.io/v1beta3',
+        steps: [],
+        parameters: {},
+        templateInfo: {
+          entityRef: 'template:default/deploy-database-update',
+          entity: {
+            metadata: { name: 'deploy-database-update', title: 'Deploy Database Update' },
+            spec: { type: 'job-template' },
+          } as any,
+        },
+        user: { entity: { metadata: { title: 'Guest User' } } as any },
+      },
+      status: 'failed',
+      createdAt: new Date(Date.now() - 45 * 60 * 1000).toISOString(),
+      createdBy: 'user:default/guest',
+    } as unknown as ScaffolderTask,
+    {
+      id: 'demo-patching-completed',
+      spec: {
+        apiVersion: 'scaffolder.backstage.io/v1beta3',
+        steps: [],
+        parameters: {},
+        templateInfo: {
+          entityRef: 'template:default/rhel-server-patching',
+          entity: {
+            metadata: { name: 'rhel-server-patching', title: 'RHEL Server Patching' },
+            spec: { type: 'job-template' },
+          } as any,
+        },
+        user: { entity: { metadata: { title: 'Guest User' } } as any },
+      },
+      status: 'completed',
+      createdAt: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
+      createdBy: 'user:default/guest',
+    } as unknown as ScaffolderTask,
+    {
+      id: 'demo-aws-workflow-approval',
+      spec: {
+        apiVersion: 'scaffolder.backstage.io/v1beta3',
+        steps: [],
+        parameters: {},
+        templateInfo: {
+          entityRef: 'template:default/aws-provisioning-workflow',
+          entity: {
+            metadata: { name: 'aws-provisioning-workflow', title: 'AWS Provisioning Workflow' },
+            spec: { type: 'workflow-job-template' },
+          } as any,
+        },
+        user: { entity: { metadata: { title: 'Guest User' } } as any },
+      },
+      status: 'processing',
+      createdAt: new Date(Date.now() - 8 * 60 * 1000).toISOString(),
+      createdBy: 'user:default/guest',
+    } as unknown as ScaffolderTask,
+    {
+      id: 'demo-aws-workflow-approved',
+      spec: {
+        apiVersion: 'scaffolder.backstage.io/v1beta3',
+        steps: [],
+        parameters: {},
+        templateInfo: {
+          entityRef: 'template:default/aws-provisioning-workflow',
+          entity: {
+            metadata: { name: 'aws-provisioning-workflow', title: 'AWS Provisioning Workflow' },
+            spec: { type: 'workflow-job-template' },
+          } as any,
+        },
+        user: { entity: { metadata: { title: 'Guest User' } } as any },
+      },
+      status: 'completed',
+      createdAt: new Date(Date.now() - 75 * 60 * 1000).toISOString(),
+      createdBy: 'user:default/guest',
+    } as unknown as ScaffolderTask,
+    {
+      id: 'demo-aws-workflow-denied',
+      spec: {
+        apiVersion: 'scaffolder.backstage.io/v1beta3',
+        steps: [],
+        parameters: {},
+        templateInfo: {
+          entityRef: 'template:default/aws-provisioning-workflow',
+          entity: {
+            metadata: { name: 'aws-provisioning-workflow', title: 'AWS Provisioning Workflow' },
+            spec: { type: 'workflow-job-template' },
+          } as any,
+        },
+        user: { entity: { metadata: { title: 'Guest User' } } as any },
+      },
+      status: 'failed',
+      createdAt: new Date(Date.now() - 150 * 60 * 1000).toISOString(),
       createdBy: 'user:default/guest',
     } as unknown as ScaffolderTask,
   ], []);
@@ -371,6 +485,7 @@ export const TaskList = () => {
 
   const typeLabels: Record<string, string> = {
     'workflow-job-template': 'Workflow template',
+    'job-template': 'Job template',
     service: 'Job template',
     project: 'Project',
     'execution-environment': 'Execution environment',
