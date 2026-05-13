@@ -11,14 +11,14 @@ import { ProjectsCreateContent } from './create/ProjectsCreateContent';
 import { CIActivityContent } from './ci/CIActivityContent';
 
 const tabs = [
-  { id: 'repositories', label: 'Repositories', path: 'repositories' },
+  { id: 'repositories', label: 'Repositories', path: 'list' },
   { id: 'ci-activity', label: 'CI Activity', path: 'ci-activity' },
   { id: 'templates', label: 'Templates', path: 'create' },
 ];
 
 const getTabIndexFromPath = (pathname: string): number => {
-  if (pathname.includes('/projects/ci-activity')) return 1;
-  if (pathname.includes('/projects/create')) return 2;
+  if (pathname.includes('/repositories/ci-activity')) return 1;
+  if (pathname.includes('/repositories/create')) return 2;
   return 0;
 };
 
@@ -35,7 +35,7 @@ export const ProjectsTabs: React.FC = () => {
     (index: number) => {
       const tab = tabs[index];
       if (tab) {
-        navigate(`/self-service/projects/${tab.path}`);
+        navigate(`/self-service/repositories/${tab.path}`);
       }
     },
     [navigate],
@@ -57,21 +57,21 @@ export const ProjectsTabs: React.FC = () => {
         title={
           <Box display="flex" alignItems="center" justifyContent="space-between" width="100%">
             <Box display="flex" alignItems="center">
-              Projects
+              Git Repositories
               <PageHelpIcon
-                tooltipLabel="What are projects?"
-                title="What are projects?"
-                description="Projects are Git repositories containing automation content — playbooks, roles, collections, or execution environments. They are discovered from your connected sources (GitHub, GitLab) and appear here automatically. Enable governance on any project to add quality scans, CI/CD pipelines, and connect to Ansible Automation Platform."
+                tooltipLabel="What are git repositories?"
+                title="What are git repositories?"
+                description="Git repositories contain your automation content — playbooks, roles, collections, or execution environments. They are discovered from your connected sources (GitHub, GitLab) and appear here automatically. Enable governance on any repository to add quality scans, CI/CD pipelines, and connect to Ansible Automation Platform."
               />
             </Box>
             <AddActionButton
-              label="Add project"
+              label="Add repository"
               options={[
                 {
                   label: 'Create from template',
                   description: 'Scaffold a new repository from a curated template with best-practice structure.',
                   icon: <FileCopyOutlinedIcon fontSize="small" />,
-                  onClick: () => navigate('/self-service/projects/create'),
+                  onClick: () => navigate('/self-service/repositories/create'),
                 },
                 {
                   label: 'Import existing repository',
@@ -83,8 +83,8 @@ export const ProjectsTabs: React.FC = () => {
             />
           </Box>
         }
-        pageTitleOverride="Projects"
-        subtitle="Git repositories containing your automation content"
+        pageTitleOverride="Git Repositories"
+        subtitle="Automation content repositories discovered from your connected sources"
       />
       <HeaderTabs
         selectedIndex={selectedTab}

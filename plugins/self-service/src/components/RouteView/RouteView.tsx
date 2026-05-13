@@ -126,16 +126,17 @@ const RouteViewContent = () => {
           <Route path="*" element={<Navigate to="catalog" replace />} />
         </Route>
         <Route path="catalog/:templateName" element={<EEDetailsPage />} />
-        <Route path="projects">
+        {/* Git Repositories — canonical path */}
+        <Route path="repositories">
           <Route index element={<ProjectsTabs />} />
-          <Route path="catalog" element={<ProjectsTabs />} />
-          <Route path="repositories" element={<ProjectsTabs />} />
+          <Route path="list" element={<ProjectsTabs />} />
           <Route path="ci-activity" element={<ProjectsTabs />} />
           <Route path="create" element={<ProjectsTabs />} />
           <Route path="migrate" element={<ProjectsTabs />} />
-          <Route path="repositories/:repoName" element={<RepositoryDetailPage />} />
-          <Route path=":projectName" element={<ProjectDetailsPage />} />
+          <Route path=":repoName" element={<RepositoryDetailPage />} />
         </Route>
+        {/* Legacy /projects path — redirect to /repositories */}
+        <Route path="projects/*" element={<Navigate to="/self-service/repositories" replace />} />
         <Route path="quality" element={<QualityDashboardPage />} />
         <Route path="collections" element={<CollectionsCatalogPage />} />
         <Route
@@ -163,7 +164,7 @@ const RouteViewContent = () => {
           path="/catalog/*"
           element={<Navigate to="/self-service/catalog" />}
         />
-        <Route path="*" element={<Navigate to="/self-service/projects" />} />
+        <Route path="*" element={<Navigate to="/self-service/repositories" />} />
       </Routes>
       <FeedbackFooter />
       <NotificationStack

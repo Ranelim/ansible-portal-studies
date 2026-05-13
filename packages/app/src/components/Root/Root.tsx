@@ -2,7 +2,11 @@ import { PropsWithChildren } from 'react';
 import { makeStyles, Box, Typography, Button } from '@material-ui/core';
 import WarningIcon from '@material-ui/icons/Warning';
 import { useLocation } from 'react-router-dom';
-import { RestartProvider, useRestartRequired } from '@ansible/plugin-backstage-self-service';
+import {
+  RestartProvider,
+  useRestartRequired,
+  useUserRoleContext,
+} from '@ansible/plugin-backstage-self-service';
 import LibraryBooks from '@material-ui/icons/LibraryBooks';
 import CategoryIcon from '@material-ui/icons/Category';
 import CodeIcon from '@material-ui/icons/Code';
@@ -107,35 +111,39 @@ const GlobalRestartBanner = () => {
   );
 };
 
-export const Root = ({ children }: PropsWithChildren<{}>) => {
-  const rootClasses = useRootStyles();
-  const location = useLocation();
-  const isSetup = location.pathname.includes('/setup');
-
-  if (isSetup) {
-    return <>{children}</>;
-  }
+const RoleAdaptiveSidebar = () => {
+  const { hasRole } = useUserRoleContext();
+  const isDeveloper = hasRole('developer');
+  const isAdmin = hasRole('admin');
 
   return (
-    <RestartProvider>
-      <div className={rootClasses.fixedHeaderOffset}>
-        <SidebarPage>
-          <Sidebar>
-          <SidebarSpacer />
-          <SidebarGroup label="Search" icon={<SearchIcon />} to="/search">
-            <SidebarSearchModal />
-          </SidebarGroup>
-          <SidebarGroup label="Menu" icon={<MenuIcon />}>
-            <SidebarSectionLabel text="Catalog" />
+    <Sidebar>
+      <SidebarSpacer />
+      <SidebarGroup label="Search" icon={<SearchIcon />} to="/search">
+        <SidebarSearchModal />
+      </SidebarGroup>
+      <SidebarGroup label="Menu" icon={<MenuIcon />}>
+        {/* Shared — visible to all roles */}
+        <SidebarItem
+          icon={AddCircleOutlineIcon}
+          to="/create"
+          text="Templates"
+        />
+        <SidebarItem
+          icon={HistoryIcon}
+          to="/self-service/create/tasks"
+          text="Activity"
+        />
+
+        {/* Developer section — hidden from SMEs */}
+        {isDeveloper && (
+          <>
+            <SidebarDivider />
+            <SidebarSectionLabel text="Develop" />
             <SidebarItem
               icon={CodeIcon}
-              to="/self-service/projects"
-              text="Projects"
-            />
-            <SidebarItem
-              icon={VerifiedUserIcon}
-              to="/self-service/quality"
-              text="Quality"
+              to="/self-service/repositories"
+              text="Git Repositories"
             />
             <SidebarItem
               icon={MemoryIcon}
@@ -147,22 +155,22 @@ export const Root = ({ children }: PropsWithChildren<{}>) => {
               to="/self-service/collections"
               text="Collections"
             />
-            <SidebarDivider />
-            <SidebarSectionLabel text="Tools" />
             <SidebarItem
-              icon={AddCircleOutlineIcon}
-              to="/create"
-              text="Templates"
+              icon={VerifiedUserIcon}
+              to="/self-service/quality"
+              text="Quality"
             />
-            <SidebarItem
-              icon={HistoryIcon}
-              to="/self-service/create/tasks"
-              text="Activity"
-            />
-            <SidebarDivider />
-            <SidebarSectionLabel text="Learn" />
-            <SidebarItem icon={LibraryBooks} to="docs" text="Documentation" />
-            <SidebarItem icon={SchoolIcon} to="/self-service/learning" text="Learning" />
+          </>
+        )}
+
+        <SidebarDivider />
+        <SidebarSectionLabel text="Learn" />
+        <SidebarItem icon={LibraryBooks} to="docs" text="Documentation" />
+        <SidebarItem icon={SchoolIcon} to="/self-service/learning" text="Learning" />
+
+        {/* Administration — admin only */}
+        {isAdmin && (
+          <>
             <SidebarDivider />
             <SidebarScrollWrapper>
               <SidebarSectionLabel text="Administration" />
@@ -192,12 +200,31 @@ export const Root = ({ children }: PropsWithChildren<{}>) => {
                 text="Access Control"
               />
             </SidebarScrollWrapper>
-          </SidebarGroup>
-          <SidebarSpace />
-        </Sidebar>
-        <GlobalRestartBanner />
-        {children}
-      </SidebarPage>
+          </>
+        )}
+      </SidebarGroup>
+      <SidebarSpace />
+    </Sidebar>
+  );
+};
+
+export const Root = ({ children }: PropsWithChildren<{}>) => {
+  const rootClasses = useRootStyles();
+  const location = useLocation();
+  const isSetup = location.pathname.includes('/setup');
+
+  if (isSetup) {
+    return <>{children}</>;
+  }
+
+  return (
+    <RestartProvider>
+      <div className={rootClasses.fixedHeaderOffset}>
+        <SidebarPage>
+          <RoleAdaptiveSidebar />
+          <GlobalRestartBanner />
+          {children}
+        </SidebarPage>
       </div>
     </RestartProvider>
   );

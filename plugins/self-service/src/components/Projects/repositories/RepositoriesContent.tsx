@@ -294,7 +294,7 @@ export const RepositoriesContent = () => {
               className={classes.repoLink}
               onClick={(e: React.MouseEvent) => {
                 e.stopPropagation();
-                navigate(`/self-service/projects/repositories/${row.name}`);
+                navigate(`/self-service/repositories/${row.name}`);
               }}
             >
               {row.org}/{row.name}
@@ -361,7 +361,7 @@ export const RepositoriesContent = () => {
             className={classes.statusLink}
             onClick={(e: React.MouseEvent) => {
               e.stopPropagation();
-              navigate(`/self-service/projects/${row.name}`);
+              navigate(`/self-service/repositories/${row.name}`);
             }}
           >
             <CheckCircleIcon style={{ fontSize: 16 }} />
@@ -541,7 +541,7 @@ export const RepositoriesContent = () => {
           onRowClick={(_event, rowData) => {
             if (rowData) {
               const row = rowData as DiscoveredRepo;
-              navigate(`/self-service/projects/repositories/${row.name}`);
+              navigate(`/self-service/repositories/${row.name}`);
             }
           }}
         />

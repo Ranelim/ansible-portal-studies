@@ -486,7 +486,7 @@ export const GitRepositoriesContent = () => {
   }, []);
 
   const handleEnableGovernance = useCallback((_repo: GitRepository) => {
-    navigate('/self-service/projects/create', {
+    navigate('/self-service/repositories/create', {
       state: { autoStartTemplate: GOVERNANCE_TEMPLATE.name, repoName: _repo.name },
     });
   }, [navigate]);
@@ -516,7 +516,7 @@ export const GitRepositoriesContent = () => {
   useEffect(() => {
     if (location.pathname.includes('/projects/migrate')) {
       setMigrateWizardOpen(true);
-      navigate('/self-service/projects/repositories', { replace: true });
+      navigate('/self-service/repositories', { replace: true });
     }
   }, [location.pathname, navigate]);
 
@@ -574,9 +574,9 @@ export const GitRepositoriesContent = () => {
             onClick={(e: React.MouseEvent) => {
               e.stopPropagation();
               if (row.governance !== 'discovered') {
-                navigate(`/self-service/projects/${row.name}`);
+                navigate(`/self-service/repositories/${row.name}`);
               } else {
-                navigate(`/self-service/projects/repositories/${row.name}`);
+                navigate(`/self-service/repositories/${row.name}`);
               }
             }}
           >
@@ -651,7 +651,7 @@ export const GitRepositoriesContent = () => {
             style={{ gap: 6, cursor: 'pointer' }}
             onClick={(e: React.MouseEvent) => {
               e.stopPropagation();
-              navigate(`/self-service/projects/${row.name}`);
+              navigate(`/self-service/repositories/${row.name}`);
             }}
           >
             <Chip size="small" label={`${highestCount} ${highest}`} style={{
@@ -816,9 +816,9 @@ export const GitRepositoriesContent = () => {
             if (rowData) {
               const row = rowData as GitRepository;
               if (row.governance !== 'discovered') {
-                navigate(`/self-service/projects/${row.name}`);
+                navigate(`/self-service/repositories/${row.name}`);
               } else {
-                navigate(`/self-service/projects/repositories/${row.name}`);
+                navigate(`/self-service/repositories/${row.name}`);
               }
             }
           }}
@@ -904,7 +904,7 @@ export const GitRepositoriesContent = () => {
         onComplete={(newRepoName) => {
           setMigrateWizardOpen(false);
           setMigrateRepoName(null);
-          navigate(`/self-service/projects/${newRepoName}`, { state: { tab: 'quality' } });
+          navigate(`/self-service/repositories/${newRepoName}`, { state: { tab: 'quality' } });
         }}
       />
     </CatalogFilterLayout>

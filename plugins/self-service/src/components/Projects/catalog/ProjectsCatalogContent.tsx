@@ -502,7 +502,7 @@ const ProjectsCatalogTable = ({
           style={{ width: '100%', overflowX: 'hidden' }}
           onRowClick={(_event, rowData) => {
             if (rowData) {
-              navigate(`/self-service/projects/${(rowData as DemoProject).name}`);
+              navigate(`/self-service/repositories/${(rowData as DemoProject).name}`);
             }
           }}
         />

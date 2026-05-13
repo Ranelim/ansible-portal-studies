@@ -1,4 +1,5 @@
 import { Navigate, Route } from 'react-router-dom';
+import { useUserRole, useUserRoleContext, UserRoleContext } from '@ansible/plugin-backstage-self-service';
 import { apiDocsPlugin, ApiExplorerPage } from '@backstage/plugin-api-docs';
 import {
   CatalogEntityPage,
@@ -89,9 +90,17 @@ const app = createApp({
   themes: getThemes(),
 });
 
+const RoleLandingRedirect = () => {
+  const { hasRole } = useUserRoleContext();
+  const target = hasRole('developer')
+    ? '/self-service/repositories'
+    : '/create';
+  return <Navigate to={target} replace />;
+};
+
 const routes = (
   <FlatRoutes>
-    <Route path="/" element={<Navigate to="self-service/projects" />} />
+    <Route path="/" element={<RoleLandingRedirect />} />
     <Route path="/catalog" element={<CatalogIndexPage />} />
     <Route
       path="/catalog/:namespace/:kind/:name"
@@ -161,20 +170,31 @@ const routes = (
   </FlatRoutes>
 );
 
+const RoleProvider = ({ children }: { children: React.ReactNode }) => {
+  const value = useUserRole();
+  return (
+    <UserRoleContext.Provider value={value}>
+      {children}
+    </UserRoleContext.Provider>
+  );
+};
+
 export default app.createRoot(
   <>
     <AlertDisplay />
     <OAuthRequestDialog />
     <AppRouter>
-      <LightspeedProvider>
-        <QuickstartProvider>
-          <GlobalHeader />
-          <Root>{routes}</Root>
-          <LightspeedPanel />
-          <QuickstartPanel />
-          <WelcomeModal />
-        </QuickstartProvider>
-      </LightspeedProvider>
+      <RoleProvider>
+        <LightspeedProvider>
+          <QuickstartProvider>
+            <GlobalHeader />
+            <Root>{routes}</Root>
+            <LightspeedPanel />
+            <QuickstartPanel />
+            <WelcomeModal />
+          </QuickstartProvider>
+        </LightspeedProvider>
+      </RoleProvider>
     </AppRouter>
   </>,
 );

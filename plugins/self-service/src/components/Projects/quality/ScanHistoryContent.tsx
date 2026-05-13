@@ -40,9 +40,9 @@ export const ScanHistoryContent = () => {
   const handleNavigateToProject = useCallback((repoName: string) => {
     const repo = GIT_REPOSITORIES.find(r => r.name === repoName);
     if (repo && repo.governance !== 'discovered') {
-      navigate(`/self-service/projects/${repoName}`);
+      navigate(`/self-service/repositories/${repoName}`);
     } else {
-      navigate(`/self-service/projects/repositories/${repoName}`);
+      navigate(`/self-service/repositories/${repoName}`);
     }
   }, [navigate]);
 

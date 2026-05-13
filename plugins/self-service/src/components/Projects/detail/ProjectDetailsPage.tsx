@@ -888,7 +888,7 @@ const SourceCard = ({ project }: { project: DemoProject }) => {
             style={{ cursor: 'pointer' }}
             onClick={() =>
               navigate(
-                `/self-service/projects/repositories/${project.name}`,
+                `/self-service/repositories/${project.name}`,
               )
             }
           >
@@ -940,7 +940,7 @@ const LinksCard = ({ project }: { project: DemoProject }) => {
           className={classes.linkItem}
           onClick={() =>
             navigate(
-              `/self-service/projects/repositories/${project.name}`,
+              `/self-service/repositories/${project.name}`,
             )
           }
         >
@@ -2118,7 +2118,7 @@ export const ProjectDetailsPage = () => {
             <Button
               variant="outlined"
               color="primary"
-              onClick={() => navigate('/self-service/projects/catalog')}
+              onClick={() => navigate('/self-service/repositories/list')}
               style={{ textTransform: 'none', marginTop: 16 }}
             >
               Back to Projects
@@ -2165,7 +2165,7 @@ export const ProjectDetailsPage = () => {
           separator={<NavigateNextIcon fontSize="small" />}
           className={classes.breadcrumbs}
         >
-          <RouterLink to="/self-service/projects">Projects</RouterLink>
+          <RouterLink to="/self-service/repositories">Git Repositories</RouterLink>
           <Typography className={classes.breadcrumbCurrent}>
             {project.title}
           </Typography>

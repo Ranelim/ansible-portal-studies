@@ -23,3 +23,6 @@ export { ScmSelectorFieldExtension } from './components/Scaffolder/ScmSelector/e
 export * from './apis';
 
 export { RestartProvider, useRestartRequired } from './components/Admin/RestartContext';
+
+export { useUserRole, useUserRoleContext, UserRoleContext } from './hooks/useUserRole';
+export type { UserRole, UseUserRoleResult } from './hooks/useUserRole';

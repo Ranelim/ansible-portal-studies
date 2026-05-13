@@ -238,8 +238,7 @@ const GETTING_STARTED_CHECKLIST: ChecklistStep[] = [
     description:
       'Get familiar with the portal layout. The sidebar gives you quick access to Projects, Templates, Shared Assets (Collections, EEs), and Administration.',
     actions: [
-      { id: 'nav-projects', label: 'Browse the Projects catalog to see existing automation projects', link: { text: 'Open Projects', url: '/self-service/projects/catalog' } },
-      { id: 'nav-repos', label: 'Check Repositories to see discovered Git repos with Ansible content', link: { text: 'Open Repositories', url: '/self-service/projects/repositories' } },
+      { id: 'nav-repos', label: 'Browse Git Repositories to see discovered repos with Ansible content', link: { text: 'Open Git Repositories', url: '/self-service/repositories' } },
       { id: 'nav-collections', label: 'Explore synced Collections from Private Automation Hub', link: { text: 'Open Collections', url: '/self-service/collections' } },
       { id: 'nav-ees', label: 'Review available Execution Environments', link: { text: 'Open EEs', url: '/self-service/ee' } },
     ],
@@ -265,7 +264,7 @@ const GETTING_STARTED_CHECKLIST: ChecklistStep[] = [
     description:
       'Use a template to scaffold a new automation project. The wizard guides you through naming, connecting a Git repo, selecting a pipeline type, and configuring the AAP destination.',
     actions: [
-      { id: 'pick-template', label: 'Go to Templates and choose a template that matches your use case', link: { text: 'Open Templates', url: '/self-service/projects/create' } },
+      { id: 'pick-template', label: 'Go to Templates and choose a template that matches your use case', link: { text: 'Open Templates', url: '/self-service/repositories/create' } },
       { id: 'fill-details', label: 'Fill in project details — try the AI Jumpstart to auto-generate settings' },
       { id: 'connect-git', label: 'Connect to an existing repo or let the portal create a new one' },
       { id: 'select-pipeline', label: 'Choose Standard (fast) or Comprehensive (full governance) pipeline' },
@@ -281,7 +280,7 @@ const GETTING_STARTED_CHECKLIST: ChecklistStep[] = [
     description:
       'If you already have Git repos with Ansible content, the portal discovers them automatically. You can create a project from any discovered repository to bring it under governance.',
     actions: [
-      { id: 'check-repos', label: 'Go to Repositories tab and find your discovered repos', link: { text: 'Open Repositories', url: '/self-service/projects/repositories' } },
+      { id: 'check-repos', label: 'Go to Git Repositories and find your discovered repos', link: { text: 'Open Git Repositories', url: '/self-service/repositories' } },
       { id: 'click-create', label: 'Click "Create project" on a repo that doesn\'t have one yet' },
       { id: 'review-content', label: 'Review the discovered content (playbooks, roles, EE definitions)' },
     ],

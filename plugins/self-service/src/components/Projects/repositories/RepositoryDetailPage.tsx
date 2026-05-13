@@ -513,7 +513,7 @@ const ProjectStatusCard = ({ repo }: { repo: DiscoveredRepo }) => {
               size="small"
               style={{ textTransform: 'none' }}
               onClick={() =>
-                navigate(`/self-service/projects/${repo.name}`)
+                navigate(`/self-service/repositories/${repo.name}`)
               }
             >
               View project
@@ -916,7 +916,7 @@ export const RepositoryDetailPage = () => {
               variant="outlined"
               color="primary"
               onClick={() =>
-                navigate('/self-service/projects/repositories')
+                navigate('/self-service/repositories/list')
               }
               style={{ textTransform: 'none', marginTop: 16 }}
             >
@@ -936,7 +936,7 @@ export const RepositoryDetailPage = () => {
           separator={<NavigateNextIcon fontSize="small" />}
           className={classes.breadcrumbs}
         >
-          <RouterLink to="/self-service/projects">Projects</RouterLink>
+          <RouterLink to="/self-service/repositories">Git Repositories</RouterLink>
           <Typography className={classes.breadcrumbCurrent}>
             {repo.org}/{repo.name}
           </Typography>

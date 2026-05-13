@@ -81,7 +81,7 @@ export const QualityDashboardPage = () => {
     : 0;
 
   const navigateToScan = useCallback((row: GlobalScanRow) => {
-    navigate(`/self-service/projects/${row.repoName}?tab=quality&scan=${row.scanId}`);
+    navigate(`/self-service/repositories/${row.repoName}?tab=quality&scan=${row.scanId}`);
   }, [navigate]);
 
   const fleetSeverity = useMemo(() => {

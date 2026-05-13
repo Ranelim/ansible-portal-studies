@@ -26,6 +26,9 @@ import HelpOutlineIcon from '@material-ui/icons/HelpOutline';
 import AccountCircle from '@material-ui/icons/AccountCircle';
 import SettingsIcon from '@material-ui/icons/Settings';
 import ExitToAppIcon from '@material-ui/icons/ExitToApp';
+import PersonOutlineIcon from '@material-ui/icons/PersonOutline';
+import BuildIcon from '@material-ui/icons/Build';
+import SupervisorAccountIcon from '@material-ui/icons/SupervisorAccount';
 import OpenInNewIcon from '@material-ui/icons/OpenInNew';
 import PlaylistAddCheckIcon from '@material-ui/icons/PlaylistAddCheck';
 import TransformIcon from '@material-ui/icons/Transform';
@@ -34,6 +37,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useApi, identityApiRef } from '@backstage/core-plugin-api';
 import { useStarredEntities } from '@backstage/plugin-catalog-react';
 import { useState, useMemo } from 'react';
+import { useUserRoleContext, type UserRole } from '@ansible/plugin-backstage-self-service';
 import { useLightspeed } from '../Lightspeed';
 import { useQuickstart } from '../Quickstart';
 import { OmniSearch } from '../search/OmniSearch';
@@ -290,7 +294,7 @@ const StarredItemsList = ({ onClose }: { onClose: () => void }) => {
             onClick={() => {
               onClose();
               if (item.kind === 'project') {
-                navigate(`/self-service/projects/${item.name}`);
+                navigate(`/self-service/repositories/${item.name}`);
               } else {
                 const base = entityKindRoute[item.kind] || '/self-service/catalog';
                 navigate(`${base}/${item.name}`);
@@ -319,6 +323,9 @@ export const GlobalHeader = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const identityApi = useApi(identityApiRef);
+
+  const { role: currentRole, hasRole } = useUserRoleContext();
+  const isDeveloper = hasRole('developer');
 
   if (location.pathname.includes('/setup')) {
     return null;
@@ -437,12 +444,17 @@ export const GlobalHeader = () => {
           aria-label="User profile"
         >
           <AccountCircle />
-          <Typography className={classes.profileName}>Guest</Typography>
+          <Typography className={classes.profileName}>
+            Guest
+            <span style={{ fontSize: 10, opacity: 0.6, marginLeft: 4, textTransform: 'uppercase' }}>
+              ({currentRole})
+            </span>
+          </Typography>
         </IconButton>
 
         {/* === Popovers & Menus === */}
 
-        {/* Create quick actions menu */}
+        {/* Create quick actions menu — adapts to user role */}
         <Menu
           anchorEl={createAnchor}
           open={Boolean(createAnchor)}
@@ -452,28 +464,34 @@ export const GlobalHeader = () => {
           getContentAnchorEl={null}
           className={classes.menu}
         >
-          <MenuItem
-            onClick={() => { setCreateAnchor(null); navigate('/self-service/projects/create'); }}
-            className={classes.menuItem}
-          >
-            <ListItemIcon><FolderOpenIcon fontSize="small" /></ListItemIcon>
-            <ListItemText primary="Create project" secondary="From a project template" />
-          </MenuItem>
-          <MenuItem
-            onClick={() => { setCreateAnchor(null); navigate('/self-service/ee/create'); }}
-            className={classes.menuItem}
-          >
-            <ListItemIcon><MemoryIcon fontSize="small" /></ListItemIcon>
-            <ListItemText primary="Create execution environment" secondary="Build a custom EE" />
-          </MenuItem>
-          <MenuItem
-            onClick={() => { setCreateAnchor(null); navigate('/self-service/projects/migrate'); }}
-            className={classes.menuItem}
-          >
-            <ListItemIcon><TransformIcon fontSize="small" /></ListItemIcon>
-            <ListItemText primary="Migrate to Ansible" secondary="Convert a Chef or Puppet project" />
-          </MenuItem>
-          <Divider />
+          {isDeveloper && (
+            <MenuItem
+              onClick={() => { setCreateAnchor(null); navigate('/self-service/repositories/create'); }}
+              className={classes.menuItem}
+            >
+              <ListItemIcon><FolderOpenIcon fontSize="small" /></ListItemIcon>
+              <ListItemText primary="Create repository" secondary="From a repository template" />
+            </MenuItem>
+          )}
+          {isDeveloper && (
+            <MenuItem
+              onClick={() => { setCreateAnchor(null); navigate('/self-service/ee/create'); }}
+              className={classes.menuItem}
+            >
+              <ListItemIcon><MemoryIcon fontSize="small" /></ListItemIcon>
+              <ListItemText primary="Create execution environment" secondary="Build a custom EE" />
+            </MenuItem>
+          )}
+          {isDeveloper && (
+            <MenuItem
+              onClick={() => { setCreateAnchor(null); navigate('/self-service/repositories/migrate'); }}
+              className={classes.menuItem}
+            >
+              <ListItemIcon><TransformIcon fontSize="small" /></ListItemIcon>
+              <ListItemText primary="Migrate to Ansible" secondary="Convert a Chef or Puppet repository" />
+            </MenuItem>
+          )}
+          {isDeveloper && <Divider />}
           <MenuItem
             onClick={() => { setCreateAnchor(null); navigate('/create'); }}
             className={classes.menuItem}
@@ -594,6 +612,33 @@ export const GlobalHeader = () => {
           onClose={() => setProfileAnchor(null)}
           className={classes.menu}
         >
+          {/* Role switcher — prototype only */}
+          <MenuItem disabled style={{ opacity: 0.6 }}>
+            <ListItemText
+              primary="Switch role"
+              primaryTypographyProps={{ variant: 'caption', style: { fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 } }}
+            />
+          </MenuItem>
+          {([
+            { role: 'sme' as UserRole, label: 'SME', icon: <PersonOutlineIcon fontSize="small" /> },
+            { role: 'developer' as UserRole, label: 'Developer', icon: <BuildIcon fontSize="small" /> },
+            { role: 'admin' as UserRole, label: 'Admin', icon: <SupervisorAccountIcon fontSize="small" /> },
+          ]).map(({ role: r, label, icon }) => (
+            <MenuItem
+              key={r}
+              className={classes.menuItem}
+              selected={currentRole === r}
+              onClick={() => {
+                localStorage.setItem('portal-user-role', r);
+                setProfileAnchor(null);
+                window.location.href = '/';
+              }}
+            >
+              <ListItemIcon>{icon}</ListItemIcon>
+              <ListItemText primary={label} />
+            </MenuItem>
+          ))}
+          <Divider />
           <MenuItem
             component={Link}
             to="/settings"

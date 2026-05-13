@@ -19,7 +19,7 @@ export const SEARCH_CATALOG: SearchResultItem[] = [
     kind: 'project',
     description: 'Auto-scaling playbooks for web applications across AWS and Azure',
     tags: ['aws', 'azure', 'scaling', 'web'],
-    url: '/self-service/projects/catalog',
+    url: '/self-service/repositories/list',
     source: 'GitHub',
     lastUpdated: '2 hours ago',
   },
@@ -29,7 +29,7 @@ export const SEARCH_CATALOG: SearchResultItem[] = [
     kind: 'project',
     description: 'Automated network compliance scanning and remediation for enterprise routers and switches',
     tags: ['network', 'compliance', 'cisco', 'juniper'],
-    url: '/self-service/projects/catalog',
+    url: '/self-service/repositories/list',
     source: 'GitHub',
     lastUpdated: '4 hours ago',
   },
@@ -39,7 +39,7 @@ export const SEARCH_CATALOG: SearchResultItem[] = [
     kind: 'project',
     description: 'Infrastructure provisioning for AWS including VPC, EC2, RDS, and IAM setup',
     tags: ['aws', 'provisioning', 'cloud', 'infrastructure'],
-    url: '/self-service/projects/catalog',
+    url: '/self-service/repositories/list',
     source: 'GitHub',
     lastUpdated: '1 day ago',
   },
@@ -49,7 +49,7 @@ export const SEARCH_CATALOG: SearchResultItem[] = [
     kind: 'project',
     description: 'Firewall rule management and policy enforcement across Palo Alto and Fortinet devices',
     tags: ['security', 'firewall', 'palo-alto', 'fortinet'],
-    url: '/self-service/projects/catalog',
+    url: '/self-service/repositories/list',
     source: 'GitHub',
     lastUpdated: '1 day ago',
   },
@@ -59,7 +59,7 @@ export const SEARCH_CATALOG: SearchResultItem[] = [
     kind: 'project',
     description: 'Automated RHEL patching with rolling updates, rollback support, and compliance reporting',
     tags: ['rhel', 'patching', 'linux', 'security'],
-    url: '/self-service/projects/catalog',
+    url: '/self-service/repositories/list',
     source: 'GitHub',
     lastUpdated: '3 days ago',
   },
@@ -69,7 +69,7 @@ export const SEARCH_CATALOG: SearchResultItem[] = [
     kind: 'project',
     description: 'CIS benchmark scanning and hardening for RHEL, Ubuntu, and Windows servers',
     tags: ['cis', 'compliance', 'hardening', 'security'],
-    url: '/self-service/projects/catalog',
+    url: '/self-service/repositories/list',
     source: 'GitHub',
     lastUpdated: '5 days ago',
   },
@@ -185,7 +185,7 @@ export const SEARCH_CATALOG: SearchResultItem[] = [
     kind: 'template',
     description: 'Create a new Ansible project with AI-generated playbooks based on your description',
     tags: ['ai', 'jumpstart', 'lightspeed'],
-    url: '/self-service/projects/create',
+    url: '/self-service/repositories/create',
     lastUpdated: '1 week ago',
   },
   {
@@ -194,7 +194,7 @@ export const SEARCH_CATALOG: SearchResultItem[] = [
     kind: 'template',
     description: 'Create a project from an existing Git repository with CI/CD pipeline setup',
     tags: ['git', 'source-code', 'pipeline'],
-    url: '/self-service/projects/create',
+    url: '/self-service/repositories/create',
     lastUpdated: '1 week ago',
   },
   {
@@ -203,7 +203,7 @@ export const SEARCH_CATALOG: SearchResultItem[] = [
     kind: 'template',
     description: 'Create a project linked to an existing AAP job template for monitoring and management',
     tags: ['aap', 'job-template', 'import'],
-    url: '/self-service/projects/create',
+    url: '/self-service/repositories/create',
     lastUpdated: '1 week ago',
   },
   {
@@ -255,10 +255,10 @@ export const KIND_LABELS: Record<SearchResultKind, string> = {
 };
 
 export const KIND_URLS: Record<SearchResultKind, string> = {
-  project: '/self-service/projects/catalog',
+  project: '/self-service/repositories/list',
   collection: '/self-service/collections',
   ee: '/self-service/ee/catalog',
-  template: '/self-service/projects/create',
+  template: '/self-service/repositories/create',
   documentation: '/docs',
 };
 

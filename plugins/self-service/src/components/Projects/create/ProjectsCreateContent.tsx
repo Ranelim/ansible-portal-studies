@@ -191,7 +191,7 @@ export const ProjectsCreateContent = () => {
 
   const handleGovernanceComplete = useCallback((repoName: string) => {
     setGovernanceRepo(null);
-    navigate('/self-service/projects/catalog', {
+    navigate('/self-service/repositories/list', {
       state: { justGoverned: repoName },
     });
   }, [navigate]);
