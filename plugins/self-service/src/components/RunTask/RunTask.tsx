@@ -1463,10 +1463,10 @@ export const RunTask = () => {
                 Awaiting approval
               </Typography>
             </Box>
-            <Typography variant="body2" color="textSecondary" style={{ marginBottom: aapWorkflowUrl ? 12 : 0 }}>
+            <Typography variant="body2" color="textSecondary" style={{ marginBottom: (isDeveloperOrAbove && aapWorkflowUrl) ? 12 : 0 }}>
               This automation is paused at an approval step. An administrator needs to approve or deny the request before execution can continue.
             </Typography>
-            {aapWorkflowUrl && (
+            {isDeveloperOrAbove && aapWorkflowUrl && (
               <Button
                 href={aapWorkflowUrl}
                 target="_blank"
@@ -1528,7 +1528,7 @@ export const RunTask = () => {
               alignItems="center"
               style={{ gap: 8, marginTop: 12 }}
             >
-              {(templateType === 'service' || templateType === 'job-template' || templateType === 'workflow-job-template') && aapWorkflowUrl && (
+              {isDeveloperOrAbove && (templateType === 'service' || templateType === 'job-template' || templateType === 'workflow-job-template') && aapWorkflowUrl && (
                 <Button
                   href={aapWorkflowUrl}
                   target="_blank"
@@ -1781,7 +1781,7 @@ export const RunTask = () => {
                   <Typography variant="subtitle2" color="textPrimary">
                     Automation activity
                   </Typography>
-                  {aapWorkflowUrl && (
+                  {isDeveloperOrAbove && aapWorkflowUrl && (
                     <Link
                       href={aapWorkflowUrl}
                       target="_blank"

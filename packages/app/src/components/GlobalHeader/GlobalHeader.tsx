@@ -631,7 +631,7 @@ export const GlobalHeader = () => {
               onClick={() => {
                 localStorage.setItem('portal-user-role', r);
                 setProfileAnchor(null);
-                window.location.href = '/';
+                window.location.reload();
               }}
             >
               <ListItemIcon>{icon}</ListItemIcon>
