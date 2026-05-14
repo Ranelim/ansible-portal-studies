@@ -43,7 +43,10 @@ import OpenInNewIcon from '@material-ui/icons/OpenInNew';
 import HelpOutlineIcon from '@material-ui/icons/HelpOutline';
 import BlockIcon from '@material-ui/icons/Block';
 import LoopIcon from '@material-ui/icons/Loop';
+import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
+import ExpandLessIcon from '@material-ui/icons/ExpandLess';
 import { rootRouteRef, selectedTemplateRouteRef } from '../../routes';
+import { useUserRole } from '../../hooks/useUserRole';
 import { createTarArchive } from '../utils/tarArchiveUtils';
 import {
   resolveEeFileNameFromParameters,
@@ -873,6 +876,11 @@ export const RunTask = () => {
   const navigate = useNavigate();
   const rootLink = useRouteRef(rootRouteRef);
   const templateRouteRef = useRouteRef(selectedTemplateRouteRef);
+  const { hasRole } = useUserRole();
+  const isDeveloperOrAbove = hasRole('developer');
+  const [logsExpanded, setLogsExpanded] = useState(false);
+  const [logsForceVisible, setLogsForceVisible] = useState(false);
+  const showExecutionLogs = isDeveloperOrAbove || logsForceVisible;
 
   const { allowed: canCancel } = usePermission({
     permission: taskCancelPermission,
@@ -1540,7 +1548,9 @@ export const RunTask = () => {
                     return !!link.entityRef && link.entityRef.trim() !== '';
                   if ('url' in link) {
                     const url = link.url;
-                    return !!url && url !== '#' && url.trim() !== '';
+                    if (!url || url === '#' || url.trim() === '') return false;
+                    if (aapWorkflowUrl && url === aapWorkflowUrl) return false;
+                    return true;
                   }
                   return false;
                 })
@@ -1630,10 +1640,11 @@ export const RunTask = () => {
               <Button
                 onClick={() => {
                   setActiveTab(0);
+                  setLogsForceVisible(true);
+                  setLogsExpanded(true);
                   setTimeout(() => {
-                    const el = document.querySelector('[class*="logBg"], [style*="background"]');
                     const logSection = document.getElementById('scaffolder-logs');
-                    (logSection || el)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    logSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                   }, 100);
                 }}
                 variant="outlined"
@@ -1763,53 +1774,9 @@ export const RunTask = () => {
               />
             )}
 
-            {/* Scaffolder activity logs */}
-            <Box marginTop={2} id="scaffolder-logs">
-              <Box
-                style={{
-                  borderRadius: 4,
-                  padding: 16,
-                  background: logBg,
-                  color: logColor,
-                }}
-              >
-                {Object.entries(stepLogs).length === 0 ||
-                Object.values(stepLogs).every(logs => logs.length === 0) ? (
-                  <Typography variant="body2" color="textSecondary">
-                    No logs available yet.
-                  </Typography>
-                ) : (
-                  Object.entries(stepLogs).map(
-                    ([step, logs]) =>
-                      logs.length > 0 && (
-                        <div key={step}>
-                          <Typography
-                            variant="body2"
-                            style={{ fontWeight: 'bold', marginTop: 10 }}
-                            color="textPrimary"
-                          >
-                            {step}:
-                          </Typography>
-                          {logs.map((log, index) => (
-                            <Typography
-                              key={`${step}-log-${index}`}
-                              variant="body2"
-                              color="textSecondary"
-                              style={{ whiteSpace: 'break-spaces' }}
-                            >
-                              <MarkdownContent content={cleanLogContent(log)} />
-                            </Typography>
-                          ))}
-                        </div>
-                      ),
-                  )
-                )}
-              </Box>
-            </Box>
-
-            {/* Automation activity — inline step list with status for job/workflow templates */}
+            {/* Automation activity — promoted above logs for all AAP-backed templates */}
             {aapLogs.length > 0 && (
-              <Box marginTop={3}>
+              <Box marginTop={2}>
                 <Box display="flex" alignItems="center" justifyContent="space-between" style={{ marginBottom: 12 }}>
                   <Typography variant="subtitle2" color="textPrimary">
                     Automation activity
@@ -1853,7 +1820,7 @@ export const RunTask = () => {
                       statusColor = '#42a5f5';
                     } else if (nodeStatus === 'pending' || nodeStatus === 'waiting') {
                       statusIcon = <PauseCircleOutlineIcon style={{ fontSize: 18, color: '#ff9800' }} />;
-                      statusLabel = nodeStatus === 'waiting' ? 'Waiting for approval' : 'Pending';
+                      statusLabel = 'Pending';
                       statusColor = '#ff9800';
                     } else if (nodeStatus === 'canceled') {
                       statusIcon = <BlockIcon style={{ fontSize: 18, color: isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.35)' }} />;
@@ -1891,6 +1858,75 @@ export const RunTask = () => {
                   <Typography variant="caption" color="textSecondary" style={{ marginTop: 6, display: 'block' }}>
                     {aapLogs.filter(n => n.status?.toLowerCase() === 'successful').length} of {aapLogs.length} steps complete
                   </Typography>
+                )}
+              </Box>
+            )}
+
+            {/* Execution logs — collapsible, hidden for SME users */}
+            {showExecutionLogs && (
+              <Box marginTop={2} id="scaffolder-logs">
+                <Box
+                  display="flex"
+                  alignItems="center"
+                  onClick={() => setLogsExpanded(!logsExpanded)}
+                  style={{
+                    cursor: 'pointer',
+                    padding: '8px 12px',
+                    borderRadius: logsExpanded ? '4px 4px 0 0' : 4,
+                    background: logBg,
+                    userSelect: 'none',
+                  }}
+                >
+                  {logsExpanded
+                    ? <ExpandLessIcon style={{ fontSize: 20, color: isDark ? '#b0b0b0' : 'rgba(0,0,0,0.5)', marginRight: 8 }} />
+                    : <ExpandMoreIcon style={{ fontSize: 20, color: isDark ? '#b0b0b0' : 'rgba(0,0,0,0.5)', marginRight: 8 }} />
+                  }
+                  <Typography variant="subtitle2" color="textSecondary" style={{ fontSize: '0.8125rem' }}>
+                    Execution logs
+                  </Typography>
+                </Box>
+                {logsExpanded && (
+                  <Box
+                    style={{
+                      borderRadius: '0 0 4px 4px',
+                      padding: 16,
+                      background: logBg,
+                      color: logColor,
+                      borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
+                    }}
+                  >
+                    {Object.entries(stepLogs).length === 0 ||
+                    Object.values(stepLogs).every(logs => logs.length === 0) ? (
+                      <Typography variant="body2" color="textSecondary">
+                        No logs available yet.
+                      </Typography>
+                    ) : (
+                      Object.entries(stepLogs).map(
+                        ([step, logs]) =>
+                          logs.length > 0 && (
+                            <div key={step}>
+                              <Typography
+                                variant="body2"
+                                style={{ fontWeight: 'bold', marginTop: 10 }}
+                                color="textPrimary"
+                              >
+                                {step}:
+                              </Typography>
+                              {logs.map((log, index) => (
+                                <Typography
+                                  key={`${step}-log-${index}`}
+                                  variant="body2"
+                                  color="textSecondary"
+                                  style={{ whiteSpace: 'break-spaces' }}
+                                >
+                                  <MarkdownContent content={cleanLogContent(log)} />
+                                </Typography>
+                              ))}
+                            </div>
+                          ),
+                      )
+                    )}
+                  </Box>
                 )}
               </Box>
             )}
