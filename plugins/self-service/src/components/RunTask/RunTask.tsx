@@ -43,8 +43,6 @@ import OpenInNewIcon from '@material-ui/icons/OpenInNew';
 import HelpOutlineIcon from '@material-ui/icons/HelpOutline';
 import BlockIcon from '@material-ui/icons/Block';
 import LoopIcon from '@material-ui/icons/Loop';
-import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
-import ExpandLessIcon from '@material-ui/icons/ExpandLess';
 import { rootRouteRef, selectedTemplateRouteRef } from '../../routes';
 import { useUserRole } from '../../hooks/useUserRole';
 import { createTarArchive } from '../utils/tarArchiveUtils';
@@ -878,9 +876,6 @@ export const RunTask = () => {
   const templateRouteRef = useRouteRef(selectedTemplateRouteRef);
   const { hasRole } = useUserRole();
   const isDeveloperOrAbove = hasRole('developer');
-  const [logsExpanded, setLogsExpanded] = useState(false);
-  const [logsForceVisible, setLogsForceVisible] = useState(false);
-  const showExecutionLogs = isDeveloperOrAbove || logsForceVisible;
 
   const { allowed: canCancel } = usePermission({
     permission: taskCancelPermission,
@@ -1500,7 +1495,7 @@ export const RunTask = () => {
                   {templateDisplayName} completed successfully
                 </Typography>
                 <Typography variant="body2" color="textSecondary">
-                  All steps have finished. Review the automation activity below for details.
+                  All steps have finished successfully.
                 </Typography>
               </Box>
             ) : (
@@ -1640,8 +1635,6 @@ export const RunTask = () => {
               <Button
                 onClick={() => {
                   setActiveTab(0);
-                  setLogsForceVisible(true);
-                  setLogsExpanded(true);
                   setTimeout(() => {
                     const logSection = document.getElementById('scaffolder-logs');
                     logSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -1678,259 +1671,229 @@ export const RunTask = () => {
           )}
         </Box>
 
-        {/* Tab bar */}
+        {/* Scaffolder progress steps — always visible, not inside a tab */}
+        {allSteps.some(s => s.status === 'awaiting_approval') ? (
+          <Box
+            style={{
+              border: `1px solid ${isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)'}`,
+              borderRadius: 8,
+              overflow: 'hidden',
+            }}
+          >
+            <Box style={{ height: 4, background: '#ff9800' }} />
+            <Box
+              style={{
+                padding: '24px 16px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              {allSteps.map((step, idx) => {
+                let icon: React.ReactNode;
+                if (step.status === 'completed') {
+                  icon = <CheckCircleOutlineIcon style={{ color: '#4caf50', fontSize: 28 }} />;
+                } else if (step.status === 'awaiting_approval') {
+                  icon = <PauseCircleOutlineIcon style={{ color: '#ff9800', fontSize: 28 }} />;
+                } else if (step.status === 'failed') {
+                  icon = <ErrorOutlineIcon style={{ color: '#f44336', fontSize: 28 }} />;
+                } else if (step.status === 'processing') {
+                  icon = <CircularProgress size={24} />;
+                } else {
+                  icon = (
+                    <Box
+                      style={{
+                        width: 24,
+                        height: 24,
+                        borderRadius: '50%',
+                        border: `2px solid ${isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.2)'}`,
+                      }}
+                    />
+                  );
+                }
+                return (
+                  <Box key={step.id} display="flex" alignItems="center">
+                    {idx > 0 && (
+                      <Box
+                        style={{
+                          width: 48,
+                          height: 2,
+                          background: isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)',
+                        }}
+                      />
+                    )}
+                    <Box display="flex" flexDirection="column" alignItems="center" style={{ minWidth: 100 }}>
+                      {icon}
+                      <Typography
+                        variant="caption"
+                        color="textSecondary"
+                        style={{
+                          marginTop: 6,
+                          textAlign: 'center',
+                        }}
+                      >
+                        {step.name}
+                      </Typography>
+                    </Box>
+                  </Box>
+                );
+              })}
+            </Box>
+          </Box>
+        ) : (
+          <TaskSteps
+            steps={allSteps}
+            activeStep={activeStep}
+            isComplete={completed}
+            isError={Boolean(error)}
+          />
+        )}
+
+        {/* Automation activity — only for dev/admin on AAP-backed templates */}
+        {isDeveloperOrAbove && aapLogs.length > 0 && (
+          <Box marginTop={2}>
+            <Box display="flex" alignItems="center" justifyContent="space-between" style={{ marginBottom: 12 }}>
+              <Typography variant="subtitle2" color="textPrimary">
+                Automation activity
+              </Typography>
+              {aapWorkflowUrl && (
+                <Link
+                  href={aapWorkflowUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  variant="body2"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '0.8125rem' }}
+                >
+                  View in Ansible Automation Platform
+                  <OpenInNewIcon style={{ fontSize: 13 }} />
+                </Link>
+              )}
+            </Box>
+            <Box
+              style={{
+                borderRadius: 4,
+                border: `1px solid ${isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)'}`,
+                overflow: 'hidden',
+              }}
+            >
+              {aapLogs.map((node, idx) => {
+                const nodeStatus = node.status?.toLowerCase() || 'pending';
+                let statusIcon: React.ReactNode;
+                let statusLabel: string;
+                let statusColor: string;
+                if (nodeStatus === 'successful') {
+                  statusIcon = <CheckCircleOutlineIcon style={{ fontSize: 18, color: '#4caf50' }} />;
+                  statusLabel = 'Completed';
+                  statusColor = '#4caf50';
+                } else if (nodeStatus === 'failed') {
+                  statusIcon = <ErrorOutlineIcon style={{ fontSize: 18, color: '#f44336' }} />;
+                  statusLabel = 'Failed';
+                  statusColor = '#f44336';
+                } else if (nodeStatus === 'running') {
+                  statusIcon = <CircularProgress size={16} style={{ color: '#42a5f5' }} />;
+                  statusLabel = 'Running';
+                  statusColor = '#42a5f5';
+                } else if (nodeStatus === 'pending' || nodeStatus === 'waiting') {
+                  statusIcon = <PauseCircleOutlineIcon style={{ fontSize: 18, color: '#ff9800' }} />;
+                  statusLabel = 'Pending';
+                  statusColor = '#ff9800';
+                } else if (nodeStatus === 'canceled') {
+                  statusIcon = <BlockIcon style={{ fontSize: 18, color: isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.35)' }} />;
+                  statusLabel = 'Canceled';
+                  statusColor = isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.35)';
+                } else {
+                  statusIcon = <MoreHorizIcon style={{ fontSize: 18, color: isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.25)' }} />;
+                  statusLabel = 'Pending';
+                  statusColor = isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.25)';
+                }
+                return (
+                  <Box
+                    key={node.id}
+                    display="flex"
+                    alignItems="center"
+                    style={{
+                      padding: '10px 16px',
+                      gap: 12,
+                      borderTop: idx > 0 ? `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}` : undefined,
+                      background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)',
+                    }}
+                  >
+                    {statusIcon}
+                    <Typography variant="body2" color="textPrimary" style={{ flex: 1, fontWeight: 500 }}>
+                      {node.label}
+                    </Typography>
+                    <Typography variant="caption" style={{ color: statusColor, fontWeight: 500 }}>
+                      {statusLabel}
+                    </Typography>
+                  </Box>
+                );
+              })}
+            </Box>
+            {aapLogs.length > 1 && (
+              <Typography variant="caption" color="textSecondary" style={{ marginTop: 6, display: 'block' }}>
+                {aapLogs.filter(n => n.status?.toLowerCase() === 'successful').length} of {aapLogs.length} steps complete
+              </Typography>
+            )}
+          </Box>
+        )}
+
+        {/* Tab bar — Logs always present; README conditional */}
         <Tabs
           value={activeTab}
           onChange={(_, v) => setActiveTab(v)}
           indicatorColor="primary"
           textColor="primary"
-          style={{ minHeight: 40, borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)'}`, marginBottom: 16 }}
+          style={{ minHeight: 40, borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)'}`, marginBottom: 16, marginTop: 24 }}
         >
-          <Tab label="Template" value={0} style={{ minHeight: 40, textTransform: 'none', fontSize: 13 }} />
+          <Tab label="Logs" value={0} style={{ minHeight: 40, textTransform: 'none', fontSize: 13 }} />
           {readmeContent && (
             <Tab label="README" value={2} style={{ minHeight: 40, textTransform: 'none', fontSize: 13 }} />
           )}
         </Tabs>
 
-        {/* Template tab — pipeline steps + logs + automation activity */}
+        {/* Logs tab */}
         {activeTab === 0 && (
-          <Box>
-            {/* Scaffolder progress steps */}
-            {allSteps.some(s => s.status === 'awaiting_approval') ? (
-              <Box
-                style={{
-                  border: `1px solid ${isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)'}`,
-                  borderRadius: 8,
-                  overflow: 'hidden',
-                }}
-              >
-                {/* Top stripe — amber for awaiting approval */}
-                <Box style={{ height: 4, background: '#ff9800' }} />
-                <Box
-                  style={{
-                    padding: '24px 16px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  {allSteps.map((step, idx) => {
-                    let icon: React.ReactNode;
-                    if (step.status === 'completed') {
-                      icon = <CheckCircleOutlineIcon style={{ color: '#4caf50', fontSize: 28 }} />;
-                    } else if (step.status === 'awaiting_approval') {
-                      icon = <PauseCircleOutlineIcon style={{ color: '#ff9800', fontSize: 28 }} />;
-                    } else if (step.status === 'failed') {
-                      icon = <ErrorOutlineIcon style={{ color: '#f44336', fontSize: 28 }} />;
-                    } else if (step.status === 'processing') {
-                      icon = <CircularProgress size={24} />;
-                    } else {
-                      icon = (
-                        <Box
-                          style={{
-                            width: 24,
-                            height: 24,
-                            borderRadius: '50%',
-                            border: `2px solid ${isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.2)'}`,
-                          }}
-                        />
-                      );
-                    }
-                    return (
-                      <Box key={step.id} display="flex" alignItems="center">
-                        {idx > 0 && (
-                          <Box
-                            style={{
-                              width: 48,
-                              height: 2,
-                              background: isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)',
-                            }}
-                          />
-                        )}
-                        <Box display="flex" flexDirection="column" alignItems="center" style={{ minWidth: 100 }}>
-                          {icon}
+          <Box id="scaffolder-logs">
+            <Box
+              style={{
+                borderRadius: 4,
+                padding: 16,
+                background: logBg,
+                color: logColor,
+              }}
+            >
+              {Object.entries(stepLogs).length === 0 ||
+              Object.values(stepLogs).every(logs => logs.length === 0) ? (
+                <Typography variant="body2" color="textSecondary">
+                  No logs available yet.
+                </Typography>
+              ) : (
+                Object.entries(stepLogs).map(
+                  ([step, logs]) =>
+                    logs.length > 0 && (
+                      <div key={step}>
+                        <Typography
+                          variant="body2"
+                          style={{ fontWeight: 'bold', marginTop: 10 }}
+                          color="textPrimary"
+                        >
+                          {step}:
+                        </Typography>
+                        {logs.map((log, index) => (
                           <Typography
-                            variant="caption"
+                            key={`${step}-log-${index}`}
+                            variant="body2"
                             color="textSecondary"
-                            style={{
-                              marginTop: 6,
-                              textAlign: 'center',
-                            }}
+                            style={{ whiteSpace: 'break-spaces' }}
                           >
-                            {step.name}
+                            <MarkdownContent content={cleanLogContent(log)} />
                           </Typography>
-                        </Box>
-                      </Box>
-                    );
-                  })}
-                </Box>
-              </Box>
-            ) : (
-              <TaskSteps
-                steps={allSteps}
-                activeStep={activeStep}
-                isComplete={completed}
-                isError={Boolean(error)}
-              />
-            )}
-
-            {/* Automation activity — promoted above logs for all AAP-backed templates */}
-            {aapLogs.length > 0 && (
-              <Box marginTop={2}>
-                <Box display="flex" alignItems="center" justifyContent="space-between" style={{ marginBottom: 12 }}>
-                  <Typography variant="subtitle2" color="textPrimary">
-                    Automation activity
-                  </Typography>
-                  {isDeveloperOrAbove && aapWorkflowUrl && (
-                    <Link
-                      href={aapWorkflowUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      variant="body2"
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '0.8125rem' }}
-                    >
-                      View in Ansible Automation Platform
-                      <OpenInNewIcon style={{ fontSize: 13 }} />
-                    </Link>
-                  )}
-                </Box>
-                <Box
-                  style={{
-                    borderRadius: 4,
-                    border: `1px solid ${isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)'}`,
-                    overflow: 'hidden',
-                  }}
-                >
-                  {aapLogs.map((node, idx) => {
-                    const nodeStatus = node.status?.toLowerCase() || 'pending';
-                    let statusIcon: React.ReactNode;
-                    let statusLabel: string;
-                    let statusColor: string;
-                    if (nodeStatus === 'successful') {
-                      statusIcon = <CheckCircleOutlineIcon style={{ fontSize: 18, color: '#4caf50' }} />;
-                      statusLabel = 'Completed';
-                      statusColor = '#4caf50';
-                    } else if (nodeStatus === 'failed') {
-                      statusIcon = <ErrorOutlineIcon style={{ fontSize: 18, color: '#f44336' }} />;
-                      statusLabel = 'Failed';
-                      statusColor = '#f44336';
-                    } else if (nodeStatus === 'running') {
-                      statusIcon = <CircularProgress size={16} style={{ color: '#42a5f5' }} />;
-                      statusLabel = 'Running';
-                      statusColor = '#42a5f5';
-                    } else if (nodeStatus === 'pending' || nodeStatus === 'waiting') {
-                      statusIcon = <PauseCircleOutlineIcon style={{ fontSize: 18, color: '#ff9800' }} />;
-                      statusLabel = 'Pending';
-                      statusColor = '#ff9800';
-                    } else if (nodeStatus === 'canceled') {
-                      statusIcon = <BlockIcon style={{ fontSize: 18, color: isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.35)' }} />;
-                      statusLabel = 'Canceled';
-                      statusColor = isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.35)';
-                    } else {
-                      statusIcon = <MoreHorizIcon style={{ fontSize: 18, color: isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.25)' }} />;
-                      statusLabel = 'Pending';
-                      statusColor = isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.25)';
-                    }
-                    return (
-                      <Box
-                        key={node.id}
-                        display="flex"
-                        alignItems="center"
-                        style={{
-                          padding: '10px 16px',
-                          gap: 12,
-                          borderTop: idx > 0 ? `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}` : undefined,
-                          background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)',
-                        }}
-                      >
-                        {statusIcon}
-                        <Typography variant="body2" color="textPrimary" style={{ flex: 1, fontWeight: 500 }}>
-                          {node.label}
-                        </Typography>
-                        <Typography variant="caption" style={{ color: statusColor, fontWeight: 500 }}>
-                          {statusLabel}
-                        </Typography>
-                      </Box>
-                    );
-                  })}
-                </Box>
-                {aapLogs.length > 1 && (
-                  <Typography variant="caption" color="textSecondary" style={{ marginTop: 6, display: 'block' }}>
-                    {aapLogs.filter(n => n.status?.toLowerCase() === 'successful').length} of {aapLogs.length} steps complete
-                  </Typography>
-                )}
-              </Box>
-            )}
-
-            {/* Execution logs — collapsible, hidden for SME users */}
-            {showExecutionLogs && (
-              <Box marginTop={2} id="scaffolder-logs">
-                <Box
-                  display="flex"
-                  alignItems="center"
-                  onClick={() => setLogsExpanded(!logsExpanded)}
-                  style={{
-                    cursor: 'pointer',
-                    padding: '8px 12px',
-                    borderRadius: logsExpanded ? '4px 4px 0 0' : 4,
-                    background: logBg,
-                    userSelect: 'none',
-                  }}
-                >
-                  {logsExpanded
-                    ? <ExpandLessIcon style={{ fontSize: 20, color: isDark ? '#b0b0b0' : 'rgba(0,0,0,0.5)', marginRight: 8 }} />
-                    : <ExpandMoreIcon style={{ fontSize: 20, color: isDark ? '#b0b0b0' : 'rgba(0,0,0,0.5)', marginRight: 8 }} />
-                  }
-                  <Typography variant="subtitle2" color="textSecondary" style={{ fontSize: '0.8125rem' }}>
-                    Execution logs
-                  </Typography>
-                </Box>
-                {logsExpanded && (
-                  <Box
-                    style={{
-                      borderRadius: '0 0 4px 4px',
-                      padding: 16,
-                      background: logBg,
-                      color: logColor,
-                      borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
-                    }}
-                  >
-                    {Object.entries(stepLogs).length === 0 ||
-                    Object.values(stepLogs).every(logs => logs.length === 0) ? (
-                      <Typography variant="body2" color="textSecondary">
-                        No logs available yet.
-                      </Typography>
-                    ) : (
-                      Object.entries(stepLogs).map(
-                        ([step, logs]) =>
-                          logs.length > 0 && (
-                            <div key={step}>
-                              <Typography
-                                variant="body2"
-                                style={{ fontWeight: 'bold', marginTop: 10 }}
-                                color="textPrimary"
-                              >
-                                {step}:
-                              </Typography>
-                              {logs.map((log, index) => (
-                                <Typography
-                                  key={`${step}-log-${index}`}
-                                  variant="body2"
-                                  color="textSecondary"
-                                  style={{ whiteSpace: 'break-spaces' }}
-                                >
-                                  <MarkdownContent content={cleanLogContent(log)} />
-                                </Typography>
-                              ))}
-                            </div>
-                          ),
-                      )
-                    )}
-                  </Box>
-                )}
-              </Box>
-            )}
-
+                        ))}
+                      </div>
+                    ),
+                )
+              )}
+            </Box>
           </Box>
         )}
 
