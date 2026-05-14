@@ -123,7 +123,8 @@ const RoleAdaptiveSidebar = () => {
         <SidebarSearchModal />
       </SidebarGroup>
       <SidebarGroup label="Menu" icon={<MenuIcon />}>
-        {/* Shared — visible to all roles */}
+        {/* Automate — visible to all roles */}
+        <SidebarSectionLabel text="Automate" />
         <SidebarItem
           icon={AddCircleOutlineIcon}
           to="/create"
