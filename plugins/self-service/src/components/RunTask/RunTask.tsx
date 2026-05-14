@@ -1493,14 +1493,14 @@ export const RunTask = () => {
               background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)',
             }}
           >
-            {/* For job/workflow templates, show a clean summary instead of raw template output */}
+            {/* For job/workflow templates, show a clean summary */}
             {(templateType === 'service' || templateType === 'job-template' || templateType === 'workflow-job-template') ? (
               <Box marginBottom={1}>
                 <Typography variant="subtitle2" color="textPrimary" style={{ marginBottom: 4 }}>
                   {templateDisplayName} completed successfully
                 </Typography>
                 <Typography variant="body2" color="textSecondary">
-                  All steps have finished. Review the automation activity below for details.
+                  All steps have finished successfully.
                 </Typography>
               </Box>
             ) : (
@@ -1611,6 +1611,13 @@ export const RunTask = () => {
                   View README
                 </Button>
               )}
+              <Button
+                onClick={() => navigate(`${rootLink()}/create`)}
+                variant="outlined"
+                size="small"
+              >
+                Browse templates
+              </Button>
             </Box>
           </Box>
         )}
