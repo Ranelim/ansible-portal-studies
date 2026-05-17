@@ -1412,11 +1412,62 @@ export const RunTask = () => {
               </Box>
             </Box>
 
-            {/* Meta line: Task ID */}
+            {/* Meta line: Task ID + AAP context for dev/admin */}
             <Box className={classes.metaLine}>
               <span style={{ fontFamily: 'monospace', fontSize: '0.8125rem', opacity: 0.5 }}>
                 ID: {shortId(taskId)}
               </span>
+              {isDeveloperOrAbove && aapJobId && (
+                <>
+                  <span style={{ opacity: 0.3 }}>&middot;</span>
+                  <span style={{ fontFamily: 'monospace', fontSize: '0.8125rem', opacity: 0.5 }}>
+                    AAP {templateType === 'workflow-job-template' ? 'Workflow' : 'Job'} {aapJobId}
+                  </span>
+                  {(() => {
+                    const completedCount = aapLogs.filter(n => n.status?.toLowerCase() === 'successful').length;
+                    const totalCount = aapLogs.length;
+                    const hasRunning = aapLogs.some(n => n.status?.toLowerCase() === 'running');
+                    const hasFailed = aapLogs.some(n => n.status?.toLowerCase() === 'failed' || n.status?.toLowerCase() === 'error');
+                    let statusText: string;
+                    let statusColor: string;
+                    if (completed && !error && completedCount === totalCount && totalCount > 0) {
+                      statusText = 'Completed';
+                      statusColor = '#4caf50';
+                    } else if (hasFailed) {
+                      statusText = 'Failed';
+                      statusColor = '#f44336';
+                    } else if (hasRunning) {
+                      statusText = totalCount > 1 ? `Running · ${completedCount} of ${totalCount} nodes` : 'Running';
+                      statusColor = '#42a5f5';
+                    } else if (completed && error) {
+                      statusText = 'Failed';
+                      statusColor = '#f44336';
+                    } else {
+                      statusText = 'In progress';
+                      statusColor = '#42a5f5';
+                    }
+                    return (
+                      <>
+                        <span style={{ fontSize: '0.8125rem', opacity: 0.4 }}>—</span>
+                        <span style={{ fontSize: '0.8125rem', fontWeight: 500, color: statusColor }}>
+                          {statusText}
+                        </span>
+                      </>
+                    );
+                  })()}
+                  {aapWorkflowUrl && (
+                    <Link
+                      href={aapWorkflowUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: '0.8125rem', marginLeft: 4 }}
+                    >
+                      View in AAP
+                      <OpenInNewIcon style={{ fontSize: 12 }} />
+                    </Link>
+                  )}
+                </>
+              )}
             </Box>
           </Box>
 
@@ -1709,109 +1760,6 @@ export const RunTask = () => {
             isComplete={completed}
             isError={Boolean(error)}
           />
-        )}
-
-        {/* AAP job summary — compact inline status for dev/admin */}
-        {isDeveloperOrAbove && aapJobId && (
-          <Box
-            marginTop={2}
-            display="flex"
-            alignItems="center"
-            style={{
-              gap: 8,
-              padding: '10px 16px',
-              borderRadius: 4,
-              background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)',
-              border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}`,
-            }}
-          >
-            {(() => {
-              const completedCount = aapLogs.filter(n => n.status?.toLowerCase() === 'successful').length;
-              const totalCount = aapLogs.length;
-              const hasRunning = aapLogs.some(n => n.status?.toLowerCase() === 'running');
-              const hasFailed = aapLogs.some(n => n.status?.toLowerCase() === 'failed' || n.status?.toLowerCase() === 'error');
-
-              let statusIcon: React.ReactNode;
-              let statusText: string;
-              let statusColor: string;
-
-              if (completed && !error && completedCount === totalCount && totalCount > 0) {
-                statusIcon = <CheckCircleOutlineIcon style={{ fontSize: 18, color: '#4caf50' }} />;
-                statusText = 'Completed';
-                statusColor = '#4caf50';
-              } else if (hasFailed) {
-                statusIcon = <ErrorOutlineIcon style={{ fontSize: 18, color: '#f44336' }} />;
-                statusText = 'Failed';
-                statusColor = '#f44336';
-              } else if (hasRunning) {
-                statusIcon = <CircularProgress size={16} style={{ color: '#42a5f5' }} />;
-                statusText = totalCount > 1 ? `Running · ${completedCount} of ${totalCount} nodes` : 'Running';
-                statusColor = '#42a5f5';
-              } else if (completed && error) {
-                statusIcon = <ErrorOutlineIcon style={{ fontSize: 18, color: '#f44336' }} />;
-                statusText = 'Failed';
-                statusColor = '#f44336';
-              } else {
-                statusIcon = <CircularProgress size={16} style={{ color: '#42a5f5' }} />;
-                statusText = 'In progress';
-                statusColor = '#42a5f5';
-              }
-
-              const isWorkflow = templateType === 'workflow-job-template';
-              const jobLabel = isWorkflow ? `Workflow ${aapJobId}` : `Job ${aapJobId}`;
-
-              return (
-                <>
-                  {statusIcon}
-                  <Tooltip
-                    title="This template executes an automation workflow on Ansible Automation Platform. The Portal monitors the job status. For full execution detail, view the job in AAP."
-                    arrow
-                    placement="top"
-                  >
-                    <Box
-                      component="span"
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 4,
-                        padding: '1px 8px',
-                        borderRadius: 12,
-                        fontSize: '0.6875rem',
-                        fontWeight: 600,
-                        letterSpacing: 0.3,
-                        textTransform: 'uppercase',
-                        background: isDark ? 'rgba(66,165,245,0.15)' : 'rgba(25,118,210,0.08)',
-                        color: isDark ? '#90caf9' : '#1565c0',
-                        cursor: 'help',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      AAP
-                    </Box>
-                  </Tooltip>
-                  <Typography variant="body2" color="textPrimary" style={{ fontWeight: 500 }}>
-                    {jobLabel}
-                  </Typography>
-                  <Typography variant="body2" style={{ color: statusColor, fontWeight: 500 }}>
-                    {statusText}
-                  </Typography>
-                  <Box style={{ flex: 1 }} />
-                  {aapWorkflowUrl && (
-                    <Link
-                      href={aapWorkflowUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      variant="body2"
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '0.8125rem', whiteSpace: 'nowrap' }}
-                    >
-                      View in Ansible Automation Platform
-                      <OpenInNewIcon style={{ fontSize: 13 }} />
-                    </Link>
-                  )}
-                </>
-              );
-            })()}
-          </Box>
         )}
 
         {/* Tab bar — Logs always present; README conditional */}
