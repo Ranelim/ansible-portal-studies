@@ -1477,8 +1477,8 @@ export const RunTask = () => {
           </Box>
         )}
 
-        {/* Results zone — visible on completion */}
-        {completed && !error && (
+        {/* Results zone — visible on completion, only for templates that produce artifacts */}
+        {completed && !error && templateType !== 'service' && templateType !== 'job-template' && templateType !== 'workflow-job-template' && (
           <Box
             marginBottom={2}
             style={{
@@ -1488,34 +1488,13 @@ export const RunTask = () => {
               background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)',
             }}
           >
-            {/* For job/workflow templates, show a clean summary instead of raw template output */}
-            {(templateType === 'service' || templateType === 'job-template' || templateType === 'workflow-job-template') ? (
-              <Box marginBottom={1}>
-                <Typography variant="subtitle2" color="textPrimary" style={{ marginBottom: 4 }}>
-                  {templateDisplayName} completed successfully
-                </Typography>
-                <Typography variant="body2" color="textSecondary">
-                  All steps have finished successfully.
+            {output?.text?.map((textItem: { title?: string; content?: string }, index: number) => (
+              <Box key={textItem.title || `text-${index}`} marginBottom={1}>
+                <Typography component="div" variant="body2" color="textSecondary">
+                  <MarkdownContent content={textItem.content || ''} />
                 </Typography>
               </Box>
-            ) : (
-              output?.text?.map((textItem: { title?: string; content?: string }, index: number) => (
-                <Box key={textItem.title || `text-${index}`} marginBottom={1}>
-                  {textItem.title && (
-                    <Typography
-                      variant="subtitle2"
-                      color="textPrimary"
-                      style={{ marginBottom: 4 }}
-                    >
-                      {textItem.title}
-                    </Typography>
-                  )}
-                  <Typography component="div" variant="body2" color="textSecondary">
-                    <MarkdownContent content={textItem.content || ''} />
-                  </Typography>
-                </Box>
-              ))
-            )}
+            ))}
 
             <Box
               display="flex"
@@ -1523,19 +1502,6 @@ export const RunTask = () => {
               alignItems="center"
               style={{ gap: 8, marginTop: 12 }}
             >
-              {isDeveloperOrAbove && (templateType === 'service' || templateType === 'job-template' || templateType === 'workflow-job-template') && aapWorkflowUrl && (
-                <Button
-                  href={aapWorkflowUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  variant="outlined"
-                  color="primary"
-                  size="small"
-                  endIcon={<OpenInNewIcon style={{ fontSize: 14 }} />}
-                >
-                  View in Ansible Automation Platform
-                </Button>
-              )}
               {output?.links
                 ?.filter((link: any) => {
                   if ('if' in link && link.if === false) return false;
@@ -1550,7 +1516,7 @@ export const RunTask = () => {
                   return false;
                 })
                 ?.map((link: any, index: number) => {
-                  const isFirstLink = index === 0 && templateType !== 'service' && templateType !== 'job-template' && templateType !== 'workflow-job-template';
+                  const isFirstLink = index === 0;
                   if ('entityRef' in link && link.entityRef) {
                     const entityRef = link.entityRef;
                     return (
@@ -1594,16 +1560,6 @@ export const RunTask = () => {
                   }
                 >
                   Download EE Files
-                </Button>
-              )}
-              {readmeContent && (
-                <Button
-                  onClick={() => setActiveTab(2)}
-                  variant="outlined"
-                  color="primary"
-                  size="small"
-                >
-                  View README
                 </Button>
               )}
             </Box>
