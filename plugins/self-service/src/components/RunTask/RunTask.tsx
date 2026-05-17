@@ -149,7 +149,7 @@ const useStyles = makeStyles(theme => {
     metaLine: {
       display: 'flex',
       alignItems: 'center',
-      gap: theme.spacing(1),
+      gap: theme.spacing(0.5),
       flexWrap: 'wrap',
       color: textColor,
       opacity: 0.7,
