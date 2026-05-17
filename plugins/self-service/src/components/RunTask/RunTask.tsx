@@ -1317,6 +1317,12 @@ export const RunTask = () => {
     return urlMatch?.[1] || null;
   }, [stepLogs]);
 
+  const aapJobId = useMemo(() => {
+    const allLogText = Object.values(stepLogs).flat().join(' ');
+    const idMatch = /RHAAP_WORKFLOW_LAUNCH_DATA\s*\{[^}]*"id"\s*:\s*(\d+)/.exec(allLogText);
+    return idMatch?.[1] || null;
+  }, [stepLogs]);
+
   if (loading) {
     return (
       <Page themeId="tool">
@@ -1705,91 +1711,80 @@ export const RunTask = () => {
           />
         )}
 
-        {/* Automation activity — only for dev/admin on AAP-backed templates */}
-        {isDeveloperOrAbove && aapLogs.length > 0 && (
-          <Box marginTop={2}>
-            <Box display="flex" alignItems="center" justifyContent="space-between" style={{ marginBottom: 12 }}>
-              <Typography variant="subtitle2" color="textPrimary">
-                Automation activity
-              </Typography>
-              {aapWorkflowUrl && (
-                <Link
-                  href={aapWorkflowUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  variant="body2"
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '0.8125rem' }}
-                >
-                  View in Ansible Automation Platform
-                  <OpenInNewIcon style={{ fontSize: 13 }} />
-                </Link>
-              )}
-            </Box>
-            <Box
-              style={{
-                borderRadius: 4,
-                border: `1px solid ${isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)'}`,
-                overflow: 'hidden',
-              }}
-            >
-              {aapLogs.map((node, idx) => {
-                const nodeStatus = node.status?.toLowerCase() || 'pending';
-                let statusIcon: React.ReactNode;
-                let statusLabel: string;
-                let statusColor: string;
-                if (nodeStatus === 'successful') {
-                  statusIcon = <CheckCircleOutlineIcon style={{ fontSize: 18, color: '#4caf50' }} />;
-                  statusLabel = 'Completed';
-                  statusColor = '#4caf50';
-                } else if (nodeStatus === 'failed') {
-                  statusIcon = <ErrorOutlineIcon style={{ fontSize: 18, color: '#f44336' }} />;
-                  statusLabel = 'Failed';
-                  statusColor = '#f44336';
-                } else if (nodeStatus === 'running') {
-                  statusIcon = <CircularProgress size={16} style={{ color: '#42a5f5' }} />;
-                  statusLabel = 'Running';
-                  statusColor = '#42a5f5';
-                } else if (nodeStatus === 'pending' || nodeStatus === 'waiting') {
-                  statusIcon = <PauseCircleOutlineIcon style={{ fontSize: 18, color: '#ff9800' }} />;
-                  statusLabel = 'Pending';
-                  statusColor = '#ff9800';
-                } else if (nodeStatus === 'canceled') {
-                  statusIcon = <BlockIcon style={{ fontSize: 18, color: isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.35)' }} />;
-                  statusLabel = 'Canceled';
-                  statusColor = isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.35)';
-                } else {
-                  statusIcon = <MoreHorizIcon style={{ fontSize: 18, color: isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.25)' }} />;
-                  statusLabel = 'Pending';
-                  statusColor = isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.25)';
-                }
-                return (
-                  <Box
-                    key={node.id}
-                    display="flex"
-                    alignItems="center"
-                    style={{
-                      padding: '10px 16px',
-                      gap: 12,
-                      borderTop: idx > 0 ? `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}` : undefined,
-                      background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)',
-                    }}
-                  >
-                    {statusIcon}
-                    <Typography variant="body2" color="textPrimary" style={{ flex: 1, fontWeight: 500 }}>
-                      {node.label}
-                    </Typography>
-                    <Typography variant="caption" style={{ color: statusColor, fontWeight: 500 }}>
-                      {statusLabel}
-                    </Typography>
-                  </Box>
-                );
-              })}
-            </Box>
-            {aapLogs.length > 1 && (
-              <Typography variant="caption" color="textSecondary" style={{ marginTop: 6, display: 'block' }}>
-                {aapLogs.filter(n => n.status?.toLowerCase() === 'successful').length} of {aapLogs.length} steps complete
-              </Typography>
-            )}
+        {/* AAP job summary — compact inline status for dev/admin */}
+        {isDeveloperOrAbove && aapJobId && (
+          <Box
+            marginTop={2}
+            display="flex"
+            alignItems="center"
+            style={{
+              gap: 8,
+              padding: '10px 16px',
+              borderRadius: 4,
+              background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)',
+              border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}`,
+            }}
+          >
+            {(() => {
+              const completedCount = aapLogs.filter(n => n.status?.toLowerCase() === 'successful').length;
+              const totalCount = aapLogs.length;
+              const hasRunning = aapLogs.some(n => n.status?.toLowerCase() === 'running');
+              const hasFailed = aapLogs.some(n => n.status?.toLowerCase() === 'failed' || n.status?.toLowerCase() === 'error');
+
+              let statusIcon: React.ReactNode;
+              let statusText: string;
+              let statusColor: string;
+
+              if (completed && !error && completedCount === totalCount && totalCount > 0) {
+                statusIcon = <CheckCircleOutlineIcon style={{ fontSize: 18, color: '#4caf50' }} />;
+                statusText = 'Completed';
+                statusColor = '#4caf50';
+              } else if (hasFailed) {
+                statusIcon = <ErrorOutlineIcon style={{ fontSize: 18, color: '#f44336' }} />;
+                statusText = 'Failed';
+                statusColor = '#f44336';
+              } else if (hasRunning) {
+                statusIcon = <CircularProgress size={16} style={{ color: '#42a5f5' }} />;
+                statusText = totalCount > 1 ? `Running · ${completedCount} of ${totalCount} nodes` : 'Running';
+                statusColor = '#42a5f5';
+              } else if (completed && error) {
+                statusIcon = <ErrorOutlineIcon style={{ fontSize: 18, color: '#f44336' }} />;
+                statusText = 'Failed';
+                statusColor = '#f44336';
+              } else {
+                statusIcon = <CircularProgress size={16} style={{ color: '#42a5f5' }} />;
+                statusText = 'In progress';
+                statusColor = '#42a5f5';
+              }
+
+              const isWorkflow = templateType === 'workflow-job-template';
+              const jobLabel = isWorkflow ? `Workflow ${aapJobId}` : `Job ${aapJobId}`;
+
+              return (
+                <>
+                  {statusIcon}
+                  <Typography variant="body2" color="textPrimary" style={{ fontWeight: 500 }}>
+                    {jobLabel}
+                  </Typography>
+                  <Typography variant="body2" style={{ color: statusColor, fontWeight: 500 }}>
+                    {statusText}
+                  </Typography>
+                  <Box style={{ flex: 1 }} />
+                  {aapWorkflowUrl && (
+                    <Link
+                      href={aapWorkflowUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      variant="body2"
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '0.8125rem', whiteSpace: 'nowrap' }}
+                    >
+                      View in Ansible Automation Platform
+                      <OpenInNewIcon style={{ fontSize: 13 }} />
+                    </Link>
+                  )}
+                </>
+              );
+            })()}
           </Box>
         )}
 
