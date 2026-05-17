@@ -1763,6 +1763,32 @@ export const RunTask = () => {
               return (
                 <>
                   {statusIcon}
+                  <Tooltip
+                    title="This template executes an automation workflow on Ansible Automation Platform. The Portal monitors the job status. For full execution detail, view the job in AAP."
+                    arrow
+                    placement="top"
+                  >
+                    <Box
+                      component="span"
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        padding: '1px 8px',
+                        borderRadius: 12,
+                        fontSize: '0.6875rem',
+                        fontWeight: 600,
+                        letterSpacing: 0.3,
+                        textTransform: 'uppercase',
+                        background: isDark ? 'rgba(66,165,245,0.15)' : 'rgba(25,118,210,0.08)',
+                        color: isDark ? '#90caf9' : '#1565c0',
+                        cursor: 'help',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      AAP
+                    </Box>
+                  </Tooltip>
                   <Typography variant="body2" color="textPrimary" style={{ fontWeight: 500 }}>
                     {jobLabel}
                   </Typography>
