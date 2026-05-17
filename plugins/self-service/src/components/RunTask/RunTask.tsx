@@ -1412,11 +1412,11 @@ export const RunTask = () => {
               </Box>
             </Box>
 
-            {/* Meta line: type · Task ID */}
+            {/* Meta line: Task ID */}
             <Box className={classes.metaLine}>
-              <span>{getTypeLabel(templateType)}</span>
-              <span style={{ opacity: 0.4 }}>&middot;</span>
-              <span>Task {shortId(taskId)}</span>
+              <span style={{ fontFamily: 'monospace', fontSize: '0.8125rem', opacity: 0.5 }}>
+                ID: {shortId(taskId)}
+              </span>
             </Box>
           </Box>
 
