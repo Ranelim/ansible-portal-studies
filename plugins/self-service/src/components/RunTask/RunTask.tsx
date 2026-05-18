@@ -1428,9 +1428,13 @@ export const RunTask = () => {
                     const totalCount = aapLogs.length;
                     const hasRunning = aapLogs.some(n => n.status?.toLowerCase() === 'running');
                     const hasFailed = aapLogs.some(n => n.status?.toLowerCase() === 'failed' || n.status?.toLowerCase() === 'error');
+                    const isAwaitingApproval = allSteps.some(s => s.status === 'awaiting_approval');
                     let statusText: string;
                     let statusColor: string;
-                    if (completed && !error && completedCount === totalCount && totalCount > 0) {
+                    if (isAwaitingApproval) {
+                      statusText = 'Pending approval';
+                      statusColor = '#ff9800';
+                    } else if (completed && !error && completedCount === totalCount && totalCount > 0) {
                       statusText = 'Completed';
                       statusColor = '#4caf50';
                     } else if (hasFailed) {
