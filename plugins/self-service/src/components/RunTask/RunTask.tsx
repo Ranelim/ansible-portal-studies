@@ -1877,61 +1877,6 @@ export const RunTask = () => {
         {/* Logs tab */}
         {activeTab === 0 && (
           <Box id="scaffolder-logs">
-            {/* Structured troubleshooting summary for devs/admins */}
-            {isDeveloperOrAbove && aapJobId && aapLogs.length > 0 && (
-              <Box style={{
-                borderRadius: 4,
-                padding: 14,
-                marginBottom: 12,
-                border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
-                background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)',
-              }}>
-                <Typography variant="caption" style={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.6, display: 'block', marginBottom: 8 }}>
-                  AAP {templateType === 'workflow-job-template' ? 'Workflow' : 'Job'} Details
-                </Typography>
-                <Box component="table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
-                  <tbody>
-                    <tr>
-                      <Box component="td" style={{ padding: '3px 12px 3px 0', opacity: 0.5, whiteSpace: 'nowrap', verticalAlign: 'top' }}>Job ID</Box>
-                      <Box component="td" style={{ padding: '3px 0', fontFamily: 'monospace' }}>{aapJobId}</Box>
-                    </tr>
-                    <tr>
-                      <Box component="td" style={{ padding: '3px 12px 3px 0', opacity: 0.5, whiteSpace: 'nowrap', verticalAlign: 'top' }}>Nodes</Box>
-                      <Box component="td" style={{ padding: '3px 0' }}>
-                        {aapLogs.filter(n => n.status?.toLowerCase() === 'successful').length} successful
-                        {aapLogs.filter(n => n.status?.toLowerCase() === 'failed' || n.status?.toLowerCase() === 'error').length > 0 &&
-                          ` · ${aapLogs.filter(n => n.status?.toLowerCase() === 'failed' || n.status?.toLowerCase() === 'error').length} failed`}
-                        {aapLogs.filter(n => n.status?.toLowerCase() === 'canceled').length > 0 &&
-                          ` · ${aapLogs.filter(n => n.status?.toLowerCase() === 'canceled').length} skipped`}
-                        {aapLogs.filter(n => n.status?.toLowerCase() === 'running').length > 0 &&
-                          ` · ${aapLogs.filter(n => n.status?.toLowerCase() === 'running').length} running`}
-                        {aapLogs.filter(n => n.status?.toLowerCase() === 'pending' || n.status?.toLowerCase() === 'waiting').length > 0 &&
-                          ` · ${aapLogs.filter(n => n.status?.toLowerCase() === 'pending' || n.status?.toLowerCase() === 'waiting').length} pending`}
-                        <span style={{ opacity: 0.4 }}>{` (${aapLogs.length} total)`}</span>
-                      </Box>
-                    </tr>
-                    {aapLogs.some(n => n.status?.toLowerCase() === 'failed' || n.status?.toLowerCase() === 'error') && (
-                      <tr>
-                        <Box component="td" style={{ padding: '3px 12px 3px 0', opacity: 0.5, whiteSpace: 'nowrap', verticalAlign: 'top', color: '#f44336' }}>Failed</Box>
-                        <Box component="td" style={{ padding: '3px 0' }}>
-                          {aapLogs.filter(n => n.status?.toLowerCase() === 'failed' || n.status?.toLowerCase() === 'error').map(n => `"${n.label}"`).join(', ')}
-                        </Box>
-                      </tr>
-                    )}
-                    {aapWorkflowUrl && (
-                      <tr>
-                        <Box component="td" style={{ padding: '3px 12px 3px 0', opacity: 0.5, whiteSpace: 'nowrap', verticalAlign: 'top' }}>AAP URL</Box>
-                        <Box component="td" style={{ padding: '3px 0' }}>
-                          <Link href={aapWorkflowUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.8125rem' }}>
-                            {aapWorkflowUrl}
-                          </Link>
-                        </Box>
-                      </tr>
-                    )}
-                  </tbody>
-                </Box>
-              </Box>
-            )}
             <Box
               style={{
                 borderRadius: 4,
