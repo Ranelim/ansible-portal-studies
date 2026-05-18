@@ -174,6 +174,13 @@ const DEMO_TASKS: Record<string, {
   outputText?: Array<{ title?: string; content: string }>;
   outputLinks?: Array<{ title: string; url?: string; entityRef?: string }>;
   readme?: string;
+  failureDetail?: {
+    failedNode: string;
+    errorSummary: string;
+    guidance: string;
+    isDenial?: boolean;
+    nodeProgress?: { completed: number; failed: number; skipped: number; total: number };
+  };
 }> = {
   'demo-ee-success': {
     templateName: 'build-ee-rhel9',
@@ -350,6 +357,11 @@ ansible-navigator:
         'Resource creation failed.',
       ],
     },
+    failureDetail: {
+      failedNode: 'Create cloud resources',
+      errorSummary: 'AWS credentials expired. Unable to authenticate with the target account.',
+      guidance: 'Your cloud credentials have expired. Contact your platform administrator to refresh the credentials, or re-authenticate in your cloud provider settings.',
+    },
   },
   'demo-workflow-denied': {
     templateName: 'employee-onboarding-workflow',
@@ -370,6 +382,12 @@ ansible-navigator:
         'Reason: "Budget not approved for Q3. Resubmit after finance review."',
         'Workflow job 2051 status: failed',
       ],
+    },
+    failureDetail: {
+      failedNode: 'Manager Approval',
+      errorSummary: 'Budget not approved for Q3. Resubmit after finance review.',
+      guidance: 'The request was denied at an approval gate. Review the denial reason and address the issue before resubmitting.',
+      isDenial: true,
     },
   },
   'demo-workflow-approved': {
@@ -466,6 +484,40 @@ ansible-navigator:
         'Error: Migration script failed — column "user_email" already exists in target schema.',
         'Job 1502 status: failed',
       ],
+    },
+    failureDetail: {
+      failedNode: 'Deploy Database Update',
+      errorSummary: 'Migration script failed — column "user_email" already exists in target schema.',
+      guidance: 'The database migration encountered a schema conflict. Contact your platform administrator to resolve the duplicate column issue.',
+    },
+  },
+  'demo-workflow-partial-failure': {
+    templateName: 'aws-provisioning-workflow',
+    templateTitle: 'AWS Provisioning Workflow',
+    templateType: 'workflow-job-template',
+    status: 'failed',
+    steps: [
+      { id: 'launch-workflow', name: 'Launch workflow', status: 'failed' },
+    ],
+    stepLogs: {
+      'launch-workflow': [
+        'Beginning step AWS Provisioning Workflow',
+        'Launching workflow job template id 3001.',
+        'RHAAP_WORKFLOW_LAUNCH_DATA {"id":3060,"url":"https://aap.example.com/execution/workflows/3060/output"}',
+        'Workflow job 3060 status: running',
+        'Node "Validate Network" completed successfully.',
+        'Node "Provision Instances" completed successfully.',
+        'Node "Deploy Configuration" failed — host unreachable: ec2-10-0-3-42.compute.amazonaws.com',
+        'Node "Configure Monitoring" skipped (dependency failed).',
+        'Node "Final Verification" skipped (dependency failed).',
+        'Workflow job 3060 status: failed',
+      ],
+    },
+    failureDetail: {
+      failedNode: 'Deploy Configuration',
+      errorSummary: 'Host unreachable: ec2-10-0-3-42.compute.amazonaws.com',
+      guidance: 'The automation failed while deploying configuration to a target host. Verify that the host is accessible and network security groups allow SSH/WinRM connections.',
+      nodeProgress: { completed: 2, failed: 1, skipped: 2, total: 5 },
     },
   },
   'demo-patching-completed': {
@@ -567,6 +619,12 @@ ansible-navigator:
         'Reason: "Staging validation incomplete. Complete staging tests before production."',
         'Workflow job 3052 status: failed',
       ],
+    },
+    failureDetail: {
+      failedNode: 'Production Gate',
+      errorSummary: 'Staging validation incomplete. Complete staging tests before production.',
+      guidance: 'The request was denied at an approval gate. Address the denial reason and resubmit when ready.',
+      isDenial: true,
     },
   },
 };
@@ -933,22 +991,32 @@ export const RunTask = () => {
         content: (demoTask.stepLogs?.['launch-job'] || []).join('\n'),
       }]);
     } else if (type === 'workflow-job-template') {
-      const isDenied = taskId === 'demo-workflow-denied' || taskId === 'demo-aws-workflow-denied';
-      const isPending = demoTask.status === 'processing';
-      const approvalStatus = isPending ? 'pending' : isDenied ? 'failed' : 'successful';
-      const postApprovalStatus = isPending ? 'waiting' : isDenied ? 'canceled' : 'successful';
-      const isAws = taskId.startsWith('demo-aws-');
-      setAapLogs(isAws ? [
-        { id: 1, label: 'Validate Network', status: 'successful', hasPlaybookOutput: true, content: 'Validating VPC and subnet configuration...\nNetwork validation passed.' },
-        { id: 2, label: 'Provision Instances', status: isPending ? 'waiting' : 'successful', hasPlaybookOutput: true, content: isPending ? undefined : 'Launching 2 × t3.small in us-east-1...\nInstances provisioned successfully.' },
-        { id: 3, label: 'Production Gate', status: approvalStatus, hasPlaybookOutput: false, content: isDenied ? 'Approval denied.\nReason: "Staging validation incomplete. Complete staging tests before production."' : undefined },
-        { id: 4, label: 'Configure Servers', status: postApprovalStatus, hasPlaybookOutput: true, content: postApprovalStatus === 'successful' ? 'Applying Ansible roles to new instances...\nServer configuration complete.' : undefined },
-        { id: 5, label: 'Validate Deployment', status: postApprovalStatus, hasPlaybookOutput: true, content: postApprovalStatus === 'successful' ? 'Running smoke tests...\nAll health checks passed.' : undefined },
-      ] : [
-        { id: 1, label: 'Inventory Sync', status: 'successful', hasPlaybookOutput: true, content: 'Syncing inventory from source...\nInventory sync completed successfully.' },
-        { id: 2, label: 'Manager Approval', status: approvalStatus, hasPlaybookOutput: false, content: isDenied ? 'Approval denied.\nReason: "Budget not approved for Q3. Resubmit after finance review."' : undefined },
-        { id: 3, label: 'Deploy Configuration', status: postApprovalStatus, hasPlaybookOutput: true, content: postApprovalStatus === 'successful' ? 'Deploying configuration to targets...\nConfiguration applied successfully.' : undefined },
-      ]);
+      if (taskId === 'demo-workflow-partial-failure') {
+        setAapLogs([
+          { id: 1, label: 'Validate Network', status: 'successful', hasPlaybookOutput: true, content: 'Validating VPC and subnet configuration...\nNetwork validation passed.' },
+          { id: 2, label: 'Provision Instances', status: 'successful', hasPlaybookOutput: true, content: 'Launching 2 × t3.small in us-east-1...\nInstances provisioned successfully.' },
+          { id: 3, label: 'Deploy Configuration', status: 'failed', hasPlaybookOutput: true, content: 'Deploying configuration to ec2-10-0-3-42.compute.amazonaws.com...\nFATAL: unreachable — Host unreachable: ec2-10-0-3-42.compute.amazonaws.com\nConnection timed out after 30s.' },
+          { id: 4, label: 'Configure Monitoring', status: 'canceled', hasPlaybookOutput: false },
+          { id: 5, label: 'Final Verification', status: 'canceled', hasPlaybookOutput: false },
+        ]);
+      } else {
+        const isDenied = taskId === 'demo-workflow-denied' || taskId === 'demo-aws-workflow-denied';
+        const isPending = demoTask.status === 'processing';
+        const approvalStatus = isPending ? 'pending' : isDenied ? 'failed' : 'successful';
+        const postApprovalStatus = isPending ? 'waiting' : isDenied ? 'canceled' : 'successful';
+        const isAws = taskId.startsWith('demo-aws-');
+        setAapLogs(isAws ? [
+          { id: 1, label: 'Validate Network', status: 'successful', hasPlaybookOutput: true, content: 'Validating VPC and subnet configuration...\nNetwork validation passed.' },
+          { id: 2, label: 'Provision Instances', status: isPending ? 'waiting' : 'successful', hasPlaybookOutput: true, content: isPending ? undefined : 'Launching 2 × t3.small in us-east-1...\nInstances provisioned successfully.' },
+          { id: 3, label: 'Production Gate', status: approvalStatus, hasPlaybookOutput: false, content: isDenied ? 'Approval denied.\nReason: "Staging validation incomplete. Complete staging tests before production."' : undefined },
+          { id: 4, label: 'Configure Servers', status: postApprovalStatus, hasPlaybookOutput: true, content: postApprovalStatus === 'successful' ? 'Applying Ansible roles to new instances...\nServer configuration complete.' : undefined },
+          { id: 5, label: 'Validate Deployment', status: postApprovalStatus, hasPlaybookOutput: true, content: postApprovalStatus === 'successful' ? 'Running smoke tests...\nAll health checks passed.' : undefined },
+        ] : [
+          { id: 1, label: 'Inventory Sync', status: 'successful', hasPlaybookOutput: true, content: 'Syncing inventory from source...\nInventory sync completed successfully.' },
+          { id: 2, label: 'Manager Approval', status: approvalStatus, hasPlaybookOutput: false, content: isDenied ? 'Approval denied.\nReason: "Budget not approved for Q3. Resubmit after finance review."' : undefined },
+          { id: 3, label: 'Deploy Configuration', status: postApprovalStatus, hasPlaybookOutput: true, content: postApprovalStatus === 'successful' ? 'Deploying configuration to targets...\nConfiguration applied successfully.' : undefined },
+        ]);
+      }
     }
   }, [demoTask]);
 
@@ -1425,9 +1493,10 @@ export const RunTask = () => {
                   </span>
                   {(() => {
                     const completedCount = aapLogs.filter(n => n.status?.toLowerCase() === 'successful').length;
+                    const failedCount = aapLogs.filter(n => n.status?.toLowerCase() === 'failed' || n.status?.toLowerCase() === 'error').length;
                     const totalCount = aapLogs.length;
                     const hasRunning = aapLogs.some(n => n.status?.toLowerCase() === 'running');
-                    const hasFailed = aapLogs.some(n => n.status?.toLowerCase() === 'failed' || n.status?.toLowerCase() === 'error');
+                    const hasFailed = failedCount > 0;
                     const isAwaitingApproval = allSteps.some(s => s.status === 'awaiting_approval');
                     let statusText: string;
                     let statusColor: string;
@@ -1438,7 +1507,7 @@ export const RunTask = () => {
                       statusText = 'Completed';
                       statusColor = '#4caf50';
                     } else if (hasFailed) {
-                      statusText = 'Failed';
+                      statusText = totalCount > 1 ? `Failed · ${completedCount} of ${totalCount} nodes completed` : 'Failed';
                       statusColor = '#f44336';
                     } else if (hasRunning) {
                       statusText = totalCount > 1 ? `Running · ${completedCount} of ${totalCount} nodes` : 'Running';
@@ -1628,55 +1697,80 @@ export const RunTask = () => {
         )}
 
         {/* Failure zone — visible on error */}
-        {completed && error && (
-          <Box
-            marginBottom={2}
-            style={{
-              borderRadius: 4,
-              padding: 20,
-              border: `1px solid ${isDark ? 'rgba(244,67,54,0.3)' : 'rgba(244,67,54,0.2)'}`,
-              background: isDark ? 'rgba(244,67,54,0.08)' : 'rgba(244,67,54,0.04)',
-            }}
-          >
-            <Typography variant="subtitle2" style={{ color: '#f44336', marginBottom: 4 }}>
-              {(taskId === 'demo-workflow-denied' || taskId === 'demo-aws-workflow-denied')
-                ? 'Approval denied'
-                : `${templateDisplayName} failed`}
-            </Typography>
-            <Typography variant="body2" color="textSecondary" style={{ marginBottom: 12 }}>
-              {(taskId === 'demo-workflow-denied' || taskId === 'demo-aws-workflow-denied')
-                ? 'The request was denied at an approval step. Contact your administrator for details or start over to resubmit.'
-                : typeof error === 'string' ? error : 'An error occurred during execution. Check the logs for details.'}
-            </Typography>
-            <Box display="flex" style={{ gap: 8 }}>
-              <Button
-                onClick={() => {
-                  setActiveTab(0);
-                  setTimeout(() => {
-                    const logSection = document.getElementById('scaffolder-logs');
-                    logSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                  }, 100);
-                }}
-                variant="outlined"
-                color="primary"
-                size="small"
-              >
-                View logs
-              </Button>
-              {showStartOver && (
+        {completed && error && (() => {
+          const detail = demoTask?.failureDetail;
+          const isDenial = detail?.isDenial;
+          const progress = detail?.nodeProgress;
+          return (
+            <Box
+              marginBottom={2}
+              style={{
+                borderRadius: 4,
+                padding: 20,
+                border: `1px solid ${isDark ? 'rgba(244,67,54,0.3)' : 'rgba(244,67,54,0.2)'}`,
+                background: isDark ? 'rgba(244,67,54,0.08)' : 'rgba(244,67,54,0.04)',
+              }}
+            >
+              <Typography variant="subtitle2" style={{ color: '#f44336', marginBottom: 4 }}>
+                {isDenial ? 'Approval denied' : `${templateDisplayName} failed`}
+                {detail?.failedNode && !isDenial && (
+                  <span style={{ fontWeight: 400 }}>{` at "${detail.failedNode}"`}</span>
+                )}
+              </Typography>
+              {progress && (
+                <Typography variant="caption" style={{ color: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.45)', display: 'block', marginBottom: 4 }}>
+                  {progress.completed} of {progress.total} steps completed · {progress.failed} failed · {progress.skipped} skipped
+                </Typography>
+              )}
+              <Typography variant="body2" color="textSecondary" style={{ marginBottom: isDeveloperOrAbove && detail?.errorSummary ? 6 : 12 }}>
+                {detail?.guidance || (isDenial
+                  ? 'The request was denied at an approval step. Contact your administrator for details or start over to resubmit.'
+                  : typeof error === 'string' ? error : 'An error occurred during execution. Check the logs for details.')}
+              </Typography>
+              {isDeveloperOrAbove && detail?.errorSummary && (
+                <Box style={{
+                  borderRadius: 3,
+                  padding: '8px 10px',
+                  marginBottom: 12,
+                  fontFamily: 'monospace',
+                  fontSize: '0.75rem',
+                  background: isDark ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.04)',
+                  color: isDark ? '#ef9a9a' : '#c62828',
+                  border: `1px solid ${isDark ? 'rgba(244,67,54,0.2)' : 'rgba(244,67,54,0.1)'}`,
+                }}>
+                  {detail.errorSummary}
+                </Box>
+              )}
+              <Box display="flex" style={{ gap: 8 }}>
                 <Button
-                  onClick={handleStartOver}
-                  disabled={isStartOverDisabled}
+                  onClick={() => {
+                    setActiveTab(0);
+                    setTimeout(() => {
+                      const logSection = document.getElementById('scaffolder-logs');
+                      logSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }, 100);
+                  }}
                   variant="outlined"
                   color="primary"
                   size="small"
                 >
-                  Start Over
+                  View logs
                 </Button>
-              )}
+                {showStartOver && (
+                  <Button
+                    onClick={handleStartOver}
+                    disabled={isStartOverDisabled}
+                    variant="outlined"
+                    color="primary"
+                    size="small"
+                  >
+                    Start Over
+                  </Button>
+                )}
+              </Box>
             </Box>
-          </Box>
-        )}
+          );
+        })()}
 
         {/* Hidden AAP sections — always mounted to collect logs for the activity summary */}
         <Box display="none">
@@ -1783,6 +1877,61 @@ export const RunTask = () => {
         {/* Logs tab */}
         {activeTab === 0 && (
           <Box id="scaffolder-logs">
+            {/* Structured troubleshooting summary for devs/admins */}
+            {isDeveloperOrAbove && aapJobId && aapLogs.length > 0 && (
+              <Box style={{
+                borderRadius: 4,
+                padding: 14,
+                marginBottom: 12,
+                border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
+                background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)',
+              }}>
+                <Typography variant="caption" style={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.6, display: 'block', marginBottom: 8 }}>
+                  AAP {templateType === 'workflow-job-template' ? 'Workflow' : 'Job'} Details
+                </Typography>
+                <Box component="table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
+                  <tbody>
+                    <tr>
+                      <Box component="td" style={{ padding: '3px 12px 3px 0', opacity: 0.5, whiteSpace: 'nowrap', verticalAlign: 'top' }}>Job ID</Box>
+                      <Box component="td" style={{ padding: '3px 0', fontFamily: 'monospace' }}>{aapJobId}</Box>
+                    </tr>
+                    <tr>
+                      <Box component="td" style={{ padding: '3px 12px 3px 0', opacity: 0.5, whiteSpace: 'nowrap', verticalAlign: 'top' }}>Nodes</Box>
+                      <Box component="td" style={{ padding: '3px 0' }}>
+                        {aapLogs.filter(n => n.status?.toLowerCase() === 'successful').length} successful
+                        {aapLogs.filter(n => n.status?.toLowerCase() === 'failed' || n.status?.toLowerCase() === 'error').length > 0 &&
+                          ` · ${aapLogs.filter(n => n.status?.toLowerCase() === 'failed' || n.status?.toLowerCase() === 'error').length} failed`}
+                        {aapLogs.filter(n => n.status?.toLowerCase() === 'canceled').length > 0 &&
+                          ` · ${aapLogs.filter(n => n.status?.toLowerCase() === 'canceled').length} skipped`}
+                        {aapLogs.filter(n => n.status?.toLowerCase() === 'running').length > 0 &&
+                          ` · ${aapLogs.filter(n => n.status?.toLowerCase() === 'running').length} running`}
+                        {aapLogs.filter(n => n.status?.toLowerCase() === 'pending' || n.status?.toLowerCase() === 'waiting').length > 0 &&
+                          ` · ${aapLogs.filter(n => n.status?.toLowerCase() === 'pending' || n.status?.toLowerCase() === 'waiting').length} pending`}
+                        <span style={{ opacity: 0.4 }}>{` (${aapLogs.length} total)`}</span>
+                      </Box>
+                    </tr>
+                    {aapLogs.some(n => n.status?.toLowerCase() === 'failed' || n.status?.toLowerCase() === 'error') && (
+                      <tr>
+                        <Box component="td" style={{ padding: '3px 12px 3px 0', opacity: 0.5, whiteSpace: 'nowrap', verticalAlign: 'top', color: '#f44336' }}>Failed</Box>
+                        <Box component="td" style={{ padding: '3px 0' }}>
+                          {aapLogs.filter(n => n.status?.toLowerCase() === 'failed' || n.status?.toLowerCase() === 'error').map(n => `"${n.label}"`).join(', ')}
+                        </Box>
+                      </tr>
+                    )}
+                    {aapWorkflowUrl && (
+                      <tr>
+                        <Box component="td" style={{ padding: '3px 12px 3px 0', opacity: 0.5, whiteSpace: 'nowrap', verticalAlign: 'top' }}>AAP URL</Box>
+                        <Box component="td" style={{ padding: '3px 0' }}>
+                          <Link href={aapWorkflowUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.8125rem' }}>
+                            {aapWorkflowUrl}
+                          </Link>
+                        </Box>
+                      </tr>
+                    )}
+                  </tbody>
+                </Box>
+              </Box>
+            )}
             <Box
               style={{
                 borderRadius: 4,
