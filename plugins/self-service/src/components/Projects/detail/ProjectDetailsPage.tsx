@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import { DEVSPACES_BASE_URL, DEMO_CONNECTIONS } from '../../Admin/syncDemoData';
+import { useUserRoleContext } from '../../../hooks/useUserRole';
 import { useParams, useNavigate, useSearchParams, Link as RouterLink } from 'react-router-dom';
 import {
   Page,
@@ -994,6 +995,9 @@ const isDevSpacesConfigured = devSpacesConnection?.status === 'Active';
 
 const DevSpacesCard = ({ project }: { project: DemoProject }) => {
   const classes = useProjectDetailStyles();
+  const { hasRole } = useUserRoleContext();
+
+  if (!hasRole('developer')) return null;
 
   if (!isDevSpacesConfigured) {
     return (
@@ -1970,6 +1974,7 @@ const ActionsMenu = ({
   upgradeVersion?: string;
 }) => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const { hasRole } = useUserRoleContext();
   const isPushed = isPushedToAap;
 
   return (
@@ -1985,7 +1990,7 @@ const ActionsMenu = ({
         transformOrigin={{ vertical: 'top', horizontal: 'right' }}
         getContentAnchorEl={null}
       >
-        {isDevSpacesConfigured && (
+        {isDevSpacesConfigured && hasRole('developer') && (
           <MenuItem onClick={() => {
             openInDevSpaces(`${DEVSPACES_BASE_URL}/#${project.repo.url}/tree/${project.repo.branch}`);
             setAnchorEl(null);

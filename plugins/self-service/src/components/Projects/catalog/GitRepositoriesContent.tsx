@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { DEVSPACES_BASE_URL, DEMO_CONNECTIONS } from '../../Admin/syncDemoData';
+import { useUserRoleContext } from '../../../hooks/useUserRole';
 
 const isDevSpacesConnected = DEMO_CONNECTIONS.find(c => c.id === 'devspaces')?.status === 'Active';
 import { Table, TableColumn } from '@backstage/core-components';
@@ -342,6 +343,7 @@ const RowActionsMenu = ({
   onMigrate: (repoName: string) => void;
 }) => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const { hasRole } = useUserRoleContext();
   const isGoverned = repo.governance !== 'discovered';
   const isPushed = repo.aap?.project === 'pushed' && repo.aap?.jobTemplate === 'pushed';
 
@@ -367,7 +369,7 @@ const RowActionsMenu = ({
         transformOrigin={{ vertical: 'top', horizontal: 'right' }}
         getContentAnchorEl={null}
       >
-        {isDevSpacesConnected && (
+        {isDevSpacesConnected && hasRole('developer') && (
           <MenuItem onClick={() => {
             window.open(`${DEVSPACES_BASE_URL}/#${repo.url}/tree/${repo.branch}`, '_blank');
             handleClose();

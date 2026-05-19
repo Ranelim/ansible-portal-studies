@@ -43,8 +43,12 @@ import OpenInNewIcon from '@material-ui/icons/OpenInNew';
 import HelpOutlineIcon from '@material-ui/icons/HelpOutline';
 import BlockIcon from '@material-ui/icons/Block';
 import LoopIcon from '@material-ui/icons/Loop';
+import CodeIcon from '@material-ui/icons/Code';
 import { rootRouteRef, selectedTemplateRouteRef } from '../../routes';
 import { useUserRole } from '../../hooks/useUserRole';
+import { DEVSPACES_BASE_URL, DEMO_CONNECTIONS } from '../Admin/syncDemoData';
+
+const isDevSpacesConnected = DEMO_CONNECTIONS.find(c => c.id === 'devspaces')?.status === 'Active';
 import { createTarArchive } from '../utils/tarArchiveUtils';
 import {
   resolveEeFileNameFromParameters,
@@ -1692,6 +1696,23 @@ export const RunTask = () => {
                   Download EE Files
                 </Button>
               )}
+              {isDevSpacesConnected && isDeveloperOrAbove && (() => {
+                const repoLink = output?.links?.find((l: any) =>
+                  l.url && (l.url.includes('github.com') || l.url.includes('gitlab'))
+                );
+                if (!repoLink) return null;
+                return (
+                  <Button
+                    onClick={() => window.open(`${DEVSPACES_BASE_URL}/#${repoLink.url}`, '_blank')}
+                    variant="outlined"
+                    size="small"
+                    startIcon={<CodeIcon style={{ fontSize: 16 }} />}
+                    style={{ textTransform: 'none' }}
+                  >
+                    Edit in Dev Spaces
+                  </Button>
+                );
+              })()}
             </Box>
           </Box>
         )}
@@ -1767,6 +1788,22 @@ export const RunTask = () => {
                     Start Over
                   </Button>
                 )}
+                {isDevSpacesConnected && isDeveloperOrAbove && templateType === 'project' && (() => {
+                  const allLogText = Object.values(stepLogs).flat().join('\n');
+                  const repoMatch = /(https:\/\/(?:github\.com|gitlab\.[^\s/]+)\/[^\s]+)/i.exec(allLogText);
+                  if (!repoMatch) return null;
+                  return (
+                    <Button
+                      onClick={() => window.open(`${DEVSPACES_BASE_URL}/#${repoMatch[1]}`, '_blank')}
+                      variant="outlined"
+                      size="small"
+                      startIcon={<CodeIcon style={{ fontSize: 16 }} />}
+                      style={{ textTransform: 'none' }}
+                    >
+                      Open in Dev Spaces
+                    </Button>
+                  );
+                })()}
               </Box>
             </Box>
           );

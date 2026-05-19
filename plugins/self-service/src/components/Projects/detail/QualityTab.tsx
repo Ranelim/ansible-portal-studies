@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo } from 'react';
 import { DEVSPACES_BASE_URL, DEMO_CONNECTIONS } from '../../Admin/syncDemoData';
+import { useUserRoleContext } from '../../../hooks/useUserRole';
 
 const isDevSpacesConnected = DEMO_CONNECTIONS.find(c => c.id === 'devspaces')?.status === 'Active';
 import {
@@ -346,6 +347,7 @@ const ViolationRowItem = ({
   v: QualityViolation; selected: boolean; onToggle: () => void;
   repoUrl?: string; branch?: string;
 }) => {
+  const { hasRole } = useUserRoleContext();
   const [expanded, setExpanded] = useState(false);
   const confidencePct = v.fixTier === 'deterministic' ? 95 : v.fixTier === 'ai' ? 78 : 0;
 
@@ -401,7 +403,7 @@ const ViolationRowItem = ({
         >
           {expanded ? 'Hide' : 'Show'}
         </Button>
-        {repoUrl && isDevSpacesConnected && (
+        {repoUrl && isDevSpacesConnected && hasRole('developer') && (
           <Tooltip title={`Edit ${v.file}:${v.lineStart} in Dev Spaces`}>
             <IconButton
               size="small"
