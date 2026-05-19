@@ -1043,7 +1043,7 @@ export const RunTask = () => {
             linkLabel: isDenied ? 'View details' : undefined,
           });
         }, 1500);
-      } else if (demoTask.status === 'processing') {
+      } else if (demoTask.status === 'processing' && demoTask.steps?.some(s => s.status === 'awaiting_approval')) {
         setTimeout(() => {
           setToast({ title: 'Awaiting approval', description: `${name} is paused at an approval step. An administrator needs to approve or deny the request.`, severity: 'warning', open: true, linkUrl: aapWorkflowUrl || undefined, linkLabel: 'View details' });
         }, 1500);
