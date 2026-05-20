@@ -25,11 +25,6 @@ type GlobalScanRow = ScanResult & {
   org: string;
 };
 
-const healthColor = (score: number): string => {
-  if (score >= 80) return statusColors.success;
-  if (score >= 50) return statusColors.warning;
-  return statusColors.error;
-};
 
 const StatCard = ({
   value, label, color, sublabel,
@@ -76,9 +71,6 @@ export const QualityDashboardPage = () => {
   const totalReposScanned = repoData.length;
   const totalViolations = repoData.reduce((sum, d) => sum + d.quality.totalViolations, 0);
   const reposWithCritical = repoData.filter(d => d.quality.severityBreakdown.critical > 0).length;
-  const avgHealth = totalReposScanned > 0
-    ? Math.round(repoData.reduce((sum, d) => sum + d.quality.healthScore, 0) / totalReposScanned)
-    : 0;
 
   const navigateToScan = useCallback((row: GlobalScanRow) => {
     navigate(`/self-service/repositories/${row.repoName}?tab=quality&scan=${row.scanId}`);
@@ -185,7 +177,7 @@ export const QualityDashboardPage = () => {
             <PageHelpIcon
               tooltipLabel="What is Quality?"
               title="What is Quality?"
-              description="Quality provides automated static analysis of your Ansible automation content. It scans repositories for compatibility, security, and best practice violations — and uses AI to propose fixes. Health scores summarize the overall quality of each repository based on violation severity."
+              description="Quality provides automated static analysis of your Ansible automation content. It scans repositories for compatibility, security, and best practice violations — and uses AI to propose fixes."
             />
           </Box>
         }
@@ -196,7 +188,6 @@ export const QualityDashboardPage = () => {
         {/* Stat cards */}
         <Box display="flex" style={{ gap: 12, marginBottom: 24 }}>
           <StatCard value={totalReposScanned} label="Projects scanned" sublabel={`of ${GIT_REPOSITORIES.length} total`} />
-          <StatCard value={avgHealth} label="Average health" color={healthColor(avgHealth)} />
           <StatCard value={totalViolations} label="Total violations" color={totalViolations > 0 ? statusColors.error : statusColors.success} />
           <StatCard value={reposWithCritical} label="Critical" color={reposWithCritical > 0 ? SEVERITY_COLORS.critical : statusColors.success}
             sublabel={reposWithCritical > 0 ? 'Require attention' : 'No critical issues'} />

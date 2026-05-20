@@ -249,11 +249,11 @@ const GETTING_STARTED_CHECKLIST: ChecklistStep[] = [
     duration: '3 min',
     category: 'get-started',
     description:
-      'A Project is the core entity in the portal. It represents a governed automation initiative backed by a Git repository, with CI/CD pipelines, policy checks, and AAP integration. Projects can be created from templates (recommended) or from discovered repositories.',
+      'A Project is the core entity in the portal. It represents an automation initiative backed by a Git repository, with quality scans, policy checks, and AAP integration. Projects can be created from templates (recommended) or from discovered repositories.',
     actions: [
-      { id: 'read-about', label: 'Open a project and review its Overview, Pipeline, and Resources tabs' },
+      { id: 'read-about', label: 'Open a project and review its Overview, Quality, and Resources tabs' },
       { id: 'understand-maturity', label: 'Understand the maturity tracker — from creation to production deployment' },
-      { id: 'review-pipeline', label: 'Review how pipeline stages (Lint, Policy, EE Compatibility) validate your content' },
+      { id: 'review-quality', label: 'Review how quality scans validate your content for best practices and compliance' },
     ],
   },
   {
@@ -262,14 +262,13 @@ const GETTING_STARTED_CHECKLIST: ChecklistStep[] = [
     duration: '10 min',
     category: 'create',
     description:
-      'Use a template to scaffold a new automation project. The wizard guides you through naming, connecting a Git repo, selecting a pipeline type, and configuring the AAP destination.',
+      'Use a template to scaffold a new automation project. The wizard guides you through naming, connecting a Git repo, and configuring the AAP destination.',
     actions: [
       { id: 'pick-template', label: 'Go to Templates and choose a template that matches your use case', link: { text: 'Open Templates', url: '/self-service/repositories/create' } },
       { id: 'fill-details', label: 'Fill in project details — try the AI Jumpstart to auto-generate settings' },
       { id: 'connect-git', label: 'Connect to an existing repo or let the portal create a new one' },
-      { id: 'select-pipeline', label: 'Choose Standard (fast) or Comprehensive (full governance) pipeline' },
       { id: 'configure-aap', label: 'Set the AAP Controller and organization for deployment' },
-      { id: 'review-create', label: 'Review and create — watch the pipeline run on your first commit' },
+      { id: 'review-create', label: 'Review and create — your project is ready for quality scans' },
     ],
   },
   {
@@ -278,7 +277,7 @@ const GETTING_STARTED_CHECKLIST: ChecklistStep[] = [
     duration: '5 min',
     category: 'create',
     description:
-      'If you already have Git repos with Ansible content, the portal discovers them automatically. You can create a project from any discovered repository to bring it under governance.',
+      'If you already have Git repos with Ansible content, the portal discovers them automatically. Quality scans run against discovered repositories to validate content.',
     actions: [
       { id: 'check-repos', label: 'Go to Git Repositories and find your discovered repos', link: { text: 'Open Git Repositories', url: '/self-service/repositories' } },
       { id: 'click-create', label: 'Click "Create project" on a repo that doesn\'t have one yet' },
@@ -286,17 +285,17 @@ const GETTING_STARTED_CHECKLIST: ChecklistStep[] = [
     ],
   },
   {
-    id: 'run-pipeline',
-    title: 'Understand and fix pipeline results',
+    id: 'fix-violations',
+    title: 'Understand and fix quality violations',
     duration: '10 min',
     category: 'govern',
     description:
-      'Every commit triggers a pipeline that validates your automation content. Learn to read the results, fix lint warnings, resolve policy violations, and verify EE compatibility.',
+      'Quality scans validate your automation content for best practices and compliance. Learn to read scan results, understand violation severity, and apply AI-suggested fixes.',
     actions: [
-      { id: 'view-pipeline', label: 'Open a project and go to the Pipeline tab' },
-      { id: 'expand-stages', label: 'Click on each pipeline run to see individual stage results' },
-      { id: 'read-logs', label: 'Expand a failed stage and click "View log" to see details' },
-      { id: 'fix-push', label: 'Fix any issues in your code, push, and watch the pipeline re-run' },
+      { id: 'view-quality', label: 'Open a project and go to the Quality tab' },
+      { id: 'review-violations', label: 'Review violations grouped by severity and rule' },
+      { id: 'apply-fix', label: 'Use AI suggestions to fix violations where available' },
+      { id: 'rescan', label: 'Re-scan to confirm fixes resolved the issues' },
     ],
   },
   {
@@ -305,7 +304,7 @@ const GETTING_STARTED_CHECKLIST: ChecklistStep[] = [
     duration: '5 min',
     category: 'operate',
     description:
-      'Once all pipeline stages pass, push your project to Ansible Automation Platform. This creates or updates the AAP Project and Job Template, making your automation ready to run in production.',
+      'Push your project to Ansible Automation Platform. This creates or updates the AAP Project and Job Template, making your automation ready to run in production.',
     actions: [
       { id: 'check-maturity', label: 'Verify all maturity steps are complete on the Overview tab' },
       { id: 'push', label: 'Go to AAP Activity tab and click "Push to AAP"' },
@@ -351,7 +350,7 @@ const COURSES: Course[] = [
   {
     id: 'getting-started',
     title: 'Getting started with the Ansible Portal',
-    description: 'Learn the portal layout, create your first project, understand pipelines, and push to AAP. The essential walkthrough for new users.',
+    description: 'Learn the portal layout, create your first project, run quality scans, and push to AAP. The essential walkthrough for new users.',
     duration: '~45 min',
     steps: 7,
     icon: <SchoolIcon style={{ fontSize: 24, color: '#fff' }} />,
@@ -370,9 +369,9 @@ const COURSES: Course[] = [
     docLink: { text: 'Execution Environment documentation', url: 'https://docs.redhat.com/en/documentation/red_hat_ansible_automation_platform/2.5/html/creating_and_consuming_execution_environments' },
   },
   {
-    id: 'policy-governance',
-    title: 'Policy and governance best practices',
-    description: 'Set up organizational policies, enforce naming conventions, restrict module usage, and ensure compliance across all automation projects.',
+    id: 'quality-compliance',
+    title: 'Quality scans and compliance',
+    description: 'Understand how automated quality scans validate your content against best practices, security rules, and compliance standards.',
     duration: '~25 min',
     steps: 4,
     icon: <SecurityIcon style={{ fontSize: 24, color: '#fff' }} />,

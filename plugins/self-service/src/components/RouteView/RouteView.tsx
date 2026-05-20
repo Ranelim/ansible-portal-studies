@@ -32,7 +32,7 @@ import { EEBuilderPlaceholderPage } from '../Admin/EEBuilderPlaceholderPage';
 import { ConnectionDetailPage } from '../Admin/ConnectionDetailPage';
 import { SyncActivityPage } from '../Admin/SyncActivityPage';
 import { SyncJobDetailPage } from '../Admin/SyncJobDetailPage';
-import { PipelinePoliciesPage } from '../Admin/PipelinePoliciesPage';
+// Pipeline Policies removed — prototype-only concept
 import { ContentSourcesPage } from '../Admin/ContentSourcesPage';
 import { LearningPage } from '../Learning/LearningPage';
 import { SetupWizardPage } from '../Setup/SetupWizardPage';
@@ -157,7 +157,7 @@ const RouteViewContent = () => {
         <Route path="admin/content-sources" element={<ContentSourcesPage />} />
         <Route path="admin/sync-activity" element={<SyncActivityPage />} />
         <Route path="admin/sync-activity/:syncId" element={<SyncJobDetailPage />} />
-        <Route path="admin/pipeline-policies" element={<PipelinePoliciesPage />} />
+        {/* Pipeline Policies route removed */}
         <Route path="setup" element={<SetupWizardPage />} />
         {/* Default redirects */}
         <Route

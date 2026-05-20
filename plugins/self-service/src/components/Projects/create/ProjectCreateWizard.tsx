@@ -4,18 +4,12 @@ import {
   Button,
   Checkbox,
   Chip,
-  Collapse,
   Divider,
   FormControl,
   FormControlLabel,
   IconButton,
   InputLabel,
-  List,
-  ListItem,
-  ListItemIcon,
-  ListItemText,
   MenuItem,
-  Radio,
   Select,
   Stepper,
   Step,
@@ -27,18 +21,12 @@ import {
   makeStyles,
 } from '@material-ui/core';
 import ArrowBackIcon from '@material-ui/icons/ArrowBack';
-import CheckCircleIcon from '@material-ui/icons/CheckCircle';
-import RadioButtonUncheckedIcon from '@material-ui/icons/RadioButtonUnchecked';
 import EditIcon from '@material-ui/icons/Edit';
-import InfoOutlinedIcon from '@material-ui/icons/InfoOutlined';
+import { useNavigate } from 'react-router-dom';
 import type { DemoTemplate } from './templatesDemoData';
-import {
-  SYNCED_REPOS,
-  CUSTOM_PIPELINE_STAGES,
-} from './templatesDemoData';
-import { PIPELINE_PROFILES } from '../catalog/unifiedDemoData';
-
-// ─── Shared wizard form state ─────────────────────────────────────────────────
+import { DEMO_TEMPLATES, SYNCED_REPOS } from './templatesDemoData';
+import { useRouteRef } from '@backstage/core-plugin-api';
+import { rootRouteRef } from '../../../routes';
 
 type WizardFormState = {
   serviceName: string;
@@ -54,8 +42,6 @@ type WizardFormState = {
   branch: string;
   createNewBranch: boolean;
   newBranchName: string;
-  pipelineProfileId: string;
-  customStages: string[];
   aapController: string;
   aapOrganization: string;
   executionEnvironment: string;
@@ -65,7 +51,7 @@ type WizardFormState = {
 
 const BRANCH_CREATE_NEW = '__create_new__';
 
-const createInitialState = (template: DemoTemplate): WizardFormState => ({
+const createInitialState = (): WizardFormState => ({
   serviceName: '',
   serviceDescription: '',
   owner: 'platform-engineering',
@@ -79,8 +65,6 @@ const createInitialState = (template: DemoTemplate): WizardFormState => ({
   branch: 'main',
   createNewBranch: false,
   newBranchName: '',
-  pipelineProfileId: template.defaultPipeline === 'comprehensive' ? 'stig-rhel9' : 'org-default',
-  customStages: ['syntax', 'lint', 'policy'],
   aapController: 'prod-controller',
   aapOrganization: 'Default',
   executionEnvironment: 'ee-supported',
@@ -88,7 +72,28 @@ const createInitialState = (template: DemoTemplate): WizardFormState => ({
   autoCreateJobTemplate: true,
 });
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
+const WIZARD_STEPS = [
+  {
+    title: 'Details',
+    description: 'Name and describe your automation repository.',
+    why: 'Naming and describing your repository up front helps your team discover and understand it. AI Jumpstart can save time by pre-filling the remaining steps based on your intent.',
+  },
+  {
+    title: 'Source code',
+    description: 'Create a new repository or select an existing synced repo.',
+    why: 'Every automation repository is backed by Git. This is where your playbooks, roles, and inventory live — and it enables version control, collaboration, and auditability.',
+  },
+  {
+    title: 'Destination',
+    description: 'Configure how this repository connects to your Ansible Automation Platform.',
+    why: 'Connecting to AAP lets your automation be executed, scheduled, and monitored centrally. This step ensures your AAP project and job templates are registered and ready to run.',
+  },
+  {
+    title: 'Review',
+    description: 'Review your selections before creating the repository.',
+    why: 'A final review prevents misconfiguration. Once created, the repository and AAP resources are provisioned automatically.',
+  },
+];
 
 const useStyles = makeStyles(theme => ({
   root: {
@@ -167,7 +172,6 @@ const useStyles = makeStyles(theme => ({
     textTransform: 'none',
   },
 
-  // AI Jumpstart
   aiBox: {
     border: `2px solid ${theme.palette.primary.main}`,
     borderRadius: theme.shape.borderRadius,
@@ -213,7 +217,6 @@ const useStyles = makeStyles(theme => ({
     },
   },
 
-  // Source Code
   createNewCheckbox: {
     marginTop: theme.spacing(2),
     marginBottom: theme.spacing(1),
@@ -227,63 +230,6 @@ const useStyles = makeStyles(theme => ({
     marginTop: theme.spacing(2),
   },
 
-  // Pipeline
-  pipelineOption: {
-    border: `1px solid ${theme.palette.divider}`,
-    borderRadius: theme.shape.borderRadius,
-    padding: theme.spacing(2),
-    marginBottom: theme.spacing(2),
-    cursor: 'pointer',
-    transition: 'border-color 0.2s',
-    '&:hover': {
-      borderColor: theme.palette.primary.main,
-    },
-  },
-  pipelineOptionSelected: {
-    borderColor: theme.palette.primary.main,
-    borderWidth: 2,
-    backgroundColor:
-      theme.palette.type === 'dark'
-        ? 'rgba(25, 118, 210, 0.08)'
-        : 'rgba(25, 118, 210, 0.04)',
-  },
-  pipelineTitle: {
-    fontWeight: 600,
-    fontSize: 14,
-  },
-  pipelineDescription: {
-    color: theme.palette.text.secondary,
-    fontSize: 13,
-    lineHeight: 1.5,
-    margin: theme.spacing(0.5, 0, 1, 0),
-  },
-  stageLabels: {
-    color: theme.palette.text.secondary,
-    fontSize: 11,
-  },
-  pipelineInfoBar: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: theme.spacing(1),
-    padding: theme.spacing(1.5),
-    backgroundColor:
-      theme.palette.type === 'dark'
-        ? 'rgba(255,255,255,0.04)'
-        : 'rgba(0,0,0,0.02)',
-    borderRadius: theme.shape.borderRadius,
-    marginBottom: theme.spacing(2),
-    fontSize: 12,
-    color: theme.palette.text.secondary,
-  },
-  customStageItem: {
-    borderBottom: `1px solid ${theme.palette.divider}`,
-    padding: theme.spacing(1, 2),
-    '&:last-child': {
-      borderBottom: 'none',
-    },
-  },
-
-  // AAP Destination
   prefilledHint: {
     color: theme.palette.text.secondary,
     fontSize: 12,
@@ -291,7 +237,6 @@ const useStyles = makeStyles(theme => ({
     marginBottom: theme.spacing(2),
   },
 
-  // Review
   reviewSection: {
     border: `1px solid ${theme.palette.divider}`,
     borderRadius: theme.shape.borderRadius,
@@ -320,36 +265,7 @@ const useStyles = makeStyles(theme => ({
     fontWeight: 500,
     textAlign: 'right' as const,
   },
-
-  // Success
-  successContainer: {
-    textAlign: 'center' as const,
-    padding: theme.spacing(6, 2),
-  },
-  successIcon: {
-    fontSize: 64,
-    color: '#4caf50',
-    marginBottom: theme.spacing(2),
-  },
 }));
-
-// ─── Stage Icons ──────────────────────────────────────────────────────────────
-
-const StageIconRow = ({
-  stages,
-  tooltips,
-}: {
-  stages: string[];
-  tooltips?: boolean;
-}) => (
-  <Box display="flex" alignItems="center" style={{ gap: 3 }}>
-    {stages.map((stage, i) => (
-      <Tooltip key={i} title={tooltips ? stage : ''}>
-        <CheckCircleIcon style={{ color: '#4caf50', fontSize: 20 }} />
-      </Tooltip>
-    ))}
-  </Box>
-);
 
 // ─── Step 1: Details & AI Jumpstart ───────────────────────────────────────────
 
@@ -467,7 +383,6 @@ const SourceCodeStep = ({
 
   return (
     <Box>
-      {/* Source control provider */}
       <FormControl variant="outlined" fullWidth style={{ marginBottom: 16 }}>
         <InputLabel>Source control provider</InputLabel>
         <Select
@@ -486,7 +401,6 @@ const SourceCodeStep = ({
         </Select>
       </FormControl>
 
-      {/* Create new repository checkbox -- placed above repo field since it changes the UI below */}
       <FormControlLabel
         className={classes.createNewCheckbox}
         control={
@@ -510,7 +424,6 @@ const SourceCodeStep = ({
         }
       />
 
-      {/* Repository selection (existing repos) -- hidden when "create new" is checked */}
       {!form.createNewRepository && (
         <FormControl variant="outlined" fullWidth style={{ marginTop: 8 }}>
           <InputLabel shrink={Boolean(form.selectedExistingRepo)}>
@@ -555,7 +468,6 @@ const SourceCodeStep = ({
         </FormControl>
       )}
 
-      {/* New repo fields */}
       {form.createNewRepository && (
         <Box className={classes.repoFields}>
           <Box display="flex" style={{ gap: 12, marginBottom: 16 }}>
@@ -597,7 +509,6 @@ const SourceCodeStep = ({
         </Box>
       )}
 
-      {/* Branch selection -- shown for existing repos */}
       {!form.createNewRepository && form.selectedExistingRepo && (
         <Box className={classes.branchSection}>
           <Divider style={{ marginBottom: 16 }} />
@@ -693,176 +604,7 @@ const SourceCodeStep = ({
   );
 };
 
-// ─── Step 3: Pipeline & Governance ────────────────────────────────────────────
-
-const PipelineStep = ({
-  form,
-  setForm,
-}: {
-  form: WizardFormState;
-  setForm: React.Dispatch<React.SetStateAction<WizardFormState>>;
-}) => {
-  const classes = useStyles();
-
-  const toggleCustomStage = (id: string) => {
-    setForm(prev => ({
-      ...prev,
-      customStages: prev.customStages.includes(id)
-        ? prev.customStages.filter(s => s !== id)
-        : [...prev.customStages, id],
-    }));
-  };
-
-  return (
-    <Box>
-      <Box className={classes.pipelineInfoBar}>
-        <InfoOutlinedIcon style={{ fontSize: 16 }} />
-        <Typography variant="body2" style={{ fontSize: 12 }}>
-          The selected pipeline will be added as a CI/CD workflow file in your
-          repository (e.g., <code>.github/workflows/ansible-governance.yml</code>{' '}
-          or <code>.gitlab-ci.yml</code>).
-        </Typography>
-      </Box>
-
-      {PIPELINE_PROFILES.map(profile => (
-        <Box
-          key={profile.id}
-          className={`${classes.pipelineOption} ${form.pipelineProfileId === profile.id ? classes.pipelineOptionSelected : ''}`}
-          onClick={() => setForm(prev => ({ ...prev, pipelineProfileId: profile.id }))}
-        >
-          <Box display="flex" alignItems="center">
-            <Radio
-              checked={form.pipelineProfileId === profile.id}
-              color="primary"
-              style={{ padding: '4px 8px 4px 0' }}
-            />
-            <Typography className={classes.pipelineTitle}>
-              {profile.name}
-            </Typography>
-            <Chip
-              label={profile.source === 'built-in' ? 'Built-in' : profile.source === 'organization' ? 'Organization' : 'Custom'}
-              size="small"
-              variant="outlined"
-              style={{ fontSize: 10, height: 18, marginLeft: 8 }}
-            />
-          </Box>
-          <Typography className={classes.pipelineDescription}>
-            {profile.description}
-          </Typography>
-          <StageIconRow stages={profile.stages} tooltips />
-          <Typography className={classes.stageLabels}>
-            {profile.stages.join(' > ')}
-          </Typography>
-          {profile.policies.length > 0 && (
-            <Typography className={classes.pipelineDescription} style={{ marginTop: 4 }}>
-              {profile.policies.length} policy {profile.policies.length === 1 ? 'check' : 'checks'}
-            </Typography>
-          )}
-        </Box>
-      ))}
-
-      {/* Custom */}
-      <Box
-        className={`${classes.pipelineOption} ${form.pipelineProfileId === 'custom' ? classes.pipelineOptionSelected : ''}`}
-        onClick={() => setForm(prev => ({ ...prev, pipelineProfileId: 'custom' }))}
-      >
-        <Box display="flex" alignItems="center">
-          <Radio
-            checked={form.pipelineProfileId === 'custom'}
-            color="primary"
-            style={{ padding: '4px 8px 4px 0' }}
-          />
-          <Typography className={classes.pipelineTitle}>
-            Custom pipeline
-          </Typography>
-        </Box>
-        <Typography className={classes.pipelineDescription}>
-          Build a tailored pipeline. Manually configure the specific linting,
-          governance, and testing gates that apply to this repository.
-        </Typography>
-
-        <Collapse in={form.pipelineProfileId === 'custom'}>
-          <Divider style={{ margin: '12px 0' }} />
-          <Typography
-            variant="subtitle2"
-            style={{ marginBottom: 8, fontSize: 13 }}
-          >
-            Select pipeline stages:
-          </Typography>
-          <List
-            disablePadding
-            style={{
-              border: '1px solid rgba(0,0,0,0.12)',
-              borderRadius: 4,
-            }}
-          >
-            {CUSTOM_PIPELINE_STAGES.map(stage => (
-              <ListItem
-                key={stage.id}
-                dense
-                button
-                className={classes.customStageItem}
-                onClick={e => {
-                  e.stopPropagation();
-                  toggleCustomStage(stage.id);
-                }}
-              >
-                <ListItemIcon style={{ minWidth: 36 }}>
-                  <Checkbox
-                    edge="start"
-                    checked={form.customStages.includes(stage.id)}
-                    color="primary"
-                    size="small"
-                  />
-                </ListItemIcon>
-                <ListItemText
-                  primary={
-                    <Typography variant="body2" style={{ fontWeight: 500 }}>
-                      {stage.label}
-                    </Typography>
-                  }
-                  secondary={stage.description}
-                />
-              </ListItem>
-            ))}
-          </List>
-          {form.customStages.length > 0 && (
-            <Box mt={1.5}>
-              <Typography variant="caption" color="textSecondary">
-                Pipeline: Commit {'>'}{' '}
-                {form.customStages
-                  .map(
-                    id =>
-                      CUSTOM_PIPELINE_STAGES.find(s => s.id === id)?.label,
-                  )
-                  .filter(Boolean)
-                  .join(' > ')}
-              </Typography>
-            </Box>
-          )}
-        </Collapse>
-
-        {form.pipelineProfileId !== 'custom' && (
-          <>
-            <Box display="flex" alignItems="center" style={{ gap: 3 }}>
-              {[1, 2, 3].map(i => (
-                <RadioButtonUncheckedIcon
-                  key={i}
-                  style={{ color: '#bdbdbd', fontSize: 20 }}
-                />
-              ))}
-            </Box>
-            <Typography className={classes.stageLabels}>
-              Customize steps
-            </Typography>
-          </>
-        )}
-      </Box>
-    </Box>
-  );
-};
-
-// ─── Step 4: Destination (AAP) ────────────────────────────────────────────────
+// ─── Step 3: Destination (AAP) ────────────────────────────────────────────────
 
 const DestinationStep = ({
   form,
@@ -965,7 +707,7 @@ const DestinationStep = ({
   );
 };
 
-// ─── Step 5: Review & Create ──────────────────────────────────────────────────
+// ─── Step 4: Review & Create ──────────────────────────────────────────────────
 
 const ReviewStep = ({
   form,
@@ -977,13 +719,6 @@ const ReviewStep = ({
   onJumpToStep: (step: number) => void;
 }) => {
   const classes = useStyles();
-
-  const matchedProfile = PIPELINE_PROFILES.find(p => p.id === form.pipelineProfileId);
-  const pipelineLabel = matchedProfile
-    ? matchedProfile.name
-    : form.pipelineProfileId === 'custom'
-      ? `Custom (${form.customStages.length} stages)`
-      : form.pipelineProfileId;
 
   const repoLabel = form.createNewRepository
     ? `${form.repositoryOwner}/${form.repositoryName || '(not set)'} (new)`
@@ -1019,7 +754,7 @@ const ReviewStep = ({
     <Box>
       <Box className={classes.reviewSection}>
         <Typography className={classes.reviewSectionTitle}>
-          Repository Details
+          Repository details
           <EditButton step={0} />
         </Typography>
         <Box className={classes.reviewRow}>
@@ -1048,7 +783,7 @@ const ReviewStep = ({
 
       <Box className={classes.reviewSection}>
         <Typography className={classes.reviewSectionTitle}>
-          Source Code
+          Source code
           <EditButton step={1} />
         </Typography>
         <Box className={classes.reviewRow}>
@@ -1085,35 +820,8 @@ const ReviewStep = ({
 
       <Box className={classes.reviewSection}>
         <Typography className={classes.reviewSectionTitle}>
-          Pipeline & Governance
+          Destination
           <EditButton step={2} />
-        </Typography>
-        <Box className={classes.reviewRow}>
-          <Typography className={classes.reviewLabel}>Pipeline</Typography>
-          <Typography className={classes.reviewValue}>
-            {pipelineLabel}
-          </Typography>
-        </Box>
-        {form.pipelineProfileId === 'custom' && (
-          <Box className={classes.reviewRow}>
-            <Typography className={classes.reviewLabel}>Stages</Typography>
-            <Typography className={classes.reviewValue}>
-              Commit {'>'}{' '}
-              {form.customStages
-                .map(
-                  id => CUSTOM_PIPELINE_STAGES.find(s => s.id === id)?.label,
-                )
-                .filter(Boolean)
-                .join(' > ')}
-            </Typography>
-          </Box>
-        )}
-      </Box>
-
-      <Box className={classes.reviewSection}>
-        <Typography className={classes.reviewSectionTitle}>
-          Destination (AAP)
-          <EditButton step={3} />
         </Typography>
         <Box className={classes.reviewRow}>
           <Typography className={classes.reviewLabel}>Controller</Typography>
@@ -1154,46 +862,6 @@ const ReviewStep = ({
   );
 };
 
-// ─── Success Screen ───────────────────────────────────────────────────────────
-
-const SuccessScreen = ({
-  template,
-  onClose,
-}: {
-  template: DemoTemplate;
-  onClose: () => void;
-}) => {
-  const classes = useStyles();
-  return (
-    <Box className={classes.successContainer}>
-      <CheckCircleIcon className={classes.successIcon} />
-      <Typography variant="h5" style={{ fontWeight: 600, marginBottom: 8 }}>
-        Repository created successfully!
-      </Typography>
-      <Typography color="textSecondary" style={{ marginBottom: 24 }}>
-        Your <strong>{template.title}</strong> has been scaffolded. The Git
-        repository has been created, the CI/CD pipeline configured, and the
-        AAP project registered.
-      </Typography>
-      <Typography
-        variant="body2"
-        color="textSecondary"
-        style={{ marginBottom: 24, fontStyle: 'italic' }}
-      >
-        (This is a prototype demo — no actual resources were created.)
-      </Typography>
-      <Box display="flex" justifyContent="center" style={{ gap: 12 }}>
-        <Button variant="outlined" onClick={onClose}>
-          Back to Templates
-        </Button>
-        <Button variant="contained" color="primary" onClick={onClose}>
-          View repository
-        </Button>
-      </Box>
-    </Box>
-  );
-};
-
 // ─── Validation ───────────────────────────────────────────────────────────────
 
 const isStepValid = (step: number, form: WizardFormState): boolean => {
@@ -1209,20 +877,17 @@ const isStepValid = (step: number, form: WizardFormState): boolean => {
       if (form.createNewBranch) return Boolean(form.newBranchName.trim());
       return true;
     case 2:
-      if (form.pipelineProfileId === 'custom') return form.customStages.length > 0;
       return true;
     case 3:
-      return true;
-    case 4:
       return true;
     default:
       return true;
   }
 };
 
-// ─── Main Wizard ──────────────────────────────────────────────────────────────
+// ─── Wizard Content (reusable for both standalone and embedded) ───────────────
 
-export const ProjectCreateWizard = ({
+export const ProjectCreateWizardContent = ({
   template,
   onClose,
 }: {
@@ -1230,21 +895,21 @@ export const ProjectCreateWizard = ({
   onClose: () => void;
 }) => {
   const classes = useStyles();
+  const navigate = useNavigate();
+  const rootLink = useRouteRef(rootRouteRef);
   const [activeStep, setActiveStep] = useState(0);
-  const [completed, setCompleted] = useState(false);
-  const [form, setForm] = useState<WizardFormState>(() =>
-    createInitialState(template),
-  );
+  const [form, setForm] = useState<WizardFormState>(createInitialState);
 
+  const steps = WIZARD_STEPS;
   const stepValid = isStepValid(activeStep, form);
 
   const handleNext = useCallback(() => {
-    if (activeStep === template.steps.length - 1) {
-      setCompleted(true);
+    if (activeStep === steps.length - 1) {
+      navigate(`${rootLink()}/create/tasks/demo-project-success`);
     } else {
       setActiveStep(prev => prev + 1);
     }
-  }, [activeStep, template.steps.length]);
+  }, [activeStep, steps.length, navigate, rootLink]);
 
   const handleBack = useCallback(() => {
     setActiveStep(prev => prev - 1);
@@ -1254,44 +919,27 @@ export const ProjectCreateWizard = ({
     setActiveStep(step);
   }, []);
 
-  if (completed) {
-    return <SuccessScreen template={template} onClose={onClose} />;
-  }
-
-  const currentStep = template.steps[activeStep];
-  const isLastStep = activeStep === template.steps.length - 1;
+  const currentStep = steps[activeStep];
+  const isLastStep = activeStep === steps.length - 1;
 
   return (
     <Box className={classes.root}>
-      <Box className={classes.header}>
-        <Button
-          startIcon={<ArrowBackIcon />}
-          onClick={onClose}
-          className={classes.backButton}
-        >
-          Templates
-        </Button>
-      </Box>
       <Box className={classes.titleRow}>
         <Typography variant="h5" style={{ fontWeight: 600 }}>
           Create repository
         </Typography>
         <Chip
-          label="Template"
+          label={template.title}
           size="small"
           className={classes.templateBadge}
         />
       </Box>
       <Typography className={classes.subtitle}>
-        Scaffold a governed automation repository with a CI/CD pipeline from this
-        template. This generates your repository structure and connects it to
-        Ansible Automation Platform, enforcing quality, security, and
-        compatibility checks before any code is promoted to an active Job
-        Template.
+        {template.description}
       </Typography>
 
       <Stepper activeStep={activeStep} className={classes.stepper}>
-        {template.steps.map((step, index) => (
+        {steps.map((step, index) => (
           <Step
             key={step.title}
             completed={index < activeStep}
@@ -1325,12 +973,9 @@ export const ProjectCreateWizard = ({
           <SourceCodeStep form={form} setForm={setForm} />
         )}
         {activeStep === 2 && (
-          <PipelineStep form={form} setForm={setForm} />
-        )}
-        {activeStep === 3 && (
           <DestinationStep form={form} setForm={setForm} />
         )}
-        {activeStep === 4 && (
+        {activeStep === 3 && (
           <ReviewStep
             form={form}
             template={template}
@@ -1356,5 +1001,19 @@ export const ProjectCreateWizard = ({
         </Button>
       </Box>
     </Box>
+  );
+};
+
+// ─── Legacy inline wrapper (for backward compat during transition) ────────────
+
+export const ProjectCreateWizard = ({
+  template,
+  onClose,
+}: {
+  template: DemoTemplate;
+  onClose: () => void;
+}) => {
+  return (
+    <ProjectCreateWizardContent template={template} onClose={onClose} />
   );
 };

@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import {
   Content,
+  Page,
   MarkdownContent,
 } from '@backstage/core-components';
 import { StepForm } from './StepForm';
@@ -10,9 +11,10 @@ import {
   TemplateParameterSchema,
 } from '@backstage/plugin-scaffolder-react';
 import { catalogApiRef } from '@backstage/plugin-catalog-react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, Link as RouterLink } from 'react-router-dom';
 import {
   Box,
+  Breadcrumbs,
   Button,
   Card,
   CardContent,
@@ -22,18 +24,33 @@ import {
   makeStyles,
   useTheme,
 } from '@material-ui/core';
+import NavigateNextIcon from '@material-ui/icons/NavigateNext';
 import WarningAmberIcon from '@material-ui/icons/ReportProblemOutlined';
-import ArrowBackIcon from '@material-ui/icons/ArrowBack';
 import { rootRouteRef } from '../../routes';
+import { DEMO_TEMPLATES } from '../Projects/create/templatesDemoData';
+import { ProjectCreateWizardContent } from '../Projects/create/ProjectCreateWizard';
 
 const useStyles = makeStyles(theme => ({
   root: {
     padding: theme.spacing(3),
   },
-  backButton: {
-    textTransform: 'none',
-    fontWeight: 500,
+  breadcrumbs: {
     marginBottom: theme.spacing(2),
+    '& a': {
+      color: theme.palette.primary.main,
+      textDecoration: 'none',
+      fontSize: 14,
+      '&:hover': {
+        textDecoration: 'underline',
+      },
+    },
+    '& .MuiBreadcrumbs-separator': {
+      fontSize: 14,
+    },
+  },
+  breadcrumbCurrent: {
+    fontSize: 14,
+    color: theme.palette.text.secondary,
   },
   title: {
     fontSize: '1.5rem',
@@ -92,6 +109,8 @@ export const CreateTask = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+
+  const demoTemplate = DEMO_TEMPLATES.find(t => t.name === templateName);
 
   const initialFormData = useMemo(() => {
     const state = location.state as {
@@ -166,6 +185,35 @@ export const CreateTask = () => {
     fetchEntity();
   }, [templateName, namespace, scaffolderApi, catalogApi]);
 
+  if (demoTemplate) {
+    return (
+      <Page themeId="app">
+        <Content>
+          <Box className={classes.root}>
+            <Breadcrumbs
+              separator={<NavigateNextIcon fontSize="small" />}
+              className={classes.breadcrumbs}
+            >
+              <RouterLink to="/self-service/repositories/list">
+                Git Repositories
+              </RouterLink>
+              <RouterLink to="/self-service/repositories/create">
+                Templates
+              </RouterLink>
+              <Typography className={classes.breadcrumbCurrent}>
+                {demoTemplate.title}
+              </Typography>
+            </Breadcrumbs>
+            <ProjectCreateWizardContent
+              template={demoTemplate}
+              onClose={() => navigate('/self-service/repositories/create')}
+            />
+          </Box>
+        </Content>
+      </Page>
+    );
+  }
+
   if (loading) {
     return (
       <Content>
@@ -211,76 +259,85 @@ export const CreateTask = () => {
     }
   };
 
+  const backLabel = templateEntity?.spec?.type?.includes('execution-environment')
+    ? 'Execution Environments'
+    : 'Templates';
+  const backUrl = templateEntity?.spec?.type?.includes('execution-environment')
+    ? '/self-service/ee/create'
+    : '/create';
+
   return (
-    <Content>
-      <Box className={classes.root}>
-        <Button
-          startIcon={<ArrowBackIcon />}
-          onClick={handleBack}
-          className={classes.backButton}
-          data-testid="back-button"
-        >
-          Templates
-        </Button>
-        <Typography
-          className={classes.title}
-          data-testid="template-task--title"
-        >
-          {entityTemplate.title}
-        </Typography>
-        {description && (
-          <Typography className={classes.description}>
-            {description}
+    <Page themeId="app">
+      <Content>
+        <Box className={classes.root}>
+          <Breadcrumbs
+            separator={<NavigateNextIcon fontSize="small" />}
+            className={classes.breadcrumbs}
+          >
+            <RouterLink to={backUrl}>
+              {backLabel}
+            </RouterLink>
+            <Typography className={classes.breadcrumbCurrent}>
+              {entityTemplate.title}
+            </Typography>
+          </Breadcrumbs>
+          <Typography className={classes.title} data-testid="template-task--title">
+            {entityTemplate.title}
           </Typography>
-        )}
-        {templateEntity?.metadata?.annotations?.['ansible.redhat.com/requires-approval'] === 'true' && (
-          <ApprovalDisclaimer />
-        )}
-        <Grid container direction="row-reverse" spacing={3}>
-          {templateInfo && (
-            <Grid item xs={12} sm={12} md={5} lg={5}>
+          {description && (
+            <Typography className={classes.description}>
+              {description}
+            </Typography>
+          )}
+          {templateEntity?.metadata?.annotations?.['ansible.redhat.com/requires-approval'] === 'true' && (
+            <ApprovalDisclaimer />
+          )}
+          <Grid container direction="row-reverse" spacing={3}>
+            {templateInfo && (
+              <Grid item xs={12} sm={12} md={5} lg={5}>
+                <Card variant="outlined">
+                  <CardHeader title="About Template" />
+                  <CardContent>
+                    <MarkdownContent content={templateInfo} />
+                  </CardContent>
+                </Card>
+              </Grid>
+            )}
+            <Grid
+              item
+              xs={12}
+              sm={12}
+              md={templateInfo ? 7 : 12}
+              lg={templateInfo ? 7 : 12}
+            >
               <Card variant="outlined">
-                <CardHeader title="About Template" />
                 <CardContent>
-                  <MarkdownContent content={templateInfo} />
+                  <StepForm
+                    steps={entityTemplate.steps}
+                    submitFunction={finalSubmit}
+                    initialFormData={initialFormData}
+                    storageKey={`${namespace}/${templateName}`}
+                  />
                 </CardContent>
               </Card>
-            </Grid>
-          )}
-          <Grid
-            item
-            xs={12}
-            sm={12}
-            md={templateInfo ? 7 : 12}
-            lg={templateInfo ? 7 : 12}
-          >
-            <Card variant="outlined">
-              <CardContent>
-                <StepForm
-                  steps={entityTemplate.steps}
-                  submitFunction={finalSubmit}
-                  initialFormData={initialFormData}
-                  storageKey={`${namespace}/${templateName}`}
-                />
-              </CardContent>
-            </Card>
-            <Box
-              display="flex"
-              justifyContent="flex-end"
-              marginTop="16px"
-              marginBottom={4}
-            >
-              <Button
-                onClick={handleBack}
-                variant="text"
-                color="primary"
+              <Box
+                display="flex"
+                justifyContent="flex-end"
+                marginTop="16px"
+                marginBottom={4}
               >
-                Cancel
-              </Button>
-            </Box>
+                <Button
+                  onClick={handleBack}
+                  variant="text"
+                  color="primary"
+                >
+                  Cancel
+                </Button>
+              </Box>
+            </Grid>
           </Grid>
-        </Grid>
-      </Box>
-    </Content>
+        </Box>
+      </Content>
+    </Page>
   );
 };

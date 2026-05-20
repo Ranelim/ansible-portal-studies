@@ -72,10 +72,7 @@ import {
   DemoProject,
   PipelineStage,
   JobRunEntry,
-  PipelineRun,
 } from '../catalog/projectsDemoData';
-import { PIPELINE_PROFILES, STAGE_DESCRIPTIONS as UNIFIED_STAGE_DESCS } from '../catalog/unifiedDemoData';
-import { GovernanceStatusBadge } from '../../common/GovernanceStatusBadge';
 import { useProjectDetailStyles } from './styles';
 import { statusColors } from '../../common/statusColors';
 import { getProjectQuality, getProjectUpgradeData } from './qualityDemoData';
@@ -86,24 +83,6 @@ import PlayArrowIcon from '@material-ui/icons/PlayArrow';
 import BuildIcon from '@material-ui/icons/Build';
 import SystemUpdateIcon from '@material-ui/icons/SystemUpdate';
 
-const PROFILE_BY_REPO: Record<string, string> = {
-  'rhel-patch-automation': 'stig-rhel9',
-  'cis-compliance-scanner': 'stig-rhel9',
-  'firewall-policy-engine': 'org-default',
-  'aws-provisioner': 'minimal',
-  'web-app-scaling-suite': 'org-default',
-  'network-compliance-checker': 'org-default',
-};
-
-const getProfileForProject = (projectName: string) => {
-  const profileId = PROFILE_BY_REPO[projectName] ?? 'org-default';
-  return PIPELINE_PROFILES.find(p => p.id === profileId) ?? PIPELINE_PROFILES[1];
-};
-
-const getProfileStageNames = (projectName: string): string[] => {
-  const profile = getProfileForProject(projectName);
-  return profile.stages;
-};
 
 const tabs = [
   { id: 'overview', label: 'Overview' },
@@ -111,7 +90,6 @@ const tabs = [
   { id: 'dependencies', label: 'Dependencies' },
   { id: 'readme', label: 'README' },
   { id: 'yaml', label: 'YAML' },
-  { id: 'pipeline', label: 'Pipeline' },
   { id: 'aap-activity', label: 'Deployments' },
   { id: 'resources', label: 'Resources' },
 ];
@@ -173,11 +151,11 @@ Apache-2.0`,
 
 const DEFAULT_PROJECT_README = `# Project
 
-This project was created in the Ansible Portal to manage automation content with governance pipelines and AAP integration.
+This project was created in the Ansible Portal to manage automation content with AAP integration.
 
 ## Getting Started
 
-Check the **Overview** tab for project maturity status and pipeline results. Use the **Resources** tab to explore discovered automation content.
+Check the **Overview** tab for project status. Use the **Resources** tab to explore discovered automation content.
 
 ## License
 
@@ -318,10 +296,6 @@ const OverviewTab = ({
   const classes = useProjectDetailStyles();
   const quality = getProjectQuality(project.name);
 
-  const healthColor = quality
-    ? quality.healthScore >= 80 ? statusColors.success : quality.healthScore >= 50 ? statusColors.warning : statusColors.error
-    : undefined;
-
   return (
     <Box className={classes.tabContent}>
       <Box className={classes.mainColumn}>
@@ -339,12 +313,6 @@ const OverviewTab = ({
             {quality ? (
               <>
                 <Box display="flex" style={{ gap: 24, marginBottom: 12 }}>
-                  <Box>
-                    <Typography style={{ fontSize: 28, fontWeight: 700, color: healthColor, lineHeight: 1 }}>
-                      {quality.healthScore}
-                    </Typography>
-                    <Typography variant="caption" color="textSecondary">Health score</Typography>
-                  </Box>
                   <Box>
                     <Typography style={{ fontSize: 28, fontWeight: 700, color: quality.totalViolations > 0 ? statusColors.error : statusColors.success, lineHeight: 1 }}>
                       {quality.totalViolations}
@@ -861,15 +829,6 @@ const AboutCard = ({ project }: { project: DemoProject }) => {
             {project.templateUsed}
           </Typography>
         </Box>
-        <Box className={classes.cardSection}>
-          <Typography className={classes.cardLabel}>Pipeline profile</Typography>
-          <Chip
-            size="small"
-            label={getProfileForProject(project.name).name}
-            variant="outlined"
-            style={{ fontSize: 12, height: 24 }}
-          />
-        </Box>
       </CardContent>
     </Card>
   );
@@ -1056,360 +1015,6 @@ const DevSpacesCard = ({ project }: { project: DemoProject }) => {
   );
 };
 
-// ---------------------------------------------------------------------------
-// Pipeline Tab (master-detail)
-// ---------------------------------------------------------------------------
-
-const STAGE_DESCS: Record<string, string> = UNIFIED_STAGE_DESCS;
-
-const buildStagesForRun = (
-  run: PipelineRun,
-  project: DemoProject,
-): PipelineStage[] => {
-  const isLatest = project.pipelineHistory[0]?.id === run.id;
-  if (isLatest) return project.pipeline;
-
-  const names = getProfileStageNames(project.name);
-
-  if (run.status === 'passed') {
-    return names.map(name => ({
-      name,
-      status: 'passed' as const,
-      duration: '—',
-      description: STAGE_DESCS[name],
-    }));
-  }
-
-  if (run.status === 'failed') {
-    const failIndex = Math.min(2, names.length - 1);
-    return names.map((name, i) => ({
-      name,
-      status:
-        i < failIndex
-          ? ('passed' as const)
-          : i === failIndex
-            ? ('failed' as const)
-            : ('pending' as const),
-      duration: i <= failIndex ? '—' : undefined,
-      description: STAGE_DESCS[name],
-      detail:
-        i === failIndex
-          ? 'Check failed — review the log for details.'
-          : undefined,
-    }));
-  }
-
-  return names.map((name, i) => ({
-    name,
-    status:
-      i < 2
-        ? ('passed' as const)
-        : i === 2
-          ? ('running' as const)
-          : ('pending' as const),
-    duration: i < 2 ? '—' : undefined,
-    description: STAGE_DESCS[name],
-  }));
-};
-
-const PipelineRunDetail = ({
-  run,
-  stages,
-  project,
-  onBack,
-}: {
-  run: PipelineRun;
-  stages: PipelineStage[];
-  project: DemoProject;
-  onBack: () => void;
-}) => {
-  const classes = useProjectDetailStyles();
-  const [expandedStage, setExpandedStage] = useState<number | null>(null);
-
-  return (
-    <Box style={{ marginTop: 24 }}>
-      <Button
-        startIcon={<ExpandLessIcon style={{ transform: 'rotate(-90deg)' }} />}
-        onClick={onBack}
-        style={{ textTransform: 'none', fontWeight: 500, marginBottom: 16 }}
-      >
-        All runs
-      </Button>
-
-      <Card className={classes.card} variant="outlined">
-        <CardContent className={classes.cardContent}>
-          <Box
-            display="flex"
-            alignItems="center"
-            justifyContent="space-between"
-            mb={1}
-          >
-            <Box display="flex" alignItems="center" style={{ gap: 12 }}>
-              <Typography
-                className={classes.cardTitle}
-                style={{ marginBottom: 0 }}
-              >
-                Run #{run.id}
-              </Typography>
-              <Chip
-                size="small"
-                label={statusLabel(run.status)}
-                style={{
-                  backgroundColor: `${statusColor(run.status)}20`,
-                  color: statusColor(run.status),
-                  fontWeight: 500,
-                  fontSize: 12,
-                }}
-              />
-            </Box>
-            <Chip
-              size="small"
-              label={getProfileForProject(project.name).name}
-              variant="outlined"
-              style={{ fontSize: 12, height: 24 }}
-            />
-          </Box>
-
-          <Box style={{ marginBottom: 16 }}>
-            <Box
-              display="flex"
-              alignItems="center"
-              style={{ gap: 16 }}
-            >
-              <Typography variant="body2" color="textSecondary">
-                Triggered by{' '}
-                <code style={{ fontSize: 12 }}>
-                  {run.trigger.substring(0, 7)}
-                </code>
-              </Typography>
-              <Typography variant="body2" color="textSecondary">
-                Started {run.startedAt}
-              </Typography>
-              {run.duration !== '—' && (
-                <Typography variant="body2" color="textSecondary">
-                  Duration: {run.duration}
-                </Typography>
-              )}
-            </Box>
-            {run.commitMessage && (
-              <Typography variant="body2" color="textSecondary" style={{ marginTop: 4, fontStyle: 'italic' }}>
-                {run.commitMessage}
-              </Typography>
-            )}
-          </Box>
-
-          {stages.filter(s => s.name !== 'Pushed to AAP').map((stage, i) => (
-            <Box key={stage.name}>
-              <Box
-                className={`${classes.pipelineStageRow} ${expandedStage === i ? classes.pipelineStageExpanded : ''}`}
-                onClick={() =>
-                  setExpandedStage(prev => (prev === i ? null : i))
-                }
-              >
-                <StageIcon status={stage.status} />
-                <Typography className={classes.stageName}>
-                  {stage.name}: {statusLabel(stage.status)}
-                </Typography>
-                {stage.duration && (
-                  <Typography className={classes.stageDuration}>
-                    {stage.duration}
-                  </Typography>
-                )}
-                {expandedStage === i ? (
-                  <ExpandLessIcon className={classes.expandIcon} />
-                ) : (
-                  <ExpandMoreIcon className={classes.expandIcon} />
-                )}
-              </Box>
-              <Collapse in={expandedStage === i}>
-                <Box className={classes.pipelineExpandedContent}>
-                  <Typography className={classes.stageDescription}>
-                    {stage.description}
-                  </Typography>
-                  {stage.detail && (
-                    <Typography className={classes.stageDetail}>
-                      {stage.detail}
-                    </Typography>
-                  )}
-                  <Box
-                    display="flex"
-                    alignItems="center"
-                    style={{ gap: 16 }}
-                  >
-                    {stage.timestamp && (
-                      <Typography variant="caption" color="textSecondary">
-                        {stage.timestamp}
-                      </Typography>
-                    )}
-                    {stage.status !== 'pending' && (
-                      <Link className={classes.viewLogLink}>
-                        <DescriptionOutlinedIcon style={{ fontSize: 12 }} />
-                        View log
-                      </Link>
-                    )}
-                  </Box>
-                </Box>
-              </Collapse>
-            </Box>
-          ))}
-        </CardContent>
-      </Card>
-    </Box>
-  );
-};
-
-const PipelineTab = ({ project, initialRunId }: { project: DemoProject; initialRunId?: number | null }) => {
-  const classes = useProjectDetailStyles();
-  const [selectedRunId, setSelectedRunId] = useState<number | null>(initialRunId ?? null);
-
-  const selectedRun = selectedRunId !== null
-    ? project.pipelineHistory.find(r => r.id === selectedRunId) || null
-    : null;
-
-  const [statusFilter, setStatusFilter] = useState<'all' | 'passed' | 'failed' | 'running'>('all');
-
-  const filteredRuns = statusFilter === 'all'
-    ? project.pipelineHistory
-    : project.pipelineHistory.filter(r => r.status === statusFilter);
-
-  const columns: TableColumn<PipelineRun>[] = [
-    {
-      title: 'Run',
-      field: 'id',
-      render: (row: PipelineRun) => (
-        <Box>
-          <Box display="flex" alignItems="center" style={{ gap: 6 }}>
-            <Typography
-              variant="body2"
-              style={{ fontWeight: 500, color: statusColors.info }}
-            >
-              #{row.id}
-            </Typography>
-            <code style={{ fontSize: 11, color: 'inherit', opacity: 0.7 }}>
-              {row.trigger.substring(0, 7)}
-            </code>
-          </Box>
-          {row.commitMessage && (
-            <Typography variant="caption" color="textSecondary" style={{ display: 'block', marginTop: 2, maxWidth: 260 }} noWrap>
-              {row.commitMessage}
-            </Typography>
-          )}
-        </Box>
-      ),
-    },
-    {
-      title: 'Status',
-      field: 'status',
-      render: (row: PipelineRun) => (
-        <Box display="flex" alignItems="center" style={{ gap: 6 }}>
-          <StageIcon
-            status={
-              row.status === 'passed'
-                ? 'passed'
-                : (row.status as PipelineStage['status'])
-            }
-            size={16}
-          />
-          <Typography variant="body2">{statusLabel(row.status)}</Typography>
-        </Box>
-      ),
-    },
-    {
-      title: 'Stages',
-      sorting: false,
-      render: (row: PipelineRun) => {
-        const stages = buildStagesForRun(row, project);
-        return (
-          <Box display="flex" alignItems="center" style={{ gap: 3 }}>
-            {stages.map(s => (
-              <Tooltip key={s.name} title={`${s.name}: ${statusLabel(s.status)}`} arrow>
-                <span style={{ display: 'flex' }}>
-                  <StageIcon status={s.status} size={18} />
-                </span>
-              </Tooltip>
-            ))}
-          </Box>
-        );
-      },
-    },
-    { title: 'Started', field: 'startedAt' },
-    { title: 'Duration', field: 'duration' },
-  ];
-
-  if (selectedRun) {
-    return (
-      <PipelineRunDetail
-        run={selectedRun}
-        stages={buildStagesForRun(selectedRun, project)}
-        project={project}
-        onBack={() => setSelectedRunId(null)}
-      />
-    );
-  }
-
-  return (
-    <Box style={{ marginTop: 24 }}>
-      <Card className={classes.card} variant="outlined">
-        <CardContent className={classes.cardContent}>
-          <Box
-            display="flex"
-            alignItems="center"
-            justifyContent="space-between"
-            mb={1.5}
-          >
-            <Typography
-              className={classes.cardTitle}
-              style={{ marginBottom: 0 }}
-            >
-              Pipeline runs
-            </Typography>
-            <Chip
-              size="small"
-              label={getProfileForProject(project.name).name}
-              variant="outlined"
-              style={{ fontSize: 12, height: 24 }}
-            />
-          </Box>
-          <Box display="flex" style={{ gap: 6, marginBottom: 12 }}>
-            {(['all', 'passed', 'failed', 'running'] as const).map(f => (
-              <Chip
-                key={f}
-                size="small"
-                label={f === 'all' ? `All (${project.pipelineHistory.length})` : `${statusLabel(f)} (${project.pipelineHistory.filter(r => r.status === f).length})`}
-                onClick={() => setStatusFilter(f)}
-                variant={statusFilter === f ? 'default' : 'outlined'}
-                style={{
-                  fontSize: 12,
-                  height: 24,
-                  ...(statusFilter === f ? { backgroundColor: `${statusColor(f === 'all' ? 'passed' : f)}20`, color: f === 'all' ? undefined : statusColor(f) } : {}),
-                }}
-              />
-            ))}
-          </Box>
-          <Table<PipelineRun>
-            columns={columns}
-            data={filteredRuns}
-            title=""
-            options={{
-              paging: false,
-              search: false,
-              sorting: false,
-              padding: 'dense',
-              header: true,
-              rowStyle: { cursor: 'pointer' },
-            }}
-            style={{ boxShadow: 'none' }}
-            onRowClick={(_e, rowData) => {
-              if (rowData) {
-                setSelectedRunId((rowData as PipelineRun).id);
-              }
-            }}
-          />
-        </CardContent>
-      </Card>
-    </Box>
-  );
-};
 
 // ---------------------------------------------------------------------------
 // AAP Activity Tab
@@ -1990,17 +1595,6 @@ const ActionsMenu = ({
         transformOrigin={{ vertical: 'top', horizontal: 'right' }}
         getContentAnchorEl={null}
       >
-        {isDevSpacesConfigured && hasRole('developer') && (
-          <MenuItem onClick={() => {
-            openInDevSpaces(`${DEVSPACES_BASE_URL}/#${project.repo.url}/tree/${project.repo.branch}`);
-            setAnchorEl(null);
-          }}>
-            <ListItemIcon>
-              <CodeIcon fontSize="small" />
-            </ListItemIcon>
-            <ListItemText primary="Edit in Dev Spaces" secondary={`Branch: ${project.repo.branch}`} />
-          </MenuItem>
-        )}
         <MenuItem
           onClick={() => {
             window.open(project.repo.url, '_blank');
@@ -2062,13 +1656,13 @@ export const ProjectDetailsPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const classes = useProjectDetailStyles();
+  const { hasRole: pageHasRole } = useUserRoleContext();
 
   const urlTab = searchParams.get('tab');
   const urlScan = searchParams.get('scan');
   const [selectedTab, setSelectedTab] = useState(() => urlTab === 'quality' ? 1 : 0);
   const [qualityInitialView, setQualityInitialView] = useState<'latest-scan' | undefined>(undefined);
   const [initialScanId] = useState<string | null>(urlScan);
-  const [pipelineRunId] = useState<number | null>(null);
   const [starred, setStarred] = useState(false);
   const [opStatus, setOpStatus] = useState<OperationStatus>('idle');
   const [showResult, setShowResult] = useState(false);
@@ -2194,6 +1788,16 @@ export const ProjectDetailsPage = () => {
             </IconButton>
           </Box>
           <Box className={classes.actionsRow}>
+            {isDevSpacesConfigured && pageHasRole('developer') && (
+              <Button
+                variant="outlined" size="small"
+                startIcon={<CodeIcon style={{ fontSize: 16 }} />}
+                onClick={() => openInDevSpaces(`${DEVSPACES_BASE_URL}/#${project.repo.url}/tree/${project.repo.branch}`)}
+                style={{ textTransform: 'none', fontWeight: 500 }}
+              >
+                Edit in Dev Spaces
+              </Button>
+            )}
             {quality && (
               <Button
                 variant="contained" color="primary" size="small"
@@ -2217,36 +1821,14 @@ export const ProjectDetailsPage = () => {
 
         <Typography className={classes.subtitle}>
           Created from: {project.templateUsed}
-          <span style={{ margin: '0 6px', opacity: 0.4 }}>·</span>
-          <GovernanceStatusBadge
-            status={isPushedToAap ? 'pushed-to-aap' : 'governed'}
-            variant="minimal"
-            onAction={(action) => {
-              if (action === 'push-to-aap') openPushModal();
-            }}
-          />
         </Typography>
 
         <Box className={classes.chipsRow}>
           {(() => {
             const q = quality;
             if (!q) return null;
-            const hColor = q.healthScore >= 80 ? statusColors.success : q.healthScore >= 50 ? statusColors.warning : statusColors.error;
             return (
               <>
-                <Chip
-                  size="small"
-                  label={`Health: ${q.healthScore}`}
-                  variant="outlined"
-                  style={{
-                    fontSize: 12,
-                    fontWeight: 500,
-                    cursor: 'pointer',
-                    color: hColor,
-                    borderColor: hColor,
-                  }}
-                  onClick={() => handleTabChange(1)}
-                />
                 {q.totalViolations > 0 ? (
                   <Chip
                     size="small"
@@ -2441,9 +2023,8 @@ export const ProjectDetailsPage = () => {
         {selectedTab === 2 && <DependenciesTab quality={quality} />}
         {selectedTab === 3 && <ReadmeTab project={project} />}
         {selectedTab === 4 && <ProjectYamlTab project={project} />}
-        {selectedTab === 5 && <PipelineTab project={project} initialRunId={pipelineRunId} />}
-        {selectedTab === 6 && <AapActivityTab project={project} isPushedToAap={isPushedToAap} onPushToAap={openPushModal} />}
-        {selectedTab === 7 && <ResourcesTab project={project} />}
+        {selectedTab === 5 && <AapActivityTab project={project} isPushedToAap={isPushedToAap} onPushToAap={openPushModal} />}
+        {selectedTab === 6 && <ResourcesTab project={project} />}
       </Content>
       <Snackbar
         open={pushSnackbar}

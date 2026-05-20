@@ -16,6 +16,11 @@ import {
   Link,
   IconButton,
   Paper,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  ListItemText,
+  Divider,
 } from '@material-ui/core';
 import Breadcrumbs from '@material-ui/core/Breadcrumbs';
 import NavigateNextIcon from '@material-ui/icons/NavigateNext';
@@ -24,20 +29,25 @@ import GitHubIcon from '@material-ui/icons/GitHub';
 import LockIcon from '@material-ui/icons/Lock';
 import LockOpenIcon from '@material-ui/icons/LockOpen';
 import PublicIcon from '@material-ui/icons/Public';
-import CheckCircleIcon from '@material-ui/icons/CheckCircle';
 import InsertDriveFileOutlinedIcon from '@material-ui/icons/InsertDriveFileOutlined';
 import FolderOutlinedIcon from '@material-ui/icons/FolderOutlined';
 import CategoryIcon from '@material-ui/icons/Category';
 import MemoryIcon from '@material-ui/icons/Memory';
 import CodeIcon from '@material-ui/icons/Code';
+import MoreVertIcon from '@material-ui/icons/MoreVert';
+import DeleteOutlineIcon from '@material-ui/icons/DeleteOutline';
 import SvgIcon from '@material-ui/core/SvgIcon';
 import { useProjectDetailStyles } from '../detail/styles';
 import { statusColors } from '../../common/statusColors';
+import { useUserRoleContext } from '../../../hooks/useUserRole';
+import { DEVSPACES_BASE_URL, DEMO_CONNECTIONS } from '../../Admin/syncDemoData';
 import {
   DISCOVERED_REPOS,
   DiscoveredRepo,
   DiscoveredResource,
 } from './repositoriesDemoData';
+
+const isDevSpacesConnected = DEMO_CONNECTIONS.find(c => c.id === 'devspaces')?.status === 'Active';
 
 const GitLabIcon = (props: React.ComponentProps<typeof SvgIcon>) => (
   <SvgIcon {...props} viewBox="0 0 24 24">
@@ -121,7 +131,7 @@ This repository contains Ansible automation content that was discovered by the A
 
 ## Getting Started
 
-Review the discovered playbooks, roles, and other content in the **Overview** tab. To bring this repository under full lifecycle management, create a project from it.
+Review the discovered playbooks, roles, and other content in the **Overview** tab.
 
 ## License
 
@@ -383,7 +393,6 @@ const OverviewTab = ({ repo }: { repo: DiscoveredRepo }) => {
       <Box className={classes.sidebarColumn}>
         <AboutCard repo={repo} />
         <SourceCard repo={repo} />
-        <ProjectStatusCard repo={repo} />
       </Box>
     </Box>
   );
@@ -480,66 +489,6 @@ const SourceCard = ({ repo }: { repo: DiscoveredRepo }) => {
             </Typography>
           </Box>
         </Box>
-      </CardContent>
-    </Card>
-  );
-};
-
-const ProjectStatusCard = ({ repo }: { repo: DiscoveredRepo }) => {
-  const classes = useProjectDetailStyles();
-  const navigate = useNavigate();
-
-  return (
-    <Card className={classes.card} variant="outlined">
-      <CardContent className={classes.cardContent}>
-        <Typography className={classes.cardTitle}>Project</Typography>
-        {repo.hasProject ? (
-          <>
-            <Box
-              display="flex"
-              alignItems="center"
-              style={{ gap: 8, marginBottom: 8 }}
-            >
-              <CheckCircleIcon
-                style={{ color: statusColors.success, fontSize: 20 }}
-              />
-              <Typography style={{ fontSize: 14, fontWeight: 500 }}>
-                Project created
-              </Typography>
-            </Box>
-            <Button
-              variant="outlined"
-              color="primary"
-              size="small"
-              style={{ textTransform: 'none' }}
-              onClick={() =>
-                navigate(`/self-service/repositories/${repo.name}`)
-              }
-            >
-              View project
-            </Button>
-          </>
-        ) : (
-          <>
-            <Typography
-              variant="body2"
-              color="textSecondary"
-              style={{ marginBottom: 12 }}
-            >
-              No project has been created from this repository yet. Create one
-              to enable pipeline checks, AAP integration, and lifecycle
-              management.
-            </Typography>
-            <Button
-              variant="contained"
-              color="primary"
-              size="small"
-              style={{ textTransform: 'none' }}
-            >
-              Create project
-            </Button>
-          </>
-        )}
       </CardContent>
     </Card>
   );
@@ -892,7 +841,9 @@ export const RepositoryDetailPage = () => {
   const { repoName } = useParams<{ repoName: string }>();
   const navigate = useNavigate();
   const classes = useProjectDetailStyles();
+  const { hasRole } = useUserRoleContext();
   const [selectedTab, setSelectedTab] = useState(0);
+  const [kebabAnchor, setKebabAnchor] = useState<null | HTMLElement>(null);
 
   const repo = useMemo(
     () => DISCOVERED_REPOS.find(r => r.name === repoName) || null,
@@ -955,26 +906,43 @@ export const RepositoryDetailPage = () => {
             </Typography>
           </Box>
           <Box className={classes.actionsRow}>
-            <Button
-              variant="outlined"
-              color="primary"
-              startIcon={<OpenInNewIcon />}
-              size="small"
-              style={{ textTransform: 'none', fontWeight: 500 }}
-              onClick={() => window.open(repo.url, '_blank')}
-            >
-              View source
-            </Button>
-            {!repo.hasProject && (
+            {isDevSpacesConnected && hasRole('developer') && (
               <Button
-                variant="contained"
-                color="primary"
+                variant="outlined"
                 size="small"
+                startIcon={<CodeIcon style={{ fontSize: 16 }} />}
+                onClick={() => window.open(`${DEVSPACES_BASE_URL}/#${repo.url}/tree/${repo.branch}`, '_blank')}
                 style={{ textTransform: 'none', fontWeight: 500 }}
               >
-                Create project
+                Edit in Dev Spaces
               </Button>
             )}
+            <IconButton size="small" onClick={e => setKebabAnchor(e.currentTarget)}>
+              <MoreVertIcon />
+            </IconButton>
+            <Menu
+              anchorEl={kebabAnchor}
+              open={Boolean(kebabAnchor)}
+              onClose={() => setKebabAnchor(null)}
+              anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+              transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+              getContentAnchorEl={null}
+            >
+              <MenuItem onClick={() => { window.open(repo.url, '_blank'); setKebabAnchor(null); }}>
+                <ListItemIcon><OpenInNewIcon fontSize="small" /></ListItemIcon>
+                <ListItemText primary="View source" />
+              </MenuItem>
+              <Divider />
+              <MenuItem onClick={() => setKebabAnchor(null)}>
+                <ListItemIcon>
+                  <DeleteOutlineIcon fontSize="small" style={{ color: statusColors.error }} />
+                </ListItemIcon>
+                <ListItemText
+                  primary="Remove"
+                  primaryTypographyProps={{ style: { color: statusColors.error } }}
+                />
+              </MenuItem>
+            </Menu>
           </Box>
         </Box>
 
@@ -992,19 +960,6 @@ export const RepositoryDetailPage = () => {
             variant="outlined"
             style={{ fontSize: 12, fontFamily: 'monospace' }}
           />
-          {repo.hasProject && (
-            <Chip
-              size="small"
-              icon={
-                <CheckCircleIcon
-                  style={{ fontSize: 14, color: statusColors.success }}
-                />
-              }
-              label="Has project"
-              variant="outlined"
-              style={{ fontSize: 12 }}
-            />
-          )}
           {repo.resources.map(r => (
             <Chip
               key={r.type}

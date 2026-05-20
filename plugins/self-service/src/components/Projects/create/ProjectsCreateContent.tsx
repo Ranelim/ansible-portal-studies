@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import {
   Typography,
   Box,
@@ -13,12 +13,8 @@ import {
 } from '@material-ui/core';
 import SearchIcon from '@material-ui/icons/Search';
 import PersonIcon from '@material-ui/icons/Person';
-import SecurityIcon from '@material-ui/icons/Security';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { DEMO_TEMPLATES, DemoTemplate } from './templatesDemoData';
-import { ProjectCreateWizard } from './ProjectCreateWizard';
-import { ImportProjectWizard } from '../repositories/ImportProjectWizard';
-import { DISCOVERED_REPOS } from '../repositories/repositoriesDemoData';
 import { DismissibleBanner } from '../../common/DismissibleBanner';
 
 const useStyles = makeStyles(theme => ({
@@ -95,17 +91,14 @@ const TemplateCard = ({
   onStart: (template: DemoTemplate) => void;
 }) => {
   const classes = useStyles();
-  const isGovernance = template.type === 'governance';
 
   return (
     <Card
       className={classes.card}
       variant="outlined"
-      style={isGovernance ? { borderStyle: 'dashed', borderColor: '#0066CC' } : undefined}
     >
       <Box className={classes.cardTitleArea}>
         <Typography className={classes.cardTitle}>
-          {isGovernance && <SecurityIcon style={{ fontSize: 16, verticalAlign: 'text-bottom', marginRight: 4, color: '#0066CC' }} />}
           {template.title}
         </Typography>
       </Box>
@@ -139,7 +132,7 @@ const TemplateCard = ({
           className={classes.createButton}
           onClick={() => onStart(template)}
         >
-          {isGovernance ? 'Enable governance' : 'Use template'}
+          Use template
         </Button>
       </CardActions>
     </Card>
@@ -148,22 +141,8 @@ const TemplateCard = ({
 
 export const ProjectsCreateContent = () => {
   const classes = useStyles();
-  const location = useLocation();
   const navigate = useNavigate();
   const [searchText, setSearchText] = useState('');
-  const [activeWizard, setActiveWizard] = useState<DemoTemplate | null>(null);
-  const [governanceRepo, setGovernanceRepo] = useState<string | null>(null);
-
-  useEffect(() => {
-    const state = location.state as { autoStartTemplate?: string; repoName?: string } | null;
-    if (state?.autoStartTemplate === 'enable-governance') {
-      const repo = state.repoName ? DISCOVERED_REPOS.find(r => r.name === state.repoName) : null;
-      if (repo) {
-        setGovernanceRepo(repo.name);
-      }
-      window.history.replaceState({}, '');
-    }
-  }, [location.state]);
 
   const filteredTemplates = useMemo(() => {
     if (!searchText) return DEMO_TEMPLATES;
@@ -177,50 +156,14 @@ export const ProjectsCreateContent = () => {
   }, [searchText]);
 
   const handleStart = useCallback((template: DemoTemplate) => {
-    if (template.name === 'enable-governance') {
-      setGovernanceRepo('__pick__');
-      return;
-    }
-    setActiveWizard(template);
-  }, []);
-
-  const handleWizardClose = useCallback(() => {
-    setActiveWizard(null);
-    setGovernanceRepo(null);
-  }, []);
-
-  const handleGovernanceComplete = useCallback((repoName: string) => {
-    setGovernanceRepo(null);
-    navigate('/self-service/repositories/list', {
-      state: { justGoverned: repoName },
-    });
+    navigate(`/self-service/create/templates/default/${template.name}`);
   }, [navigate]);
-
-  if (governanceRepo) {
-    const repo = DISCOVERED_REPOS.find(r => r.name === governanceRepo) ?? DISCOVERED_REPOS[0];
-    return (
-      <ImportProjectWizard
-        repo={repo}
-        onClose={handleWizardClose}
-        onComplete={handleGovernanceComplete}
-      />
-    );
-  }
-
-  if (activeWizard) {
-    return (
-      <ProjectCreateWizard
-        template={activeWizard}
-        onClose={handleWizardClose}
-      />
-    );
-  }
 
   return (
     <Box>
       <DismissibleBanner
         storageKey="projects-templates"
-        message="Templates are pre-configured blueprints for scaffolding new automation repositories. Each template creates a Git repository with best-practice directory structure, CI/CD pipeline, and Ansible content."
+        message="Templates are pre-configured blueprints for scaffolding new automation repositories. Each template creates a Git repository with best-practice directory structure and Ansible content."
       />
       <Box className={classes.searchBox}>
         <SearchIcon style={{ color: '#999', marginRight: 8 }} />

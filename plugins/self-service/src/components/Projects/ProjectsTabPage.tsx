@@ -61,7 +61,7 @@ export const ProjectsTabs: React.FC = () => {
               <PageHelpIcon
                 tooltipLabel="What are git repositories?"
                 title="What are git repositories?"
-                description="Git repositories contain your automation content — playbooks, roles, collections, or execution environments. They are discovered from your connected sources (GitHub, GitLab) and appear here automatically. Enable governance on any repository to add quality scans, CI/CD pipelines, and connect to Ansible Automation Platform."
+                description="Git repositories contain your automation content — playbooks, roles, collections, or execution environments. They are discovered from your connected sources (GitHub, GitLab) and appear here automatically. Quality scans run against your repositories to check for best practices and compliance."
               />
             </Box>
             <AddActionButton

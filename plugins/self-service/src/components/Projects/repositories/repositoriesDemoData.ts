@@ -16,7 +16,6 @@ export type DiscoveredRepo = {
   lastCommitAuthor: string;
   lastCommitTimestamp: string;
   resources: DiscoveredResource[];
-  hasProject: boolean;
 };
 
 export const DISCOVERED_REPOS: DiscoveredRepo[] = [
@@ -37,7 +36,6 @@ export const DISCOVERED_REPOS: DiscoveredRepo[] = [
       { type: 'role', count: 1 },
       { type: 'collection-dep', count: 1 },
     ],
-    hasProject: true,
   },
   {
     name: 'network-firewall-rules',
@@ -56,7 +54,6 @@ export const DISCOVERED_REPOS: DiscoveredRepo[] = [
       { type: 'role', count: 1 },
       { type: 'collection-dep', count: 2 },
     ],
-    hasProject: true,
   },
   {
     name: 'cloud-provisioner',
@@ -75,7 +72,6 @@ export const DISCOVERED_REPOS: DiscoveredRepo[] = [
       { type: 'collection-dep', count: 1 },
       { type: 'execution-environment', count: 1 },
     ],
-    hasProject: true,
   },
   {
     name: 'backup-automation',
@@ -94,6 +90,5 @@ export const DISCOVERED_REPOS: DiscoveredRepo[] = [
       { type: 'role', count: 1 },
       { type: 'collection-dep', count: 2 },
     ],
-    hasProject: false,
   },
 ];

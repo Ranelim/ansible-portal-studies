@@ -11,9 +11,6 @@ export type DemoTemplate = {
   tags: string[];
   owner: string;
   type: string;
-  defaultPipeline: 'comprehensive' | 'standard';
-  pipelineHint: string;
-  steps: WizardStep[];
 };
 
 export type SyncedRepo = {
@@ -33,99 +30,15 @@ export const SYNCED_REPOS: SyncedRepo[] = [
   { name: 'windows-patching', org: 'platform-team', host: 'github.com', visibility: 'private', url: 'https://github.com/platform-team/windows-patching' },
 ];
 
-export const CUSTOM_PIPELINE_STAGES = [
-  { id: 'syntax', label: 'Syntax Check', description: 'Validates YAML and Ansible syntax correctness' },
-  { id: 'lint', label: 'Ansible Lint', description: 'Enforces Ansible best practices and coding standards' },
-  { id: 'yaml-lint', label: 'YAML Lint', description: 'Validates YAML formatting and structure' },
-  { id: 'policy', label: 'Policy Check (OPA)', description: 'Validates against organizational policies for credential exposure, hardcoded secrets, etc.' },
-  { id: 'ee-compat', label: 'EE Compatibility', description: 'Verifies playbook runs correctly in the target Execution Environment' },
-  { id: 'molecule', label: 'Integration Test (Molecule)', description: 'Runs Molecule scenarios on temporary infrastructure to validate behavior' },
-  { id: 'sast', label: 'Security Scan (SAST)', description: 'Scans for security vulnerabilities and insecure patterns' },
-];
-
-export const COMPREHENSIVE_STAGES = [
-  'Commit', 'Lint', 'Policy Check', 'EE Compatibility', 'Integration Test',
-];
-
-export const STANDARD_STAGES = [
-  'Commit', 'Lint', 'Policy Check', 'EE Compatibility',
-];
-
-const WIZARD_STEPS: WizardStep[] = [
-  {
-    title: 'Details & AI Jumpstart',
-    description: 'Describe what you want to automate, or fill in the details manually.',
-    why: 'Naming and describing your repository up front helps your team discover and understand it. AI Jumpstart can save time by pre-filling the remaining steps based on your intent.',
-  },
-  {
-    title: 'Source Code (Git)',
-    description: 'Create a new repository or select an existing synced repo.',
-    why: 'Every automation repository is backed by Git. This is where your playbooks, roles, and inventory live — and it enables version control, collaboration, and auditability.',
-  },
-  {
-    title: 'Pipeline & Governance',
-    description: 'Select the governance pipeline for your automation code.',
-    why: 'Pipelines run automated checks (linting, policy, testing) on every commit so only safe, tested, and compliant playbooks reach production. Choosing the right level of governance balances speed with risk.',
-  },
-  {
-    title: 'Destination (AAP)',
-    description: 'Configure how this repository connects to your Ansible Automation Platform.',
-    why: 'Connecting to AAP lets your automation be executed, scheduled, and monitored centrally. This step ensures your AAP project and job templates are registered and ready to run.',
-  },
-  {
-    title: 'Review & Create',
-    description: 'Review your selections before creating the repository.',
-    why: 'A final review prevents misconfiguration. Once created, the repository, pipeline, and AAP resources are provisioned automatically.',
-  },
-];
-
-export const GOVERNANCE_TEMPLATE: DemoTemplate = {
-  name: 'enable-governance',
-  title: 'Enable Governance on Existing Repository',
-  description:
-    'Add a CI/CD pipeline with policy checks, security compliance, and AAP integration to a repository that was already discovered from your connected Git sources.',
-  tags: ['governance', 'pipeline', 'existing-repo'],
-  owner: 'group:default/platform-engineering',
-  type: 'governance',
-  defaultPipeline: 'standard',
-  pipelineHint: 'Select a pipeline profile to enforce on this repository.',
-  steps: [
-    {
-      title: 'Repository details',
-      description: 'Select the discovered repository you want to govern.',
-      why: 'The portal has already discovered this repository and its automation content. This step confirms the repository and lets you set a display name and owner.',
-    },
-    {
-      title: 'Pipeline & governance',
-      description: 'Select the governance pipeline for your automation code.',
-      why: 'Pipelines run automated checks (linting, policy, testing) on every commit so only safe, tested, and compliant playbooks reach production.',
-    },
-    {
-      title: 'Destination (AAP)',
-      description: 'Configure how this repository connects to your Ansible Automation Platform.',
-      why: 'Connecting to AAP lets your automation be executed, scheduled, and monitored centrally.',
-    },
-    {
-      title: 'Review & create',
-      description: 'Review your selections before enabling governance.',
-      why: 'A final review prevents misconfiguration. Once enabled, the pipeline and AAP resources are provisioned automatically.',
-    },
-  ],
-};
-
 export const DEMO_TEMPLATES: DemoTemplate[] = [
-  GOVERNANCE_TEMPLATE,
   {
     name: 'create-playbook-project',
     title: 'Ansible Playbook Repository',
     description:
-      'General-purpose playbook repository with a standard directory structure, role scaffolding, inventory layout, and CI linting pipeline. The most common starting point for configuration management and server provisioning.',
+      'General-purpose playbook repository with a standard directory structure, role scaffolding, and inventory layout. The most common starting point for configuration management and server provisioning.',
     tags: ['playbook', 'starter', 'config-management'],
     owner: 'group:default/platform-engineering',
     type: 'project',
-    defaultPipeline: 'standard',
-    pipelineHint: 'Lint + policy check + EE compatibility. Good for most automation repositories.',
-    steps: WIZARD_STEPS,
   },
   {
     name: 'create-cloud-provisioning-project',
@@ -135,9 +48,6 @@ export const DEMO_TEMPLATES: DemoTemplate[] = [
     tags: ['cloud', 'aws', 'azure', 'gcp', 'provisioning'],
     owner: 'group:default/platform-engineering',
     type: 'project',
-    defaultPipeline: 'comprehensive',
-    pipelineHint: 'Full pipeline including integration tests and security scans. Recommended for production infrastructure.',
-    steps: WIZARD_STEPS,
   },
   {
     name: 'create-network-automation-project',
@@ -147,8 +57,5 @@ export const DEMO_TEMPLATES: DemoTemplate[] = [
     tags: ['network', 'cisco', 'juniper', 'arista', 'compliance'],
     owner: 'group:default/network-operations',
     type: 'project',
-    defaultPipeline: 'comprehensive',
-    pipelineHint: 'Full pipeline including integration tests and security scans. Required for network device changes.',
-    steps: WIZARD_STEPS,
   },
 ];

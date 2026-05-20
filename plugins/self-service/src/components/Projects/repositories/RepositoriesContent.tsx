@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Box,
   Typography,
@@ -22,7 +22,6 @@ import { useNavigate } from 'react-router-dom';
 import SearchIcon from '@material-ui/icons/Search';
 import ClearIcon from '@material-ui/icons/Clear';
 import GitHubIcon from '@material-ui/icons/GitHub';
-import CheckCircleIcon from '@material-ui/icons/CheckCircle';
 import InsertDriveFileOutlinedIcon from '@material-ui/icons/InsertDriveFileOutlined';
 import FolderOutlinedIcon from '@material-ui/icons/FolderOutlined';
 import CategoryIcon from '@material-ui/icons/Category';
@@ -30,7 +29,6 @@ import MemoryIcon from '@material-ui/icons/Memory';
 import CancelIcon from '@material-ui/icons/Cancel';
 import { DismissibleBanner } from '../../common/DismissibleBanner';
 import { PageHelpIcon } from '../../common/PageHelpIcon';
-import { statusColors } from '../../common/statusColors';
 import {
   EmptyStateLayout,
   RepositoriesIllustration,
@@ -41,10 +39,8 @@ import {
   DiscoveredRepo,
   DiscoveredResource,
 } from './repositoriesDemoData';
-import { ImportProjectWizard } from './ImportProjectWizard';
 
 type ProviderFilter = 'all' | 'github' | 'gitlab';
-type StatusFilter = 'available' | 'all';
 
 const useStyles = makeStyles(theme => ({
   filterLabel: {
@@ -94,33 +90,6 @@ const useStyles = makeStyles(theme => ({
     fontSize: 16,
     verticalAlign: 'middle',
     marginRight: 4,
-  },
-  hasProjectChip: {
-    fontSize: 11,
-    height: 22,
-    backgroundColor: `${statusColors.success}15`,
-    color: statusColors.success,
-    fontWeight: 500,
-  },
-  createButton: {
-    textTransform: 'none',
-    fontWeight: 600,
-    borderRadius: 20,
-    fontSize: 12,
-    whiteSpace: 'nowrap' as const,
-  },
-  statusLink: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: 4,
-    fontSize: 13,
-    fontWeight: 500,
-    cursor: 'pointer',
-    color: statusColors.success,
-    textDecoration: 'none',
-    '&:hover': {
-      textDecoration: 'underline',
-    },
   },
   commitInfo: {
     fontSize: 12,
@@ -206,24 +175,12 @@ const RepositoriesEmptyState = () => (
 export const RepositoriesContent = () => {
   const classes = useStyles();
   const navigate = useNavigate();
-  const [repos, setRepos] = useState<DiscoveredRepo[]>(DISCOVERED_REPOS);
+  const repos = DISCOVERED_REPOS;
   const [searchText, setSearchText] = useState('');
   const [providerFilter, setProviderFilter] = useState<ProviderFilter>('all');
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
-  const [importingRepo, setImportingRepo] = useState<DiscoveredRepo | null>(
-    null,
-  );
-
-  const availableRepos = useMemo(
-    () => repos.filter(r => !r.hasProject),
-    [repos],
-  );
 
   const filteredRepos = useMemo(() => {
-    let result =
-      statusFilter === 'available'
-        ? repos.filter(r => !r.hasProject)
-        : repos;
+    let result = [...repos];
 
     if (searchText) {
       const lower = searchText.toLowerCase();
@@ -239,44 +196,13 @@ export const RepositoriesContent = () => {
     }
 
     return result;
-  }, [repos, searchText, providerFilter, statusFilter]);
-
-  const handleCreateProject = useCallback((repo: DiscoveredRepo) => {
-    setImportingRepo(repo);
-  }, []);
-
-  const handleWizardClose = useCallback(() => {
-    setImportingRepo(null);
-  }, []);
-
-  const handleWizardComplete = useCallback(
-    (repoName: string) => {
-      setRepos(prev =>
-        prev.map(r =>
-          r.name === repoName ? { ...r, hasProject: true } : r,
-        ),
-      );
-      setImportingRepo(null);
-    },
-    [],
-  );
-
-  if (importingRepo) {
-    return (
-      <ImportProjectWizard
-        repo={importingRepo}
-        onClose={handleWizardClose}
-        onComplete={handleWizardComplete}
-      />
-    );
-  }
+  }, [repos, searchText, providerFilter]);
 
   if (repos.length === 0) {
     return <RepositoriesEmptyState />;
   }
 
-  const hasActiveFilters =
-    providerFilter !== 'all' || statusFilter !== 'all';
+  const hasActiveFilters = providerFilter !== 'all';
 
   const columns: TableColumn<DiscoveredRepo>[] = [
     {
@@ -299,19 +225,6 @@ export const RepositoriesContent = () => {
             >
               {row.org}/{row.name}
             </Link>
-            {row.hasProject && (
-              <Chip
-                size="small"
-                icon={
-                  <CheckCircleIcon
-                    style={{ fontSize: 14, color: statusColors.success }}
-                  />
-                }
-                label="Has project"
-                className={classes.hasProjectChip}
-                variant="outlined"
-              />
-            )}
           </Box>
           <Typography className={classes.commitInfo} style={{ marginTop: 2 }}>
             Last commit:{' '}
@@ -351,39 +264,6 @@ export const RepositoriesContent = () => {
         </Typography>
       ),
     },
-    {
-      title: 'Project',
-      width: '160px',
-      sorting: false,
-      render: (row: DiscoveredRepo) =>
-        row.hasProject ? (
-          <Link
-            className={classes.statusLink}
-            onClick={(e: React.MouseEvent) => {
-              e.stopPropagation();
-              navigate(`/self-service/repositories/${row.name}`);
-            }}
-          >
-            <CheckCircleIcon style={{ fontSize: 16 }} />
-            {row.name}
-          </Link>
-        ) : (
-          <Tooltip title="Link this repository to a governed project with CI/CD pipelines and AAP integration" arrow>
-            <Button
-              variant="contained"
-              color="primary"
-              size="small"
-              className={classes.createButton}
-              onClick={e => {
-                e.stopPropagation();
-                handleCreateProject(row);
-              }}
-            >
-              Create project
-            </Button>
-          </Tooltip>
-        ),
-    },
   ];
 
   return (
@@ -415,22 +295,6 @@ export const RepositoriesContent = () => {
           }}
         />
 
-        <Typography className={classes.filterLabel}>Status</Typography>
-        <Paper className={classes.filterPaper}>
-          <FormControl fullWidth>
-            <Select
-              value={statusFilter}
-              onChange={e =>
-                setStatusFilter(e.target.value as StatusFilter)
-              }
-              input={<Input disableUnderline />}
-            >
-              <MenuItem value="available">Available (no project)</MenuItem>
-              <MenuItem value="all">All discovered</MenuItem>
-            </Select>
-          </FormControl>
-        </Paper>
-
         <Typography className={classes.filterLabel}>Provider</Typography>
         <Paper className={classes.filterPaper}>
           <FormControl fullWidth>
@@ -452,7 +316,7 @@ export const RepositoriesContent = () => {
       <CatalogFilterLayout.Content>
         <DismissibleBanner
           storageKey="projects-repositories"
-          message="Repositories are Git repos discovered from your connected sources that contain Ansible automation content. Enable governance on any project to add quality scans, pipelines, connect to AAP, and track content maturity."
+          message="Repositories are Git repos discovered from your connected sources that contain Ansible automation content. Quality scans run automatically to check for best practices and compliance."
         />
 
         <Box className={classes.contentHeader}>
@@ -469,7 +333,7 @@ export const RepositoriesContent = () => {
                 variant="inline"
                 tooltipLabel="What are repositories?"
                 title="What are Repositories?"
-                description="Repositories are Git repos discovered from your connected sources (GitHub, GitLab) that contain Ansible automation content such as playbooks, roles, collections, or execution environments. Creating a project from a repository adds governance pipelines, connects it to AAP, and enables content maturity tracking. Each repository can be linked to one project."
+                description="Repositories are Git repos discovered from your connected sources (GitHub, GitLab) that contain Ansible automation content such as playbooks, roles, collections, or execution environments. Quality scans validate content against best practices and compliance rules."
               />
             </Box>
             <LastSyncedIndicator
@@ -499,22 +363,10 @@ export const RepositoriesContent = () => {
                 variant="outlined"
               />
             )}
-            {statusFilter !== 'all' && (
-              <Chip
-                label="Status: Available only"
-                size="small"
-                onDelete={() => setStatusFilter('all')}
-                deleteIcon={<CancelIcon style={{ fontSize: 16 }} />}
-                className={classes.activeChip}
-                color="primary"
-                variant="outlined"
-              />
-            )}
             <Button
               size="small"
               onClick={() => {
                 setProviderFilter('all');
-                setStatusFilter('all');
               }}
               style={{ textTransform: 'none', fontSize: 12 }}
             >

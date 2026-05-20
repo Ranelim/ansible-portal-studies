@@ -38,7 +38,6 @@ import {
   type QualityViolation,
   SEVERITY_COLORS,
 } from './qualityDemoData';
-import { HealthScorePopover } from '../catalog/HealthScorePopover';
 
 export type OperationStatus = 'idle' | 'running' | 'awaiting_approval' | 'complete';
 
