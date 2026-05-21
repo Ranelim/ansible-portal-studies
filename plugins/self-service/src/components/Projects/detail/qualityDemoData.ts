@@ -1,5 +1,7 @@
 export type SeverityClass = 'critical' | 'high' | 'medium' | 'low' | 'info';
 
+export type ViolationCategory = 'lint' | 'aap-compatibility' | 'security' | 'best-practice';
+
 export type QualityViolation = {
   ruleId: string;
   message: string;
@@ -7,6 +9,7 @@ export type QualityViolation = {
   lineStart: number;
   severity: SeverityClass;
   fixTier: 'deterministic' | 'ai' | 'manual';
+  category: ViolationCategory;
 };
 
 export type AiProposal = {
@@ -77,12 +80,12 @@ export type ProjectQualityData = {
 
 const QUALITY_DATA: Record<string, ProjectQualityData> = {
   'rhel-patching': {
-    healthScore: 82,
-    totalViolations: 7,
+    healthScore: 68,
+    totalViolations: 12,
     lastScannedAt: '2 hours ago',
     lastScannedCommit: 'a3f1b2c',
     scanCount: 14,
-    severityBreakdown: { critical: 0, high: 1, medium: 3, low: 2, info: 1 },
+    severityBreakdown: { critical: 1, high: 3, medium: 5, low: 2, info: 1 },
     trend: [
       { scanIndex: 1, totalViolations: 18, fixable: 12 },
       { scanIndex: 2, totalViolations: 15, fixable: 10 },
@@ -94,22 +97,22 @@ const QUALITY_DATA: Record<string, ProjectQualityData> = {
       scanId: 'scan-rhel-014',
       scanType: 'remediate',
       createdAt: '2 hours ago',
-      totalViolations: 7,
-      fixable: 5,
+      totalViolations: 12,
+      fixable: 10,
       aiCandidates: 3,
       aiAccepted: 2,
       aiDeclined: 1,
       manualReview: 2,
       remediatedCount: 4,
-      severityBreakdown: { critical: 0, high: 1, medium: 3, low: 2, info: 1 },
+      severityBreakdown: { critical: 1, high: 3, medium: 5, low: 2, info: 1 },
       commitHash: 'a3f1b2c',
     },
     scanHistory: [
       {
         scanId: 'scan-rhel-014', scanType: 'remediate', createdAt: 'Apr 14, 2026 10:22',
-        totalViolations: 7, fixable: 5, aiCandidates: 3, aiAccepted: 2, aiDeclined: 1,
+        totalViolations: 12, fixable: 10, aiCandidates: 3, aiAccepted: 2, aiDeclined: 1,
         manualReview: 2, remediatedCount: 4,
-        severityBreakdown: { critical: 0, high: 1, medium: 3, low: 2, info: 1 },
+        severityBreakdown: { critical: 1, high: 3, medium: 5, low: 2, info: 1 },
         commitHash: 'a3f1b2c',
       },
       {
@@ -142,13 +145,18 @@ const QUALITY_DATA: Record<string, ProjectQualityData> = {
       },
     ],
     violations: [
-      { ruleId: 'fqcn[action-core]', message: 'Use FQCN for builtin module actions', file: 'tasks/main.yml', lineStart: 12, severity: 'medium', fixTier: 'deterministic' },
-      { ruleId: 'yaml[truthy]', message: 'Truthy value should be one of [false, true]', file: 'defaults/main.yml', lineStart: 8, severity: 'low', fixTier: 'deterministic' },
-      { ruleId: 'risky-file-permissions', message: 'File permissions unset or incorrect', file: 'tasks/patch-apply.yml', lineStart: 34, severity: 'high', fixTier: 'ai' },
-      { ruleId: 'no-changed-when', message: 'Commands should not change things if nothing needs doing', file: 'tasks/pre-check.yml', lineStart: 22, severity: 'medium', fixTier: 'ai' },
-      { ruleId: 'name[missing]', message: 'All tasks should be named', file: 'tasks/rollback.yml', lineStart: 5, severity: 'medium', fixTier: 'deterministic' },
-      { ruleId: 'deprecated-module', message: 'Module is deprecated, use the replacement', file: 'tasks/report.yml', lineStart: 18, severity: 'low', fixTier: 'manual' },
-      { ruleId: 'meta-no-info', message: 'Role metadata should contain relevant info', file: 'meta/main.yml', lineStart: 1, severity: 'info', fixTier: 'manual' },
+      { ruleId: 'fqcn[action-core]', message: 'Use FQCN for builtin module actions', file: 'tasks/main.yml', lineStart: 12, severity: 'medium', fixTier: 'deterministic', category: 'lint' },
+      { ruleId: 'yaml[truthy]', message: 'Truthy value should be one of [false, true]', file: 'defaults/main.yml', lineStart: 8, severity: 'low', fixTier: 'deterministic', category: 'lint' },
+      { ruleId: 'risky-file-permissions', message: 'File permissions unset or incorrect', file: 'tasks/patch-apply.yml', lineStart: 34, severity: 'high', fixTier: 'ai', category: 'security' },
+      { ruleId: 'no-changed-when', message: 'Commands should not change things if nothing needs doing', file: 'tasks/pre-check.yml', lineStart: 22, severity: 'medium', fixTier: 'ai', category: 'lint' },
+      { ruleId: 'name[missing]', message: 'All tasks should be named', file: 'tasks/rollback.yml', lineStart: 5, severity: 'medium', fixTier: 'deterministic', category: 'best-practice' },
+      { ruleId: 'deprecated-module', message: 'Module is deprecated, use the replacement', file: 'tasks/report.yml', lineStart: 18, severity: 'low', fixTier: 'manual', category: 'lint' },
+      { ruleId: 'meta-no-info', message: 'Role metadata should contain relevant info', file: 'meta/main.yml', lineStart: 1, severity: 'info', fixTier: 'manual', category: 'best-practice' },
+      { ruleId: 'aap-deprecated-module', message: 'ansible.builtin.yum is deprecated in AAP 2.5+ — use ansible.builtin.dnf', file: 'tasks/patch-apply.yml', lineStart: 14, severity: 'high', fixTier: 'deterministic', category: 'aap-compatibility' },
+      { ruleId: 'aap-removed-param', message: 'warn parameter removed in ansible-core 2.17 (AAP 2.7)', file: 'tasks/pre-check.yml', lineStart: 8, severity: 'medium', fixTier: 'deterministic', category: 'aap-compatibility' },
+      { ruleId: 'aap-deprecated-syntax', message: 'with_items is deprecated — use loop for AAP 2.5+ compatibility', file: 'tasks/main.yml', lineStart: 22, severity: 'high', fixTier: 'deterministic', category: 'aap-compatibility' },
+      { ruleId: 'aap-collection-update', message: 'community.general 7.5.0 unsupported in AAP 2.7 — update to >= 8.0.0', file: 'collections/requirements.yml', lineStart: 6, severity: 'medium', fixTier: 'deterministic', category: 'aap-compatibility' },
+      { ruleId: 'aap-removed-config', message: 'callback_whitelist renamed to callbacks_enabled (removed in ansible-core 2.17)', file: 'ansible.cfg', lineStart: 3, severity: 'critical', fixTier: 'deterministic', category: 'aap-compatibility' },
     ],
     proposals: [
       {

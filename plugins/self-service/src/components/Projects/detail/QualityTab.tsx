@@ -36,6 +36,7 @@ import {
   type TrendPoint,
   type SeverityClass,
   type QualityViolation,
+  type ViolationCategory,
   SEVERITY_COLORS,
 } from './qualityDemoData';
 
@@ -426,6 +427,16 @@ const ViolationRowItem = ({
               <WarningIcon style={{ fontSize: 14, color: SEVERITY_COLORS[v.severity] }} />
             )}
             <Chip size="small" label={v.ruleId} variant="outlined" style={{ fontSize: 10, height: 18, fontFamily: 'monospace', borderColor: '#3a3a3a' }} />
+            <Chip size="small" label={
+              v.category === 'aap-compatibility' ? 'Compatibility' :
+              v.category === 'best-practice' ? 'Best practice' :
+              v.category.charAt(0).toUpperCase() + v.category.slice(1)
+            } style={{
+              fontSize: 10, height: 18,
+              backgroundColor: v.category === 'aap-compatibility' ? `${statusColors.info}20` : 'transparent',
+              color: v.category === 'aap-compatibility' ? statusColors.info : '#888',
+              border: v.category === 'aap-compatibility' ? 'none' : '1px solid #3a3a3a',
+            }} />
             <Typography style={{ fontSize: 12, color: '#999' }}>{v.message}</Typography>
           </Box>
           {v.fixTier !== 'manual' && (
@@ -465,9 +476,19 @@ const ScanDetailView = ({
   branch?: string;
 }) => {
   const isLatest = scan.scanId === quality.latestScan.scanId;
-  const fixableViolations = quality.violations.filter(v => v.fixTier !== 'manual');
+  const [categoryFilter, setCategoryFilter] = useState<ViolationCategory | 'all'>('all');
+  const filteredViolations = useMemo(() =>
+    categoryFilter === 'all' ? quality.violations : quality.violations.filter(v => v.category === categoryFilter),
+  [quality.violations, categoryFilter]);
+  const fixableViolations = filteredViolations.filter(v => v.fixTier !== 'manual');
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [applied, setApplied] = useState(false);
+
+  const categoryCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    quality.violations.forEach(v => { counts[v.category] = (counts[v.category] || 0) + 1; });
+    return counts;
+  }, [quality.violations]);
 
   const toggleItem = (idx: number) => {
     setSelected(prev => {
@@ -479,7 +500,7 @@ const ScanDetailView = ({
   };
   const selectAll = () => {
     const all = new Set<number>();
-    quality.violations.forEach((v, i) => { if (v.fixTier !== 'manual') all.add(i); });
+    filteredViolations.forEach((v, i) => { if (v.fixTier !== 'manual') all.add(i); });
     setSelected(all);
   };
   const skipAll = () => setSelected(new Set());
@@ -530,19 +551,43 @@ const ScanDetailView = ({
       {/* Violations card with APME-style header and actions */}
       {isLatest && quality.violations.length > 0 && (
         <Card variant="outlined" style={{ borderRadius: 8, overflow: 'hidden', border: '1px solid #333' }}>
-          {/* Header with count and description */}
+          {/* Header with count and category filters */}
           <Box style={{ padding: '14px 16px 10px', borderBottom: '1px solid #2a2a2a' }}>
-            <Box display="flex" alignItems="center" style={{ gap: 8, marginBottom: 6 }}>
-              {scan.totalViolations > 0 && (
-                <Chip size="small" label={`${scan.totalViolations} Violations`}
-                  style={{ fontSize: 11, height: 22, backgroundColor: `${statusColors.error}20`, color: statusColors.error, fontWeight: 600 }}
-                />
-              )}
-              {fixableViolations.length > 0 && (
-                <Typography style={{ fontSize: 13, fontWeight: 500 }}>
-                  {fixableViolations.length} AI Proposals
-                </Typography>
-              )}
+            <Box display="flex" alignItems="center" justifyContent="space-between" style={{ marginBottom: 6 }}>
+              <Box display="flex" alignItems="center" style={{ gap: 8 }}>
+                {scan.totalViolations > 0 && (
+                  <Chip size="small" label={`${scan.totalViolations} Violations`}
+                    style={{ fontSize: 11, height: 22, backgroundColor: `${statusColors.error}20`, color: statusColors.error, fontWeight: 600 }}
+                  />
+                )}
+                {fixableViolations.length > 0 && (
+                  <Typography style={{ fontSize: 13, fontWeight: 500 }}>
+                    {fixableViolations.length} AI Proposals
+                  </Typography>
+                )}
+              </Box>
+              <Box display="flex" style={{ gap: 4 }}>
+                {([
+                  { key: 'all' as const, label: 'All' },
+                  { key: 'lint' as const, label: 'Lint' },
+                  { key: 'aap-compatibility' as const, label: 'Compatibility' },
+                  { key: 'security' as const, label: 'Security' },
+                  { key: 'best-practice' as const, label: 'Best practice' },
+                ] as const).filter(f => f.key === 'all' || categoryCounts[f.key]).map(f => (
+                  <Chip
+                    key={f.key} size="small" clickable
+                    label={f.key === 'all' ? f.label : `${f.label} (${categoryCounts[f.key]})`}
+                    onClick={() => { setCategoryFilter(f.key); setSelected(new Set()); }}
+                    variant={categoryFilter === f.key ? 'default' : 'outlined'}
+                    style={{
+                      fontSize: 11, height: 22,
+                      backgroundColor: categoryFilter === f.key ? `${statusColors.info}30` : undefined,
+                      color: categoryFilter === f.key ? statusColors.info : '#999',
+                      borderColor: categoryFilter === f.key ? statusColors.info : '#3a3a3a',
+                    }}
+                  />
+                ))}
+              </Box>
             </Box>
             <Typography style={{ fontSize: 12, color: '#888' }}>
               Review each proposed change and select which to apply.
@@ -585,9 +630,9 @@ const ScanDetailView = ({
           </Box>
 
           {/* Rows */}
-          {quality.violations.map((v, i) => (
+          {filteredViolations.map((v, i) => (
             <ViolationRowItem
-              key={i} v={v}
+              key={`${v.ruleId}-${v.lineStart}`} v={v}
               selected={selected.has(i)}
               onToggle={() => { if (v.fixTier !== 'manual') toggleItem(i); }}
               repoUrl={repoUrl}

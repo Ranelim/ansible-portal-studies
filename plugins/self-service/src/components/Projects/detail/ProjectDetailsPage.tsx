@@ -75,13 +75,11 @@ import {
 } from '../catalog/projectsDemoData';
 import { useProjectDetailStyles } from './styles';
 import { statusColors } from '../../common/statusColors';
-import { getProjectQuality, getProjectUpgradeData } from './qualityDemoData';
+import { getProjectQuality } from './qualityDemoData';
 import { QualityTab, type OperationStatus } from './QualityTab';
 import { DependenciesTab } from './DependenciesTab';
-import { AapUpgradeWizard } from './AapUpgradeWizard';
 import PlayArrowIcon from '@material-ui/icons/PlayArrow';
 import BuildIcon from '@material-ui/icons/Build';
-import SystemUpdateIcon from '@material-ui/icons/SystemUpdate';
 
 
 const tabs = [
@@ -1569,14 +1567,10 @@ const ActionsMenu = ({
   project,
   isPushedToAap,
   onPushToAap,
-  onUpgrade,
-  upgradeVersion,
 }: {
   project: DemoProject;
   isPushedToAap: boolean;
   onPushToAap: () => void;
-  onUpgrade?: () => void;
-  upgradeVersion?: string;
 }) => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const { hasRole } = useUserRoleContext();
@@ -1607,14 +1601,6 @@ const ActionsMenu = ({
           <ListItemText primary="View source" />
         </MenuItem>
         <Divider />
-        {onUpgrade && upgradeVersion && (
-          <MenuItem onClick={() => { setAnchorEl(null); onUpgrade(); }}>
-            <ListItemIcon>
-              <SystemUpdateIcon fontSize="small" style={{ color: statusColors.info }} />
-            </ListItemIcon>
-            <ListItemText primary={`Upgrade to AAP ${upgradeVersion}`} />
-          </MenuItem>
-        )}
         {isPushed ? (
           <MenuItem onClick={() => setAnchorEl(null)}>
             <ListItemIcon>
@@ -1671,8 +1657,6 @@ export const ProjectDetailsPage = () => {
   );
   const [pushSnackbar, setPushSnackbar] = useState(false);
   const [showPushModal, setShowPushModal] = useState(false);
-  const [showUpgradeWizard, setShowUpgradeWizard] = useState(false);
-  const [upgradeSnackbar, setUpgradeSnackbar] = useState(false);
   const [devSpacesSnackbar, setDevSpacesSnackbar] = useState(false);
 
   const openInDevSpaces = useCallback((targetUrl: string) => {
@@ -1729,7 +1713,6 @@ export const ProjectDetailsPage = () => {
   }
 
   const quality = getProjectQuality(project.name);
-  const upgradeData = getProjectUpgradeData(project.name);
 
   const handleCheck = (_remediate: boolean) => {
     setOpStatus('running');
@@ -1813,15 +1796,9 @@ export const ProjectDetailsPage = () => {
               project={project}
               isPushedToAap={isPushedToAap}
               onPushToAap={openPushModal}
-              onUpgrade={upgradeData ? () => setShowUpgradeWizard(true) : undefined}
-              upgradeVersion={upgradeData?.latestVersion}
             />
           </Box>
         </Box>
-
-        <Typography className={classes.subtitle}>
-          Created from: {project.templateUsed}
-        </Typography>
 
         <Box className={classes.chipsRow}>
           {(() => {
@@ -1948,51 +1925,38 @@ export const ProjectDetailsPage = () => {
           </Box>
         )}
 
-        {/* Recommended actions — PF6 bordered inline alerts, same container style, all buttons use primary */}
-        {opStatus === 'idle' && quality && quality.totalViolations > 0 && quality.latestScan.fixable > 0 && (
-          <Box
-            display="flex" alignItems="center"
-            style={{
-              gap: 8, padding: '10px 16px', marginTop: 8, borderRadius: 4, cursor: 'pointer',
-              border: '1px solid rgba(255,255,255,0.12)', backgroundColor: 'rgba(255,255,255,0.04)',
-            }}
-            onClick={() => handleTabChange(1, 'latest-scan')}
-          >
-            <BuildIcon style={{ fontSize: 18, color: statusColors.warning }} />
-            <Typography style={{ fontSize: 13, fontWeight: 500, flex: 1 }}>
-              {quality.totalViolations} violation{quality.totalViolations !== 1 ? 's' : ''} found, {quality.latestScan.fixable} auto-fixable
-            </Typography>
-            <Button
-              variant="outlined" color="primary" size="small"
-              onClick={(e: React.MouseEvent) => { e.stopPropagation(); handleCheck(true); }}
-              style={{ textTransform: 'none', fontWeight: 500, fontSize: 12, minWidth: 0, padding: '2px 12px' }}
+        {/* Recommended actions — unified violations banner */}
+        {opStatus === 'idle' && quality && quality.totalViolations > 0 && quality.latestScan.fixable > 0 && (() => {
+          const compatCount = quality.violations.filter(v => v.category === 'aap-compatibility').length;
+          const lintCount = quality.totalViolations - compatCount;
+          const parts: string[] = [];
+          if (lintCount > 0) parts.push(`${lintCount} lint`);
+          if (compatCount > 0) parts.push(`${compatCount} compatibility`);
+          const summary = `${quality.totalViolations} violation${quality.totalViolations !== 1 ? 's' : ''} found (${parts.join(', ')}), ${quality.latestScan.fixable} auto-fixable`;
+          return (
+            <Box
+              display="flex" alignItems="center"
+              style={{
+                gap: 8, padding: '10px 16px', marginTop: 8, borderRadius: 4, cursor: 'pointer',
+                border: `1px solid ${quality.violations.some(v => v.severity === 'critical') ? statusColors.error : 'rgba(255,255,255,0.12)'}`,
+                backgroundColor: 'rgba(255,255,255,0.04)',
+              }}
+              onClick={() => handleTabChange(1, 'latest-scan')}
             >
-              Remediate
-            </Button>
-          </Box>
-        )}
-        {opStatus === 'idle' && upgradeData && (
-          <Box
-            display="flex" alignItems="center"
-            style={{
-              gap: 8, padding: '10px 16px', marginTop: 8, borderRadius: 4, cursor: 'pointer',
-              border: '1px solid rgba(255,255,255,0.12)', backgroundColor: 'rgba(255,255,255,0.04)',
-            }}
-            onClick={() => setShowUpgradeWizard(true)}
-          >
-            <SystemUpdateIcon style={{ fontSize: 18, color: statusColors.info }} />
-            <Typography style={{ fontSize: 13, fontWeight: 500, flex: 1 }}>
-              Content targets AAP {upgradeData.currentVersion} — AAP {upgradeData.latestVersion} is available
-            </Typography>
-            <Button
-              variant="outlined" color="primary" size="small"
-              onClick={(e: React.MouseEvent) => { e.stopPropagation(); setShowUpgradeWizard(true); }}
-              style={{ textTransform: 'none', fontWeight: 500, fontSize: 12, minWidth: 0, padding: '2px 12px' }}
-            >
-              Check compatibility
-            </Button>
-          </Box>
-        )}
+              <BuildIcon style={{ fontSize: 18, color: quality.violations.some(v => v.severity === 'critical') ? statusColors.error : statusColors.warning }} />
+              <Typography style={{ fontSize: 13, fontWeight: 500, flex: 1 }}>
+                {summary}
+              </Typography>
+              <Button
+                variant="outlined" color="primary" size="small"
+                onClick={(e: React.MouseEvent) => { e.stopPropagation(); handleCheck(true); }}
+                style={{ textTransform: 'none', fontWeight: 500, fontSize: 12, minWidth: 0, padding: '2px 12px' }}
+              >
+                Remediate
+              </Button>
+            </Box>
+          );
+        })()}
 
         {/* Tabs */}
         <HeaderTabs
@@ -2041,25 +2005,6 @@ export const ProjectDetailsPage = () => {
           setShowPushModal(false);
           handlePushToAap();
         }}
-      />
-      {upgradeData && (
-        <AapUpgradeWizard
-          open={showUpgradeWizard}
-          projectName={project.name}
-          upgradeData={upgradeData}
-          onClose={() => setShowUpgradeWizard(false)}
-          onComplete={() => {
-            setShowUpgradeWizard(false);
-            setUpgradeSnackbar(true);
-          }}
-        />
-      )}
-      <Snackbar
-        open={upgradeSnackbar}
-        autoHideDuration={5000}
-        onClose={() => setUpgradeSnackbar(false)}
-        message={`AAP upgrade changes applied to ${project.title}. Pull request created.`}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       />
       <Snackbar
         open={devSpacesSnackbar}
