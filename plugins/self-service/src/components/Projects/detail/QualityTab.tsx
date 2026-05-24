@@ -318,7 +318,7 @@ const ViolationsCard = ({
   }, [filtered]);
 
   return (
-    <Card variant="outlined" style={{ borderRadius: 12, overflow: 'hidden' }}>
+    <Box>
       {/* Filter bar */}
       <Box style={{ padding: '12px 16px', borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
         <Box display="flex" alignItems="center" justifyContent="space-between">
@@ -380,7 +380,7 @@ const ViolationsCard = ({
           ))}
         </Box>
       ))}
-    </Card>
+    </Box>
   );
 };
 
@@ -717,10 +717,11 @@ export const QualityTab = ({
         )}
       </Box>
 
-      {/* Results card — summary for the violations below */}
-      <Card variant="outlined" style={{ borderRadius: 12, marginBottom: 20 }}>
-        <CardContent style={{ padding: '16px 20px' }}>
-          <Box display="flex" alignItems="center" justifyContent="space-between" style={{ marginBottom: 10 }}>
+      {/* Unified results card — summary header + violations as one surface */}
+      <Card variant="outlined" style={{ borderRadius: 12 }}>
+        {/* Summary section */}
+        <Box style={{ padding: '16px 20px', borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
+          <Box display="flex" alignItems="center" justifyContent="space-between">
             <Box display="flex" alignItems="center" style={{ gap: 16 }}>
               <Typography style={{ fontSize: 28, fontWeight: 700, color: statusColors.error }}>
                 {scan.totalViolations}
@@ -730,40 +731,46 @@ export const QualityTab = ({
                   Violations
                 </Typography>
                 <Typography style={{ fontSize: 12, color: '#666' }}>
-                  {fixableCount} fixable · {manualCount} manual
+                  {fixableCount} auto-fixable · {manualCount} manual review
                 </Typography>
               </Box>
             </Box>
             {onRemediate && fixableCount > 0 && (
-              <Button
-                variant="contained" color="primary" size="small"
-                startIcon={<BuildIcon style={{ fontSize: 16 }} />}
-                onClick={() => { setLastWasRemediate(true); onRemediate(); }}
-                style={{ textTransform: 'none', fontWeight: 600 }}
-              >
-                Remediate ({fixableCount} fixable)
-              </Button>
+              <Box style={{ textAlign: 'right' }}>
+                <Button
+                  variant="contained" color="primary" size="small"
+                  startIcon={<BuildIcon style={{ fontSize: 16 }} />}
+                  onClick={() => { setLastWasRemediate(true); onRemediate(); }}
+                  style={{ textTransform: 'none', fontWeight: 600 }}
+                >
+                  Auto-fix {fixableCount} issues
+                </Button>
+                <Typography style={{ fontSize: 11, color: '#888', marginTop: 4 }}>
+                  Creates a pull request with the fixes
+                </Typography>
+              </Box>
             )}
           </Box>
-
-          {/* Severity breakdown bar + labels */}
-          <SeverityProgressBar breakdown={scan.severityBreakdown} />
-          <Box style={{ marginTop: 8 }}>
-            <SeverityBar breakdown={scan.severityBreakdown} />
+          {/* Severity breakdown */}
+          <Box style={{ marginTop: 12 }}>
+            <SeverityProgressBar breakdown={scan.severityBreakdown} />
+            <Box style={{ marginTop: 6 }}>
+              <SeverityBar breakdown={scan.severityBreakdown} />
+            </Box>
           </Box>
-        </CardContent>
-      </Card>
+        </Box>
 
-      {/* Violations list — grouped by file */}
-      {quality.violations.length > 0 && (
-        <ViolationsCard
-          violations={quality.violations}
-          categoryFilter={categoryFilter}
-          setCategoryFilter={setCategoryFilter}
-          repoUrl={repoUrl}
-          branch={branch}
-        />
-      )}
+        {/* Violations list — same card, below the divider */}
+        {quality.violations.length > 0 && (
+          <ViolationsCard
+            violations={quality.violations}
+            categoryFilter={categoryFilter}
+            setCategoryFilter={setCategoryFilter}
+            repoUrl={repoUrl}
+            branch={branch}
+          />
+        )}
+      </Card>
     </Box>
   );
 };
