@@ -706,14 +706,16 @@ export const QualityTab = ({
           Last scan {quality.lastScannedAt} · commit <code style={{ fontSize: 12 }}>{quality.lastScannedCommit}</code>
         </Typography>
         {onCheck && (
-          <Button
-            variant="outlined" size="small"
-            startIcon={<PlayArrowIcon style={{ fontSize: 16 }} />}
-            onClick={() => { setLastWasRemediate(false); onCheck(); }}
-            style={{ textTransform: 'none', fontWeight: 500 }}
-          >
-            Scan
-          </Button>
+          <Tooltip title="Scans your repository for compatibility, security, and best practice issues" arrow>
+            <Button
+              variant="outlined" size="small"
+              startIcon={<PlayArrowIcon style={{ fontSize: 16 }} />}
+              onClick={() => { setLastWasRemediate(false); onCheck(); }}
+              style={{ textTransform: 'none', fontWeight: 500 }}
+            >
+              Scan
+            </Button>
+          </Tooltip>
         )}
       </Box>
 
@@ -737,14 +739,20 @@ export const QualityTab = ({
             </Box>
             {onRemediate && fixableCount > 0 && (
               <Box style={{ textAlign: 'right' }}>
-                <Button
-                  variant="contained" color="primary" size="small"
-                  startIcon={<BuildIcon style={{ fontSize: 16 }} />}
-                  onClick={() => { setLastWasRemediate(true); onRemediate(); }}
-                  style={{ textTransform: 'none', fontWeight: 600 }}
+                <Tooltip
+                  title="Applies deterministic and AI-assisted fixes to your code, then opens a pull request for you to review and merge."
+                  arrow
+                  placement="bottom-end"
                 >
-                  Auto-fix {fixableCount} issues
-                </Button>
+                  <Button
+                    variant="contained" color="primary" size="small"
+                    startIcon={<BuildIcon style={{ fontSize: 16 }} />}
+                    onClick={() => { setLastWasRemediate(true); onRemediate(); }}
+                    style={{ textTransform: 'none', fontWeight: 600 }}
+                  >
+                    Auto-fix {fixableCount} issues
+                  </Button>
+                </Tooltip>
                 <Typography style={{ fontSize: 11, color: '#888', marginTop: 4 }}>
                   Creates a pull request with the fixes
                 </Typography>
