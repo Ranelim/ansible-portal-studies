@@ -641,25 +641,27 @@ export const QualityTab = ({
   if (!quality) {
     return (
       <Box style={{ marginTop: 24 }}>
+        {/* Scan bar */}
+        <Box display="flex" alignItems="center" justifyContent="space-between" style={{ marginBottom: 20 }}>
+          <Typography style={{ fontSize: 13, color: '#999' }}>
+            No scans yet
+          </Typography>
+          {onCheck && (
+            <Button
+              variant="outlined" size="small"
+              startIcon={<PlayArrowIcon style={{ fontSize: 16 }} />}
+              onClick={onCheck}
+              style={{ textTransform: 'none', fontWeight: 500 }}
+            >
+              Scan
+            </Button>
+          )}
+        </Box>
         <Card variant="outlined" style={{ borderRadius: 12 }}>
-          <CardContent style={{ padding: '64px 24px', textAlign: 'center' }}>
-            <PlayArrowIcon style={{ fontSize: 48, opacity: 0.15, marginBottom: 12 }} />
-            <Typography style={{ fontSize: 16, fontWeight: 500, marginBottom: 8 }}>
-              No quality data available
-            </Typography>
-            <Typography style={{ fontSize: 13, color: '#666', maxWidth: 400, margin: '0 auto', marginBottom: 20 }}>
+          <CardContent style={{ padding: '48px 24px', textAlign: 'center' }}>
+            <Typography style={{ fontSize: 14, color: '#666', maxWidth: 360, margin: '0 auto' }}>
               Run your first scan to check this project for compatibility issues, security risks, and best practice violations.
             </Typography>
-            {onCheck && (
-              <Button
-                variant="contained" color="primary"
-                startIcon={<PlayArrowIcon />}
-                onClick={onCheck}
-                style={{ textTransform: 'none', fontWeight: 600 }}
-              >
-                Run first scan
-              </Button>
-            )}
           </CardContent>
         </Card>
       </Box>
@@ -698,10 +700,27 @@ export const QualityTab = ({
 
   return (
     <Box style={{ marginTop: 24 }}>
-      {/* Summary header card */}
+      {/* Scan bar — context + action */}
+      <Box display="flex" alignItems="center" justifyContent="space-between" style={{ marginBottom: 16 }}>
+        <Typography style={{ fontSize: 13, color: '#666' }}>
+          Last scan {quality.lastScannedAt} · commit <code style={{ fontSize: 12 }}>{quality.lastScannedCommit}</code>
+        </Typography>
+        {onCheck && (
+          <Button
+            variant="outlined" size="small"
+            startIcon={<PlayArrowIcon style={{ fontSize: 16 }} />}
+            onClick={() => { setLastWasRemediate(false); onCheck(); }}
+            style={{ textTransform: 'none', fontWeight: 500 }}
+          >
+            Scan
+          </Button>
+        )}
+      </Box>
+
+      {/* Results card — summary for the violations below */}
       <Card variant="outlined" style={{ borderRadius: 12, marginBottom: 20 }}>
         <CardContent style={{ padding: '16px 20px' }}>
-          <Box display="flex" alignItems="center" justifyContent="space-between" style={{ marginBottom: 12 }}>
+          <Box display="flex" alignItems="center" justifyContent="space-between" style={{ marginBottom: 10 }}>
             <Box display="flex" alignItems="center" style={{ gap: 16 }}>
               <Typography style={{ fontSize: 28, fontWeight: 700, color: statusColors.error }}>
                 {scan.totalViolations}
@@ -731,22 +750,6 @@ export const QualityTab = ({
           <SeverityProgressBar breakdown={scan.severityBreakdown} />
           <Box style={{ marginTop: 8 }}>
             <SeverityBar breakdown={scan.severityBreakdown} />
-          </Box>
-
-          {/* Last checked + re-scan */}
-          <Box display="flex" alignItems="center" style={{ gap: 4, marginTop: 12 }}>
-            <Typography style={{ fontSize: 11, color: '#999' }}>
-              Last checked {quality.lastScannedAt} · commit <code style={{ fontSize: 11 }}>{quality.lastScannedCommit}</code>
-            </Typography>
-            {onCheck && (
-              <Button
-                size="small"
-                onClick={() => { setLastWasRemediate(false); onCheck(); }}
-                style={{ textTransform: 'none', fontSize: 11, color: statusColors.info, minWidth: 0, padding: '0 4px' }}
-              >
-                Re-scan
-              </Button>
-            )}
           </Box>
         </CardContent>
       </Card>
