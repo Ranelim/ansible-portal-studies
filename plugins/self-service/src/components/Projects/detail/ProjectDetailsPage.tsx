@@ -1124,6 +1124,7 @@ export const ProjectDetailsPage = () => {
             onCheck={() => handleCheck(false)}
             onRemediate={() => handleCheck(true)}
             opStatus={opStatus}
+            onDismissResult={() => setOpStatus('idle')}
           />
         )}
         {selectedTab === 2 && <CIActivityTab project={project} />}
