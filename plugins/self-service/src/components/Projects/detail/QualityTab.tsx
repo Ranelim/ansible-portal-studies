@@ -16,7 +16,6 @@ import {
   Collapse,
   IconButton,
 } from '@material-ui/core';
-import { Table, TableColumn } from '@backstage/core-components';
 import CheckCircleIcon from '@material-ui/icons/CheckCircle';
 import WarningIcon from '@material-ui/icons/Warning';
 import ErrorIcon from '@material-ui/icons/Error';
@@ -550,116 +549,6 @@ export const ProposalReviewPanel = ({
 };
 
 // ---------------------------------------------------------------------------
-// Scan History (collapsed section at bottom)
-// ---------------------------------------------------------------------------
-const ScanHistorySection = ({
-  scans,
-  onSelectScan,
-}: {
-  scans: ScanResult[];
-  onSelectScan: (scanId: string) => void;
-}) => {
-  const [expanded, setExpanded] = useState(false);
-
-  if (scans.length <= 1) return null;
-
-  return (
-    <Box style={{ marginTop: 24 }}>
-      <Box
-        display="flex" alignItems="center" style={{ gap: 8, cursor: 'pointer', padding: '8px 0' }}
-        onClick={() => setExpanded(!expanded)}
-      >
-        {expanded ? <ExpandLessIcon style={{ fontSize: 18 }} /> : <ExpandMoreIcon style={{ fontSize: 18 }} />}
-        <Typography style={{ fontSize: 14, fontWeight: 500 }}>
-          Scan history ({scans.length})
-        </Typography>
-      </Box>
-      <Collapse in={expanded}>
-        <Card variant="outlined" style={{ borderRadius: 12, marginTop: 8 }}>
-          <CardContent style={{ padding: 16 }}>
-            <Table<ScanResult>
-              columns={[
-                {
-                  title: 'Type',
-                  field: 'scanType',
-                  render: (row: ScanResult) => (
-                    <Chip
-                      size="small"
-                      label={row.scanType === 'remediate' ? 'remediate' : 'check'}
-                      style={{
-                        fontSize: 10, height: 20, fontWeight: 500,
-                        backgroundColor: row.scanType === 'remediate' ? `${statusColors.info}15` : `${statusColors.success}15`,
-                        color: row.scanType === 'remediate' ? statusColors.info : statusColors.success,
-                      }}
-                    />
-                  ),
-                },
-                {
-                  title: 'Status',
-                  sorting: false,
-                  render: (row: ScanResult) => (
-                    <Chip size="small" label={`✕ ${row.totalViolations} issues`}
-                      style={{ fontSize: 10, height: 20, backgroundColor: `${statusColors.error}15`, color: statusColors.error }}
-                    />
-                  ),
-                },
-                {
-                  title: 'Violations',
-                  field: 'totalViolations',
-                  render: (row: ScanResult) => <Typography style={{ fontSize: 13 }}>{row.totalViolations}</Typography>,
-                },
-                {
-                  title: 'Fixable',
-                  field: 'fixable',
-                  render: (row: ScanResult) => (
-                    <Typography style={{ fontSize: 13, color: statusColors.success }}>{row.fixable}</Typography>
-                  ),
-                },
-                {
-                  title: 'Remediated',
-                  sorting: false,
-                  render: (row: ScanResult) => (
-                    <Typography style={{ fontSize: 13, color: row.remediatedCount > 0 ? statusColors.success : '#999' }}>
-                      {row.remediatedCount > 0 ? row.remediatedCount : '—'}
-                    </Typography>
-                  ),
-                },
-                {
-                  title: 'Manual',
-                  field: 'manualReview',
-                  render: (row: ScanResult) => (
-                    <Typography style={{ fontSize: 13, color: row.manualReview > 0 ? statusColors.warning : '#999' }}>
-                      {row.manualReview}
-                    </Typography>
-                  ),
-                },
-                { title: 'Date', field: 'createdAt' },
-              ]}
-              data={scans}
-              title=""
-              options={{
-                paging: scans.length > 5,
-                pageSize: 5,
-                emptyRowsWhenPaging: false,
-                search: false,
-                sorting: false,
-                padding: 'dense',
-                header: true,
-                rowStyle: { cursor: 'pointer' },
-              }}
-              style={{ boxShadow: 'none' }}
-              onRowClick={(_e, rowData) => {
-                if (rowData) onSelectScan((rowData as ScanResult).scanId);
-              }}
-            />
-          </CardContent>
-        </Card>
-      </Collapse>
-    </Box>
-  );
-};
-
-// ---------------------------------------------------------------------------
 // Result Banner — shown after operation completes
 // ---------------------------------------------------------------------------
 export const ResultBanner = ({
@@ -748,12 +637,6 @@ export const QualityTab = ({
   const [categoryFilter, setCategoryFilter] = useState<ViolationCategory | 'all'>('all');
   const [lastWasRemediate, setLastWasRemediate] = useState(false);
 
-  const allScans = useMemo(() => {
-    if (!quality) return [];
-    if (quality.scanHistory.length > 0) return quality.scanHistory;
-    return [quality.latestScan];
-  }, [quality]);
-
   // Empty state — never scanned
   if (!quality) {
     return (
@@ -832,28 +715,16 @@ export const QualityTab = ({
                 </Typography>
               </Box>
             </Box>
-            <Box display="flex" alignItems="center" style={{ gap: 8 }}>
-              {onCheck && (
-                <Button
-                  variant="contained" color="primary" size="small"
-                  startIcon={<PlayArrowIcon style={{ fontSize: 16 }} />}
-                  onClick={() => { setLastWasRemediate(false); onCheck(); }}
-                  style={{ textTransform: 'none', fontWeight: 600 }}
-                >
-                  Check
-                </Button>
-              )}
-              {onRemediate && fixableCount > 0 && (
-                <Button
-                  variant="outlined" color="primary" size="small"
-                  startIcon={<BuildIcon style={{ fontSize: 16 }} />}
-                  onClick={() => { setLastWasRemediate(true); onRemediate(); }}
-                  style={{ textTransform: 'none', fontWeight: 500 }}
-                >
-                  Remediate
-                </Button>
-              )}
-            </Box>
+            {onRemediate && fixableCount > 0 && (
+              <Button
+                variant="contained" color="primary" size="small"
+                startIcon={<BuildIcon style={{ fontSize: 16 }} />}
+                onClick={() => { setLastWasRemediate(true); onRemediate(); }}
+                style={{ textTransform: 'none', fontWeight: 600 }}
+              >
+                Remediate ({fixableCount} fixable)
+              </Button>
+            )}
           </Box>
 
           {/* Severity breakdown bar + labels */}
@@ -862,11 +733,20 @@ export const QualityTab = ({
             <SeverityBar breakdown={scan.severityBreakdown} />
           </Box>
 
-          {/* Last checked info */}
-          <Box display="flex" alignItems="center" style={{ gap: 8, marginTop: 12 }}>
+          {/* Last checked + re-scan */}
+          <Box display="flex" alignItems="center" style={{ gap: 4, marginTop: 12 }}>
             <Typography style={{ fontSize: 11, color: '#999' }}>
-              Last checked {quality.lastScannedAt} · commit <code style={{ fontSize: 11 }}>{quality.lastScannedCommit}</code> · {quality.scanCount} scans total
+              Last checked {quality.lastScannedAt} · commit <code style={{ fontSize: 11 }}>{quality.lastScannedCommit}</code>
             </Typography>
+            {onCheck && (
+              <Button
+                size="small"
+                onClick={() => { setLastWasRemediate(false); onCheck(); }}
+                style={{ textTransform: 'none', fontSize: 11, color: statusColors.info, minWidth: 0, padding: '0 4px' }}
+              >
+                Re-scan
+              </Button>
+            )}
           </Box>
         </CardContent>
       </Card>
@@ -881,9 +761,6 @@ export const QualityTab = ({
           branch={branch}
         />
       )}
-
-      {/* Scan history — collapsed */}
-      <ScanHistorySection scans={allScans} onSelectScan={() => {}} />
     </Box>
   );
 };
