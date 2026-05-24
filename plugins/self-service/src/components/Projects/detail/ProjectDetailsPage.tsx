@@ -13,15 +13,11 @@ import {
 import {
   Box,
   Typography,
-  Chip,
   IconButton,
   Button,
   Card,
   CardContent,
-  Link,
   Divider,
-  Collapse,
-  Tooltip,
   Menu,
   MenuItem,
   ListItemIcon,
@@ -48,30 +44,17 @@ import StarIcon from '@material-ui/icons/Star';
 import StarBorderIcon from '@material-ui/icons/StarBorder';
 import MoreVertIcon from '@material-ui/icons/MoreVert';
 import CodeIcon from '@material-ui/icons/Code';
-import VisibilityIcon from '@material-ui/icons/Visibility';
 import OpenInNewIcon from '@material-ui/icons/OpenInNew';
 import CloudUploadIcon from '@material-ui/icons/CloudUpload';
 import DeleteOutlineIcon from '@material-ui/icons/DeleteOutline';
 import CheckCircleIcon from '@material-ui/icons/CheckCircle';
-import WarningIcon from '@material-ui/icons/Warning';
 import ErrorIcon from '@material-ui/icons/Error';
 import AutorenewIcon from '@material-ui/icons/Autorenew';
 import RadioButtonUncheckedIcon from '@material-ui/icons/RadioButtonUnchecked';
-import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
-import ExpandLessIcon from '@material-ui/icons/ExpandLess';
-import DescriptionOutlinedIcon from '@material-ui/icons/DescriptionOutlined';
-import GitHubIcon from '@material-ui/icons/GitHub';
-import MemoryIcon from '@material-ui/icons/Memory';
-import CategoryIcon from '@material-ui/icons/Category';
-import InsertDriveFileOutlinedIcon from '@material-ui/icons/InsertDriveFileOutlined';
-import FolderOutlinedIcon from '@material-ui/icons/FolderOutlined';
-import SecurityIcon from '@material-ui/icons/Security';
 import CloseIcon from '@material-ui/icons/Close';
 import {
   DEMO_PROJECTS,
   DemoProject,
-  PipelineStage,
-  JobRunEntry,
 } from '../catalog/projectsDemoData';
 import { useProjectDetailStyles } from './styles';
 import { statusColors } from '../../common/statusColors';
@@ -85,11 +68,8 @@ import BuildIcon from '@material-ui/icons/Build';
 const tabs = [
   { id: 'overview', label: 'Overview' },
   { id: 'quality', label: 'Quality' },
+  { id: 'ci-activity', label: 'CI Activity' },
   { id: 'dependencies', label: 'Dependencies' },
-  { id: 'readme', label: 'README' },
-  { id: 'yaml', label: 'YAML' },
-  { id: 'aap-activity', label: 'Deployments' },
-  { id: 'resources', label: 'Resources' },
 ];
 
 const PROJECT_README: Record<string, string> = {
@@ -159,123 +139,48 @@ Check the **Overview** tab for project status. Use the **Resources** tab to expl
 
 Apache-2.0`;
 
-const getProjectYamlFiles = (project: DemoProject) => {
-  const files = [
-    {
-      name: 'requirements.yml',
-      path: 'collections/requirements.yml',
-      content: `---
-collections:
-  - name: ansible.builtin
-    version: ">=2.14"
-  - name: ansible.posix
-    version: "1.5.4"
-  - name: community.general
-    version: "7.5.0"`,
-    },
-  ];
+// ---------------------------------------------------------------------------
+// Description (truncatable)
+// ---------------------------------------------------------------------------
+const DESC_CHAR_LIMIT = 120;
 
-  if (project.resources.some(r => r.type === 'execution-environment')) {
-    files.push({
-      name: 'execution-environment.yml',
-      path: 'execution-environment.yml',
-      content: `---
-version: 3
-build_arg_defaults:
-  ANSIBLE_GALAXY_CLI_COLLECTION_OPTS: "--pre"
-dependencies:
-  galaxy: collections/requirements.yml
-  python:
-    - jmespath>=1.0.0
-    - netaddr>=0.8.0
-  system:
-    - openssh-clients
-images:
-  base_image:
-    name: registry.redhat.io/ansible-automation-platform/ee-minimal-rhel9:latest`,
-    });
-  }
+const DescriptionLine = ({ text }: { text: string }) => {
+  const [expanded, setExpanded] = useState(false);
+  const needsTruncation = text.length > DESC_CHAR_LIMIT;
 
-  files.push({
-    name: 'ansible.cfg',
-    path: 'ansible.cfg',
-    content: `[defaults]
-inventory = inventory/
-roles_path = roles/
-collections_path = collections/
-retry_files_enabled = False
-stdout_callback = yaml
-
-[privilege_escalation]
-become = True
-become_method = sudo`,
-  });
-
-  return files;
+  return (
+    <Typography style={{ fontSize: 14, color: '#888', marginTop: 4, lineHeight: 1.5 }}>
+      {needsTruncation && !expanded ? (
+        <>
+          {text.slice(0, DESC_CHAR_LIMIT).trimEnd()}…{' '}
+          <Button
+            size="small" variant="text"
+            onClick={() => setExpanded(true)}
+            style={{ textTransform: 'none', fontSize: 12, padding: '0 4px', minWidth: 0, color: '#4DA3FF' }}
+          >
+            Read more
+          </Button>
+        </>
+      ) : (
+        <>
+          {text}
+          {needsTruncation && (
+            <>
+              {' '}
+              <Button
+                size="small" variant="text"
+                onClick={() => setExpanded(false)}
+                style={{ textTransform: 'none', fontSize: 12, padding: '0 4px', minWidth: 0, color: '#4DA3FF' }}
+              >
+                Show less
+              </Button>
+            </>
+          )}
+        </>
+      )}
+    </Typography>
+  );
 };
-
-const StageIcon = ({
-  status,
-  size = 18,
-}: {
-  status: PipelineStage['status'];
-  size?: number;
-}) => {
-  const classes = useProjectDetailStyles();
-  const colorMap: Record<string, string> = {
-    passed: statusColors.success,
-    failed: statusColors.error,
-    running: statusColors.info,
-    pending: statusColors.pending,
-  };
-  const color = colorMap[status] || statusColors.pending;
-
-  if (status === 'pending')
-    return <RadioButtonUncheckedIcon style={{ color, fontSize: size }} />;
-  if (status === 'failed')
-    return <ErrorIcon style={{ color, fontSize: size }} />;
-  if (status === 'running')
-    return (
-      <AutorenewIcon
-        style={{ color, fontSize: size }}
-        className={classes.spinIcon}
-      />
-    );
-  return <CheckCircleIcon style={{ color, fontSize: size }} />;
-};
-
-const statusLabel = (status: string) => {
-  switch (status) {
-    case 'passed':
-    case 'success':
-      return 'Passed';
-    case 'failed':
-      return 'Failed';
-    case 'running':
-      return 'Running';
-    case 'pending':
-      return 'Pending';
-    case 'none':
-      return 'N/A';
-    default:
-      return status;
-  }
-};
-
-const statusColor = (status: string) => {
-  switch (status) {
-    case 'passed':
-    case 'success':
-      return statusColors.success;
-    case 'failed':
-      return statusColors.error;
-    case 'running':
-      return statusColors.info;
-    default:
-      return statusColors.pending;
-  }
-};
-
 
 // ---------------------------------------------------------------------------
 // Overview Tab
@@ -283,126 +188,30 @@ const statusColor = (status: string) => {
 const OverviewTab = ({
   project,
   isPushedToAap,
-  onPushToAap,
-  onGoToQuality,
 }: {
   project: DemoProject;
   isPushedToAap: boolean;
-  onPushToAap: () => void;
-  onGoToQuality: () => void;
 }) => {
   const classes = useProjectDetailStyles();
-  const quality = getProjectQuality(project.name);
+  const readme = PROJECT_README[project.name] || DEFAULT_PROJECT_README;
 
   return (
     <Box className={classes.tabContent}>
       <Box className={classes.mainColumn}>
-        {/* Quality overview */}
-        <Card
-          className={classes.card}
-          variant="outlined"
-          style={{ cursor: 'pointer' }}
-          onClick={onGoToQuality}
-        >
-          <CardContent className={classes.cardContent}>
-            <Typography className={classes.cardTitle} style={{ marginBottom: 12 }}>
-              Quality overview
-            </Typography>
-            {quality ? (
-              <>
-                <Box display="flex" style={{ gap: 24, marginBottom: 12 }}>
-                  <Box>
-                    <Typography style={{ fontSize: 28, fontWeight: 700, color: quality.totalViolations > 0 ? statusColors.error : statusColors.success, lineHeight: 1 }}>
-                      {quality.totalViolations}
-                    </Typography>
-                    <Typography variant="caption" color="textSecondary">Violations</Typography>
-                  </Box>
-                  <Box>
-                    <Typography style={{ fontSize: 28, fontWeight: 700, lineHeight: 1 }}>
-                      {quality.scanCount}
-                    </Typography>
-                    <Typography variant="caption" color="textSecondary">Scans</Typography>
-                  </Box>
-                </Box>
-                <Typography variant="body2" color="textSecondary" style={{ fontSize: 12 }}>
-                  Last scanned {quality.lastScannedAt} · commit <code style={{ fontSize: 11 }}>{quality.lastScannedCommit}</code>
-                </Typography>
-              </>
-            ) : (
-              <Typography variant="body2" color="textSecondary">
-                No quality scans have been run yet. Use the Check button to run your first scan.
-              </Typography>
-            )}
-            <Typography
-              variant="body2"
-              color="primary"
-              style={{ marginTop: 12, fontSize: 13, fontWeight: 500 }}
-            >
-              View quality details →
-            </Typography>
-          </CardContent>
-        </Card>
-
-        {/* Recent activity */}
         <Card className={classes.card} variant="outlined">
           <CardContent className={classes.cardContent}>
-            <Typography className={classes.cardTitle}>
-              Recent activity
-            </Typography>
-            {quality && quality.scanHistory.length > 0 && (
-              <Box className={classes.activityItem}>
-                <SecurityIcon style={{ fontSize: 18, color: '#666', marginTop: 2 }} />
-                <Box style={{ flex: 1 }}>
-                  <Typography className={classes.activityText}>
-                    Quality {quality.scanHistory[0].scanType} <strong>completed</strong> — {quality.scanHistory[0].totalViolations} violation{quality.scanHistory[0].totalViolations !== 1 ? 's' : ''} found
-                    {quality.scanHistory[0].remediatedCount > 0 && `, ${quality.scanHistory[0].remediatedCount} fixed`}
-                  </Typography>
-                  <Typography variant="caption" color="textSecondary">
-                    commit <code style={{ fontSize: 11 }}>{quality.scanHistory[0].commitHash}</code>
-                  </Typography>
-                </Box>
-                <Typography className={classes.activityTime}>
-                  {quality.scanHistory[0].createdAt}
-                </Typography>
-              </Box>
-            )}
-            {project.repo.lastCommit && (
-              <Box className={classes.activityItem}>
-                <GitHubIcon style={{ fontSize: 18, color: '#666', marginTop: 2 }} />
-                <Typography className={classes.activityText}>
-                  <strong>{project.repo.lastCommit.author}</strong> pushed commit{' '}
-                  <code style={{ fontSize: 12 }}>{project.repo.lastCommit.hash.substring(0, 7)}</code>{' '}
-                  — {project.repo.lastCommit.message}
-                </Typography>
-                <Typography className={classes.activityTime}>
-                  {project.repo.lastCommit.timestamp}
-                </Typography>
-              </Box>
-            )}
-            {project.jobHistory.length > 0 && (
-              <Box className={classes.activityItem}>
-                <CloudUploadIcon style={{ fontSize: 18, color: '#666', marginTop: 2 }} />
-                <Typography className={classes.activityText}>
-                  Job #{project.jobHistory[0].id}{' '}
-                  <strong>{project.jobHistory[0].status}</strong> — launched by{' '}
-                  {project.jobHistory[0].launchedBy}
-                </Typography>
-                <Typography className={classes.activityTime}>
-                  {project.jobHistory[0].startedAt}
-                </Typography>
-              </Box>
-            )}
+            <Typography className={classes.cardTitle}>README.md</Typography>
+            <Box style={{ fontSize: 14, lineHeight: 1.7 }}>
+              <SimpleReadmeRenderer content={readme} />
+            </Box>
           </CardContent>
         </Card>
       </Box>
 
       {/* Sidebar */}
       <Box className={classes.sidebarColumn}>
-        <AapConnectionCard project={project} isPushedToAap={isPushedToAap} onPushToAap={onPushToAap} />
         <AboutCard project={project} />
-        <SourceCard project={project} />
-        <DevSpacesCard project={project} />
-        <LinksCard project={project} />
+        <LinksCard project={project} isPushedToAap={isPushedToAap} />
       </Box>
     </Box>
   );
@@ -705,234 +514,94 @@ const PushToAapModal = ({
   );
 };
 
-// ---------------------------------------------------------------------------
-// Sidebar AAP Card
-// ---------------------------------------------------------------------------
-const AapConnectionCard = ({
-  project,
-  isPushedToAap,
-  onPushToAap,
-}: {
-  project: DemoProject;
-  isPushedToAap: boolean;
-  onPushToAap: () => void;
-}) => {
-  const classes = useProjectDetailStyles();
-  const isConnected = isPushedToAap;
-
-  const statusRow = (label: string, connected: boolean, detail?: string) => (
-    <Box display="flex" alignItems="center" style={{ gap: 8, padding: '6px 0' }}>
-      {connected ? (
-        <CheckCircleIcon style={{ fontSize: 18, color: statusColors.success }} />
-      ) : (
-        <RadioButtonUncheckedIcon style={{ fontSize: 18, color: statusColors.pending }} />
-      )}
-      <Box flex={1}>
-        <Typography variant="body2" style={{ fontSize: 13, fontWeight: connected ? 500 : 400, color: connected ? 'inherit' : '#888' }}>
-          {label}
-        </Typography>
-        {detail && (
-          <Typography variant="caption" color="textSecondary" style={{ fontSize: 11 }}>
-            {detail}
-          </Typography>
-        )}
-      </Box>
-    </Box>
-  );
-
-  return (
-    <Card className={classes.card} variant="outlined">
-      <CardContent className={classes.cardContent}>
-        <Typography className={classes.cardTitle}>AAP connection</Typography>
-        {statusRow(
-          'AAP project',
-          isConnected,
-          isConnected ? `Syncing from ${project.repo.url.split('/').pop()}` : undefined,
-        )}
-        {statusRow(
-          'Job template',
-          isConnected,
-          isConnected ? `Template: ${project.title}` : undefined,
-        )}
-        {isConnected && (
-          <>
-            <Divider style={{ margin: '8px 0' }} />
-            {statusRow('Last job run', false, 'No jobs have run yet')}
-          </>
-        )}
-        {!isConnected && (
-          <Box style={{
-            marginTop: 10,
-            padding: '8px 10px',
-            backgroundColor: 'rgba(43, 154, 243, 0.08)',
-            borderRadius: 6,
-            borderLeft: `3px solid ${statusColors.info}`,
-          }}>
-            <Typography variant="body2" style={{ fontSize: 12, lineHeight: 1.5 }}>
-              Push this repository to AAP to create an AAP project and job template. Content will sync automatically on each pipeline pass.
-            </Typography>
-            <Button
-              variant="outlined"
-              color="primary"
-              size="small"
-              style={{ textTransform: 'none', marginTop: 8, fontSize: 12, borderRadius: 16 }}
-              onClick={onPushToAap}
-            >
-              Push to AAP
-            </Button>
-          </Box>
-        )}
-        {isConnected && (
-          <Box style={{ marginTop: 8 }}>
-            <Link
-              style={{ fontSize: 12, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}
-            >
-              View in AAP
-              <OpenInNewIcon style={{ fontSize: 12 }} />
-            </Link>
-          </Box>
-        )}
-      </CardContent>
-    </Card>
-  );
-};
-
 const AboutCard = ({ project }: { project: DemoProject }) => {
   const classes = useProjectDetailStyles();
+  const collections = project.resources.filter(r => r.type === 'collection-dep');
+  const ees = project.resources.filter(r => r.type === 'execution-environment');
+
   return (
     <Card className={classes.card} variant="outlined">
       <CardContent className={classes.cardContent}>
         <Typography className={classes.cardTitle}>About</Typography>
         <Box>
-          <Typography className={classes.cardLabel}>Description</Typography>
-          <Typography className={classes.cardValue}>
-            {project.description}
+          <Typography className={classes.cardLabel}>Source</Typography>
+          <Typography
+            className={classes.cardValue}
+            style={{ fontFamily: 'monospace', fontSize: 12, cursor: 'pointer', color: '#4DA3FF' }}
+            onClick={() => window.open(project.repo.url, '_blank')}
+          >
+            {project.repo.url.replace(/^https?:\/\//, '')}
           </Typography>
         </Box>
+        <Box className={classes.cardSection}>
+          <Typography className={classes.cardLabel}>Default branch</Typography>
+          <Typography className={classes.cardValue}>
+            {project.repo.branch}
+          </Typography>
+        </Box>
+        {(collections.length > 0 || ees.length > 0) && (
+          <Box className={classes.cardSection}>
+            <Typography className={classes.cardLabel}>Contains</Typography>
+            {collections.length > 0 && (
+              <Box style={{ marginBottom: ees.length > 0 ? 6 : 0 }}>
+                <Typography className={classes.cardValue} style={{ fontSize: 12, marginBottom: 2 }}>
+                  {collections.length} collection{collections.length !== 1 ? 's' : ''}
+                </Typography>
+                {collections.map(c => (
+                  <Typography key={c.name} style={{ fontSize: 12, color: '#999', paddingLeft: 8 }}>
+                    {c.name}
+                  </Typography>
+                ))}
+              </Box>
+            )}
+            {ees.length > 0 && (
+              <Box>
+                <Typography className={classes.cardValue} style={{ fontSize: 12, marginBottom: 2 }}>
+                  {ees.length} EE definition{ees.length !== 1 ? 's' : ''}
+                </Typography>
+                {ees.map(e => (
+                  <Typography key={e.name} style={{ fontSize: 12, color: '#999', paddingLeft: 8 }}>
+                    {e.name}
+                  </Typography>
+                ))}
+              </Box>
+            )}
+          </Box>
+        )}
         <Box className={classes.cardSection}>
           <Typography className={classes.cardLabel}>Owner</Typography>
           <Typography className={classes.cardValue}>
             {project.owner}
           </Typography>
         </Box>
-        <Box className={classes.cardSection}>
-          <Typography className={classes.cardLabel}>Created</Typography>
-          <Typography className={classes.cardValue}>
-            {project.createdAt}
-          </Typography>
-        </Box>
-        <Box className={classes.cardSection}>
-          <Typography className={classes.cardLabel}>Template</Typography>
-          <Typography className={classes.cardValue}>
-            {project.templateUsed}
-          </Typography>
-        </Box>
       </CardContent>
     </Card>
   );
 };
 
-const SourceCard = ({ project }: { project: DemoProject }) => {
+const LinksCard = ({ project, isPushedToAap }: { project: DemoProject; isPushedToAap: boolean }) => {
   const classes = useProjectDetailStyles();
-  const navigate = useNavigate();
-  return (
-    <Card className={classes.card} variant="outlined">
-      <CardContent className={classes.cardContent}>
-        <Typography className={classes.cardTitle}>Source repository</Typography>
-        <Box>
-          <Typography className={classes.cardLabel}>Repository</Typography>
-          <Link
-            className={classes.sourceLink}
-            style={{ cursor: 'pointer' }}
-            onClick={() =>
-              navigate(
-                `/self-service/repositories/${project.name}`,
-              )
-            }
-          >
-            {project.repo.url.replace(/^https?:\/\//, '')}
-          </Link>
-        </Box>
-        <Box className={classes.cardSection}>
-          <Typography className={classes.cardLabel}>Branch</Typography>
-          <Chip
-            size="small"
-            label={project.repo.branch}
-            variant="outlined"
-            style={{ fontSize: 12, height: 24, fontFamily: 'monospace' }}
-          />
-        </Box>
-        <Box className={classes.cardSection}>
-          <Typography className={classes.cardLabel}>Last commit</Typography>
-          <Typography className={classes.cardValue}>
-            <code style={{ fontSize: 12 }}>
-              {project.repo.lastCommit.hash.substring(0, 7)}
-            </code>{' '}
-            by {project.repo.lastCommit.author}
-          </Typography>
-          <Typography
-            variant="caption"
-            color="textSecondary"
-            style={{ display: 'block', marginTop: 2 }}
-          >
-            {project.repo.lastCommit.message}
-          </Typography>
-        </Box>
-      </CardContent>
-    </Card>
-  );
-};
-
-const LinksCard = ({ project }: { project: DemoProject }) => {
-  const classes = useProjectDetailStyles();
-  const navigate = useNavigate();
-  const isPushed =
-    project.aap.project === 'pushed' &&
-    project.aap.jobTemplate === 'pushed';
-
   return (
     <Card className={classes.linksCard} variant="outlined">
       <CardContent className={classes.cardContent}>
         <Typography className={classes.cardTitle}>Links</Typography>
         <Box
           className={classes.linkItem}
-          onClick={() =>
-            navigate(
-              `/self-service/repositories/${project.name}`,
-            )
-          }
+          onClick={() => window.open(project.repo.url, '_blank')}
         >
-          <GitHubIcon className={classes.linkIcon} />
-          <Box>
-            <Typography className={classes.linkText}>
-              View repository
-            </Typography>
-            <Typography className={classes.linkDescription}>
-              Repository details, README, and commits
-            </Typography>
-          </Box>
-        </Box>
-        <Box
-          className={classes.linkItem}
-          onClick={() =>
-            window.open(project.repo.url, '_blank')
-          }
-        >
-          <VisibilityIcon className={classes.linkIcon} />
+          <OpenInNewIcon className={classes.linkIcon} />
           <Box>
             <Typography className={classes.linkText}>View source</Typography>
             <Typography className={classes.linkDescription}>
-              Browse the Git repository externally
+              Browse the Git repository
             </Typography>
           </Box>
         </Box>
-        {isPushed && (
+        {isPushedToAap && (
           <Box className={classes.linkItem}>
             <OpenInNewIcon className={classes.linkIcon} />
             <Box>
-              <Typography className={classes.linkText}>
-                View in AAP
-              </Typography>
+              <Typography className={classes.linkText}>View in AAP</Typography>
               <Typography className={classes.linkDescription}>
                 Open in Ansible Automation Platform
               </Typography>
@@ -944,424 +613,130 @@ const LinksCard = ({ project }: { project: DemoProject }) => {
   );
 };
 
-// ---------------------------------------------------------------------------
-// Dev Spaces Card (sidebar)
-// ---------------------------------------------------------------------------
+
+
 const devSpacesConnection = DEMO_CONNECTIONS.find(c => c.id === 'devspaces');
 const isDevSpacesConfigured = devSpacesConnection?.status === 'Active';
 
-const DevSpacesCard = ({ project }: { project: DemoProject }) => {
-  const classes = useProjectDetailStyles();
-  const { hasRole } = useUserRoleContext();
 
-  if (!hasRole('developer')) return null;
+// ---------------------------------------------------------------------------
+// CI Activity Tab
+// ---------------------------------------------------------------------------
+type CIRunStatus = 'success' | 'failure' | 'in_progress' | 'cancelled';
 
-  if (!isDevSpacesConfigured) {
-    return (
-      <Card className={classes.linksCard} variant="outlined" style={{ opacity: 0.6 }}>
-        <CardContent className={classes.cardContent}>
-          <Typography className={classes.cardTitle}>Development environment</Typography>
-          <Typography style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', lineHeight: 1.5 }}>
-            OpenShift Dev Spaces is not configured. Ask your admin to connect it in{' '}
-            <RouterLink to="/self-service/admin/integrations/devspaces" style={{ color: '#4DA3FF' }}>
-              Integrations
-            </RouterLink>.
-          </Typography>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  return (
-    <Card className={classes.linksCard} variant="outlined">
-      <CardContent className={classes.cardContent}>
-        <Typography className={classes.cardTitle}>Development environment</Typography>
-        <Box
-          className={classes.linkItem}
-          onClick={() =>
-            window.open(`${DEVSPACES_BASE_URL}/#${project.repo.url}/tree/${project.repo.branch}`, '_blank')
-          }
-        >
-          <CodeIcon className={classes.linkIcon} />
-          <Box>
-            <Typography className={classes.linkText}>
-              Edit in Dev Spaces
-            </Typography>
-            <Typography className={classes.linkDescription}>
-              Open a workspace for branch: {project.repo.branch}
-            </Typography>
-          </Box>
-        </Box>
-        <Box
-          className={classes.linkItem}
-          onClick={() =>
-            window.open(`${DEVSPACES_BASE_URL}/dashboard/#/workspaces`, '_blank')
-          }
-        >
-          <OpenInNewIcon className={classes.linkIcon} />
-          <Box>
-            <Typography className={classes.linkText}>
-              Dev Spaces dashboard
-            </Typography>
-            <Typography className={classes.linkDescription}>
-              View and manage all your workspaces
-            </Typography>
-          </Box>
-        </Box>
-      </CardContent>
-    </Card>
-  );
+type CIRun = {
+  id: string;
+  status: CIRunStatus;
+  event: string;
+  trigger: string;
+  time: string;
+  duration: string;
 };
 
+const DEMO_CI_RUNS: Record<string, CIRun[]> = {
+  'rhel-patching': [
+    { id: 'CI #847', status: 'success', event: 'ansible-lint', trigger: 'push', time: '2 hours ago', duration: '3m 12s' },
+    { id: 'CI #846', status: 'failure', event: 'integration-test', trigger: 'push', time: '5 hours ago', duration: '7m 44s' },
+    { id: 'CI #845', status: 'success', event: 'ansible-lint', trigger: 'pull request', time: '1 day ago', duration: '2m 58s' },
+    { id: 'CI #844', status: 'success', event: 'integration-test', trigger: 'push', time: '1 day ago', duration: '8m 02s' },
+    { id: 'CI #843', status: 'success', event: 'ansible-lint', trigger: 'push', time: '2 days ago', duration: '3m 05s' },
+    { id: 'CI #842', status: 'cancelled', event: 'integration-test', trigger: 'push', time: '3 days ago', duration: '1m 22s' },
+  ],
+  'web-app-scaling-suite': [
+    { id: 'CI #312', status: 'success', event: 'ansible-lint', trigger: 'push', time: '1 day ago', duration: '2m 45s' },
+    { id: 'CI #311', status: 'success', event: 'molecule-test', trigger: 'push', time: '3 days ago', duration: '12m 30s' },
+    { id: 'CI #310', status: 'success', event: 'ansible-lint', trigger: 'pull request', time: '4 days ago', duration: '2m 51s' },
+  ],
+};
 
-// ---------------------------------------------------------------------------
-// AAP Activity Tab
-// ---------------------------------------------------------------------------
-const AapActivityTab = ({
-  project,
-  isPushedToAap,
-  onPushToAap,
-}: {
-  project: DemoProject;
-  isPushedToAap: boolean;
-  onPushToAap: () => void;
-}) => {
+const CIActivityTab = ({ project }: { project: DemoProject }) => {
   const classes = useProjectDetailStyles();
-  const isPushed = isPushedToAap;
+  const runs = DEMO_CI_RUNS[project.name] || [];
 
-  const latestCommit = project.repo.lastCommit;
-  const lastRunCommit = project.jobHistory.length > 0 ? 'b2a7e3d' : undefined;
-  const hasNewerCode = lastRunCommit && latestCommit.hash !== lastRunCommit;
-  const lastRun = project.jobHistory[0];
-
-  const DEMO_FAILURE_REASONS: Record<number, string> = {
-    201: 'Task "Install patches" failed — UNREACHABLE: host db-02.internal not responding',
-    198: 'Task "Validate config" failed — assertion error: expected port 8443, got undefined',
+  const statusIcon = (status: CIRunStatus) => {
+    switch (status) {
+      case 'success':
+        return <CheckCircleIcon style={{ fontSize: 18, color: statusColors.success }} />;
+      case 'failure':
+        return <ErrorIcon style={{ fontSize: 18, color: statusColors.error }} />;
+      case 'in_progress':
+        return <AutorenewIcon style={{ fontSize: 18, color: statusColors.info }} className={classes.spinIcon} />;
+      case 'cancelled':
+        return <RadioButtonUncheckedIcon style={{ fontSize: 18, color: statusColors.pending }} />;
+    }
   };
 
-  const jobColumns: TableColumn<JobRunEntry>[] = [
-    {
-      title: 'Status',
-      field: 'status',
-      width: '100px',
-      render: (row: JobRunEntry) => (
-        <Box display="flex" alignItems="center" style={{ gap: 6 }}>
-          <StageIcon
-            status={row.status === 'success' ? 'passed' : (row.status as PipelineStage['status'])}
-            size={16}
-          />
-          <Typography variant="body2">{statusLabel(row.status)}</Typography>
-        </Box>
-      ),
-    },
-    {
-      title: 'Job',
-      field: 'id',
-      render: (row: JobRunEntry) => (
-        <Link
-          href={`https://controller.example.com/#/jobs/${row.id}/output`}
-          target="_blank"
-          rel="noopener"
-          style={{ fontSize: 13, fontWeight: 500 }}
-        >
-          #{row.id}
-        </Link>
-      ),
-    },
-    {
-      title: 'Commit',
-      render: (row: JobRunEntry) => (
-        <Typography variant="body2" style={{ fontFamily: 'monospace', fontSize: 12 }}>
-          {row.id === lastRun?.id ? (lastRunCommit ?? '—') : 'c4b3a9f'}
-        </Typography>
-      ),
-    },
-    { title: 'Duration', field: 'duration' },
-    { title: 'Started', field: 'startedAt' },
-    { title: 'Launched by', field: 'launchedBy' },
-  ];
+  const statusText = (status: CIRunStatus) => {
+    switch (status) {
+      case 'success': return 'Success';
+      case 'failure': return 'Failure';
+      case 'in_progress': return 'In Progress';
+      case 'cancelled': return 'Cancelled';
+    }
+  };
 
-  if (!isPushed) {
+  if (runs.length === 0) {
     return (
       <Box style={{ marginTop: 24 }}>
         <Card className={classes.card} variant="outlined">
-          <CardContent className={classes.cardContent}>
-            <Box display="flex" flexDirection="column" alignItems="center" style={{ padding: '40px 0' }}>
-              <CloudUploadIcon style={{ fontSize: 48, color: statusColors.pending, marginBottom: 16 }} />
-              <Typography variant="h6" style={{ fontWeight: 600, marginBottom: 8 }}>
-                Not connected to AAP
-              </Typography>
-              <Typography variant="body2" color="textSecondary" style={{ marginBottom: 20, maxWidth: 400, textAlign: 'center' }}>
-                Push this project to Ansible Automation Platform to create an AAP project and job template. Once connected, you can run automation and monitor executions here.
-              </Typography>
-              <Button
-                variant="contained"
-                color="primary"
-                startIcon={<CloudUploadIcon />}
-                style={{ textTransform: 'none', fontWeight: 600 }}
-                onClick={onPushToAap}
-              >
-                Push to AAP
-              </Button>
-            </Box>
+          <CardContent className={classes.cardContent} style={{ textAlign: 'center', padding: '48px 24px' }}>
+            <Typography style={{ fontSize: 16, fontWeight: 500, marginBottom: 8 }}>
+              No CI activity yet
+            </Typography>
+            <Typography style={{ fontSize: 13, color: '#888', maxWidth: 400, margin: '0 auto' }}>
+              CI activity from GitHub Actions or GitLab pipelines will appear here after workflow runs.
+            </Typography>
           </CardContent>
         </Card>
       </Box>
     );
   }
 
-  return (
-    <Box style={{ marginTop: 24 }}>
-      {/* Commit gap detection */}
-      {hasNewerCode && lastRun && lastRun.status === 'failed' && (
-        <Card className={classes.card} variant="outlined" style={{
-          marginBottom: 16,
-          borderLeft: `3px solid ${statusColors.info}`,
-          backgroundColor: 'rgba(43, 154, 243, 0.04)',
-        }}>
-          <CardContent className={classes.cardContent} style={{ padding: '12px 16px' }}>
-            <Box display="flex" alignItems="center" justifyContent="space-between">
-              <Box>
-                <Typography variant="body2" style={{ fontWeight: 600, fontSize: 13 }}>
-                  Newer code available
-                </Typography>
-                <Typography variant="body2" color="textSecondary" style={{ fontSize: 12 }}>
-                  Last run failed against <code style={{ fontSize: 11 }}>{lastRunCommit}</code>.
-                  Your latest commit <code style={{ fontSize: 11 }}>{latestCommit.hash.slice(0, 7)}</code> hasn't been tested yet.
-                </Typography>
-              </Box>
-              <Button
-                variant="contained"
-                color="primary"
-                size="small"
-                startIcon={<PlayArrowIcon />}
-                style={{ textTransform: 'none', fontWeight: 600, borderRadius: 16 }}
-              >
-                Run now
-              </Button>
-            </Box>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Last run summary */}
-      {lastRun && (
-        <Card className={classes.card} variant="outlined" style={{ marginBottom: 16 }}>
-          <CardContent className={classes.cardContent}>
-            <Box display="flex" alignItems="center" justifyContent="space-between" style={{ marginBottom: lastRun.status === 'failed' ? 12 : 0 }}>
-              <Box display="flex" alignItems="center" style={{ gap: 10 }}>
-                <StageIcon
-                  status={lastRun.status === 'success' ? 'passed' : (lastRun.status as PipelineStage['status'])}
-                  size={22}
-                />
-                <Box>
-                  <Typography variant="body2" style={{ fontWeight: 600, fontSize: 14 }}>
-                    Last run: {statusLabel(lastRun.status)}
-                  </Typography>
-                  <Typography variant="body2" color="textSecondary" style={{ fontSize: 12 }}>
-                    Job #{lastRun.id} · {lastRun.startedAt} · {lastRun.duration} · by {lastRun.launchedBy}
-                  </Typography>
-                </Box>
-              </Box>
-              <Box display="flex" style={{ gap: 8 }}>
-                <Button
-                  variant="outlined"
-                  size="small"
-                  href={`https://controller.example.com/#/jobs/${lastRun.id}/output`}
-                  target="_blank"
-                  style={{ textTransform: 'none', fontSize: 12, borderRadius: 16 }}
-                >
-                  View in AAP
-                </Button>
-                {!hasNewerCode && (
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    size="small"
-                    startIcon={<PlayArrowIcon />}
-                    style={{ textTransform: 'none', fontSize: 12, fontWeight: 600, borderRadius: 16 }}
-                  >
-                    Run now
-                  </Button>
-                )}
-              </Box>
-            </Box>
-            {lastRun.status === 'failed' && DEMO_FAILURE_REASONS[lastRun.id] && (
-              <Box style={{
-                padding: '8px 12px',
-                backgroundColor: `${statusColors.error}08`,
-                borderRadius: 4,
-                borderLeft: `3px solid ${statusColors.error}`,
-              }}>
-                <Typography variant="body2" style={{ fontSize: 12, fontFamily: 'monospace', color: statusColors.error }}>
-                  {DEMO_FAILURE_REASONS[lastRun.id]}
-                </Typography>
-              </Box>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Job run history */}
-      <Card className={classes.card} variant="outlined">
-        <CardContent className={classes.cardContent}>
-          <Box display="flex" alignItems="center" justifyContent="space-between" style={{ marginBottom: 12 }}>
-            <Typography className={classes.cardTitle} style={{ marginBottom: 0 }}>
-              Run history
-            </Typography>
-          </Box>
-          {project.jobHistory.length > 0 ? (
-            <Table<JobRunEntry>
-              columns={jobColumns}
-              data={project.jobHistory}
-              title=""
-              options={{
-                paging: false,
-                search: false,
-                sorting: false,
-                padding: 'dense',
-                header: true,
-              }}
-              style={{ boxShadow: 'none' }}
-            />
-          ) : (
-            <Typography variant="body2" color="textSecondary">
-              No job runs yet. Use "Run now" to trigger your first execution.
-            </Typography>
-          )}
-        </CardContent>
-      </Card>
-    </Box>
-  );
-};
-
-// ---------------------------------------------------------------------------
-// Resources Tab
-// ---------------------------------------------------------------------------
-const ResourcesTab = ({ project }: { project: DemoProject }) => {
-  const classes = useProjectDetailStyles();
-
-  const resourceIcon = (type: string) => {
-    switch (type) {
-      case 'playbook':
-        return (
-          <InsertDriveFileOutlinedIcon className={classes.resourceIcon} />
-        );
-      case 'role':
-        return <FolderOutlinedIcon className={classes.resourceIcon} />;
-      case 'collection-dep':
-        return <CategoryIcon className={classes.resourceIcon} />;
-      case 'execution-environment':
-        return <MemoryIcon className={classes.resourceIcon} />;
-      default:
-        return (
-          <InsertDriveFileOutlinedIcon className={classes.resourceIcon} />
-        );
-    }
-  };
-
-  const resourceTypeLabel = (type: string) => {
-    switch (type) {
-      case 'playbook':
-        return 'Playbook';
-      case 'role':
-        return 'Role';
-      case 'collection-dep':
-        return 'Collection';
-      case 'execution-environment':
-        return 'EE';
-      default:
-        return type;
-    }
-  };
-
-  const grouped = useMemo(() => {
-    const groups: Record<string, typeof project.resources> = {};
-    for (const r of project.resources) {
-      const key = r.type;
-      if (!groups[key]) groups[key] = [];
-      groups[key].push(r);
-    }
-    return groups;
-  }, [project.resources]);
-
-  const groupOrder = [
-    'playbook',
-    'role',
-    'execution-environment',
-    'collection-dep',
+  const ciColumns: TableColumn<CIRun>[] = [
+    {
+      title: 'Status',
+      field: 'status',
+      width: '120px',
+      render: (row: CIRun) => (
+        <Box display="flex" alignItems="center" style={{ gap: 6 }}>
+          {statusIcon(row.status)}
+          <Typography variant="body2">{statusText(row.status)}</Typography>
+        </Box>
+      ),
+    },
+    { title: 'Run', field: 'id' },
+    { title: 'Event', field: 'event' },
+    { title: 'Trigger', field: 'trigger' },
+    { title: 'Duration', field: 'duration' },
+    { title: 'Time', field: 'time' },
   ];
-  const groupLabels: Record<string, string> = {
-    playbook: 'Playbooks',
-    role: 'Roles',
-    'execution-environment': 'Execution Environments',
-    'collection-dep': 'Collection Dependencies',
-  };
 
   return (
     <Box style={{ marginTop: 24 }}>
-      {groupOrder.map(type => {
-        const items = grouped[type];
-        if (!items || items.length === 0) return null;
-        return (
-          <Card
-            key={type}
-            className={classes.card}
-            variant="outlined"
-            style={{ marginBottom: 24 }}
-          >
-            <CardContent className={classes.cardContent}>
-              <Typography className={classes.cardTitle}>
-                {groupLabels[type]} ({items.length})
-              </Typography>
-              {items.map(r => (
-                <Box key={r.name} className={classes.resourceItem}>
-                  {resourceIcon(r.type)}
-                  <Box>
-                    <Typography className={classes.resourceName}>
-                      {r.name}
-                    </Typography>
-                    <Typography className={classes.resourcePath}>
-                      {r.path}
-                    </Typography>
-                  </Box>
-                  <Chip
-                    size="small"
-                    label={resourceTypeLabel(r.type)}
-                    variant="outlined"
-                    className={classes.resourceTypeChip}
-                  />
-                </Box>
-              ))}
-            </CardContent>
-          </Card>
-        );
-      })}
-    </Box>
-  );
-};
-
-// ---------------------------------------------------------------------------
-// README Tab
-// ---------------------------------------------------------------------------
-const ReadmeTab = ({ project }: { project: DemoProject }) => {
-  const classes = useProjectDetailStyles();
-  const readme = PROJECT_README[project.name] || DEFAULT_PROJECT_README;
-
-  return (
-    <Box style={{ marginTop: 24, maxWidth: 900 }}>
       <Card className={classes.card} variant="outlined">
         <CardContent className={classes.cardContent}>
-          <Typography className={classes.cardTitle}>README.md</Typography>
-          <Box style={{ fontSize: 14, lineHeight: 1.7 }}>
-            <SimpleReadmeRenderer content={readme} />
-          </Box>
+          <Table<CIRun>
+            columns={ciColumns}
+            data={runs}
+            title={`CI Activity (${runs.length})`}
+            options={{
+              paging: false,
+              search: false,
+              sorting: false,
+              padding: 'dense',
+              header: true,
+            }}
+            style={{ boxShadow: 'none' }}
+          />
         </CardContent>
       </Card>
     </Box>
   );
 };
 
+// ---------------------------------------------------------------------------
+// README Renderer (used in Overview tab)
+// ---------------------------------------------------------------------------
 const SimpleReadmeRenderer = ({ content }: { content: string }) => {
   const lines = content.split('\n');
   const elements: JSX.Element[] = [];
@@ -1490,77 +865,6 @@ const SimpleReadmeRenderer = ({ content }: { content: string }) => {
 };
 
 // ---------------------------------------------------------------------------
-// YAML Tab
-// ---------------------------------------------------------------------------
-const ProjectYamlTab = ({ project }: { project: DemoProject }) => {
-  const classes = useProjectDetailStyles();
-  const files = getProjectYamlFiles(project);
-
-  return (
-    <Box style={{ marginTop: 24 }}>
-      {files.map(file => (
-        <Card
-          key={file.path}
-          className={classes.card}
-          variant="outlined"
-          style={{ marginBottom: 24 }}
-        >
-          <CardContent className={classes.cardContent}>
-            <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
-              <Box display="flex" alignItems="center" style={{ gap: 8 }}>
-                <InsertDriveFileOutlinedIcon style={{ fontSize: 18, color: '#666' }} />
-                <Typography style={{ fontWeight: 600, fontSize: 14 }}>
-                  {file.name}
-                </Typography>
-                <Typography variant="caption" color="textSecondary" style={{ fontFamily: 'monospace' }}>
-                  {file.path}
-                </Typography>
-              </Box>
-              <Button
-                size="small"
-                variant="outlined"
-                startIcon={<OpenInNewIcon style={{ fontSize: 14 }} />}
-                style={{ textTransform: 'none', fontSize: 12 }}
-                onClick={() =>
-                  window.open(
-                    `${project.repo.url}/blob/${project.repo.branch}/${file.path}`,
-                    '_blank',
-                  )
-                }
-              >
-                View in repo
-              </Button>
-            </Box>
-            <Paper
-              variant="outlined"
-              style={{
-                padding: 16,
-                backgroundColor: '#1e1e1e',
-                borderRadius: 8,
-                overflow: 'auto',
-              }}
-            >
-              <pre
-                style={{
-                  margin: 0,
-                  fontSize: 13,
-                  lineHeight: 1.6,
-                  color: '#d4d4d4',
-                  fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace",
-                  whiteSpace: 'pre-wrap',
-                }}
-              >
-                {file.content}
-              </pre>
-            </Paper>
-          </CardContent>
-        </Card>
-      ))}
-    </Box>
-  );
-};
-
-// ---------------------------------------------------------------------------
 // Actions Menu
 // ---------------------------------------------------------------------------
 const ActionsMenu = ({
@@ -1589,18 +893,6 @@ const ActionsMenu = ({
         transformOrigin={{ vertical: 'top', horizontal: 'right' }}
         getContentAnchorEl={null}
       >
-        <MenuItem
-          onClick={() => {
-            window.open(project.repo.url, '_blank');
-            setAnchorEl(null);
-          }}
-        >
-          <ListItemIcon>
-            <VisibilityIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText primary="View source" />
-        </MenuItem>
-        <Divider />
         {isPushed ? (
           <MenuItem onClick={() => setAnchorEl(null)}>
             <ListItemIcon>
@@ -1651,7 +943,6 @@ export const ProjectDetailsPage = () => {
   const [initialScanId] = useState<string | null>(urlScan);
   const [starred, setStarred] = useState(false);
   const [opStatus, setOpStatus] = useState<OperationStatus>('idle');
-  const [showResult, setShowResult] = useState(false);
   const [isPushedToAap, setIsPushedToAap] = useState(() =>
     loadAapPushedRepos().has(projectName ?? ''),
   );
@@ -1720,23 +1011,9 @@ export const ProjectDetailsPage = () => {
       if (quality?.proposals && quality.proposals.length > 0) {
         setOpStatus('awaiting_approval');
       } else {
-        setShowResult(true);
         setOpStatus('complete');
       }
     }, 3000);
-  };
-
-  const handleApprove = (_ids: string[]) => {
-    setOpStatus('running');
-    setTimeout(() => {
-      setShowResult(true);
-      setOpStatus('complete');
-    }, 2000);
-  };
-
-  const handleDismiss = () => {
-    setOpStatus('idle');
-    setShowResult(false);
   };
 
   return (
@@ -1771,6 +1048,14 @@ export const ProjectDetailsPage = () => {
             </IconButton>
           </Box>
           <Box className={classes.actionsRow}>
+            <Button
+              variant="outlined" size="small"
+              startIcon={<OpenInNewIcon style={{ fontSize: 16 }} />}
+              onClick={() => window.open(project.repo.url, '_blank')}
+              style={{ textTransform: 'none', fontWeight: 500 }}
+            >
+              View source
+            </Button>
             {isDevSpacesConfigured && pageHasRole('developer') && (
               <Button
                 variant="outlined" size="small"
@@ -1781,17 +1066,6 @@ export const ProjectDetailsPage = () => {
                 Edit in Dev Spaces
               </Button>
             )}
-            {quality && (
-              <Button
-                variant="contained" color="primary" size="small"
-                startIcon={opStatus === 'running' ? <AutorenewIcon style={{ animation: 'spin 1.5s linear infinite' }} /> : <PlayArrowIcon />}
-                onClick={() => handleCheck(false)}
-                disabled={opStatus === 'running'}
-                style={{ textTransform: 'none', fontWeight: 500 }}
-              >
-                {opStatus === 'running' ? 'Checking...' : 'Check'}
-              </Button>
-            )}
             <ActionsMenu
               project={project}
               isPushedToAap={isPushedToAap}
@@ -1800,163 +1074,33 @@ export const ProjectDetailsPage = () => {
           </Box>
         </Box>
 
-        <Box className={classes.chipsRow}>
-          {(() => {
-            const q = quality;
-            if (!q) return null;
-            return (
-              <>
-                {q.totalViolations > 0 ? (
-                  <Chip
-                    size="small"
-                    label={`${q.totalViolations} violation${q.totalViolations !== 1 ? 's' : ''}`}
-                    variant="outlined"
-                    style={{
-                      fontSize: 12,
-                      fontWeight: 500,
-                      cursor: 'pointer',
-                      color: statusColors.error,
-                      borderColor: statusColors.error,
-                    }}
-                    onClick={() => handleTabChange(1, 'latest-scan')}
-                  />
-                ) : (
-                  <Chip
-                    size="small"
-                    label="Clean"
-                    variant="outlined"
-                    style={{
-                      fontSize: 12,
-                      fontWeight: 500,
-                      color: statusColors.success,
-                      borderColor: statusColors.success,
-                    }}
-                  />
-                )}
-              </>
-            );
-          })()}
-        </Box>
-
-        {/* Inline alerts — PF6 bordered inline alert: neutral container, status-colored icon, high-contrast text */}
-        {opStatus === 'running' && (
-          <Box
-            display="flex" alignItems="center"
-            style={{
-              gap: 8, padding: '10px 16px', marginTop: 8, borderRadius: 4, cursor: 'pointer',
-              border: '1px solid rgba(255,255,255,0.12)', backgroundColor: 'rgba(255,255,255,0.04)',
-            }}
-            onClick={() => handleTabChange(1)}
-          >
-            <AutorenewIcon style={{ fontSize: 18, color: statusColors.info, animation: 'spin 1.5s linear infinite' }} />
-            <Typography style={{ fontSize: 13, fontWeight: 500, flex: 1 }}>
-              Analyzing content...
-            </Typography>
-            <Button
-              size="small" variant="text" color="primary"
-              onClick={(e: React.MouseEvent) => e.stopPropagation()}
-              style={{ textTransform: 'none', fontSize: 12, fontWeight: 500, padding: '2px 8px', minWidth: 0 }}
-            >
-              View in Quality →
-            </Button>
-          </Box>
-        )}
-        {opStatus === 'awaiting_approval' && quality && quality.proposals.length > 0 && (
-          <Box
-            display="flex" alignItems="center"
-            style={{
-              gap: 8, padding: '10px 16px', marginTop: 8, borderRadius: 4, cursor: 'pointer',
-              border: '1px solid rgba(255,255,255,0.12)', backgroundColor: 'rgba(255,255,255,0.04)',
-            }}
-            onClick={() => handleTabChange(1)}
-          >
-            <WarningIcon style={{ fontSize: 18, color: statusColors.warning }} />
-            <Typography style={{ fontSize: 13, fontWeight: 500, flex: 1 }}>
-              {quality.proposals.length} remediation{quality.proposals.length !== 1 ? 's' : ''} awaiting approval
-            </Typography>
-            <Button
-              size="small" variant="text" color="primary"
-              onClick={(e: React.MouseEvent) => e.stopPropagation()}
-              style={{ textTransform: 'none', fontSize: 12, fontWeight: 500, padding: '2px 8px', minWidth: 0 }}
-            >
-              Review in Quality →
-            </Button>
-          </Box>
-        )}
-        {showResult && opStatus === 'complete' && quality && (
-          <Box
-            display="flex" alignItems="center"
-            style={{
-              gap: 8, padding: '10px 16px', marginTop: 8, borderRadius: 4, cursor: 'pointer',
-              border: '1px solid rgba(255,255,255,0.12)', backgroundColor: 'rgba(255,255,255,0.04)',
-            }}
-            onClick={() => { handleTabChange(1, 'latest-scan'); handleDismiss(); }}
-          >
-            <CheckCircleIcon style={{ fontSize: 18, color: statusColors.success }} />
-            <Typography style={{ fontSize: 13, fontWeight: 500, flex: 1 }}>
-              {quality.latestScan.scanType === 'remediate'
-                ? `Remediation complete — ${quality.latestScan.remediatedCount} fixed`
-                : `Check complete — ${quality.latestScan.totalViolations} violation${quality.latestScan.totalViolations !== 1 ? 's' : ''} found`}
-            </Typography>
-            {quality.latestScan.scanType === 'remediate' && quality.latestScan.remediatedCount > 0 && (
-              <Button
-                size="small" variant="text" color="primary"
-                component="a" href="https://github.com/acme-corp/rhel-patching/pull/42" target="_blank" rel="noopener noreferrer"
-                onClick={(e: React.MouseEvent) => e.stopPropagation()}
-                style={{ textTransform: 'none', fontSize: 12, fontWeight: 500, padding: '2px 8px', minWidth: 0 }}
-              >
-                View PR
-              </Button>
-            )}
-            <Button
-              size="small" variant="text" color="primary"
-              onClick={(e: React.MouseEvent) => e.stopPropagation()}
-              style={{ textTransform: 'none', fontSize: 12, fontWeight: 500, padding: '2px 8px', minWidth: 0 }}
-            >
-              View details →
-            </Button>
-            <IconButton
-              size="small"
-              onClick={(e: React.MouseEvent) => { e.stopPropagation(); handleDismiss(); }}
-              style={{ padding: 2 }}
-            >
-              <CloseIcon style={{ fontSize: 14 }} />
-            </IconButton>
-          </Box>
+        {/* Description */}
+        {project.description && (
+          <DescriptionLine text={project.description} />
         )}
 
-        {/* Recommended actions — unified violations banner */}
-        {opStatus === 'idle' && quality && quality.totalViolations > 0 && quality.latestScan.fixable > 0 && (() => {
-          const compatCount = quality.violations.filter(v => v.category === 'aap-compatibility').length;
-          const lintCount = quality.totalViolations - compatCount;
-          const parts: string[] = [];
-          if (lintCount > 0) parts.push(`${lintCount} lint`);
-          if (compatCount > 0) parts.push(`${compatCount} compatibility`);
-          const summary = `${quality.totalViolations} violation${quality.totalViolations !== 1 ? 's' : ''} found (${parts.join(', ')}), ${quality.latestScan.fixable} auto-fixable`;
-          return (
-            <Box
-              display="flex" alignItems="center"
-              style={{
-                gap: 8, padding: '10px 16px', marginTop: 8, borderRadius: 4, cursor: 'pointer',
-                border: `1px solid ${quality.violations.some(v => v.severity === 'critical') ? statusColors.error : 'rgba(255,255,255,0.12)'}`,
-                backgroundColor: 'rgba(255,255,255,0.04)',
-              }}
-              onClick={() => handleTabChange(1, 'latest-scan')}
-            >
-              <BuildIcon style={{ fontSize: 18, color: quality.violations.some(v => v.severity === 'critical') ? statusColors.error : statusColors.warning }} />
-              <Typography style={{ fontSize: 13, fontWeight: 500, flex: 1 }}>
-                {summary}
-              </Typography>
-              <Button
-                variant="outlined" color="primary" size="small"
-                onClick={(e: React.MouseEvent) => { e.stopPropagation(); handleCheck(true); }}
-                style={{ textTransform: 'none', fontWeight: 500, fontSize: 12, minWidth: 0, padding: '2px 12px' }}
-              >
-                Remediate
-              </Button>
-            </Box>
-          );
-        })()}
+        {/* Status signal — single compact line */}
+        {quality && quality.totalViolations > 0 && (
+          <Typography
+            style={{ fontSize: 13, color: '#999', marginTop: 4, cursor: 'pointer' }}
+            onClick={() => handleTabChange(1, 'latest-scan')}
+          >
+            <span style={{ color: statusColors.error, fontWeight: 500 }}>
+              {quality.totalViolations} violation{quality.totalViolations !== 1 ? 's' : ''}
+            </span>
+            {' · '}
+            {quality.latestScan.fixable} auto-fixable
+            {' · '}
+            Last checked {quality.lastScannedAt}
+          </Typography>
+        )}
+        {quality && quality.totalViolations === 0 && (
+          <Typography style={{ fontSize: 13, color: '#999', marginTop: 4 }}>
+            <span style={{ color: statusColors.success, fontWeight: 500 }}>All checks passing</span>
+            {' · '}
+            Last checked {quality.lastScannedAt}
+          </Typography>
+        )}
 
         {/* Tabs */}
         <HeaderTabs
@@ -1967,12 +1111,7 @@ export const ProjectDetailsPage = () => {
 
         {/* Tab content */}
         {selectedTab === 0 && (
-          <OverviewTab
-            project={project}
-            isPushedToAap={isPushedToAap}
-            onPushToAap={openPushModal}
-            onGoToQuality={() => handleTabChange(1)}
-          />
+          <OverviewTab project={project} isPushedToAap={isPushedToAap} />
         )}
         {selectedTab === 1 && (
           <QualityTab
@@ -1982,13 +1121,13 @@ export const ProjectDetailsPage = () => {
             initialScanId={initialScanId}
             repoUrl={project.repo.url}
             branch={project.repo.branch}
+            onCheck={() => handleCheck(false)}
+            onRemediate={() => handleCheck(true)}
+            opStatus={opStatus}
           />
         )}
-        {selectedTab === 2 && <DependenciesTab quality={quality} />}
-        {selectedTab === 3 && <ReadmeTab project={project} />}
-        {selectedTab === 4 && <ProjectYamlTab project={project} />}
-        {selectedTab === 5 && <AapActivityTab project={project} isPushedToAap={isPushedToAap} onPushToAap={openPushModal} />}
-        {selectedTab === 6 && <ResourcesTab project={project} />}
+        {selectedTab === 2 && <CIActivityTab project={project} />}
+        {selectedTab === 3 && <DependenciesTab quality={quality} />}
       </Content>
       <Snackbar
         open={pushSnackbar}

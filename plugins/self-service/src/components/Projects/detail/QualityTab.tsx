@@ -818,6 +818,9 @@ export const QualityTab = ({
   initialScanId,
   repoUrl,
   branch,
+  onCheck,
+  onRemediate,
+  opStatus,
 }: {
   quality: ProjectQualityData | null;
   projectName: string;
@@ -825,6 +828,9 @@ export const QualityTab = ({
   initialScanId?: string | null;
   repoUrl?: string;
   branch?: string;
+  onCheck?: () => void;
+  onRemediate?: () => void;
+  opStatus?: OperationStatus;
 }) => {
   const [showHistory, setShowHistory] = useState(false);
   const [selectedScanId, setSelectedScanId] = useState<string | null>(() => {
@@ -890,6 +896,41 @@ export const QualityTab = ({
   const scan = quality.latestScan;
   return (
     <Box style={{ marginTop: 24 }}>
+      {/* Actions bar */}
+      {(onCheck || onRemediate) && (
+        <Box display="flex" alignItems="center" justifyContent="space-between" style={{ marginBottom: 16 }}>
+          <Box display="flex" alignItems="center" style={{ gap: 8 }}>
+            {onCheck && (
+              <Button
+                variant="outlined" size="small"
+                startIcon={opStatus === 'running' ? <AutorenewIcon style={{ animation: 'spin 1.5s linear infinite' }} /> : <PlayArrowIcon />}
+                onClick={onCheck}
+                disabled={opStatus === 'running'}
+                style={{ textTransform: 'none', fontWeight: 500 }}
+              >
+                {opStatus === 'running' ? 'Checking...' : 'Check'}
+              </Button>
+            )}
+            {onRemediate && quality.latestScan.fixable > 0 && (
+              <Button
+                variant="outlined" color="primary" size="small"
+                startIcon={<BuildIcon />}
+                onClick={onRemediate}
+                disabled={opStatus === 'running'}
+                style={{ textTransform: 'none', fontWeight: 500 }}
+              >
+                Remediate ({quality.latestScan.fixable} fixable)
+              </Button>
+            )}
+          </Box>
+          {opStatus === 'running' && (
+            <Typography style={{ fontSize: 12, color: statusColors.info }}>
+              Analyzing content...
+            </Typography>
+          )}
+        </Box>
+      )}
+
       {/* Latest scan header */}
       <ScanDetailView
         scan={scan}
