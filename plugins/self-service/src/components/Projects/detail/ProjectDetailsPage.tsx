@@ -871,10 +871,12 @@ const ActionsMenu = ({
   project,
   isPushedToAap,
   onPushToAap,
+  onCheck,
 }: {
   project: DemoProject;
   isPushedToAap: boolean;
   onPushToAap: () => void;
+  onCheck: () => void;
 }) => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const { hasRole } = useUserRoleContext();
@@ -893,6 +895,13 @@ const ActionsMenu = ({
         transformOrigin={{ vertical: 'top', horizontal: 'right' }}
         getContentAnchorEl={null}
       >
+        <MenuItem onClick={() => { setAnchorEl(null); onCheck(); }}>
+          <ListItemIcon>
+            <PlayArrowIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText primary="Check for violations" />
+        </MenuItem>
+        <Divider />
         {isPushed ? (
           <MenuItem onClick={() => setAnchorEl(null)}>
             <ListItemIcon>
@@ -1070,6 +1079,7 @@ export const ProjectDetailsPage = () => {
               project={project}
               isPushedToAap={isPushedToAap}
               onPushToAap={openPushModal}
+              onCheck={() => { setSelectedTab(1); handleCheck(false); }}
             />
           </Box>
         </Box>
