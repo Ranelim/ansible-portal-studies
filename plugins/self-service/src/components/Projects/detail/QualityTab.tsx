@@ -220,13 +220,13 @@ const ProposalCard = ({
             </Typography>
           )}
           {proposal.diffHunk && (
-            <Paper variant="outlined" style={{ marginTop: 8, padding: 10, borderRadius: 6, backgroundColor: '#1e1e1e', overflow: 'auto' }}>
-              <pre style={{ margin: 0, fontSize: 11, lineHeight: 1.5, color: '#d4d4d4', fontFamily: "'Consolas', monospace" }}>
+            <Paper variant="outlined" style={{ marginTop: 8, padding: 10, borderRadius: 6, backgroundColor: '#f6f8fa', overflow: 'auto' }}>
+              <pre style={{ margin: 0, fontSize: 11, lineHeight: 1.5, color: '#24292f', fontFamily: "'Consolas', monospace" }}>
                 {proposal.diffHunk.split('\n').map((line, i) => {
-                  let color = '#d4d4d4';
-                  if (line.startsWith('+') && !line.startsWith('+++')) color = '#4EC9B0';
-                  if (line.startsWith('-') && !line.startsWith('---')) color = '#F44747';
-                  if (line.startsWith('@@')) color = '#569CD6';
+                  let color = '#24292f';
+                  if (line.startsWith('+') && !line.startsWith('+++')) color = '#1a7f37';
+                  if (line.startsWith('-') && !line.startsWith('---')) color = '#cf222e';
+                  if (line.startsWith('@@')) color = '#6639ba';
                   return <span key={i} style={{ color, display: 'block' }}>{line}</span>;
                 })}
               </pre>
@@ -352,17 +352,17 @@ const ViolationRowItem = ({
   const confidencePct = v.fixTier === 'deterministic' ? 95 : v.fixTier === 'ai' ? 78 : 0;
 
   return (
-    <Box style={{ borderBottom: '1px solid #2a2a2a' }}>
+    <Box style={{ borderBottom: '1px solid rgba(0,0,0,0.12)' }}>
       <Box
         display="flex" alignItems="center"
         style={{ padding: '7px 16px', gap: 10, cursor: 'pointer' }}
         onClick={() => onToggle()}
-        onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = '#ffffff06'; }}
+        onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = 'rgba(0,0,0,0.04)'; }}
         onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent'; }}
       >
         <Box style={{
           width: 16, height: 16, borderRadius: '50%',
-          border: selected ? 'none' : '2px solid #555',
+          border: selected ? 'none' : '2px solid #999',
           backgroundColor: selected ? statusColors.info : 'transparent',
           flexShrink: 0,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -374,7 +374,7 @@ const ViolationRowItem = ({
         <Typography style={{ fontSize: 12, fontFamily: 'monospace', color: '#666', minWidth: 55, textAlign: 'right' }}>
           L{v.lineStart}
         </Typography>
-        <Typography style={{ fontSize: 13, flex: 1, color: '#e0e0e0' }} noWrap>
+        <Typography style={{ fontSize: 13, flex: 1, color: '#333' }} noWrap>
           {v.file}
         </Typography>
         {v.fixTier !== 'manual' && (
@@ -384,7 +384,7 @@ const ViolationRowItem = ({
         )}
         {confidencePct > 0 && (
           <Box display="flex" alignItems="center" style={{ gap: 4, minWidth: 65 }}>
-            <Box style={{ width: 40, height: 3, borderRadius: 2, backgroundColor: '#333', overflow: 'hidden' }}>
+            <Box style={{ width: 40, height: 3, borderRadius: 2, backgroundColor: 'rgba(0,0,0,0.15)', overflow: 'hidden' }}>
               <Box style={{
                 width: `${confidencePct}%`, height: '100%', borderRadius: 2,
                 backgroundColor: statusColors.success,
@@ -398,7 +398,7 @@ const ViolationRowItem = ({
           onClick={(e: React.MouseEvent) => { e.stopPropagation(); setExpanded(!expanded); }}
           style={{
             textTransform: 'none', fontSize: 11, minWidth: 38, padding: '1px 8px',
-            color: '#999', border: '1px solid #3a3a3a', borderRadius: 4,
+            color: '#999', border: '1px solid rgba(0,0,0,0.2)', borderRadius: 4,
           }}
         >
           {expanded ? 'Hide' : 'Show'}
@@ -426,7 +426,7 @@ const ViolationRowItem = ({
             ) : (
               <WarningIcon style={{ fontSize: 14, color: SEVERITY_COLORS[v.severity] }} />
             )}
-            <Chip size="small" label={v.ruleId} variant="outlined" style={{ fontSize: 10, height: 18, fontFamily: 'monospace', borderColor: '#3a3a3a' }} />
+            <Chip size="small" label={v.ruleId} variant="outlined" style={{ fontSize: 10, height: 18, fontFamily: 'monospace', borderColor: 'rgba(0,0,0,0.2)' }} />
             <Chip size="small" label={
               v.category === 'aap-compatibility' ? 'Compatibility' :
               v.category === 'best-practice' ? 'Best practice' :
@@ -435,12 +435,12 @@ const ViolationRowItem = ({
               fontSize: 10, height: 18,
               backgroundColor: v.category === 'aap-compatibility' ? `${statusColors.info}20` : 'transparent',
               color: v.category === 'aap-compatibility' ? statusColors.info : '#888',
-              border: v.category === 'aap-compatibility' ? 'none' : '1px solid #3a3a3a',
+              border: v.category === 'aap-compatibility' ? 'none' : '1px solid rgba(0,0,0,0.2)',
             }} />
             <Typography style={{ fontSize: 12, color: '#999' }}>{v.message}</Typography>
           </Box>
           {v.fixTier !== 'manual' && (
-            <Box style={{ padding: '8px 12px', borderRadius: 4, backgroundColor: '#111', border: '1px solid #2a2a2a' }}>
+            <Box style={{ padding: '8px 12px', borderRadius: 4, backgroundColor: 'rgba(0,0,0,0.03)', border: '1px solid rgba(0,0,0,0.12)' }}>
               <Typography component="div" style={{ fontSize: 12, fontFamily: 'monospace', color: statusColors.success, lineHeight: 1.6 }}>
                 + {v.fixTier === 'deterministic'
                   ? `ansible.builtin.${v.ruleId.includes('fqcn') ? 'copy' : 'command'}:`
@@ -523,7 +523,7 @@ const ScanDetailView = ({
         display="flex" alignItems="center" flexWrap="wrap"
         style={{
           gap: 10, padding: '10px 16px', marginBottom: 16,
-          backgroundColor: '#1e1e1e', borderRadius: 8, border: '1px solid #333',
+          backgroundColor: 'rgba(0,0,0,0.03)', borderRadius: 8, border: '1px solid rgba(0,0,0,0.12)',
         }}
       >
         <Typography style={{ fontWeight: 600, fontSize: 14 }}>{scan.scanId}</Typography>
@@ -550,9 +550,9 @@ const ScanDetailView = ({
 
       {/* Violations card with APME-style header and actions */}
       {isLatest && quality.violations.length > 0 && (
-        <Card variant="outlined" style={{ borderRadius: 8, overflow: 'hidden', border: '1px solid #333' }}>
+        <Card variant="outlined" style={{ borderRadius: 8, overflow: 'hidden' }}>
           {/* Header with count and category filters */}
-          <Box style={{ padding: '14px 16px 10px', borderBottom: '1px solid #2a2a2a' }}>
+          <Box style={{ padding: '14px 16px 10px', borderBottom: '1px solid rgba(0,0,0,0.12)' }}>
             <Box display="flex" alignItems="center" justifyContent="space-between" style={{ marginBottom: 6 }}>
               <Box display="flex" alignItems="center" style={{ gap: 8 }}>
                 {scan.totalViolations > 0 && (
@@ -583,7 +583,7 @@ const ScanDetailView = ({
                       fontSize: 11, height: 22,
                       backgroundColor: categoryFilter === f.key ? `${statusColors.info}30` : undefined,
                       color: categoryFilter === f.key ? statusColors.info : '#999',
-                      borderColor: categoryFilter === f.key ? statusColors.info : '#3a3a3a',
+                      borderColor: categoryFilter === f.key ? statusColors.info : 'rgba(0,0,0,0.2)',
                     }}
                   />
                 ))}
@@ -597,16 +597,16 @@ const ScanDetailView = ({
           {/* Action bar */}
           <Box
             display="flex" alignItems="center" justifyContent="flex-end"
-            style={{ padding: '8px 16px', borderBottom: '1px solid #2a2a2a', backgroundColor: '#1a1a1a', gap: 8 }}
+            style={{ padding: '8px 16px', borderBottom: '1px solid rgba(0,0,0,0.12)', backgroundColor: 'rgba(0,0,0,0.02)', gap: 8 }}
           >
             {!applied ? (
               <>
                 <Button size="small" onClick={selectAll}
-                  style={{ textTransform: 'none', fontSize: 11, color: '#aaa', padding: '2px 10px' }}>
+                  style={{ textTransform: 'none', fontSize: 11, color: '#666', padding: '2px 10px' }}>
                   Select All
                 </Button>
                 <Button size="small" onClick={skipAll}
-                  style={{ textTransform: 'none', fontSize: 11, color: '#aaa', padding: '2px 10px' }}>
+                  style={{ textTransform: 'none', fontSize: 11, color: '#666', padding: '2px 10px' }}>
                   Skip All
                 </Button>
                 <Button size="small" variant="contained" color="primary" onClick={handleApply}
