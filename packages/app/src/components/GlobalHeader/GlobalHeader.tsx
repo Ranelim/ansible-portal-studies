@@ -40,7 +40,11 @@ import { useUserRoleContext, type UserRole } from '@ansible/plugin-backstage-sel
 import { useLightspeed } from '../Lightspeed';
 import { useQuickstart } from '../Quickstart';
 import { OmniSearch } from '../search/OmniSearch';
+import ComputerIcon from '@material-ui/icons/Computer';
 import redHatLogo from '../../assets/redhat-logo.png';
+
+const DEVSPACES_DASHBOARD_URL = 'https://devspaces.apps.example.com/dashboard/#/workspaces';
+const IS_DEVSPACES_CONNECTED = true;
 
 const useStyles = makeStyles(theme => ({
   appBar: {
@@ -629,6 +633,18 @@ export const GlobalHeader = () => {
             </MenuItem>
           ))}
           <Divider />
+          {IS_DEVSPACES_CONNECTED && isDeveloper && (
+            <MenuItem
+              onClick={() => {
+                setProfileAnchor(null);
+                window.open(DEVSPACES_DASHBOARD_URL, '_blank');
+              }}
+              className={classes.menuItem}
+            >
+              <ListItemIcon><ComputerIcon fontSize="small" /></ListItemIcon>
+              <ListItemText primary="My Dev Spaces" secondary="Manage your workspaces" />
+            </MenuItem>
+          )}
           <MenuItem
             component={Link}
             to="/settings"
