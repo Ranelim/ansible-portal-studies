@@ -19,7 +19,6 @@ import {
   SidebarGroup,
   SidebarItem,
   SidebarPage,
-  SidebarScrollWrapper,
   SidebarSpace,
 } from '@backstage/core-components';
 import MenuIcon from '@material-ui/icons/Menu';
@@ -55,6 +54,7 @@ const useRootStyles = makeStyles(theme => ({
     },
     '.BackstageSidebar-drawer': {
       top: `${HEADER_HEIGHT}px !important`,
+      overflowY: 'auto !important' as any,
     },
     'body, html': {
       backgroundColor: `${theme.palette.background.default} !important`,
@@ -167,34 +167,32 @@ const RoleAdaptiveSidebar = () => {
         {isAdmin && (
           <>
             <SidebarDivider />
-            <SidebarScrollWrapper>
-              <SidebarSectionLabel text="Administration" />
-              <SidebarItem
-                icon={SettingsIcon}
-                to="/self-service/admin/general"
-                text="General"
-              />
-              <SidebarItem
-                icon={LinkIcon}
-                to="/self-service/admin/integrations"
-                text="Integrations"
-              />
-              <SidebarItem
-                icon={SyncIcon}
-                to="/self-service/admin/sync-activity"
-                text="Sync status"
-              />
-              <SidebarItem
-                icon={MemoryIcon}
-                to="/self-service/admin/ee-builder"
-                text="EE Builder"
-              />
-              <SidebarItem
-                icon={VpnKeyIcon}
-                to="rbac"
-                text="Access Control"
-              />
-            </SidebarScrollWrapper>
+            <SidebarSectionLabel text="Administration" />
+            <SidebarItem
+              icon={SettingsIcon}
+              to="/self-service/admin/general"
+              text="General"
+            />
+            <SidebarItem
+              icon={LinkIcon}
+              to="/self-service/admin/integrations"
+              text="Integrations"
+            />
+            <SidebarItem
+              icon={SyncIcon}
+              to="/self-service/admin/sync-activity"
+              text="Sync status"
+            />
+            <SidebarItem
+              icon={MemoryIcon}
+              to="/self-service/admin/ee-builder"
+              text="EE Builder"
+            />
+            <SidebarItem
+              icon={VpnKeyIcon}
+              to="rbac"
+              text="Access Control"
+            />
           </>
         )}
       </SidebarGroup>

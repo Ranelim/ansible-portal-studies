@@ -45,24 +45,52 @@ type ProgressStep = { label: string; status: 'done' | 'active' | 'pending' };
 // ---------------------------------------------------------------------------
 // Severity Bar — matches APME's compact severity breakdown
 // ---------------------------------------------------------------------------
-const SeverityBar = ({ breakdown }: { breakdown: Record<SeverityClass, number> }) => {
+const SeverityBar = ({
+  breakdown,
+  activeSeverity,
+  onSeverityClick,
+}: {
+  breakdown: Record<SeverityClass, number>;
+  activeSeverity?: SeverityClass | null;
+  onSeverityClick?: (sev: SeverityClass | null) => void;
+}) => {
   const total = Object.values(breakdown).reduce((a, b) => a + b, 0);
   if (total === 0) return null;
 
   const order: SeverityClass[] = ['critical', 'high', 'medium', 'low', 'info'];
+  const isClickable = Boolean(onSeverityClick);
 
   return (
     <Box display="flex" style={{ gap: 16, flexWrap: 'wrap' }}>
       {order.map(sev => {
         const count = breakdown[sev];
         if (count === 0) return null;
+        const isActive = activeSeverity === sev;
         return (
-          <Box key={sev} display="flex" alignItems="center" style={{ gap: 6 }}>
+          <Box
+            key={sev}
+            display="flex"
+            alignItems="center"
+            style={{
+              gap: 6,
+              cursor: isClickable ? 'pointer' : undefined,
+              padding: '2px 8px',
+              borderRadius: 4,
+              backgroundColor: isActive ? `${SEVERITY_COLORS[sev]}15` : undefined,
+              border: isActive ? `1px solid ${SEVERITY_COLORS[sev]}40` : '1px solid transparent',
+              transition: 'all 0.15s ease',
+            }}
+            onClick={() => onSeverityClick?.(isActive ? null : sev)}
+          >
             <Box style={{
               width: 10, height: 10, borderRadius: 2,
               backgroundColor: SEVERITY_COLORS[sev],
             }} />
-            <Typography style={{ fontSize: 12, textTransform: 'capitalize', color: '#555' }}>
+            <Typography style={{
+              fontSize: 12, textTransform: 'capitalize',
+              color: isActive ? SEVERITY_COLORS[sev] : '#555',
+              fontWeight: isActive ? 600 : 400,
+            }}>
               {sev}
             </Typography>
             <Typography style={{ fontSize: 12, fontWeight: 700, color: SEVERITY_COLORS[sev] }}>
@@ -287,18 +315,27 @@ const ViolationsCard = ({
   violations,
   categoryFilter,
   setCategoryFilter,
+  severityFilter,
   repoUrl,
   branch,
 }: {
   violations: QualityViolation[];
   categoryFilter: ViolationCategory | 'all';
   setCategoryFilter: (f: ViolationCategory | 'all') => void;
+  severityFilter?: SeverityClass | null;
   repoUrl?: string;
   branch?: string;
 }) => {
-  const filtered = useMemo(() =>
-    categoryFilter === 'all' ? violations : violations.filter(v => v.category === categoryFilter),
-  [violations, categoryFilter]);
+  const filtered = useMemo(() => {
+    let result = violations;
+    if (severityFilter) {
+      result = result.filter(v => v.severity === severityFilter);
+    }
+    if (categoryFilter !== 'all') {
+      result = result.filter(v => v.category === categoryFilter);
+    }
+    return result;
+  }, [violations, categoryFilter, severityFilter]);
 
   const categoryCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -622,11 +659,13 @@ export const QualityTab = ({
   onRemediate,
   opStatus,
   onDismissResult,
+  initialSeverity,
 }: {
   quality: ProjectQualityData | null;
   projectName: string;
   initialView?: 'latest-scan';
   initialScanId?: string | null;
+  initialSeverity?: SeverityClass | null;
   repoUrl?: string;
   branch?: string;
   onCheck?: () => void;
@@ -635,6 +674,7 @@ export const QualityTab = ({
   onDismissResult?: () => void;
 }) => {
   const [categoryFilter, setCategoryFilter] = useState<ViolationCategory | 'all'>('all');
+  const [severityFilter, setSeverityFilter] = useState<SeverityClass | null>(initialSeverity ?? null);
   const [lastWasRemediate, setLastWasRemediate] = useState(false);
 
   // Empty state — never scanned
@@ -759,11 +799,15 @@ export const QualityTab = ({
               </Box>
             )}
           </Box>
-          {/* Severity breakdown */}
+          {/* Severity breakdown — clickable filters */}
           <Box style={{ marginTop: 12 }}>
             <SeverityProgressBar breakdown={scan.severityBreakdown} />
             <Box style={{ marginTop: 6 }}>
-              <SeverityBar breakdown={scan.severityBreakdown} />
+              <SeverityBar
+                breakdown={scan.severityBreakdown}
+                activeSeverity={severityFilter}
+                onSeverityClick={setSeverityFilter}
+              />
             </Box>
           </Box>
         </Box>
@@ -774,6 +818,7 @@ export const QualityTab = ({
             violations={quality.violations}
             categoryFilter={categoryFilter}
             setCategoryFilter={setCategoryFilter}
+            severityFilter={severityFilter}
             repoUrl={repoUrl}
             branch={branch}
           />

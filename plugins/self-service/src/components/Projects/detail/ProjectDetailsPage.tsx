@@ -947,6 +947,7 @@ export const ProjectDetailsPage = () => {
 
   const urlTab = searchParams.get('tab');
   const urlScan = searchParams.get('scan');
+  const urlSeverity = searchParams.get('severity') as import('./qualityDemoData').SeverityClass | null;
   const [selectedTab, setSelectedTab] = useState(() => urlTab === 'quality' ? 1 : 0);
   const [qualityInitialView, setQualityInitialView] = useState<'latest-scan' | undefined>(undefined);
   const [initialScanId] = useState<string | null>(urlScan);
@@ -1129,6 +1130,7 @@ export const ProjectDetailsPage = () => {
             projectName={project.name}
             initialView={qualityInitialView}
             initialScanId={initialScanId}
+            initialSeverity={urlSeverity}
             repoUrl={project.repo.url}
             branch={project.repo.branch}
             onCheck={() => handleCheck(false)}

@@ -514,7 +514,7 @@ export const GitRepositoriesContent = () => {
             style={{ gap: 6, cursor: 'pointer' }}
             onClick={(e: React.MouseEvent) => {
               e.stopPropagation();
-              navigate(`/self-service/repositories/${row.name}`);
+              navigate(`/self-service/repositories/${row.name}?tab=quality&severity=${highest}`);
             }}
           >
             <Chip size="small" label={`${highestCount} ${highest}`} style={{
