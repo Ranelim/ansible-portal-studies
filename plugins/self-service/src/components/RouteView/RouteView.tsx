@@ -38,7 +38,6 @@ import { LearningPage } from '../Learning/LearningPage';
 import { SetupWizardPage } from '../Setup/SetupWizardPage';
 import { GeneralPage } from '../Admin/GeneralPage';
 import { DevSpacesDetailPage } from '../Admin/DevSpacesDetailPage';
-import { QualityDashboardPage } from '../Projects/quality/QualityDashboardPage';
 import {
   NotificationProvider,
   NotificationStack,
@@ -138,7 +137,8 @@ const RouteViewContent = () => {
         </Route>
         {/* Legacy /projects path — redirect to /repositories */}
         <Route path="projects/*" element={<Navigate to="/self-service/repositories" replace />} />
-        <Route path="quality" element={<QualityDashboardPage />} />
+        {/* Quality now lives under Git Repositories > Quality tab */}
+        <Route path="quality" element={<Navigate to="/self-service/repositories/quality" replace />} />
         <Route path="collections" element={<CollectionsCatalogPage />} />
         <Route
           path="collections/:collectionName"

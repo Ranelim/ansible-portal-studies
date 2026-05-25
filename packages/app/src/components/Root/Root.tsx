@@ -32,7 +32,6 @@ import LinkIcon from '@material-ui/icons/Link';
 import VpnKeyIcon from '@material-ui/icons/VpnKey';
 import SettingsIcon from '@material-ui/icons/Settings';
 import HistoryIcon from '@material-ui/icons/History';
-import VerifiedUserIcon from '@material-ui/icons/VerifiedUser';
 
 const useSidebarLogoStyles = makeStyles({
   root: {
@@ -155,11 +154,6 @@ const RoleAdaptiveSidebar = () => {
               icon={CategoryIcon}
               to="/self-service/collections"
               text="Collections"
-            />
-            <SidebarItem
-              icon={VerifiedUserIcon}
-              to="/self-service/quality"
-              text="Quality"
             />
           </>
         )}

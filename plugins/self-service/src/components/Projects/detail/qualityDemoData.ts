@@ -356,31 +356,105 @@ export const SEVERITY_COLORS: Record<SeverityClass, string> = {
   info: '#6A6E73',
 };
 
+export type PipelineStep = {
+  label: string;
+  status: 'done' | 'active' | 'pending';
+  detail?: string;
+};
+
+export type WorkflowStatus =
+  | 'needs-scan'
+  | 'issues-found'
+  | 'fix-in-progress'
+  | 'pr-open'
+  | 'remaining'
+  | 'clean';
+
 export type FleetQualityRow = {
   repoName: string;
-  totalViolations: number;
-  fixable: number;
-  severityBreakdown: Record<SeverityClass, number>;
+  workflowStatus: WorkflowStatus;
+  statusLabel: string;
+  issuesCount: number;
+  fixableCount: number;
+  remainingCount: number;
+  highestSeverity: SeverityClass | null;
   lastScannedAt: string;
   lastScannedCommit: string;
-  lastRemediationStatus: 'pr-open' | 'pr-merged' | 'none';
+  pipeline: PipelineStep[];
 };
 
 export function getFleetQualityData(): FleetQualityRow[] {
+  const scenarios: Record<string, { status: WorkflowStatus; label: string; remaining: number; pipeline: PipelineStep[] }> = {
+    'rhel-patching': {
+      status: 'clean',
+      label: 'Clean',
+      remaining: 0,
+      pipeline: [
+        { label: 'Scanned', status: 'done', detail: '2 hours ago · commit a3f1b2c' },
+        { label: 'Auto-fixed', status: 'done', detail: '10 of 12 issues' },
+        { label: 'PR #42 merged', status: 'done', detail: '1 hour ago' },
+        { label: 'Resolved', status: 'done' },
+      ],
+    },
+    'network-firewall-rules': {
+      status: 'issues-found',
+      label: '14 issues found',
+      remaining: 14,
+      pipeline: [
+        { label: 'Scanned', status: 'done', detail: '1 day ago · commit e7d2f1a' },
+        { label: 'Auto-fix', status: 'pending' },
+        { label: 'Pull request', status: 'pending' },
+        { label: 'Merge', status: 'pending' },
+      ],
+    },
+    'cloud-provisioner': {
+      status: 'pr-open',
+      label: 'PR open (2 fixed)',
+      remaining: 1,
+      pipeline: [
+        { label: 'Scanned', status: 'done', detail: '4 hours ago · commit b4f9c2d' },
+        { label: 'Auto-fixed', status: 'done', detail: '2 of 3 issues' },
+        { label: 'PR #18 open', status: 'active', detail: 'Awaiting review' },
+        { label: 'Merge', status: 'pending' },
+      ],
+    },
+    'backup-automation': {
+      status: 'remaining',
+      label: '9 remaining',
+      remaining: 9,
+      pipeline: [
+        { label: 'Scanned', status: 'done', detail: '3 days ago · commit c1d8e3f' },
+        { label: 'Auto-fixed', status: 'done', detail: '12 of 21 issues' },
+        { label: 'PR #7 merged', status: 'done', detail: '2 days ago' },
+        { label: '9 need manual fix', status: 'active' },
+      ],
+    },
+  };
+
   return Object.entries(QUALITY_DATA).map(([name, data]) => {
-    const lastScan = data.latestScan;
-    let prStatus: FleetQualityRow['lastRemediationStatus'] = 'none';
-    if (lastScan.scanType === 'remediate' && lastScan.remediatedCount > 0) {
-      prStatus = name === 'rhel-patching' ? 'pr-merged' : 'pr-open';
-    }
+    const scenario = scenarios[name];
+    const highest: SeverityClass | null = data.totalViolations === 0 ? null
+      : data.severityBreakdown.critical > 0 ? 'critical'
+      : data.severityBreakdown.high > 0 ? 'high'
+      : data.severityBreakdown.medium > 0 ? 'medium'
+      : 'low';
+
     return {
       repoName: name,
-      totalViolations: data.totalViolations,
-      fixable: lastScan.fixable,
-      severityBreakdown: data.severityBreakdown,
+      workflowStatus: scenario?.status ?? 'needs-scan',
+      statusLabel: scenario?.label ?? 'Needs scan',
+      issuesCount: data.totalViolations,
+      fixableCount: data.latestScan.fixable,
+      remainingCount: scenario?.remaining ?? data.totalViolations,
+      highestSeverity: highest,
       lastScannedAt: data.lastScannedAt,
       lastScannedCommit: data.lastScannedCommit,
-      lastRemediationStatus: prStatus,
+      pipeline: scenario?.pipeline ?? [
+        { label: 'Scan', status: 'pending' },
+        { label: 'Auto-fix', status: 'pending' },
+        { label: 'Pull request', status: 'pending' },
+        { label: 'Merge', status: 'pending' },
+      ],
     };
   });
 }
