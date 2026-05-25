@@ -223,7 +223,7 @@ const DEMO_TASKS: Record<string, {
     ],
     outputLinks: [
       { title: 'View in catalog', entityRef: 'Component:default/build-ee-rhel9' },
-      { title: 'View on Automation Hub', url: 'https://aap.example.com/hub/ee/build-ee-rhel9' },
+      { title: 'View repository', url: 'https://github.com/acme-corp/build-ee-rhel9' },
     ],
     readme: `# Build Execution Environment (RHEL 9)
 
