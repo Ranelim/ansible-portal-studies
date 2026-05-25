@@ -1,9 +1,10 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import {
   Box,
   Typography,
   Chip,
   Link,
+  Button,
   makeStyles,
   Popover,
 } from '@material-ui/core';
@@ -18,6 +19,7 @@ import {
   SEVERITY_COLORS,
   type FleetQualityRow,
   type PipelineStep,
+  type WorkflowStatus,
 } from '../detail/qualityDemoData';
 
 const STATUS_CHIP_STYLES: Record<string, { bg: string; color: string }> = {
@@ -28,6 +30,16 @@ const STATUS_CHIP_STYLES: Record<string, { bg: string; color: string }> = {
   'remaining': { bg: `${statusColors.warning}10`, color: '#8a6d00' },
   'clean': { bg: `${statusColors.success}10`, color: statusColors.success },
 };
+
+const STATUS_FILTER_OPTIONS: { value: WorkflowStatus; label: string }[] = [
+  { value: 'issues-found', label: 'Issues found' },
+  { value: 'pr-open', label: 'PR open' },
+  { value: 'remaining', label: 'Remaining' },
+  { value: 'clean', label: 'Clean' },
+  { value: 'needs-scan', label: 'Needs scan' },
+];
+
+type SummaryFilter = 'needs-attention' | 'clean' | null;
 
 const useStyles = makeStyles(theme => ({
   repoLink: {
@@ -40,27 +52,53 @@ const useStyles = makeStyles(theme => ({
   },
   summaryBar: {
     display: 'flex',
-    gap: theme.spacing(3),
+    gap: theme.spacing(0.5),
     alignItems: 'center',
-    marginBottom: theme.spacing(2),
-    padding: theme.spacing(1.5, 2),
+    marginBottom: theme.spacing(1.5),
+  },
+  summaryChip: {
+    cursor: 'pointer',
+    padding: '6px 12px',
     borderRadius: 8,
     border: `1px solid ${theme.palette.divider}`,
     backgroundColor: theme.palette.background.paper,
-  },
-  summaryItem: {
+    transition: 'all 0.15s',
     display: 'flex',
     alignItems: 'baseline',
     gap: 6,
+    userSelect: 'none' as const,
+    '&:hover': {
+      borderColor: theme.palette.primary.main,
+      backgroundColor: `${theme.palette.primary.main}04`,
+    },
+  },
+  summaryChipActive: {
+    borderColor: theme.palette.primary.main,
+    backgroundColor: `${theme.palette.primary.main}08`,
+    boxShadow: `0 0 0 1px ${theme.palette.primary.main}`,
   },
   summaryValue: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 700,
     lineHeight: 1,
   },
   summaryLabel: {
     fontSize: 12,
     color: theme.palette.text.secondary,
+  },
+  filterRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: theme.spacing(1),
+    marginBottom: theme.spacing(1.5),
+    flexWrap: 'wrap' as const,
+  },
+  filterChip: {
+    fontSize: 12,
+    height: 26,
+    fontWeight: 500,
+    cursor: 'pointer',
+    transition: 'all 0.15s',
   },
   statusChip: {
     cursor: 'pointer',
@@ -208,19 +246,53 @@ export const QualityOverviewContent = () => {
   const navigate = useNavigate();
   const fleetData = useMemo(() => getFleetQualityData(), []);
 
+  const [summaryFilter, setSummaryFilter] = useState<SummaryFilter>(null);
+  const [statusFilter, setStatusFilter] = useState<WorkflowStatus | null>(null);
+
   const totals = useMemo(() => {
     let violations = 0;
-    let fixable = 0;
     let reposWithIssues = 0;
     let clean = 0;
     for (const row of fleetData) {
       violations += row.remainingCount;
-      fixable += row.fixableCount;
       if (row.workflowStatus !== 'clean') reposWithIssues++;
       else clean++;
     }
-    return { violations, fixable, reposWithIssues, clean, total: fleetData.length };
+    return { violations, reposWithIssues, clean, total: fleetData.length };
   }, [fleetData]);
+
+  const filteredData = useMemo(() => {
+    let result = fleetData;
+
+    if (summaryFilter === 'needs-attention') {
+      result = result.filter(r => r.workflowStatus !== 'clean');
+    } else if (summaryFilter === 'clean') {
+      result = result.filter(r => r.workflowStatus === 'clean');
+    }
+
+    if (statusFilter) {
+      result = result.filter(r => r.workflowStatus === statusFilter);
+    }
+
+    return result;
+  }, [fleetData, summaryFilter, statusFilter]);
+
+  const hasActiveFilters = summaryFilter !== null || statusFilter !== null;
+
+  const clearFilters = useCallback(() => {
+    setSummaryFilter(null);
+    setStatusFilter(null);
+  }, []);
+
+  const toggleSummaryFilter = useCallback((filter: SummaryFilter) => {
+    setSummaryFilter(prev => prev === filter ? null : filter);
+    setStatusFilter(null);
+  }, []);
+
+  const toggleStatusFilter = useCallback((status: WorkflowStatus) => {
+    setStatusFilter(prev => prev === status ? null : status);
+    setSummaryFilter(null);
+  }, []);
 
   const columns: TableColumn<FleetQualityRow>[] = [
     {
@@ -272,16 +344,23 @@ export const QualityOverviewContent = () => {
 
   return (
     <Box>
+      {/* Summary bar — clickable filters */}
       <Box className={classes.summaryBar}>
-        <Box className={classes.summaryItem}>
+        <Box
+          className={`${classes.summaryChip} ${summaryFilter === 'needs-attention' ? classes.summaryChipActive : ''}`}
+          onClick={() => toggleSummaryFilter('needs-attention')}
+        >
           <Typography className={classes.summaryValue} style={{ color: totals.reposWithIssues > 0 ? statusColors.error : statusColors.success }}>
             {totals.reposWithIssues}
           </Typography>
           <Typography className={classes.summaryLabel}>
-            repos need attention
+            need attention
           </Typography>
         </Box>
-        <Box className={classes.summaryItem}>
+        <Box
+          className={`${classes.summaryChip} ${summaryFilter === 'clean' ? classes.summaryChipActive : ''}`}
+          onClick={() => toggleSummaryFilter('clean')}
+        >
           <Typography className={classes.summaryValue} style={{ color: statusColors.success }}>
             {totals.clean}
           </Typography>
@@ -289,19 +368,55 @@ export const QualityOverviewContent = () => {
             clean
           </Typography>
         </Box>
-        <Box className={classes.summaryItem}>
+        <Box className={classes.summaryChip} style={{ cursor: 'default', borderColor: 'transparent' }}>
           <Typography className={classes.summaryValue}>
             {totals.violations}
           </Typography>
           <Typography className={classes.summaryLabel}>
-            total issues remaining
+            issues remaining
           </Typography>
         </Box>
       </Box>
 
+      {/* Status filter chips */}
+      <Box className={classes.filterRow}>
+        <Typography style={{ fontSize: 12, color: '#999', marginRight: 4 }}>
+          Status:
+        </Typography>
+        {STATUS_FILTER_OPTIONS.map(opt => {
+          const isActive = statusFilter === opt.value;
+          const chipStyle = STATUS_CHIP_STYLES[opt.value];
+          return (
+            <Chip
+              key={opt.value}
+              size="small"
+              label={opt.label}
+              className={classes.filterChip}
+              onClick={() => toggleStatusFilter(opt.value)}
+              variant={isActive ? 'default' : 'outlined'}
+              style={isActive ? {
+                backgroundColor: chipStyle.bg,
+                color: chipStyle.color,
+                borderColor: chipStyle.color,
+                border: `1px solid ${chipStyle.color}`,
+              } : {}}
+            />
+          );
+        })}
+        {hasActiveFilters && (
+          <Button
+            size="small"
+            onClick={clearFilters}
+            style={{ textTransform: 'none', fontSize: 12, marginLeft: 4 }}
+          >
+            Clear
+          </Button>
+        )}
+      </Box>
+
       <Table<FleetQualityRow>
         columns={columns}
-        data={fleetData}
+        data={filteredData}
         title=""
         options={{
           paging: false,
