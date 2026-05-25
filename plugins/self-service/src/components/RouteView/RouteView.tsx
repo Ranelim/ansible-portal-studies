@@ -132,7 +132,6 @@ const RouteViewContent = () => {
           <Route path="quality" element={<ProjectsTabs />} />
           <Route path="ci-activity" element={<ProjectsTabs />} />
           <Route path="create" element={<ProjectsTabs />} />
-          <Route path="migrate" element={<ProjectsTabs />} />
           <Route path=":projectName" element={<ProjectDetailsPage />} />
         </Route>
         {/* Legacy /projects path — redirect to /repositories */}

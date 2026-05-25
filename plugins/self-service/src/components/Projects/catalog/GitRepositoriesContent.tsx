@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { DEVSPACES_BASE_URL, DEMO_CONNECTIONS } from '../../Admin/syncDemoData';
 import { useUserRoleContext } from '../../../hooks/useUserRole';
 
@@ -43,7 +43,7 @@ import CategoryIcon from '@material-ui/icons/Category';
 import MemoryIcon from '@material-ui/icons/Memory';
 import Popover from '@material-ui/core/Popover';
 import CloseIcon from '@material-ui/icons/Close';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { CatalogFilterLayout } from '@backstage/plugin-catalog-react';
 import { DismissibleBanner } from '../../common/DismissibleBanner';
 import { EmptyStateLayout, RepositoriesIllustration } from '../../common/EmptyStateLayout';
@@ -56,7 +56,6 @@ import {
 } from './unifiedDemoData';
 import { getProjectViolationCount, getProjectSeverityBreakdown, getProjectAapVersion, SEVERITY_COLORS } from '../../Projects/detail/qualityDemoData';
 import type { SeverityClass } from '../../Projects/detail/qualityDemoData';
-import { MigrateToAnsibleWizard } from './MigrateToAnsibleWizard';
 
 type ProviderFilter = 'all' | 'github' | 'gitlab';
 
@@ -298,11 +297,9 @@ const ResourceBadges = ({ resources, repoName }: { resources: DiscoveredResource
 const RowActionsMenu = ({
   repo,
   onDelete,
-  onMigrate,
 }: {
   repo: GitRepository;
   onDelete: (name: string) => void;
-  onMigrate: (repoName: string) => void;
 }) => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const { hasRole } = useUserRoleContext();
@@ -367,7 +364,6 @@ const saveStarredRepos = (names: Set<string>) => {
 export const GitRepositoriesContent = () => {
   const classes = useStyles();
   const navigate = useNavigate();
-  const location = useLocation();
   const [repos, setRepos] = useState<GitRepository[]>(() => {
     const stored = loadStarredRepos();
     return GIT_REPOSITORIES.map(r => ({
@@ -401,22 +397,8 @@ export const GitRepositoriesContent = () => {
   }, []);
 
 
-  const [migrateRepoName, setMigrateRepoName] = useState<string | null>(null);
-  const [migrateWizardOpen, setMigrateWizardOpen] = useState(false);
   const [scanningRepos] = useState<Set<string>>(() => new Set(['network-firewall-rules']));
   const neverScannedRepos = useMemo(() => new Set(['backup-automation']), []);
-
-  useEffect(() => {
-    if (location.pathname.includes('/projects/migrate')) {
-      setMigrateWizardOpen(true);
-      navigate('/self-service/repositories', { replace: true });
-    }
-  }, [location.pathname, navigate]);
-
-  const handleMigrate = useCallback((repoName: string) => {
-    setMigrateRepoName(repoName);
-    setMigrateWizardOpen(true);
-  }, []);
 
   const filteredRepos = useMemo(() => {
     let result = repos;
@@ -579,7 +561,7 @@ export const GitRepositoriesContent = () => {
               <StarBorderIcon />
             )}
           </IconButton>
-          <RowActionsMenu repo={row} onDelete={deleteProject} onMigrate={handleMigrate} />
+          <RowActionsMenu repo={row} onDelete={deleteProject} />
         </Box>
       ),
     },
@@ -679,18 +661,6 @@ export const GitRepositoriesContent = () => {
           }}
         />
       </CatalogFilterLayout.Content>
-
-
-      <MigrateToAnsibleWizard
-        open={migrateWizardOpen}
-        sourceRepoName={migrateRepoName}
-        onClose={() => { setMigrateWizardOpen(false); setMigrateRepoName(null); }}
-        onComplete={(newRepoName) => {
-          setMigrateWizardOpen(false);
-          setMigrateRepoName(null);
-          navigate(`/self-service/repositories/${newRepoName}`, { state: { tab: 'quality' } });
-        }}
-      />
     </CatalogFilterLayout>
   );
 };
