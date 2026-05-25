@@ -356,6 +356,35 @@ export const SEVERITY_COLORS: Record<SeverityClass, string> = {
   info: '#6A6E73',
 };
 
+export type FleetQualityRow = {
+  repoName: string;
+  totalViolations: number;
+  fixable: number;
+  severityBreakdown: Record<SeverityClass, number>;
+  lastScannedAt: string;
+  lastScannedCommit: string;
+  lastRemediationStatus: 'pr-open' | 'pr-merged' | 'none';
+};
+
+export function getFleetQualityData(): FleetQualityRow[] {
+  return Object.entries(QUALITY_DATA).map(([name, data]) => {
+    const lastScan = data.latestScan;
+    let prStatus: FleetQualityRow['lastRemediationStatus'] = 'none';
+    if (lastScan.scanType === 'remediate' && lastScan.remediatedCount > 0) {
+      prStatus = name === 'rhel-patching' ? 'pr-merged' : 'pr-open';
+    }
+    return {
+      repoName: name,
+      totalViolations: data.totalViolations,
+      fixable: lastScan.fixable,
+      severityBreakdown: data.severityBreakdown,
+      lastScannedAt: data.lastScannedAt,
+      lastScannedCommit: data.lastScannedCommit,
+      lastRemediationStatus: prStatus,
+    };
+  });
+}
+
 // ---------------------------------------------------------------------------
 // AAP Version Upgrade
 // ---------------------------------------------------------------------------

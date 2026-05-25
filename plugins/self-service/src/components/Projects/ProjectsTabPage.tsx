@@ -9,16 +9,19 @@ import { AddActionButton } from '../common/AddActionButton';
 import { GitRepositoriesContent } from './catalog/GitRepositoriesContent';
 import { ProjectsCreateContent } from './create/ProjectsCreateContent';
 import { CIActivityContent } from './ci/CIActivityContent';
+import { QualityOverviewContent } from './quality/QualityOverviewContent';
 
 const tabs = [
   { id: 'repositories', label: 'Repositories', path: 'list' },
+  { id: 'quality', label: 'Quality', path: 'quality' },
   { id: 'ci-activity', label: 'CI Activity', path: 'ci-activity' },
   { id: 'templates', label: 'Templates', path: 'create' },
 ];
 
 const getTabIndexFromPath = (pathname: string): number => {
-  if (pathname.includes('/repositories/ci-activity')) return 1;
-  if (pathname.includes('/repositories/create')) return 2;
+  if (pathname.includes('/repositories/quality')) return 1;
+  if (pathname.includes('/repositories/ci-activity')) return 2;
+  if (pathname.includes('/repositories/create')) return 3;
   return 0;
 };
 
@@ -43,9 +46,12 @@ export const ProjectsTabs: React.FC = () => {
 
   const content = useMemo(() => {
     if (selectedTab === 1) {
-      return <CIActivityContent key="ci-activity" />;
+      return <QualityOverviewContent key="quality" />;
     }
     if (selectedTab === 2) {
+      return <CIActivityContent key="ci-activity" />;
+    }
+    if (selectedTab === 3) {
       return <ProjectsCreateContent key="create" />;
     }
     return <GitRepositoriesContent key="repositories" />;
