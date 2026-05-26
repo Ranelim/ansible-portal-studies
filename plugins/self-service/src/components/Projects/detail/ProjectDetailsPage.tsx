@@ -63,6 +63,8 @@ import { QualityTab, type OperationStatus } from './QualityTab';
 import { DependenciesTab } from './DependenciesTab';
 import PlayArrowIcon from '@material-ui/icons/PlayArrow';
 import BuildIcon from '@material-ui/icons/Build';
+import VerifiedUserOutlinedIcon from '@material-ui/icons/VerifiedUserOutlined';
+import Chip from '@material-ui/core/Chip';
 
 
 const tabs = [
@@ -709,6 +711,13 @@ const CIActivityTab = ({ project }: { project: DemoProject }) => {
     );
   }
 
+  const EVENT_LABELS: Record<string, string> = {
+    'quality-scan': 'Quality Scan',
+    'ansible-lint': 'Ansible Lint',
+    'integration-test': 'Integration Tests',
+    'molecule-test': 'Molecule Tests',
+  };
+
   const ciColumns: TableColumn<CIRun>[] = [
     {
       title: 'Status',
@@ -722,8 +731,25 @@ const CIActivityTab = ({ project }: { project: DemoProject }) => {
       ),
     },
     { title: 'Run', field: 'id' },
-    { title: 'Event', field: 'event' },
-    { title: 'Trigger', field: 'trigger' },
+    {
+      title: 'Workflow',
+      field: 'event',
+      render: (row: CIRun) => (
+        <Box display="flex" alignItems="center" style={{ gap: 5 }}>
+          {row.event === 'quality-scan' && (
+            <VerifiedUserOutlinedIcon style={{ fontSize: 14, color: row.status === 'failure' ? statusColors.error : statusColors.success }} />
+          )}
+          <Typography variant="body2">{EVENT_LABELS[row.event] ?? row.event}</Typography>
+        </Box>
+      ),
+    },
+    {
+      title: 'Trigger',
+      field: 'trigger',
+      render: (row: CIRun) => (
+        <Chip size="small" label={row.trigger} variant="outlined" style={{ fontSize: 10, height: 18, fontWeight: 500 }} />
+      ),
+    },
     { title: 'Duration', field: 'duration' },
     { title: 'Time', field: 'time' },
   ];

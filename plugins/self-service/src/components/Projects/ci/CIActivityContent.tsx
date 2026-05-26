@@ -23,6 +23,7 @@ import AutorenewIcon from '@material-ui/icons/Autorenew';
 import CancelIcon from '@material-ui/icons/Cancel';
 import ScheduleIcon from '@material-ui/icons/Schedule';
 import OpenInNewIcon from '@material-ui/icons/OpenInNew';
+import VerifiedUserOutlinedIcon from '@material-ui/icons/VerifiedUserOutlined';
 import { CatalogFilterLayout } from '@backstage/plugin-catalog-react';
 import { statusColors } from '../../common/statusColors';
 
@@ -308,11 +309,14 @@ const STATUS_LABELS: Record<CIRunStatus, string> = {
   queued: 'Queued',
 };
 
+const WORKFLOW_OPTIONS = Array.from(new Set(DEMO_RUNS.map(r => r.workflow))).sort();
+
 export const CIActivityContent = () => {
   const classes = useStyles();
   const [searchText, setSearchText] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | CIRunStatus>('all');
   const [triggerFilter, setTriggerFilter] = useState<string>('all');
+  const [workflowFilter, setWorkflowFilter] = useState<string>('all');
 
   const filteredRuns = useMemo(() => {
     let result = DEMO_RUNS;
@@ -328,8 +332,11 @@ export const CIActivityContent = () => {
     if (triggerFilter !== 'all') {
       result = result.filter(r => r.trigger === triggerFilter);
     }
+    if (workflowFilter !== 'all') {
+      result = result.filter(r => r.workflow === workflowFilter);
+    }
     return result;
-  }, [searchText, statusFilter, triggerFilter]);
+  }, [searchText, statusFilter, triggerFilter, workflowFilter]);
 
   const columns: TableColumn<CIRun>[] = [
     {
@@ -346,10 +353,15 @@ export const CIActivityContent = () => {
     {
       title: 'Workflow',
       render: (row: CIRun) => (
-        <Link className={classes.externalLink} href={row.url} target="_blank" rel="noopener">
-          {row.workflow} #{row.runNumber}
-          <OpenInNewIcon style={{ fontSize: 12 }} />
-        </Link>
+        <Box display="flex" alignItems="center" style={{ gap: 6 }}>
+          {row.workflow === 'Quality Scan' && (
+            <VerifiedUserOutlinedIcon style={{ fontSize: 15, color: row.status === 'failure' ? statusColors.error : statusColors.success }} />
+          )}
+          <Link className={classes.externalLink} href={row.url} target="_blank" rel="noopener">
+            {row.workflow} #{row.runNumber}
+            <OpenInNewIcon style={{ fontSize: 12 }} />
+          </Link>
+        </Box>
       ),
     },
     {
@@ -429,6 +441,22 @@ export const CIActivityContent = () => {
               <MenuItem value="running">Running</MenuItem>
               <MenuItem value="cancelled">Cancelled</MenuItem>
               <MenuItem value="queued">Queued</MenuItem>
+            </Select>
+          </FormControl>
+        </Paper>
+
+        <Typography className={classes.filterLabel}>Workflow</Typography>
+        <Paper className={classes.filterPaper}>
+          <FormControl fullWidth>
+            <Select
+              value={workflowFilter}
+              onChange={e => setWorkflowFilter(e.target.value as string)}
+              input={<Input disableUnderline />}
+            >
+              <MenuItem value="all">All</MenuItem>
+              {WORKFLOW_OPTIONS.map(w => (
+                <MenuItem key={w} value={w}>{w}</MenuItem>
+              ))}
             </Select>
           </FormControl>
         </Paper>

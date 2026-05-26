@@ -473,12 +473,9 @@ export const GitRepositoriesContent = () => {
         }
         if (isNeverScanned) {
           return (
-            <Link
-              style={{ fontSize: 12, cursor: 'pointer', color: statusColors.info }}
-              onClick={(e: React.MouseEvent) => e.stopPropagation()}
-            >
-              Scan now
-            </Link>
+            <Typography variant="body2" color="textSecondary" style={{ fontSize: 12 }}>
+              Not scanned
+            </Typography>
           );
         }
 
