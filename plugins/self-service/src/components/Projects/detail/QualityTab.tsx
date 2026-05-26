@@ -163,127 +163,140 @@ const HealthScoreRing = ({ score }: { score: number }) => {
 // ---------------------------------------------------------------------------
 // Remediation Status Banner
 // ---------------------------------------------------------------------------
-const REMEDIATION_CONFIG: Record<RemediationStatus, {
-  label: string; color: string; icon: 'spinning' | 'check' | 'error' | 'none';
-  description: (summary?: ProjectQualityData['remediationSummary']) => string;
+// ---------------------------------------------------------------------------
+// Unified Remediation Banner — single strip for all remediation states
+// ---------------------------------------------------------------------------
+type BannerState = 'fixable' | RemediationStatus;
+
+const BANNER_CONFIG: Record<BannerState, {
+  label: string | ((fixable: number) => string);
+  color: string;
+  icon: 'build' | 'spinning' | 'check' | 'none';
+  description: string | ((s?: ProjectQualityData['remediationSummary']) => string);
 } | null> = {
   none: null,
-  available: {
-    label: 'Remediation available',
+  fixable: {
+    label: (f) => `${f} violations can be auto-fixed`,
     color: statusColors.info,
-    icon: 'none',
-    description: () => 'APME can auto-fix some violations. Trigger "Fix with AI" to create a remediation branch.',
+    icon: 'build',
+    description: 'Generate fixes on a new branch, then review in Dev Spaces before merging.',
+  },
+  available: {
+    label: (f) => `${f} violations can be auto-fixed`,
+    color: statusColors.info,
+    icon: 'build',
+    description: 'Generate fixes on a new branch, then review in Dev Spaces before merging.',
   },
   'in-progress': {
-    label: 'Remediation in progress',
+    label: 'Generating fixes',
     color: statusColors.info,
     icon: 'spinning',
-    description: () => 'APME is analyzing violations and generating fixes. This runs as a GitHub Actions workflow.',
+    description: 'APME is analyzing violations and generating fixes via GitHub Actions. Changes will be available on a branch for you to review.',
   },
   'branch-ready': {
-    label: 'Remediation branch ready',
-    color: statusColors.warning,
+    label: 'Fixes ready for review',
+    color: '#8a6d00',
     icon: 'none',
     description: (s) => s
-      ? `${s.addressed} of ${s.addressed + s.remaining} violations addressed (${s.autoFixed} auto-fixed, ${s.aiProposed} AI-proposed). Review the branch and create a pull request.`
-      : 'Fixes are ready on a remediation branch. Review the changes and create a pull request.',
+      ? `${s.addressed} of ${s.addressed + s.remaining} violations addressed (${s.autoFixed} auto-fixed, ${s.aiProposed} AI-proposed). Review in Dev Spaces — modify, commit, or create a pull request when ready.`
+      : 'Fixes are on a remediation branch. Review in Dev Spaces — modify, commit, or create a pull request when ready.',
   },
   'pr-open': {
     label: 'Pull request open',
-    color: statusColors.warning,
+    color: '#8a6d00',
     icon: 'none',
     description: (s) => s
-      ? `${s.addressed} violations addressed. Review the pull request, then merge when satisfied.`
-      : 'A pull request with remediation fixes is open for review.',
+      ? `${s.addressed} violations addressed. Review and merge when satisfied.`
+      : 'A pull request with fixes is open for review.',
   },
   'pr-merged': {
-    label: 'Remediation merged',
+    label: 'Fixes merged',
     color: statusColors.success,
     icon: 'check',
     description: (s) => s
-      ? `${s.addressed} violations fixed. ${s.remaining > 0 ? `${s.remaining} remaining violations require manual attention.` : 'All fixable violations resolved.'}`
-      : 'Remediation changes have been merged.',
+      ? `${s.addressed} violations fixed. ${s.remaining > 0 ? `${s.remaining} remaining require manual attention.` : 'All fixable violations resolved.'}`
+      : 'Fixes have been merged.',
   },
 };
 
 const RemediationBanner = ({
-  status, quality, repoUrl, branch,
+  bannerState, fixableCount, quality, repoUrl,
 }: {
-  status: RemediationStatus;
+  bannerState: BannerState;
+  fixableCount: number;
   quality: ProjectQualityData;
   repoUrl?: string;
-  branch?: string;
 }) => {
   const { hasRole } = useUserRoleContext();
-  const config = REMEDIATION_CONFIG[status];
+  const config = BANNER_CONFIG[bannerState];
   if (!config) return null;
+
+  const label = typeof config.label === 'function' ? config.label(fixableCount) : config.label;
+  const description = typeof config.description === 'function' ? config.description(quality.remediationSummary) : config.description;
+  const isDeveloper = hasRole('developer');
+  const showFixButton = (bannerState === 'fixable' || bannerState === 'available') && isDeveloper;
+  const showDevSpaces = (bannerState === 'branch-ready' || bannerState === 'pr-open') && isDevSpacesConnected && isDeveloper;
+  const showPrLink = bannerState === 'pr-open' && quality.remediationPrUrl;
 
   return (
     <Card variant="outlined" style={{
       borderRadius: 12, marginBottom: 20,
-      borderColor: `${config.color}40`, borderWidth: 1,
-      backgroundColor: `${config.color}08`,
+      borderColor: `${config.color}30`, borderWidth: 1,
+      backgroundColor: `${config.color}06`,
     }}>
-      <CardContent style={{ padding: '16px 20px' }}>
+      <CardContent style={{ padding: '14px 20px' }}>
         <Box display="flex" alignItems="flex-start" justifyContent="space-between">
-          <Box display="flex" alignItems="flex-start" style={{ gap: 12 }}>
+          <Box display="flex" alignItems="flex-start" style={{ gap: 10, flex: 1, minWidth: 0 }}>
+            {config.icon === 'build' && (
+              <BuildIcon style={{ fontSize: 18, color: config.color, marginTop: 2, flexShrink: 0 }} />
+            )}
             {config.icon === 'spinning' && (
               <AutorenewIcon style={{
-                fontSize: 20, color: config.color, marginTop: 2,
+                fontSize: 18, color: config.color, marginTop: 2, flexShrink: 0,
                 animation: 'spin 1.5s linear infinite',
               }} />
             )}
             {config.icon === 'check' && (
-              <CheckCircleIcon style={{ fontSize: 20, color: config.color, marginTop: 2 }} />
-            )}
-            {config.icon === 'error' && (
-              <ErrorIcon style={{ fontSize: 20, color: config.color, marginTop: 2 }} />
+              <CheckCircleIcon style={{ fontSize: 18, color: config.color, marginTop: 2, flexShrink: 0 }} />
             )}
             <Box>
-              <Typography style={{ fontSize: 14, fontWeight: 600, color: '#333' }}>
-                {config.label}
+              <Typography style={{ fontSize: 13, fontWeight: 600, color: '#333' }}>
+                {label}
               </Typography>
-              <Typography style={{ fontSize: 13, color: '#666', marginTop: 2, lineHeight: 1.5 }}>
-                {config.description(quality.remediationSummary)}
+              <Typography style={{ fontSize: 12, color: '#666', marginTop: 2, lineHeight: 1.5 }}>
+                {description}
               </Typography>
             </Box>
           </Box>
-          <Box display="flex" style={{ gap: 8, flexShrink: 0 }}>
-            {status === 'branch-ready' && quality.remediationBranch && isDevSpacesConnected && hasRole('developer') && (
-              <Tooltip title="Open the remediation branch in Dev Spaces to review changes" arrow>
-                <Button
-                  size="small" variant="outlined"
-                  startIcon={<CodeIcon style={{ fontSize: 14 }} />}
-                  onClick={() => window.open(`${DEVSPACES_BASE_URL}/#${repoUrl}/tree/${quality.remediationBranch}`, '_blank')}
-                  style={{ textTransform: 'none', fontSize: 12, fontWeight: 500 }}
-                >
-                  Review in Dev Spaces
-                </Button>
-              </Tooltip>
+          <Box display="flex" style={{ gap: 8, flexShrink: 0, marginLeft: 16 }}>
+            {showFixButton && (
+              <Button
+                variant="outlined" size="small"
+                startIcon={<BuildIcon style={{ fontSize: 14 }} />}
+                style={{ textTransform: 'none', fontSize: 12, fontWeight: 500, whiteSpace: 'nowrap' }}
+              >
+                Fix violations
+              </Button>
             )}
-            {status === 'pr-open' && quality.remediationPrUrl && (
-              <>
-                {isDevSpacesConnected && hasRole('developer') && (
-                  <Tooltip title="Open the pull request branch in Dev Spaces" arrow>
-                    <Button
-                      size="small" variant="outlined"
-                      startIcon={<CodeIcon style={{ fontSize: 14 }} />}
-                      onClick={() => window.open(`${DEVSPACES_BASE_URL}/#${repoUrl}/tree/${quality.remediationBranch ?? 'main'}`, '_blank')}
-                      style={{ textTransform: 'none', fontSize: 12 }}
-                    >
-                      Review in Dev Spaces
-                    </Button>
-                  </Tooltip>
-                )}
-                <Button
-                  size="small" variant="contained" color="primary"
-                  startIcon={<OpenInNewIcon style={{ fontSize: 14 }} />}
-                  onClick={() => window.open(quality.remediationPrUrl, '_blank')}
-                  style={{ textTransform: 'none', fontSize: 12, fontWeight: 500 }}
-                >
-                  View pull request
-                </Button>
-              </>
+            {showDevSpaces && (
+              <Button
+                size="small" variant="outlined"
+                startIcon={<CodeIcon style={{ fontSize: 14 }} />}
+                onClick={() => window.open(`${DEVSPACES_BASE_URL}/#${repoUrl}/tree/${quality.remediationBranch ?? 'main'}`, '_blank')}
+                style={{ textTransform: 'none', fontSize: 12, fontWeight: 500, whiteSpace: 'nowrap' }}
+              >
+                Review in Dev Spaces
+              </Button>
+            )}
+            {showPrLink && (
+              <Button
+                size="small" variant="contained" color="primary"
+                startIcon={<OpenInNewIcon style={{ fontSize: 14 }} />}
+                onClick={() => window.open(quality.remediationPrUrl, '_blank')}
+                style={{ textTransform: 'none', fontSize: 12, fontWeight: 500, whiteSpace: 'nowrap' }}
+              >
+                View pull request
+              </Button>
             )}
           </Box>
         </Box>
@@ -346,16 +359,16 @@ const ViolationRow = ({
           fontSize: 10, height: 18, fontFamily: 'monospace', borderColor: 'rgba(0,0,0,0.15)',
         }} />
         {repoUrl && isDevSpacesConnected && hasRole('developer') && (
-          <Tooltip title={`Edit ${v.file}:${v.lineStart} in Dev Spaces`}>
+          <Tooltip title={`Open ${v.file}:${v.lineStart} in Dev Spaces`} arrow>
             <IconButton
               size="small"
               onClick={(e: React.MouseEvent) => {
                 e.stopPropagation();
                 window.open(`${DEVSPACES_BASE_URL}#${repoUrl}/tree/${branch ?? 'main'}/${v.file}?line=${v.lineStart}`, '_blank');
               }}
-              style={{ padding: 4 }}
+              style={{ padding: 4, borderRadius: 4, transition: 'background-color 0.15s' }}
             >
-              <CodeIcon style={{ fontSize: 14, color: '#666' }} />
+              <CodeIcon style={{ fontSize: 16, color: '#999' }} />
             </IconButton>
           </Tooltip>
         )}
@@ -482,11 +495,18 @@ const ViolationsCard = ({
             <Typography style={{ fontSize: 12, fontFamily: 'monospace', fontWeight: 500, color: '#333' }}>
               {file}
             </Typography>
-            <Typography style={{ fontSize: 11, color: '#999' }}>
-              {fileViolations.length} issue{fileViolations.length !== 1 ? 's' : ''}
-              {fileViolations.filter(v => v.fixTier !== 'manual').length > 0 &&
-                ` · ${fileViolations.filter(v => v.fixTier !== 'manual').length} fixable`}
-            </Typography>
+            <Box display="flex" alignItems="center" style={{ gap: 12 }}>
+              <Typography style={{ fontSize: 11, color: '#999' }}>
+                {fileViolations.length} issue{fileViolations.length !== 1 ? 's' : ''}
+                {fileViolations.filter(v => v.fixTier !== 'manual').length > 0 &&
+                  ` · ${fileViolations.filter(v => v.fixTier !== 'manual').length} fixable`}
+              </Typography>
+              {repoUrl && isDevSpacesConnected && (
+                <Typography style={{ fontSize: 10, color: '#bbb', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  IDE
+                </Typography>
+              )}
+            </Box>
           </Box>
           {fileViolations.map((v, i) => (
             <ViolationRow
@@ -591,6 +611,52 @@ const ScanHistorySection = ({ scans }: { scans: ScanResult[] }) => {
 // ---------------------------------------------------------------------------
 // Main QualityTab
 // ---------------------------------------------------------------------------
+const DEMO_REMEDIATION_STATES: RemediationStatus[] = [
+  'none', 'available', 'in-progress', 'branch-ready', 'pr-open', 'pr-merged',
+];
+
+const DEMO_STATE_LABELS: Record<RemediationStatus, string> = {
+  'none': 'None',
+  'available': 'Available',
+  'in-progress': 'In progress',
+  'branch-ready': 'Branch ready',
+  'pr-open': 'PR open',
+  'pr-merged': 'Merged',
+};
+
+const DemoStateToolbar = ({
+  currentState,
+  onStateChange,
+}: {
+  currentState: RemediationStatus;
+  onStateChange: (state: RemediationStatus) => void;
+}) => (
+  <Box style={{
+    display: 'flex', alignItems: 'center', gap: 6,
+    padding: '6px 12px', marginBottom: 16, borderRadius: 8,
+    backgroundColor: '#FFF3CD', border: '1px solid #FFECB5',
+  }}>
+    <Typography style={{ fontSize: 11, fontWeight: 600, color: '#856404', marginRight: 4 }}>
+      DEMO
+    </Typography>
+    {DEMO_REMEDIATION_STATES.map(state => (
+      <Chip
+        key={state}
+        size="small"
+        label={DEMO_STATE_LABELS[state]}
+        onClick={() => onStateChange(state)}
+        style={{
+          fontSize: 10, height: 22, cursor: 'pointer',
+          backgroundColor: currentState === state ? '#856404' : 'transparent',
+          color: currentState === state ? '#fff' : '#856404',
+          border: `1px solid ${currentState === state ? '#856404' : '#FFECB5'}`,
+          fontWeight: currentState === state ? 600 : 400,
+        }}
+      />
+    ))}
+  </Box>
+);
+
 export const QualityTab = ({
   quality,
   projectName,
@@ -609,6 +675,7 @@ export const QualityTab = ({
   const { hasRole } = useUserRoleContext();
   const [categoryFilter, setCategoryFilter] = useState<ViolationCategory | 'all'>('all');
   const [severityFilter, setSeverityFilter] = useState<SeverityClass | null>(initialSeverity ?? null);
+  const [demoRemediationState, setDemoRemediationState] = useState<RemediationStatus | null>(null);
 
   if (!quality) {
     return (
@@ -633,43 +700,73 @@ export const QualityTab = ({
   const fixableCount = scan.fixable;
   const manualCount = scan.manualReview;
 
+  const activeRemStatus = demoRemediationState ?? quality.remediationStatus;
+  const demoQuality: ProjectQualityData = demoRemediationState
+    ? {
+        ...quality,
+        remediationStatus: demoRemediationState,
+        remediationBranch: demoRemediationState !== 'none' && demoRemediationState !== 'available'
+          ? `apme/remediate-demo` : undefined,
+        remediationPrUrl: demoRemediationState === 'pr-open' || demoRemediationState === 'pr-merged'
+          ? `https://github.com/acme-corp/${projectName}/pull/99` : undefined,
+        remediationSummary: ['in-progress', 'branch-ready', 'pr-open', 'pr-merged'].includes(demoRemediationState)
+          ? { addressed: fixableCount, remaining: manualCount, autoFixed: Math.ceil(fixableCount * 0.7), aiProposed: Math.floor(fixableCount * 0.3) }
+          : undefined,
+      }
+    : quality;
+
   return (
     <Box style={{ marginTop: 24 }}>
-      {/* Score + scan context bar */}
+      {/* Demo state toggle */}
+      <DemoStateToolbar
+        currentState={activeRemStatus}
+        onStateChange={setDemoRemediationState}
+      />
+
+      {/* Scan context bar */}
       <Box display="flex" alignItems="center" justifyContent="space-between" style={{ marginBottom: 20 }}>
-        <Box display="flex" alignItems="center" style={{ gap: 16 }}>
-          <HealthScoreRing score={quality.healthScore} />
-          <Box>
-            <Typography style={{ fontSize: 14, fontWeight: 600 }}>
-              Quality score: {quality.healthScore}/100
-            </Typography>
-            <Typography style={{ fontSize: 12, color: '#666' }}>
-              Last scan {quality.lastScannedAt} · commit <code style={{ fontSize: 11 }}>{quality.lastScannedCommit?.slice(0, 7)}</code>
-              {scan.trigger && ` · ${TRIGGER_LABELS[scan.trigger] ?? scan.trigger}`}
-            </Typography>
-          </Box>
+        <Typography style={{ fontSize: 13, color: '#666' }}>
+          Last scan {quality.lastScannedAt} · commit <code style={{ fontSize: 11 }}>{quality.lastScannedCommit?.slice(0, 7)}</code>
+          {scan.trigger && ` · ${TRIGGER_LABELS[scan.trigger] ?? scan.trigger}`}
+        </Typography>
+        <Box display="flex" alignItems="center" style={{ gap: 8 }}>
+          {isDevSpacesConnected && hasRole('developer') && quality.violations.length > 0 && (
+            <Button
+              size="small" variant="outlined"
+              startIcon={<CodeIcon style={{ fontSize: 16 }} />}
+              onClick={() => window.open(`${DEVSPACES_BASE_URL}/#${repoUrl}/tree/${branch ?? 'main'}`, '_blank')}
+              style={{ textTransform: 'none', fontSize: 12, fontWeight: 600 }}
+            >
+              Review in Dev Spaces
+            </Button>
+          )}
+          {scan.ciRunUrl && (
+            <Button
+              size="small" variant="text"
+              startIcon={<OpenInNewIcon style={{ fontSize: 14 }} />}
+              onClick={() => window.open(scan.ciRunUrl, '_blank')}
+              style={{ textTransform: 'none', fontSize: 12, color: '#666' }}
+            >
+              View CI run
+            </Button>
+          )}
         </Box>
-        {scan.ciRunUrl && (
-          <Button
-            size="small" variant="text"
-            startIcon={<OpenInNewIcon style={{ fontSize: 14 }} />}
-            onClick={() => window.open(scan.ciRunUrl, '_blank')}
-            style={{ textTransform: 'none', fontSize: 12, color: '#666' }}
-          >
-            View CI run
-          </Button>
-        )}
       </Box>
 
-      {/* Remediation banner */}
-      {quality.remediationStatus !== 'none' && (
-        <RemediationBanner
-          status={quality.remediationStatus}
-          quality={quality}
-          repoUrl={repoUrl}
-          branch={branch}
-        />
-      )}
+      {/* Remediation banner — unified for all states */}
+      {(() => {
+        const bannerState: BannerState = activeRemStatus === 'none' && fixableCount > 0
+          ? 'fixable'
+          : activeRemStatus;
+        return bannerState !== 'none' ? (
+          <RemediationBanner
+            bannerState={bannerState}
+            fixableCount={fixableCount}
+            quality={demoQuality}
+            repoUrl={repoUrl}
+          />
+        ) : null;
+      })()}
 
       {/* Clean state */}
       {scan.totalViolations === 0 ? (
@@ -704,46 +801,6 @@ export const QualityTab = ({
                     </Typography>
                   </Box>
                 </Box>
-                {hasRole('developer') && fixableCount > 0 && quality.remediationStatus === 'none' && (
-                  <Box style={{ textAlign: 'right' }}>
-                    <Tooltip
-                      title="Triggers an APME remediation workflow via GitHub Actions. Fixes will be available on a branch for you to review in Dev Spaces or your IDE."
-                      arrow
-                      placement="bottom-end"
-                    >
-                      <Button
-                        variant="contained" color="primary" size="small"
-                        startIcon={<BuildIcon style={{ fontSize: 16 }} />}
-                        style={{ textTransform: 'none', fontWeight: 600 }}
-                      >
-                        Fix with AI
-                      </Button>
-                    </Tooltip>
-                    <Typography style={{ fontSize: 11, color: '#888', marginTop: 4 }}>
-                      Review changes in Dev Spaces before merging
-                    </Typography>
-                  </Box>
-                )}
-                {hasRole('developer') && quality.remediationStatus === 'available' && (
-                  <Box style={{ textAlign: 'right' }}>
-                    <Tooltip
-                      title="Triggers an APME remediation workflow via GitHub Actions. Fixes will be available on a branch for you to review."
-                      arrow
-                      placement="bottom-end"
-                    >
-                      <Button
-                        variant="contained" color="primary" size="small"
-                        startIcon={<BuildIcon style={{ fontSize: 16 }} />}
-                        style={{ textTransform: 'none', fontWeight: 600 }}
-                      >
-                        Fix with AI
-                      </Button>
-                    </Tooltip>
-                    <Typography style={{ fontSize: 11, color: '#888', marginTop: 4 }}>
-                      Review changes in Dev Spaces before merging
-                    </Typography>
-                  </Box>
-                )}
               </Box>
               <Box style={{ marginTop: 12 }}>
                 <SeverityProgressBar breakdown={scan.severityBreakdown} />

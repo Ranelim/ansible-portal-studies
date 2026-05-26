@@ -114,10 +114,7 @@ const QUALITY_DATA: Record<string, ProjectQualityData> = {
       { scanIndex: 4, totalViolations: 10, fixable: 7 },
       { scanIndex: 5, totalViolations: 7, fixable: 5 },
     ],
-    remediationStatus: 'remediation-in-review',
-    remediationPrUrl: 'https://github.com/acme-corp/rhel-patching/pull/42',
-    remediationBranch: 'apme/remediate-014',
-    remediationSummary: { addressed: 10, remaining: 2, autoFixed: 8, aiProposed: 2 },
+    remediationStatus: 'available',
     latestScan: {
       scanId: 'scan-rhel-014',
       scanType: 'check',
@@ -258,7 +255,10 @@ const QUALITY_DATA: Record<string, ProjectQualityData> = {
       { scanIndex: 3, totalViolations: 18, fixable: 11 },
       { scanIndex: 4, totalViolations: 14, fixable: 9 },
     ],
-    remediationStatus: 'available',
+    remediationStatus: 'pr-open',
+    remediationPrUrl: 'https://github.com/acme-corp/network-firewall-rules/pull/15',
+    remediationBranch: 'apme/remediate-008',
+    remediationSummary: { addressed: 9, remaining: 5, autoFixed: 6, aiProposed: 3 },
     latestScan: {
       scanId: 'scan-net-008',
       scanType: 'check',
@@ -336,7 +336,7 @@ const QUALITY_DATA: Record<string, ProjectQualityData> = {
       { scanIndex: 2, totalViolations: 5, fixable: 4 },
       { scanIndex: 3, totalViolations: 3, fixable: 2 },
     ],
-    remediationStatus: 'none',
+    remediationStatus: 'in-progress',
     latestScan: {
       scanId: 'scan-cloud-022',
       scanType: 'check',
@@ -391,7 +391,9 @@ const QUALITY_DATA: Record<string, ProjectQualityData> = {
       { scanIndex: 2, totalViolations: 25, fixable: 14 },
       { scanIndex: 3, totalViolations: 21, fixable: 12 },
     ],
-    remediationStatus: 'none',
+    remediationStatus: 'branch-ready',
+    remediationBranch: 'apme/remediate-005',
+    remediationSummary: { addressed: 12, remaining: 9, autoFixed: 8, aiProposed: 4 },
     latestScan: {
       scanId: 'scan-bak-005',
       scanType: 'check',
@@ -447,6 +449,10 @@ export function getProjectViolationCount(repoName: string): number | undefined {
 
 export function getProjectSeverityBreakdown(repoName: string): Record<SeverityClass, number> | undefined {
   return QUALITY_DATA[repoName]?.severityBreakdown;
+}
+
+export function getProjectRemediationStatus(repoName: string): RemediationStatus | undefined {
+  return QUALITY_DATA[repoName]?.remediationStatus;
 }
 
 export type FleetViolationRule = {

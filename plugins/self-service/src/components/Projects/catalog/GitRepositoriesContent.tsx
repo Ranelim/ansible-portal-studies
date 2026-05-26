@@ -54,8 +54,8 @@ import {
   type GitRepository,
   type DiscoveredResourceSummary,
 } from './unifiedDemoData';
-import { getProjectViolationCount, getProjectSeverityBreakdown, getProjectAapVersion, SEVERITY_COLORS } from '../../Projects/detail/qualityDemoData';
-import type { SeverityClass } from '../../Projects/detail/qualityDemoData';
+import { getProjectViolationCount, getProjectSeverityBreakdown, getProjectRemediationStatus, getProjectAapVersion, SEVERITY_COLORS } from '../../Projects/detail/qualityDemoData';
+import type { SeverityClass, RemediationStatus } from '../../Projects/detail/qualityDemoData';
 
 type ProviderFilter = 'all' | 'github' | 'gitlab';
 
@@ -364,6 +364,7 @@ const saveStarredRepos = (names: Set<string>) => {
 export const GitRepositoriesContent = () => {
   const classes = useStyles();
   const navigate = useNavigate();
+  const { hasRole } = useUserRoleContext();
   const [repos, setRepos] = useState<GitRepository[]>(() => {
     const stored = loadStarredRepos();
     return GIT_REPOSITORIES.map(r => ({
@@ -504,26 +505,40 @@ export const GitRepositoriesContent = () => {
         const highestCount = breakdown[highest];
         const color = SEVERITY_COLORS[highest];
 
+        const remStatus = getProjectRemediationStatus(row.name);
+        const REMEDIATION_LABELS: Partial<Record<RemediationStatus, { text: string; color: string }>> = {
+          'in-progress': { text: 'Fixing…', color: statusColors.info },
+          'branch-ready': { text: 'Fixes ready', color: '#8a6d00' },
+          'pr-open': { text: 'PR open', color: '#8a6d00' },
+          'pr-merged': { text: 'Merged', color: statusColors.success },
+        };
+        const remLabel = remStatus ? REMEDIATION_LABELS[remStatus] : undefined;
+
         return (
           <Box
-            display="flex"
-            alignItems="center"
-            style={{ gap: 6, cursor: 'pointer' }}
+            style={{ cursor: 'pointer' }}
             onClick={(e: React.MouseEvent) => {
               e.stopPropagation();
               navigate(`/self-service/repositories/${row.name}?tab=quality`);
             }}
           >
-            <Chip size="small" label={`${highestCount} ${highest}`} style={{
-              fontSize: 11, height: 20,
-              backgroundColor: `${color}18`,
-              color,
-              fontWeight: 600,
-              cursor: 'pointer',
-            }} />
-            {total > highestCount && (
-              <Typography variant="body2" color="textSecondary" style={{ fontSize: 11 }}>
-                +{total - highestCount}
+            <Box display="flex" alignItems="center" style={{ gap: 6 }}>
+              <Chip size="small" label={`${highestCount} ${highest}`} style={{
+                fontSize: 11, height: 20,
+                backgroundColor: `${color}18`,
+                color,
+                fontWeight: 600,
+                cursor: 'pointer',
+              }} />
+              {total > highestCount && (
+                <Typography variant="body2" color="textSecondary" style={{ fontSize: 11 }}>
+                  +{total - highestCount}
+                </Typography>
+              )}
+            </Box>
+            {remLabel && (
+              <Typography style={{ fontSize: 10, color: remLabel.color, fontWeight: 500, marginTop: 2 }}>
+                {remLabel.text}
               </Typography>
             )}
           </Box>
@@ -551,6 +566,19 @@ export const GitRepositoriesContent = () => {
       headerStyle: { textAlign: 'right' as const, paddingRight: 8 },
       render: (row: GitRepository) => (
         <Box className={classes.actionsCell}>
+          {isDevSpacesConnected && hasRole('developer') && (
+            <Tooltip title="Edit in Dev Spaces" arrow>
+              <IconButton
+                size="small"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  window.open(`${DEVSPACES_BASE_URL}/#${row.url}/tree/${row.branch}`, '_blank');
+                }}
+              >
+                <CodeIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
           <IconButton size="small" onClick={(e) => { e.stopPropagation(); toggleStar(row.name); }}>
             {row.starred ? (
               <StarIcon style={{ color: statusColors.star }} />
