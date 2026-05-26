@@ -63,6 +63,7 @@ export const PIPELINE_PROFILES: PipelineProfile[] = [
     stages: [
       'Commit',
       'Lint',
+      'Quality Scan',
       'STIG Compliance',
       'EE Compatibility',
       'Integration Test',
@@ -104,6 +105,13 @@ export const PIPELINE_PROFILES: PipelineProfile[] = [
         standard: 'STIG',
         severity: 'medium',
       },
+      {
+        id: 'stig-apme-quality-scan',
+        name: 'APME quality scan required',
+        description: 'All pushes must pass an APME quality scan. Violations must be below the threshold before merging.',
+        standard: 'APME',
+        severity: 'high',
+      },
     ],
   },
   {
@@ -111,7 +119,7 @@ export const PIPELINE_PROFILES: PipelineProfile[] = [
     name: 'Organization Default',
     description:
       'Standard governance pipeline enforcing organizational policies defined by your platform team.',
-    stages: ['Commit', 'Lint', 'Policy Check', 'EE Compatibility'],
+    stages: ['Commit', 'Lint', 'Quality Scan', 'Policy Check', 'EE Compatibility'],
     source: 'organization',
     policies: [
       {
@@ -138,6 +146,12 @@ export const PIPELINE_PROFILES: PipelineProfile[] = [
         description: 'Playbooks, roles, and variables must follow organizational naming rules.',
         severity: 'low',
       },
+      {
+        id: 'org-apme-quality-gate',
+        name: 'Quality scan gate',
+        description: 'APME quality scans run on every push and pull request. Critical and high violations block merge.',
+        severity: 'high',
+      },
     ],
   },
   {
@@ -148,6 +162,7 @@ export const PIPELINE_PROFILES: PipelineProfile[] = [
     stages: [
       'Commit',
       'Lint',
+      'Quality Scan',
       'CIS Compliance',
       'EE Compatibility',
       'Integration Test',

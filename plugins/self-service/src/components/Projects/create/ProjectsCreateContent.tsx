@@ -110,10 +110,18 @@ const TemplateCard = ({
           {template.tags.map(tag => (
             <Chip
               key={tag}
-              label={tag}
+              label={tag === 'quality-scan' ? 'APME quality scan' : tag}
               size="small"
               variant="outlined"
-              style={{ fontSize: 11, height: 20 }}
+              style={{
+                fontSize: 11, height: 20,
+                ...(tag === 'quality-scan' ? {
+                  borderColor: '#0066CC40',
+                  backgroundColor: '#0066CC08',
+                  color: '#0066CC',
+                  fontWeight: 500,
+                } : {}),
+              }}
             />
           ))}
         </Box>
