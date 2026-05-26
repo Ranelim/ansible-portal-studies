@@ -508,7 +508,7 @@ export const GitRepositoriesContent = () => {
         const remStatus = getProjectRemediationStatus(row.name);
         const REMEDIATION_LABELS: Partial<Record<RemediationStatus, { text: string; color: string }>> = {
           'in-progress': { text: 'Fixing…', color: statusColors.info },
-          'branch-ready': { text: 'Fixes ready', color: '#8a6d00' },
+          'proposals-ready': { text: 'Review fixes', color: '#8a6d00' },
           'pr-open': { text: 'PR open', color: '#8a6d00' },
           'pr-merged': { text: 'Merged', color: statusColors.success },
         };

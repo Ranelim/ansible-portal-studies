@@ -158,6 +158,113 @@ const HealthScoreRing = ({ score }: { score: number }) => {
 // Remediation Status Banner
 // ---------------------------------------------------------------------------
 // ---------------------------------------------------------------------------
+// Proposal Review List — inline approval of individual fix proposals
+// ---------------------------------------------------------------------------
+const DEMO_PROPOSALS = [
+  { id: 'p1', rule: 'aap-removed-config', file: 'ansible.cfg:3', tier: 'deterministic' as const, desc: 'Rename callback_whitelist → callbacks_enabled' },
+  { id: 'p2', rule: 'aap-deprecated-module', file: 'tasks/patch-apply.yml:14', tier: 'deterministic' as const, desc: 'Replace ansible.builtin.yum → ansible.builtin.dnf' },
+  { id: 'p3', rule: 'aap-deprecated-syntax', file: 'tasks/main.yml:22', tier: 'deterministic' as const, desc: 'Replace with_items → loop' },
+  { id: 'p4', rule: 'aap-removed-param', file: 'tasks/pre-check.yml:8', tier: 'deterministic' as const, desc: 'Remove deprecated warn parameter' },
+  { id: 'p5', rule: 'aap-collection-update', file: 'collections/requirements.yml:6', tier: 'deterministic' as const, desc: 'Update community.general 7.5.0 → 8.0.0' },
+  { id: 'p6', rule: 'fqcn[action-core]', file: 'tasks/main.yml:12', tier: 'deterministic' as const, desc: 'Use FQCN ansible.builtin.copy' },
+  { id: 'p7', rule: 'yaml[truthy]', file: 'defaults/main.yml:8', tier: 'deterministic' as const, desc: 'Replace yes/no → true/false' },
+  { id: 'p8', rule: 'risky-file-permissions', file: 'tasks/patch-apply.yml:34', tier: 'ai' as const, desc: 'Add mode: "0644" to file module' },
+  { id: 'p9', rule: 'no-changed-when', file: 'tasks/pre-check.yml:22', tier: 'ai' as const, desc: 'Add changed_when condition to command task' },
+  { id: 'p10', rule: 'name[missing]', file: 'tasks/rollback.yml:5', tier: 'deterministic' as const, desc: 'Add descriptive task name' },
+];
+
+const ProposalReviewList = ({
+  fixableCount, autoFixed, aiProposed, onCreatePr,
+}: {
+  fixableCount: number; autoFixed: number; aiProposed: number;
+  onCreatePr: () => void;
+}) => {
+  const proposals = DEMO_PROPOSALS.slice(0, fixableCount);
+  const [approved, setApproved] = useState<Set<string>>(() => new Set(proposals.map(p => p.id)));
+  const [declined, setDeclined] = useState<Set<string>>(new Set());
+
+  const toggleApproval = (id: string) => {
+    setApproved(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+        setDeclined(d => new Set(d).add(id));
+      } else {
+        next.add(id);
+        setDeclined(d => { const n = new Set(d); n.delete(id); return n; });
+      }
+      return next;
+    });
+  };
+
+  return (
+    <Box>
+      <Box display="flex" alignItems="center" justifyContent="space-between" style={{ marginBottom: 8 }}>
+        <Typography style={{ fontSize: 12, color: '#666' }}>
+          {approved.size} of {proposals.length} proposals approved
+        </Typography>
+        <Button
+          size="small" variant="contained" color="primary"
+          disabled={approved.size === 0}
+          onClick={onCreatePr}
+          style={{ textTransform: 'none', fontSize: 12, fontWeight: 500 }}
+        >
+          Create pull request ({approved.size} fixes)
+        </Button>
+      </Box>
+      {proposals.map(p => {
+        const isApproved = approved.has(p.id);
+        const isDeclined = declined.has(p.id);
+        return (
+          <Box
+            key={p.id}
+            display="flex" alignItems="center"
+            style={{
+              gap: 8, padding: '6px 0',
+              borderTop: '1px solid rgba(0,0,0,0.04)',
+              opacity: isDeclined ? 0.4 : 1,
+              transition: 'opacity 0.15s',
+            }}
+          >
+            <Tooltip title={isApproved ? 'Click to decline' : 'Click to approve'} arrow>
+              <IconButton
+                size="small"
+                onClick={() => toggleApproval(p.id)}
+                style={{ padding: 2 }}
+              >
+                {isApproved ? (
+                  <CheckCircleIcon style={{ fontSize: 16, color: statusColors.success }} />
+                ) : (
+                  <Box style={{ width: 16, height: 16, borderRadius: 8, border: '1.5px solid #ccc' }} />
+                )}
+              </IconButton>
+            </Tooltip>
+            <Chip
+              size="small"
+              label={p.tier === 'deterministic' ? 'Auto' : 'AI'}
+              style={{
+                fontSize: 9, height: 16, fontWeight: 600,
+                backgroundColor: p.tier === 'deterministic' ? `${statusColors.success}15` : `${statusColors.info}15`,
+                color: p.tier === 'deterministic' ? statusColors.success : statusColors.info,
+              }}
+            />
+            <Typography style={{ fontSize: 12, color: '#333', flex: 1 }} noWrap>
+              {p.desc}
+            </Typography>
+            <Typography style={{ fontSize: 10, fontFamily: 'monospace', color: '#999' }}>
+              {p.file}
+            </Typography>
+            <Chip size="small" label={p.rule} variant="outlined" style={{
+              fontSize: 9, height: 16, fontFamily: 'monospace', borderColor: 'rgba(0,0,0,0.12)',
+            }} />
+          </Box>
+        );
+      })}
+    </Box>
+  );
+};
+
+// ---------------------------------------------------------------------------
 // Unified Remediation Banner — single strip for all remediation states
 // ---------------------------------------------------------------------------
 type BannerState = 'fixable' | RemediationStatus;
@@ -173,35 +280,35 @@ const BANNER_CONFIG: Record<BannerState, {
     label: (f) => `${f} violations can be auto-fixed`,
     color: statusColors.info,
     icon: 'build',
-    description: 'Generate fixes on a new branch, then review in Dev Spaces before merging.',
+    description: 'APME can generate fixes for you to review and approve before creating a pull request.',
   },
   available: {
     label: (f) => `${f} violations can be auto-fixed`,
     color: statusColors.info,
     icon: 'build',
-    description: 'Generate fixes on a new branch, then review in Dev Spaces before merging.',
+    description: 'APME can generate fixes for you to review and approve before creating a pull request.',
   },
   'in-progress': {
     label: 'Generating fixes',
     color: statusColors.info,
     icon: 'spinning',
-    description: 'APME is analyzing violations and generating fixes via GitHub Actions. Changes will be available on a branch for you to review.',
+    description: 'APME is analyzing violations and generating fix proposals. You will review each proposal before anything is committed.',
   },
-  'branch-ready': {
-    label: 'Fixes ready for review',
+  'proposals-ready': {
+    label: 'Review proposed fixes',
     color: '#8a6d00',
     icon: 'none',
     description: (s) => s
-      ? `${s.addressed} of ${s.addressed + s.remaining} violations addressed (${s.autoFixed} auto-fixed, ${s.aiProposed} AI-proposed). Review in Dev Spaces — modify, commit, or create a pull request when ready.`
-      : 'Fixes are on a remediation branch. Review in Dev Spaces — modify, commit, or create a pull request when ready.',
+      ? `${s.addressed} fix proposals generated for ${s.addressed + s.remaining} violations. Approve the ones you want, then create a pull request.`
+      : 'Fix proposals are ready for your review. Approve the ones you want, then create a pull request.',
   },
   'pr-open': {
     label: 'Pull request open',
     color: '#8a6d00',
     icon: 'none',
     description: (s) => s
-      ? `${s.addressed} violations addressed. Review and merge when satisfied.`
-      : 'A pull request with fixes is open for review.',
+      ? `${s.addressed} fixes applied. Review in Dev Spaces or merge when satisfied.`
+      : 'A pull request with approved fixes is open for review.',
   },
   'pr-merged': {
     label: 'Fixes merged',
@@ -231,14 +338,15 @@ const RemediationBanner = ({
   const description = typeof config.description === 'function' ? config.description(quality.remediationSummary) : config.description;
   const isDeveloper = hasRole('developer');
   const showFixButton = (bannerState === 'fixable' || bannerState === 'available') && isDeveloper;
-  const showDevSpaces = (bannerState === 'branch-ready' || bannerState === 'pr-open') && isDevSpacesConnected && isDeveloper;
+  const showDevSpaces = (bannerState === 'pr-open') && isDevSpacesConnected && isDeveloper;
   const showPrLink = bannerState === 'pr-open' && quality.remediationPrUrl;
-  const showResults = ['branch-ready', 'pr-open', 'pr-merged'].includes(bannerState as string) && quality.remediationSummary;
+  const showResults = ['proposals-ready', 'pr-open', 'pr-merged'].includes(bannerState as string) && quality.remediationSummary;
+  const showProposals = bannerState === 'proposals-ready' && isDeveloper;
 
   const handleFixClick = () => {
     if (!onStateChange) return;
     onStateChange('in-progress');
-    setTimeout(() => onStateChange('branch-ready'), 3000);
+    setTimeout(() => onStateChange('proposals-ready'), 3000);
   };
 
   // Progress steps for in-progress state
@@ -365,31 +473,36 @@ const RemediationBanner = ({
 
         {/* Results summary — inline in banner after remediation */}
         {showResults && quality.remediationSummary && (
-          <Box style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid rgba(0,0,0,0.06)', display: 'flex', alignItems: 'center', gap: 24 }}>
-            <Box display="flex" alignItems="baseline" style={{ gap: 4 }}>
-              <Typography style={{ fontSize: 18, fontWeight: 700 }}>{totalViolations}</Typography>
-              <Typography style={{ fontSize: 11, color: '#666' }}>violations</Typography>
+          <Box style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid rgba(0,0,0,0.06)' }}>
+            <Box display="flex" alignItems="center" style={{ gap: 24 }}>
+              <Box display="flex" alignItems="baseline" style={{ gap: 4 }}>
+                <Typography style={{ fontSize: 18, fontWeight: 700 }}>{totalViolations}</Typography>
+                <Typography style={{ fontSize: 11, color: '#666' }}>violations</Typography>
+              </Box>
+              <Box display="flex" alignItems="baseline" style={{ gap: 4 }}>
+                <Typography style={{ fontSize: 18, fontWeight: 700, color: statusColors.success }}>{quality.remediationSummary.addressed}</Typography>
+                <Typography style={{ fontSize: 11, color: '#666' }}>proposals</Typography>
+              </Box>
+              <Box display="flex" alignItems="baseline" style={{ gap: 4 }}>
+                <Typography style={{ fontSize: 18, fontWeight: 700, color: '#8a6d00' }}>{quality.remediationSummary.remaining}</Typography>
+                <Typography style={{ fontSize: 11, color: '#666' }}>manual</Typography>
+              </Box>
+              <Typography style={{ fontSize: 11, color: '#999' }}>
+                {quality.remediationSummary.autoFixed} deterministic · {quality.remediationSummary.aiProposed} AI-assisted
+              </Typography>
             </Box>
-            <Box display="flex" alignItems="baseline" style={{ gap: 4 }}>
-              <Typography style={{ fontSize: 18, fontWeight: 700, color: statusColors.success }}>{quality.remediationSummary.addressed}</Typography>
-              <Typography style={{ fontSize: 11, color: '#666' }}>fixed</Typography>
-            </Box>
-            <Box display="flex" alignItems="baseline" style={{ gap: 4 }}>
-              <Typography style={{ fontSize: 18, fontWeight: 700, color: '#8a6d00' }}>{quality.remediationSummary.remaining}</Typography>
-              <Typography style={{ fontSize: 11, color: '#666' }}>remaining</Typography>
-            </Box>
-            <Typography style={{ fontSize: 11, color: '#999' }}>
-              {quality.remediationSummary.autoFixed} auto · {quality.remediationSummary.aiProposed} AI
-            </Typography>
-            {bannerState === 'branch-ready' && onStateChange && (
-              <Button
-                size="small" variant="text"
-                onClick={() => onStateChange('pr-open')}
-                style={{ textTransform: 'none', fontSize: 11, color: '#666', marginLeft: 'auto' }}
-              >
-                Create pull request
-              </Button>
-            )}
+          </Box>
+        )}
+
+        {/* Proposal review — approve/decline individual fixes */}
+        {showProposals && quality.remediationSummary && (
+          <Box style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid rgba(0,0,0,0.06)' }}>
+            <ProposalReviewList
+              fixableCount={quality.remediationSummary.addressed}
+              autoFixed={quality.remediationSummary.autoFixed}
+              aiProposed={quality.remediationSummary.aiProposed}
+              onCreatePr={() => onStateChange?.('pr-open')}
+            />
           </Box>
         )}
       </CardContent>
@@ -634,14 +747,14 @@ const TRIGGER_LABELS: Record<string, string> = {
 // Main QualityTab
 // ---------------------------------------------------------------------------
 const DEMO_REMEDIATION_STATES: RemediationStatus[] = [
-  'none', 'available', 'in-progress', 'branch-ready', 'pr-open', 'pr-merged',
+  'none', 'available', 'in-progress', 'proposals-ready', 'pr-open', 'pr-merged',
 ];
 
 const DEMO_STATE_LABELS: Record<RemediationStatus, string> = {
   'none': 'None',
   'available': 'Available',
   'in-progress': 'In progress',
-  'branch-ready': 'Branch ready',
+  'proposals-ready': 'Proposals',
   'pr-open': 'PR open',
   'pr-merged': 'Merged',
 };
@@ -731,7 +844,7 @@ export const QualityTab = ({
           ? `apme/remediate-demo` : undefined,
         remediationPrUrl: demoRemediationState === 'pr-open' || demoRemediationState === 'pr-merged'
           ? `https://github.com/acme-corp/${projectName}/pull/99` : undefined,
-        remediationSummary: ['in-progress', 'branch-ready', 'pr-open', 'pr-merged'].includes(demoRemediationState)
+        remediationSummary: ['in-progress', 'proposals-ready', 'pr-open', 'pr-merged'].includes(demoRemediationState)
           ? { addressed: fixableCount, remaining: manualCount, autoFixed: Math.ceil(fixableCount * 0.7), aiProposed: Math.floor(fixableCount * 0.3) }
           : undefined,
       }
@@ -824,7 +937,7 @@ export const QualityTab = ({
           <Box style={{ padding: '16px 20px', borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
             <Box display="flex" alignItems="center" justifyContent="space-between">
               <Box display="flex" alignItems="center" style={{ gap: 16 }}>
-                {['branch-ready', 'pr-open', 'pr-merged'].includes(activeRemStatus) && demoQuality.remediationSummary ? (
+                {['proposals-ready', 'pr-open', 'pr-merged'].includes(activeRemStatus) && demoQuality.remediationSummary ? (
                   <>
                     <Typography style={{ fontSize: 28, fontWeight: 700, color: '#8a6d00' }}>
                       {demoQuality.remediationSummary.remaining}
@@ -871,7 +984,7 @@ export const QualityTab = ({
           {quality.violations.length > 0 && (
             <ViolationsCard
               violations={
-                ['branch-ready', 'pr-open', 'pr-merged'].includes(activeRemStatus)
+                ['proposals-ready', 'pr-open', 'pr-merged'].includes(activeRemStatus)
                   ? quality.violations.filter(v => v.fixTier === 'manual')
                   : quality.violations
               }

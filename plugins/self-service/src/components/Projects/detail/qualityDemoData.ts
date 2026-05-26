@@ -69,7 +69,7 @@ export type RemediationStatus =
   | 'none'
   | 'available'
   | 'in-progress'
-  | 'branch-ready'
+  | 'proposals-ready'
   | 'pr-open'
   | 'pr-merged';
 
@@ -391,7 +391,7 @@ const QUALITY_DATA: Record<string, ProjectQualityData> = {
       { scanIndex: 2, totalViolations: 25, fixable: 14 },
       { scanIndex: 3, totalViolations: 21, fixable: 12 },
     ],
-    remediationStatus: 'branch-ready',
+    remediationStatus: 'proposals-ready',
     remediationBranch: 'apme/remediate-005',
     remediationSummary: { addressed: 12, remaining: 9, autoFixed: 8, aiProposed: 4 },
     latestScan: {
