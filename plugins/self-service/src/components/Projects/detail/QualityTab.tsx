@@ -226,89 +226,69 @@ const ViolationRow = ({
           {v.message}
         </Typography>
 
-        {/* Right-side fix type label — evolves per state */}
-        {/* Suggestion column — aligned with header */}
+        {/* Status column — lifecycle + fix type */}
         <Box style={{ minWidth: 90, display: 'flex', justifyContent: 'flex-end', flexShrink: 0 }}>
         {rowState === 'fixing' ? (
-          <Chip size="small" label="Generating…" style={{
+          <Chip size="small" label="Analyzing" style={{
             fontSize: 10, height: 18,
             backgroundColor: `${statusColors.info}15`, color: statusColors.info, fontStyle: 'italic',
           }} />
         ) : rowState === 'no-fix' ? (
-          <Tooltip title="APME could not generate a fix for this violation — manual attention required" arrow>
-            <Chip size="small" label="No fix found" style={{
-              fontSize: 10, height: 18,
-              backgroundColor: '#fff3e0', color: '#e65100',
+          <Tooltip title="APME could not generate a fix — requires manual attention" arrow>
+            <Chip size="small" label="Open · Manual" style={{
+              fontSize: 10, height: 18, backgroundColor: '#f5f5f5', color: '#999',
             }} />
           </Tooltip>
         ) : rowState === 'skipped' ? (
-          <Tooltip title="You declined the suggested fix — this violation is still present" arrow>
-            <Chip size="small" label="Skipped" style={{
-              fontSize: 10, height: 18,
-              backgroundColor: '#f5f5f5', color: '#999',
+          <Tooltip title="You declined the suggested fix — violation is still open" arrow>
+            <Chip size="small" label="Open · Skipped" style={{
+              fontSize: 10, height: 18, backgroundColor: '#f5f5f5', color: '#999',
             }} />
           </Tooltip>
         ) : rowState === 'in-pr' ? (
-          <Tooltip title="A fix for this violation is included in the open pull request" arrow>
-            <Chip size="small" label="In PR" style={{
+          <Tooltip title="A fix for this violation is in an open pull request" arrow>
+            <Chip size="small" label="Fix in PR" style={{
               fontSize: 10, height: 18,
               backgroundColor: `${statusColors.info}15`, color: statusColors.info,
             }} />
           </Tooltip>
         ) : rowState === 'merged' ? (
           <Tooltip title="This violation was fixed and merged" arrow>
-            <Chip size="small" label="Fixed" style={{
+            <Chip size="small" label="Resolved" style={{
               fontSize: 10, height: 18,
               backgroundColor: `${statusColors.success}15`, color: statusColors.success,
             }} />
           </Tooltip>
         ) : showProposal ? (
           <Tooltip title={
-            proposal.tier === 'deterministic'
-              ? (proposalApproved ? 'Approved — deterministic fix will be included in the PR' : 'Declined — click to approve this deterministic fix')
-              : (proposalApproved ? 'Approved — AI fix will be included in the PR (review carefully)' : 'Declined — click to approve this AI-assisted fix')
+            proposalApproved
+              ? `Suggested fix approved (${proposal.tier === 'deterministic' ? 'auto' : 'AI'}) — click to decline`
+              : `Suggested fix declined — click to approve`
           } arrow>
             <Chip
               size="small"
-              label={proposalApproved
-                ? (proposal.tier === 'deterministic' ? 'Auto fix ✓' : 'AI fix ✓')
-                : (proposal.tier === 'deterministic' ? 'Auto fix' : 'AI fix')
-              }
+              label={proposalApproved ? 'Suggested ✓' : 'Suggested'}
               clickable
               onClick={(e: React.MouseEvent) => { e.stopPropagation(); onToggleApproval?.(); }}
               style={{
                 fontSize: 10, height: 18, cursor: 'pointer',
-                backgroundColor: proposalApproved
-                  ? (proposal.tier === 'deterministic' ? `${statusColors.success}20` : `${statusColors.info}20`)
-                  : '#f5f5f5',
-                color: proposalApproved
-                  ? (proposal.tier === 'deterministic' ? statusColors.success : statusColors.info)
-                  : '#999',
-                border: proposalApproved
-                  ? `1px solid ${proposal.tier === 'deterministic' ? statusColors.success : statusColors.info}40`
-                  : '1px solid rgba(0,0,0,0.12)',
-                textDecoration: proposalApproved ? 'none' : 'line-through',
+                backgroundColor: proposalApproved ? `${statusColors.success}15` : '#fff3e0',
+                color: proposalApproved ? statusColors.success : '#e65100',
+                border: proposalApproved ? `1px solid ${statusColors.success}40` : '1px solid #ffcc80',
               }}
             />
           </Tooltip>
         ) : v.fixTier === 'manual' ? (
-          <Tooltip title="This violation requires a manual fix — no automated suggestion available" arrow>
-            <Chip size="small" label="Manual" style={{
-              fontSize: 10, height: 18,
-              backgroundColor: '#f5f5f5', color: '#999',
+          <Tooltip title="Requires manual fix — no automated suggestion available" arrow>
+            <Chip size="small" label="Open · Manual" style={{
+              fontSize: 10, height: 18, backgroundColor: '#f5f5f5', color: '#999',
             }} />
           </Tooltip>
         ) : (
-          <Tooltip title={v.fixTier === 'deterministic' ? 'Can be auto-fixed with a safe, rule-based transform' : 'Can be fixed with AI assistance — review the suggestion before applying'} arrow>
-            <Chip
-              size="small"
-              label={v.fixTier === 'deterministic' ? 'Auto-fixable' : 'AI-fixable'}
-              style={{
-                fontSize: 10, height: 18,
-                backgroundColor: v.fixTier === 'deterministic' ? `${statusColors.success}15` : `${statusColors.info}15`,
-                color: v.fixTier === 'deterministic' ? statusColors.success : statusColors.info,
-              }}
-            />
+          <Tooltip title={v.fixTier === 'deterministic' ? 'Can be auto-fixed with a rule-based transform' : 'Can be fixed with AI assistance'} arrow>
+            <Chip size="small" label={v.fixTier === 'deterministic' ? 'Open · Auto' : 'Open · AI'} style={{
+              fontSize: 10, height: 18, backgroundColor: '#f5f5f5', color: '#666',
+            }} />
           </Tooltip>
         )}
         </Box>
@@ -726,38 +706,6 @@ export const QualityTab = ({
                     Review in Dev Spaces
                   </Button>
                 )}
-                {activeRemStatus === 'proposals-ready' && isDeveloper && (
-                  <Button
-                    variant="contained" color="primary" size="small"
-                    disabled={approvedCount === 0}
-                    onClick={() => setDemoRemediationState('pr-open')}
-                    style={{ textTransform: 'none', fontSize: 12, fontWeight: 500 }}
-                  >
-                    Create pull request ({approvedCount})
-                  </Button>
-                )}
-                {activeRemStatus === 'pr-open' && (
-                  <>
-                    {isDevSpacesConnected && isDeveloper && (
-                      <Button
-                        size="small" variant="outlined"
-                        startIcon={<CodeIcon style={{ fontSize: 14 }} />}
-                        onClick={() => window.open(`${DEVSPACES_BASE_URL}/#${repoUrl}/tree/${demoQuality.remediationBranch ?? 'main'}`, '_blank')}
-                        style={{ textTransform: 'none', fontSize: 12, fontWeight: 500 }}
-                      >
-                        Review in Dev Spaces
-                      </Button>
-                    )}
-                    <Button
-                      size="small" variant="contained" color="primary"
-                      startIcon={<OpenInNewIcon style={{ fontSize: 14 }} />}
-                      onClick={() => window.open(demoQuality.remediationPrUrl, '_blank')}
-                      style={{ textTransform: 'none', fontSize: 12, fontWeight: 500 }}
-                    >
-                      View pull request
-                    </Button>
-                  </>
-                )}
                 {activeRemStatus === 'pr-merged' && (
                   <Chip
                     icon={<CheckCircleIcon style={{ fontSize: 14, color: statusColors.success }} />}
@@ -833,6 +781,67 @@ export const QualityTab = ({
               </Box>
             </Box>
           </Box>
+
+          {/* ── Inline PR notification ── */}
+          {(activeRemStatus === 'proposals-ready' || activeRemStatus === 'pr-open') && (
+            <Box
+              display="flex" alignItems="center" justifyContent="space-between"
+              style={{
+                padding: '10px 20px',
+                backgroundColor: activeRemStatus === 'pr-open' ? `${statusColors.info}08` : `${statusColors.success}06`,
+                borderBottom: '1px solid rgba(0,0,0,0.08)',
+              }}
+            >
+              {activeRemStatus === 'proposals-ready' && (
+                <>
+                  <Box display="flex" alignItems="center" style={{ gap: 8 }}>
+                    <CheckCircleIcon style={{ fontSize: 16, color: statusColors.success }} />
+                    <Typography style={{ fontSize: 13, color: '#333' }}>
+                      <strong>{approvedCount}</strong> fixes approved — ready to create a pull request
+                    </Typography>
+                  </Box>
+                  <Button
+                    variant="contained" color="primary" size="small"
+                    disabled={approvedCount === 0}
+                    onClick={() => setDemoRemediationState('pr-open')}
+                    style={{ textTransform: 'none', fontSize: 12, fontWeight: 500 }}
+                  >
+                    Create pull request
+                  </Button>
+                </>
+              )}
+              {activeRemStatus === 'pr-open' && (
+                <>
+                  <Box display="flex" alignItems="center" style={{ gap: 8 }}>
+                    <OpenInNewIcon style={{ fontSize: 16, color: statusColors.info }} />
+                    <Typography style={{ fontSize: 13, color: '#333' }}>
+                      Pull request open with {demoQuality.remediationSummary?.addressed ?? 0} fixes
+                    </Typography>
+                  </Box>
+                  <Box display="flex" alignItems="center" style={{ gap: 8 }}>
+                    {isDevSpacesConnected && isDeveloper && (
+                      <Button
+                        size="small" variant="outlined"
+                        startIcon={<CodeIcon style={{ fontSize: 14 }} />}
+                        onClick={() => window.open(`${DEVSPACES_BASE_URL}/#${repoUrl}/tree/${demoQuality.remediationBranch ?? 'main'}`, '_blank')}
+                        style={{ textTransform: 'none', fontSize: 12, fontWeight: 500 }}
+                      >
+                        Review in Dev Spaces
+                      </Button>
+                    )}
+                    <Button
+                      size="small" variant="contained" color="primary"
+                      startIcon={<OpenInNewIcon style={{ fontSize: 14 }} />}
+                      onClick={() => window.open(demoQuality.remediationPrUrl, '_blank')}
+                      style={{ textTransform: 'none', fontSize: 12, fontWeight: 500 }}
+                    >
+                      View pull request
+                    </Button>
+                  </Box>
+                </>
+              )}
+            </Box>
+          )}
 
           {/* ── Category filter + select/actions bar ── */}
           <Box style={{ padding: '8px 16px', borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
@@ -933,8 +942,8 @@ export const QualityTab = ({
               Violation
             </Typography>
             <Box display="flex" alignItems="center" style={{ gap: 16 }}>
-              <Typography style={{ fontSize: 10, fontWeight: 600, color: '#999', textTransform: 'uppercase', letterSpacing: 0.5, minWidth: 90, textAlign: 'right' }}>
-                Suggestion
+              <Typography style={{ fontSize: 10, fontWeight: 600, color: '#999', textTransform: 'uppercase', letterSpacing: 0.5, minWidth: 80, textAlign: 'right' }}>
+                Status
               </Typography>
               {repoUrl && isDevSpacesConnected && (
                 <Typography style={{ fontSize: 10, fontWeight: 600, color: '#999', textTransform: 'uppercase', letterSpacing: 0.5, width: 28, textAlign: 'center' }}>
