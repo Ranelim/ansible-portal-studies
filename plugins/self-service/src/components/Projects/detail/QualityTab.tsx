@@ -15,6 +15,8 @@ import {
   IconButton,
   LinearProgress,
   Checkbox,
+  Tabs,
+  Tab,
 } from '@material-ui/core';
 import CheckCircleIcon from '@material-ui/icons/CheckCircle';
 import OpenInNewIcon from '@material-ui/icons/OpenInNew';
@@ -494,6 +496,7 @@ export const QualityTab = ({
   const [demoRemediationState, setDemoRemediationState] = useState<RemediationStatus | null>(null);
   const [approvedProposals, setApprovedProposals] = useState<Set<string>>(new Set());
   const [selectedViolations, setSelectedViolations] = useState<Set<string>>(new Set());
+  const [activeTab, setActiveTab] = useState(0);
   const [progress, setProgress] = useState(0);
 
   if (!quality) {
@@ -625,8 +628,50 @@ export const QualityTab = ({
     return Array.from(map.entries());
   }, [filteredViolations]);
 
-  // Compute header content based on state
+  // Tab-specific violation lists
+  const suggestedViolations = useMemo(() =>
+    quality.violations.filter(v => v.fixTier !== 'manual' && !failedFixes.has(getViolationKey(v))),
+    [quality.violations, failedFixes]
+  );
+
+  const prViolations = useMemo(() =>
+    quality.violations.filter(v => {
+      if (v.fixTier === 'manual') return false;
+      const key = getViolationKey(v);
+      return approvedProposals.has(key) && !failedFixes.has(key);
+    }),
+    [quality.violations, approvedProposals, failedFixes]
+  );
+
+  const suggestedCount = suggestedViolations.length;
+  const prCount = prViolations.length;
+
+  // Which violations to show based on active tab
+  const tabViolations = useMemo(() => {
+    if (activeTab === 1) return suggestedViolations;
+    if (activeTab === 2) return prViolations;
+    return filteredViolations;
+  }, [activeTab, filteredViolations, suggestedViolations, prViolations]);
+
+  const tabGrouped = useMemo(() => {
+    let source = tabViolations;
+    if (activeTab === 0) {
+      if (severityFilter) source = source.filter(v => v.severity === severityFilter);
+      if (categoryFilter !== 'all') source = source.filter(v => v.category === categoryFilter);
+    }
+    const map = new Map<string, QualityViolation[]>();
+    source.forEach(v => {
+      const arr = map.get(v.file) || [];
+      arr.push(v);
+      map.set(v.file, arr);
+    });
+    return Array.from(map.entries());
+  }, [tabViolations, activeTab, severityFilter, categoryFilter]);
+
   const approvedCount = approvedProposals.size;
+
+  const showSuggestionsTab = ['proposals-ready', 'pr-open', 'pr-merged'].includes(activeRemStatus);
+  const showPrTab = ['pr-open', 'pr-merged'].includes(activeRemStatus);
 
   return (
     <Box style={{ marginTop: 24 }}>
@@ -782,8 +827,32 @@ export const QualityTab = ({
             </Box>
           </Box>
 
-          {/* ── Inline PR notification ── */}
-          {(activeRemStatus === 'proposals-ready' || activeRemStatus === 'pr-open') && (
+          {/* ── Tab bar ── */}
+          <Box style={{ borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
+            <Tabs
+              value={activeTab}
+              onChange={(_: any, v: number) => setActiveTab(v)}
+              indicatorColor="primary"
+              textColor="primary"
+              style={{ minHeight: 36 }}
+            >
+              <Tab
+                label={`Violations (${scan.totalViolations})`}
+                style={{ textTransform: 'none', fontSize: 13, minHeight: 36, fontWeight: activeTab === 0 ? 600 : 400 }}
+              />
+              <Tab
+                label={`Suggestions (${showSuggestionsTab ? suggestedCount : 0})`}
+                style={{ textTransform: 'none', fontSize: 13, minHeight: 36, fontWeight: activeTab === 1 ? 600 : 400 }}
+              />
+              <Tab
+                label={`Fix in PR (${showPrTab ? prCount : 0})`}
+                style={{ textTransform: 'none', fontSize: 13, minHeight: 36, fontWeight: activeTab === 2 ? 600 : 400 }}
+              />
+            </Tabs>
+          </Box>
+
+          {/* ── Inline PR notification — shown on suggestions/PR tabs ── */}
+          {(activeRemStatus === 'proposals-ready' && activeTab === 1) || (activeRemStatus === 'pr-open' && (activeTab === 1 || activeTab === 2)) ? (
             <Box
               display="flex" alignItems="center" justifyContent="space-between"
               style={{
@@ -841,10 +910,10 @@ export const QualityTab = ({
                 </>
               )}
             </Box>
-          )}
+          ) : null}
 
-          {/* ── Category filter + select/actions bar ── */}
-          <Box style={{ padding: '8px 16px', borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
+          {/* ── Category filter + select/actions bar (Violations tab only) ── */}
+          {activeTab === 0 && <Box style={{ padding: '8px 16px', borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
             <Box display="flex" alignItems="center" justifyContent="space-between">
               {/* Left: Select button + actions */}
               <Box display="flex" alignItems="center" style={{ gap: 8 }}>
@@ -924,7 +993,7 @@ export const QualityTab = ({
                 ))}
               </Box>
             </Box>
-          </Box>
+          </Box>}
 
           {/* ── Sticky column headers ── */}
           <Box
@@ -942,8 +1011,8 @@ export const QualityTab = ({
               Violation
             </Typography>
             <Box display="flex" alignItems="center" style={{ gap: 16 }}>
-              <Typography style={{ fontSize: 10, fontWeight: 600, color: '#999', textTransform: 'uppercase', letterSpacing: 0.5, minWidth: 80, textAlign: 'right' }}>
-                Status
+              <Typography style={{ fontSize: 10, fontWeight: 600, color: '#999', textTransform: 'uppercase', letterSpacing: 0.5, minWidth: 90, textAlign: 'right' }}>
+                Fix status
               </Typography>
               {repoUrl && isDevSpacesConnected && (
                 <Typography style={{ fontSize: 10, fontWeight: 600, color: '#999', textTransform: 'uppercase', letterSpacing: 0.5, width: 28, textAlign: 'center' }}>
@@ -953,8 +1022,32 @@ export const QualityTab = ({
             </Box>
           </Box>
 
-          {/* ── Violation rows — each row evolves per state ── */}
-          {grouped.map(([file, fileViolations]) => (
+          {/* ── Empty states for Suggestions and PR tabs ── */}
+          {activeTab === 1 && !showSuggestionsTab && (
+            <Box style={{ padding: '40px 24px', textAlign: 'center' }}>
+              <BuildIcon style={{ fontSize: 36, color: '#ccc', marginBottom: 8 }} />
+              <Typography style={{ fontSize: 14, fontWeight: 500, color: '#666', marginBottom: 4 }}>
+                No suggestions yet
+              </Typography>
+              <Typography style={{ fontSize: 13, color: '#999', maxWidth: 360, margin: '0 auto' }}>
+                Select violations on the Violations tab, then click "Suggest fixes" to generate fix proposals.
+              </Typography>
+            </Box>
+          )}
+          {activeTab === 2 && !showPrTab && (
+            <Box style={{ padding: '40px 24px', textAlign: 'center' }}>
+              <OpenInNewIcon style={{ fontSize: 36, color: '#ccc', marginBottom: 8 }} />
+              <Typography style={{ fontSize: 14, fontWeight: 500, color: '#666', marginBottom: 4 }}>
+                No pull request yet
+              </Typography>
+              <Typography style={{ fontSize: 13, color: '#999', maxWidth: 360, margin: '0 auto' }}>
+                Review and approve suggestions first, then create a pull request with the approved fixes.
+              </Typography>
+            </Box>
+          )}
+
+          {/* ── Violation rows — filtered by active tab ── */}
+          {(activeTab === 0 || (activeTab === 1 && showSuggestionsTab) || (activeTab === 2 && showPrTab)) && tabGrouped.map(([file, fileViolations]) => (
             <Box key={file}>
               <Box
                 style={{
