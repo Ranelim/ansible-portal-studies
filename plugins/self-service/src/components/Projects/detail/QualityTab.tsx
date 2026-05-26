@@ -13,11 +13,6 @@ import {
   Tooltip,
   Collapse,
   IconButton,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
 } from '@material-ui/core';
 import CheckCircleIcon from '@material-ui/icons/CheckCircle';
 import ErrorIcon from '@material-ui/icons/Error';
@@ -27,12 +22,11 @@ import OpenInNewIcon from '@material-ui/icons/OpenInNew';
 import CodeIcon from '@material-ui/icons/Code';
 import AutorenewIcon from '@material-ui/icons/Autorenew';
 import BuildIcon from '@material-ui/icons/Build';
-import HistoryIcon from '@material-ui/icons/History';
 import VerifiedUserOutlinedIcon from '@material-ui/icons/VerifiedUserOutlined';
 import { statusColors } from '../../common/statusColors';
 import {
   type ProjectQualityData,
-  type ScanResult,
+
   type SeverityClass,
   type QualityViolation,
   type ViolationCategory,
@@ -220,12 +214,14 @@ const BANNER_CONFIG: Record<BannerState, {
 };
 
 const RemediationBanner = ({
-  bannerState, fixableCount, quality, repoUrl,
+  bannerState, fixableCount, quality, repoUrl, onStateChange, totalViolations,
 }: {
   bannerState: BannerState;
   fixableCount: number;
   quality: ProjectQualityData;
   repoUrl?: string;
+  onStateChange?: (state: RemediationStatus) => void;
+  totalViolations: number;
 }) => {
   const { hasRole } = useUserRoleContext();
   const config = BANNER_CONFIG[bannerState];
@@ -237,6 +233,37 @@ const RemediationBanner = ({
   const showFixButton = (bannerState === 'fixable' || bannerState === 'available') && isDeveloper;
   const showDevSpaces = (bannerState === 'branch-ready' || bannerState === 'pr-open') && isDevSpacesConnected && isDeveloper;
   const showPrLink = bannerState === 'pr-open' && quality.remediationPrUrl;
+  const showResults = ['branch-ready', 'pr-open', 'pr-merged'].includes(bannerState as string) && quality.remediationSummary;
+
+  const handleFixClick = () => {
+    if (!onStateChange) return;
+    onStateChange('in-progress');
+    setTimeout(() => onStateChange('branch-ready'), 3000);
+  };
+
+  // Progress steps for in-progress state
+  const [progress, setProgress] = useState(0);
+  const [currentStep, setCurrentStep] = useState(0);
+  const steps = [
+    'Analyzing violations…',
+    `Running deterministic fixes (${Math.ceil(fixableCount * 0.7)} rules)…`,
+    `Running AI-assisted fixes (${Math.floor(fixableCount * 0.3)} candidates)…`,
+    'Committing changes to branch…',
+  ];
+
+  useState(() => {
+    if (bannerState !== 'in-progress') return;
+    const interval = setInterval(() => {
+      setProgress(prev => {
+        const next = Math.min(prev + 8 + Math.random() * 12, 100);
+        if (next > 25 && currentStep < 1) setCurrentStep(1);
+        if (next > 55 && currentStep < 2) setCurrentStep(2);
+        if (next > 85 && currentStep < 3) setCurrentStep(3);
+        return next;
+      });
+    }, 400);
+    return () => clearInterval(interval);
+  });
 
   return (
     <Card variant="outlined" style={{
@@ -245,6 +272,7 @@ const RemediationBanner = ({
       backgroundColor: `${config.color}06`,
     }}>
       <CardContent style={{ padding: '14px 20px' }}>
+        {/* Header row */}
         <Box display="flex" alignItems="flex-start" justifyContent="space-between">
           <Box display="flex" alignItems="flex-start" style={{ gap: 10, flex: 1, minWidth: 0 }}>
             {config.icon === 'build' && (
@@ -273,6 +301,7 @@ const RemediationBanner = ({
               <Button
                 variant="outlined" size="small"
                 startIcon={<BuildIcon style={{ fontSize: 14 }} />}
+                onClick={handleFixClick}
                 style={{ textTransform: 'none', fontSize: 12, fontWeight: 500, whiteSpace: 'nowrap' }}
               >
                 Fix violations
@@ -300,6 +329,69 @@ const RemediationBanner = ({
             )}
           </Box>
         </Box>
+
+        {/* Progress steps — inline in banner during in-progress */}
+        {bannerState === 'in-progress' && (
+          <Box style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid rgba(0,0,0,0.06)' }}>
+            <Box style={{
+              height: 4, borderRadius: 2, backgroundColor: '#eee', overflow: 'hidden', marginBottom: 12,
+            }}>
+              <Box style={{
+                height: '100%', borderRadius: 2,
+                backgroundColor: statusColors.info,
+                width: `${Math.min(progress, 95)}%`,
+                transition: 'width 0.4s ease',
+              }} />
+            </Box>
+            {steps.map((step, i) => (
+              <Box key={i} display="flex" alignItems="center" style={{ gap: 8, padding: '2px 0' }}>
+                {i < currentStep ? (
+                  <CheckCircleIcon style={{ fontSize: 14, color: statusColors.success }} />
+                ) : i === currentStep ? (
+                  <AutorenewIcon style={{ fontSize: 14, color: statusColors.info, animation: 'spin 1.5s linear infinite' }} />
+                ) : (
+                  <Box style={{ width: 14, height: 14, borderRadius: 7, border: '1.5px solid #ddd' }} />
+                )}
+                <Typography style={{
+                  fontSize: 12, color: i <= currentStep ? '#333' : '#bbb',
+                  fontWeight: i === currentStep ? 500 : 400,
+                }}>
+                  {step}
+                </Typography>
+              </Box>
+            ))}
+          </Box>
+        )}
+
+        {/* Results summary — inline in banner after remediation */}
+        {showResults && quality.remediationSummary && (
+          <Box style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid rgba(0,0,0,0.06)', display: 'flex', alignItems: 'center', gap: 24 }}>
+            <Box display="flex" alignItems="baseline" style={{ gap: 4 }}>
+              <Typography style={{ fontSize: 18, fontWeight: 700 }}>{totalViolations}</Typography>
+              <Typography style={{ fontSize: 11, color: '#666' }}>violations</Typography>
+            </Box>
+            <Box display="flex" alignItems="baseline" style={{ gap: 4 }}>
+              <Typography style={{ fontSize: 18, fontWeight: 700, color: statusColors.success }}>{quality.remediationSummary.addressed}</Typography>
+              <Typography style={{ fontSize: 11, color: '#666' }}>fixed</Typography>
+            </Box>
+            <Box display="flex" alignItems="baseline" style={{ gap: 4 }}>
+              <Typography style={{ fontSize: 18, fontWeight: 700, color: '#8a6d00' }}>{quality.remediationSummary.remaining}</Typography>
+              <Typography style={{ fontSize: 11, color: '#666' }}>remaining</Typography>
+            </Box>
+            <Typography style={{ fontSize: 11, color: '#999' }}>
+              {quality.remediationSummary.autoFixed} auto · {quality.remediationSummary.aiProposed} AI
+            </Typography>
+            {bannerState === 'branch-ready' && onStateChange && (
+              <Button
+                size="small" variant="text"
+                onClick={() => onStateChange('pr-open')}
+                style={{ textTransform: 'none', fontSize: 11, color: '#666', marginLeft: 'auto' }}
+              >
+                Create pull request
+              </Button>
+            )}
+          </Box>
+        )}
       </CardContent>
     </Card>
   );
@@ -309,16 +401,17 @@ const RemediationBanner = ({
 // Violation Row — a single violation entry (grouped under file headers)
 // ---------------------------------------------------------------------------
 const ViolationRow = ({
-  v, repoUrl, branch,
+  v, repoUrl, branch, isFixing,
 }: {
   v: QualityViolation;
   repoUrl?: string; branch?: string;
+  isFixing?: boolean;
 }) => {
   const { hasRole } = useUserRoleContext();
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <Box style={{ borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+    <Box style={{ borderBottom: '1px solid rgba(0,0,0,0.06)', opacity: isFixing ? 0.5 : 1, transition: 'opacity 0.2s' }}>
       <Box
         display="flex" alignItems="center"
         style={{ padding: '6px 16px 6px 32px', gap: 10, cursor: 'pointer' }}
@@ -341,7 +434,11 @@ const ViolationRow = ({
         <Typography style={{ fontSize: 13, flex: 1, color: '#333' }} noWrap>
           {v.message}
         </Typography>
-        {v.fixTier !== 'manual' && (
+        {isFixing ? (
+          <Typography style={{ fontSize: 11, color: statusColors.info, fontWeight: 500, fontStyle: 'italic' }}>
+            Fixing…
+          </Typography>
+        ) : v.fixTier !== 'manual' ? (
           <Chip
             size="small"
             label={v.fixTier === 'deterministic' ? 'Auto-fixable' : 'AI-fixable'}
@@ -351,8 +448,7 @@ const ViolationRow = ({
               color: v.fixTier === 'deterministic' ? statusColors.success : statusColors.info,
             }}
           />
-        )}
-        {v.fixTier === 'manual' && (
+        ) : (
           <Typography style={{ fontSize: 11, color: '#999' }}>manual</Typography>
         )}
         <Chip size="small" label={v.ruleId} variant="outlined" style={{
@@ -415,6 +511,7 @@ const ViolationsCard = ({
   severityFilter,
   repoUrl,
   branch,
+  isRemediating,
 }: {
   violations: QualityViolation[];
   categoryFilter: ViolationCategory | 'all';
@@ -422,6 +519,7 @@ const ViolationsCard = ({
   severityFilter?: SeverityClass | null;
   repoUrl?: string;
   branch?: string;
+  isRemediating?: boolean;
 }) => {
   const filtered = useMemo(() => {
     let result = violations;
@@ -514,6 +612,7 @@ const ViolationsCard = ({
               v={v}
               repoUrl={repoUrl}
               branch={branch}
+              isFixing={isRemediating && v.fixTier !== 'manual'}
             />
           ))}
         </Box>
@@ -522,9 +621,6 @@ const ViolationsCard = ({
   );
 };
 
-// ---------------------------------------------------------------------------
-// Scan History Section
-// ---------------------------------------------------------------------------
 const TRIGGER_LABELS: Record<string, string> = {
   push: 'Push',
   pull_request: 'Pull request',
@@ -532,80 +628,6 @@ const TRIGGER_LABELS: Record<string, string> = {
   manual: 'Manual',
 };
 
-const ScanHistorySection = ({ scans }: { scans: ScanResult[] }) => {
-  const [expanded, setExpanded] = useState(false);
-
-  if (scans.length === 0) return null;
-
-  return (
-    <Card variant="outlined" style={{ borderRadius: 12, marginTop: 20 }}>
-      <Box
-        display="flex" alignItems="center" justifyContent="space-between"
-        style={{ padding: '12px 20px', cursor: 'pointer' }}
-        onClick={() => setExpanded(!expanded)}
-      >
-        <Box display="flex" alignItems="center" style={{ gap: 8 }}>
-          <HistoryIcon style={{ fontSize: 18, color: '#666' }} />
-          <Typography style={{ fontSize: 14, fontWeight: 600 }}>
-            Scan history ({scans.length})
-          </Typography>
-        </Box>
-        {expanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-      </Box>
-      <Collapse in={expanded}>
-        <Table size="small">
-          <TableHead>
-            <TableRow>
-              <TableCell style={{ fontSize: 12, fontWeight: 600, color: '#666' }}>Date</TableCell>
-              <TableCell style={{ fontSize: 12, fontWeight: 600, color: '#666' }}>Violations</TableCell>
-              <TableCell style={{ fontSize: 12, fontWeight: 600, color: '#666' }}>Trigger</TableCell>
-              <TableCell style={{ fontSize: 12, fontWeight: 600, color: '#666' }}>Commit</TableCell>
-              <TableCell style={{ fontSize: 12, fontWeight: 600, color: '#666' }}>Source</TableCell>
-              <TableCell style={{ fontSize: 12, fontWeight: 600, color: '#666' }} align="right" />
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {scans.map(scan => (
-              <TableRow key={scan.scanId} hover>
-                <TableCell style={{ fontSize: 12 }}>{scan.createdAt}</TableCell>
-                <TableCell>
-                  <Chip
-                    size="small"
-                    label={scan.totalViolations === 0 ? 'Clean' : `${scan.totalViolations} violations`}
-                    style={{
-                      fontSize: 10, height: 20,
-                      backgroundColor: scan.totalViolations === 0 ? `${statusColors.success}15` : `${statusColors.error}15`,
-                      color: scan.totalViolations === 0 ? statusColors.success : statusColors.error,
-                      fontWeight: 600,
-                    }}
-                  />
-                </TableCell>
-                <TableCell>
-                  <Chip size="small" label={TRIGGER_LABELS[scan.trigger ?? 'manual'] ?? scan.trigger} variant="outlined" style={{ fontSize: 10, height: 18 }} />
-                </TableCell>
-                <TableCell style={{ fontSize: 11, fontFamily: 'monospace', color: '#666' }}>
-                  {scan.commitHash.slice(0, 7)}
-                </TableCell>
-                <TableCell style={{ fontSize: 11, color: '#666' }}>
-                  {scan.scanSource === 'github-action' ? 'GitHub Actions' : 'Manual'}
-                </TableCell>
-                <TableCell align="right">
-                  {scan.ciRunUrl && (
-                    <Tooltip title="View CI run">
-                      <IconButton size="small" onClick={() => window.open(scan.ciRunUrl, '_blank')}>
-                        <OpenInNewIcon style={{ fontSize: 14 }} />
-                      </IconButton>
-                    </Tooltip>
-                  )}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </Collapse>
-    </Card>
-  );
-};
 
 
 // ---------------------------------------------------------------------------
@@ -740,6 +762,19 @@ export const QualityTab = ({
               Review in Dev Spaces
             </Button>
           )}
+          {hasRole('developer') && (
+            <Button
+              size="small" variant="outlined"
+              startIcon={<AutorenewIcon style={{ fontSize: 14 }} />}
+              disabled={activeRemStatus === 'in-progress'}
+              onClick={() => {
+                setDemoRemediationState('none');
+              }}
+              style={{ textTransform: 'none', fontSize: 12, color: activeRemStatus === 'in-progress' ? '#ccc' : '#666' }}
+            >
+              Scan
+            </Button>
+          )}
           {scan.ciRunUrl && (
             <Button
               size="small" variant="text"
@@ -764,11 +799,13 @@ export const QualityTab = ({
             fixableCount={fixableCount}
             quality={demoQuality}
             repoUrl={repoUrl}
+            onStateChange={setDemoRemediationState}
+            totalViolations={scan.totalViolations}
           />
         ) : null;
       })()}
 
-      {/* Clean state */}
+      {/* Violations content */}
       {scan.totalViolations === 0 ? (
         <Card variant="outlined" style={{ borderRadius: 12 }}>
           <CardContent style={{ padding: '32px 24px', textAlign: 'center' }}>
@@ -782,55 +819,73 @@ export const QualityTab = ({
           </CardContent>
         </Card>
       ) : (
-        <>
-          {/* Violations summary card */}
-          <Card variant="outlined" style={{ borderRadius: 12 }}>
-            {/* Summary header */}
-            <Box style={{ padding: '16px 20px', borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
-              <Box display="flex" alignItems="center" justifyContent="space-between">
-                <Box display="flex" alignItems="center" style={{ gap: 16 }}>
-                  <Typography style={{ fontSize: 28, fontWeight: 700, color: statusColors.error }}>
-                    {scan.totalViolations}
-                  </Typography>
-                  <Box>
-                    <Typography style={{ fontSize: 14, fontWeight: 500 }}>
-                      Violations
+        <Card variant="outlined" style={{ borderRadius: 12 }}>
+          {/* Summary header */}
+          <Box style={{ padding: '16px 20px', borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
+            <Box display="flex" alignItems="center" justifyContent="space-between">
+              <Box display="flex" alignItems="center" style={{ gap: 16 }}>
+                {['branch-ready', 'pr-open', 'pr-merged'].includes(activeRemStatus) && demoQuality.remediationSummary ? (
+                  <>
+                    <Typography style={{ fontSize: 28, fontWeight: 700, color: '#8a6d00' }}>
+                      {demoQuality.remediationSummary.remaining}
                     </Typography>
-                    <Typography style={{ fontSize: 12, color: '#666' }}>
-                      {fixableCount} auto-fixable · {manualCount} manual review
+                    <Box>
+                      <Typography style={{ fontSize: 14, fontWeight: 500 }}>
+                        Remaining violations
+                      </Typography>
+                      <Typography style={{ fontSize: 12, color: '#666' }}>
+                        Require manual review
+                      </Typography>
+                    </Box>
+                  </>
+                ) : (
+                  <>
+                    <Typography style={{ fontSize: 28, fontWeight: 700, color: statusColors.error }}>
+                      {scan.totalViolations}
                     </Typography>
-                  </Box>
-                </Box>
-              </Box>
-              <Box style={{ marginTop: 12 }}>
-                <SeverityProgressBar breakdown={scan.severityBreakdown} />
-                <Box style={{ marginTop: 6 }}>
-                  <SeverityBar
-                    breakdown={scan.severityBreakdown}
-                    activeSeverity={severityFilter}
-                    onSeverityClick={setSeverityFilter}
-                  />
-                </Box>
+                    <Box>
+                      <Typography style={{ fontSize: 14, fontWeight: 500 }}>
+                        Violations
+                      </Typography>
+                      <Typography style={{ fontSize: 12, color: '#666' }}>
+                        {fixableCount} auto-fixable · {manualCount} manual review
+                      </Typography>
+                    </Box>
+                  </>
+                )}
               </Box>
             </Box>
+            <Box style={{ marginTop: 12 }}>
+              <SeverityProgressBar breakdown={scan.severityBreakdown} />
+              <Box style={{ marginTop: 6 }}>
+                <SeverityBar
+                  breakdown={scan.severityBreakdown}
+                  activeSeverity={severityFilter}
+                  onSeverityClick={setSeverityFilter}
+                />
+              </Box>
+            </Box>
+          </Box>
 
-            {/* Violations list */}
-            {quality.violations.length > 0 && (
-              <ViolationsCard
-                violations={quality.violations}
-                categoryFilter={categoryFilter}
-                setCategoryFilter={setCategoryFilter}
-                severityFilter={severityFilter}
-                repoUrl={repoUrl}
-                branch={branch}
-              />
-            )}
-          </Card>
-        </>
+          {/* Violations list */}
+          {quality.violations.length > 0 && (
+            <ViolationsCard
+              violations={
+                ['branch-ready', 'pr-open', 'pr-merged'].includes(activeRemStatus)
+                  ? quality.violations.filter(v => v.fixTier === 'manual')
+                  : quality.violations
+              }
+              categoryFilter={categoryFilter}
+              setCategoryFilter={setCategoryFilter}
+              severityFilter={severityFilter}
+              repoUrl={repoUrl}
+              branch={branch}
+              isRemediating={activeRemStatus === 'in-progress'}
+            />
+          )}
+        </Card>
       )}
 
-      {/* Scan history */}
-      <ScanHistorySection scans={quality.scanHistory} />
     </Box>
   );
 };
