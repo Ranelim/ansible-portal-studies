@@ -1,77 +1,63 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Box,
   Typography,
   Chip,
   Link,
-  Button,
   makeStyles,
-  Popover,
+  Collapse,
+  IconButton,
 } from '@material-ui/core';
-import { Table, TableColumn } from '@backstage/core-components';
 import { useNavigate } from 'react-router-dom';
-import CheckCircleIcon from '@material-ui/icons/CheckCircle';
-import RadioButtonUncheckedIcon from '@material-ui/icons/RadioButtonUnchecked';
-import FiberManualRecordIcon from '@material-ui/icons/FiberManualRecord';
+import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
+import ExpandLessIcon from '@material-ui/icons/ExpandLess';
+import SecurityIcon from '@material-ui/icons/Security';
+import BugReportIcon from '@material-ui/icons/BugReport';
+import BuildIcon from '@material-ui/icons/Build';
+import VerifiedUserOutlinedIcon from '@material-ui/icons/VerifiedUserOutlined';
 import { statusColors } from '../../common/statusColors';
 import {
-  getFleetQualityData,
+  getFleetViolationData,
   SEVERITY_COLORS,
-  type FleetQualityRow,
-  type PipelineStep,
-  type WorkflowStatus,
+  type FleetViolationCategory,
+  type FleetViolationRule,
+  type ViolationCategory,
+  type SeverityClass,
 } from '../detail/qualityDemoData';
 
-const STATUS_CHIP_STYLES: Record<string, { bg: string; color: string }> = {
-  'not-scanned': { bg: '#f5f5f5', color: '#666' },
-  'scanning': { bg: `${statusColors.info}10`, color: statusColors.info },
-  'clean': { bg: `${statusColors.success}10`, color: statusColors.success },
-  'has-violations': { bg: `${statusColors.error}10`, color: statusColors.error },
-  'remediation-available': { bg: `${statusColors.info}10`, color: statusColors.info },
-  'remediation-in-review': { bg: `${statusColors.info}10`, color: statusColors.info },
-  'remaining': { bg: `${statusColors.warning}10`, color: '#8a6d00' },
+const CATEGORY_ICONS: Record<ViolationCategory, React.ReactNode> = {
+  'aap-compatibility': <VerifiedUserOutlinedIcon style={{ fontSize: 18 }} />,
+  'security': <SecurityIcon style={{ fontSize: 18 }} />,
+  'lint': <BugReportIcon style={{ fontSize: 18 }} />,
+  'best-practice': <BuildIcon style={{ fontSize: 18 }} />,
 };
 
-const STATUS_FILTER_OPTIONS: { value: WorkflowStatus; label: string }[] = [
-  { value: 'has-violations', label: 'Has violations' },
-  { value: 'remediation-in-review', label: 'In review' },
-  { value: 'remaining', label: 'Remaining' },
-  { value: 'clean', label: 'Clean' },
-  { value: 'not-scanned', label: 'Not scanned' },
-];
-
-type SummaryFilter = 'needs-attention' | 'clean' | null;
+const CATEGORY_COLORS: Record<ViolationCategory, string> = {
+  'aap-compatibility': '#0066CC',
+  'security': '#A30000',
+  'lint': '#F0AB00',
+  'best-practice': '#3E8635',
+};
 
 const useStyles = makeStyles(theme => ({
-  repoLink: {
-    cursor: 'pointer',
-    fontWeight: 500,
-    fontSize: 14,
-    color: theme.palette.primary.main,
-    textDecoration: 'none',
-    '&:hover': { textDecoration: 'underline' },
-  },
   summaryBar: {
     display: 'flex',
     gap: theme.spacing(0.5),
     alignItems: 'center',
-    marginBottom: theme.spacing(1.5),
+    marginBottom: theme.spacing(2),
+    flexWrap: 'wrap' as const,
   },
   summaryChip: {
-    cursor: 'pointer',
     padding: '6px 12px',
     borderRadius: 8,
     border: `1px solid ${theme.palette.divider}`,
     backgroundColor: theme.palette.background.paper,
-    transition: 'all 0.15s',
     display: 'flex',
     alignItems: 'baseline',
     gap: 6,
-    userSelect: 'none' as const,
-    '&:hover': {
-      borderColor: theme.palette.primary.main,
-      backgroundColor: `${theme.palette.primary.main}04`,
-    },
+    cursor: 'pointer',
+    transition: 'all 0.15s',
+    '&:hover': { borderColor: theme.palette.primary.main },
   },
   summaryChipActive: {
     borderColor: theme.palette.primary.main,
@@ -87,386 +73,305 @@ const useStyles = makeStyles(theme => ({
     fontSize: 12,
     color: theme.palette.text.secondary,
   },
-  filterRow: {
+  categoryCard: {
+    border: `1px solid ${theme.palette.divider}`,
+    borderRadius: 12,
+    marginBottom: theme.spacing(2),
+    overflow: 'hidden',
+  },
+  categoryHeader: {
     display: 'flex',
     alignItems: 'center',
-    gap: theme.spacing(1),
-    marginBottom: theme.spacing(1.5),
-    flexWrap: 'wrap' as const,
-  },
-  filterChip: {
-    fontSize: 12,
-    height: 26,
-    fontWeight: 500,
+    padding: '14px 20px',
     cursor: 'pointer',
-    transition: 'all 0.15s',
+    gap: 12,
+    '&:hover': { backgroundColor: 'rgba(0,0,0,0.01)' },
   },
-  statusChip: {
-    cursor: 'pointer',
-    fontSize: 12,
-    height: 24,
-    fontWeight: 500,
-    transition: 'box-shadow 0.15s',
-    '&:hover': {
-      boxShadow: '0 0 0 2px rgba(0,0,0,0.08)',
-    },
-  },
-  popover: {
-    padding: theme.spacing(2),
-    minWidth: 260,
-    maxWidth: 320,
-  },
-  popoverTitle: {
-    fontWeight: 600,
-    fontSize: 13,
-    marginBottom: theme.spacing(1.5),
-  },
-  pipelineStep: {
+  categoryIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
     display: 'flex',
-    alignItems: 'flex-start',
-    gap: 10,
-    padding: '6px 0',
-    position: 'relative' as const,
-  },
-  stepConnector: {
-    position: 'absolute' as const,
-    left: 7,
-    top: 22,
-    bottom: -6,
-    width: 1,
-    backgroundColor: theme.palette.divider,
-  },
-  stepIcon: {
-    marginTop: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
     flexShrink: 0,
   },
-  stepLabel: {
-    fontSize: 13,
-    fontWeight: 500,
-    lineHeight: 1.3,
+  categoryTitle: {
+    fontWeight: 600,
+    fontSize: 15,
+    flex: 1,
   },
-  stepDetail: {
-    fontSize: 11,
+  categoryMeta: {
+    fontSize: 12,
     color: theme.palette.text.secondary,
-    marginTop: 1,
+  },
+  ruleRow: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    padding: '10px 20px 10px 64px',
+    borderTop: `1px solid ${theme.palette.divider}`,
+    gap: 12,
+    '&:hover': { backgroundColor: 'rgba(0,0,0,0.01)' },
+  },
+  ruleMessage: {
+    fontSize: 13,
+    color: '#333',
+    flex: 1,
+  },
+  ruleId: {
+    fontSize: 11,
+    fontFamily: 'monospace',
+    color: '#888',
+    marginTop: 2,
+  },
+  repoChip: {
+    fontSize: 11,
+    height: 22,
+    cursor: 'pointer',
+    '&:hover': { boxShadow: '0 0 0 1px rgba(0,0,0,0.15)' },
+  },
+  repoList: {
+    display: 'flex',
+    gap: 6,
+    flexWrap: 'wrap' as const,
+    alignItems: 'center',
+  },
+  sevBar: {
+    display: 'flex',
+    gap: 12,
+    marginBottom: theme.spacing(2),
+    flexWrap: 'wrap' as const,
+  },
+  sevItem: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 4,
+    padding: '4px 10px',
+    borderRadius: 6,
+    cursor: 'pointer',
+    transition: 'all 0.15s',
+    border: '1px solid transparent',
+  },
+  sevItemActive: {
+    border: '1px solid',
   },
 }));
 
-const PipelinePopover = ({
-  anchorEl,
-  onClose,
-  repoName,
-  pipeline,
-}: {
-  anchorEl: HTMLElement | null;
-  onClose: () => void;
-  repoName: string;
-  pipeline: PipelineStep[];
-}) => {
+const RuleRow = ({ rule }: { rule: FleetViolationRule }) => {
   const classes = useStyles();
-
-  const stepIcon = (step: PipelineStep) => {
-    if (step.status === 'done') {
-      return <CheckCircleIcon style={{ fontSize: 15, color: statusColors.success }} className={classes.stepIcon} />;
-    }
-    if (step.status === 'active') {
-      return <FiberManualRecordIcon style={{ fontSize: 15, color: statusColors.info }} className={classes.stepIcon} />;
-    }
-    return <RadioButtonUncheckedIcon style={{ fontSize: 15, color: '#ccc' }} className={classes.stepIcon} />;
-  };
+  const navigate = useNavigate();
+  const color = SEVERITY_COLORS[rule.severity];
 
   return (
-    <Popover
-      open={Boolean(anchorEl)}
-      anchorEl={anchorEl}
-      onClose={onClose}
-      anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
-      transformOrigin={{ vertical: 'top', horizontal: 'left' }}
-      onClick={(e: React.MouseEvent) => e.stopPropagation()}
-    >
-      <Box className={classes.popover}>
-        <Typography className={classes.popoverTitle}>
-          {repoName}
-        </Typography>
-        {pipeline.map((step, i) => (
-          <Box key={i} className={classes.pipelineStep}>
-            {i < pipeline.length - 1 && <Box className={classes.stepConnector} />}
-            {stepIcon(step)}
-            <Box>
-              <Typography className={classes.stepLabel} style={{
-                color: step.status === 'pending' ? '#999' : undefined,
-              }}>
-                {step.label}
-              </Typography>
-              {step.detail && (
-                <Typography className={classes.stepDetail}>
-                  {step.detail}
-                </Typography>
-              )}
-            </Box>
-          </Box>
+    <Box className={classes.ruleRow}>
+      <Chip
+        size="small"
+        label={rule.severity}
+        style={{
+          fontSize: 10, height: 20, textTransform: 'capitalize', fontWeight: 600,
+          backgroundColor: `${color}15`, color, marginTop: 2, flexShrink: 0,
+        }}
+      />
+      <Box flex={1} minWidth={0}>
+        <Typography className={classes.ruleMessage}>{rule.message}</Typography>
+        <Typography className={classes.ruleId}>{rule.ruleId}</Typography>
+      </Box>
+      <Box className={classes.repoList}>
+        {rule.repos.map(repo => (
+          <Chip
+            key={repo.name}
+            size="small"
+            label={`${repo.name}${repo.count > 1 ? ` (${repo.count})` : ''}`}
+            className={classes.repoChip}
+            variant="outlined"
+            onClick={(e: React.MouseEvent) => {
+              e.stopPropagation();
+              navigate(`/self-service/repositories/${repo.name}?tab=quality`);
+            }}
+          />
         ))}
       </Box>
-    </Popover>
+      <Chip
+        size="small"
+        label={`${rule.totalCount}`}
+        style={{
+          fontSize: 11, height: 22, fontWeight: 700, minWidth: 28,
+          backgroundColor: `${color}12`, color, flexShrink: 0,
+        }}
+      />
+    </Box>
   );
 };
 
-const StatusCell = ({ row }: { row: FleetQualityRow }) => {
+const CategorySection = ({
+  category,
+  expanded,
+  onToggle,
+  severityFilter,
+}: {
+  category: FleetViolationCategory;
+  expanded: boolean;
+  onToggle: () => void;
+  severityFilter: SeverityClass | null;
+}) => {
   const classes = useStyles();
-  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
-  const style = STATUS_CHIP_STYLES[row.workflowStatus] ?? STATUS_CHIP_STYLES['not-scanned'];
+  const color = CATEGORY_COLORS[category.category];
+  const icon = CATEGORY_ICONS[category.category];
+
+  const filteredRules = severityFilter
+    ? category.rules.filter(r => r.severity === severityFilter)
+    : category.rules;
+
+  const filteredTotal = filteredRules.reduce((s, r) => s + r.totalCount, 0);
+
+  if (severityFilter && filteredRules.length === 0) return null;
 
   return (
-    <>
-      <Chip
-        size="small"
-        label={row.statusLabel}
-        className={classes.statusChip}
-        onClick={(e: React.MouseEvent<HTMLElement>) => {
-          e.stopPropagation();
-          setAnchorEl(e.currentTarget);
-        }}
-        style={{
-          backgroundColor: style.bg,
-          color: style.color,
-          border: row.workflowStatus === 'not-scanned' ? '1px solid #ddd' : 'none',
-        }}
-      />
-      <PipelinePopover
-        anchorEl={anchorEl}
-        onClose={() => setAnchorEl(null)}
-        repoName={row.repoName}
-        pipeline={row.pipeline}
-      />
-    </>
+    <Box className={classes.categoryCard}>
+      <Box className={classes.categoryHeader} onClick={onToggle}>
+        <Box className={classes.categoryIcon} style={{ backgroundColor: `${color}12`, color }}>
+          {icon}
+        </Box>
+        <Box flex={1}>
+          <Typography className={classes.categoryTitle}>
+            {category.label}
+          </Typography>
+          <Typography className={classes.categoryMeta}>
+            {filteredTotal} violation{filteredTotal !== 1 ? 's' : ''} across {category.reposAffected} repo{category.reposAffected !== 1 ? 's' : ''} · {filteredRules.length} rule{filteredRules.length !== 1 ? 's' : ''}
+          </Typography>
+        </Box>
+        <Chip
+          size="small"
+          label={filteredTotal}
+          style={{
+            fontSize: 12, height: 24, fontWeight: 700, minWidth: 32,
+            backgroundColor: `${color}15`, color,
+          }}
+        />
+        <IconButton size="small">
+          {expanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+        </IconButton>
+      </Box>
+      <Collapse in={expanded}>
+        {filteredRules.map(rule => (
+          <RuleRow key={rule.ruleId} rule={rule} />
+        ))}
+      </Collapse>
+    </Box>
   );
 };
 
 export const QualityOverviewContent = () => {
   const classes = useStyles();
-  const navigate = useNavigate();
-  const fleetData = useMemo(() => getFleetQualityData(), []);
+  const fleet = useMemo(() => getFleetViolationData(), []);
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(() =>
+    new Set(fleet.categories.map(c => c.category)),
+  );
+  const [severityFilter, setSeverityFilter] = useState<SeverityClass | null>(null);
+  const [categoryFilter, setCategoryFilter] = useState<ViolationCategory | null>(null);
 
-  const [summaryFilter, setSummaryFilter] = useState<SummaryFilter>(null);
-  const [statusFilter, setStatusFilter] = useState<WorkflowStatus | null>(null);
+  const toggleCategory = (cat: string) => {
+    setExpandedCategories(prev => {
+      const next = new Set(prev);
+      if (next.has(cat)) next.delete(cat); else next.add(cat);
+      return next;
+    });
+  };
 
-  const totals = useMemo(() => {
-    let violations = 0;
-    let fixable = 0;
-    let manual = 0;
-    let reposWithIssues = 0;
-    let clean = 0;
-    for (const row of fleetData) {
-      violations += row.remainingCount;
-      fixable += row.fixableCount;
-      manual += row.manualCount;
-      if (row.workflowStatus !== 'clean') reposWithIssues++;
-      else clean++;
-    }
-    return { violations, fixable, manual, reposWithIssues, clean, total: fleetData.length };
-  }, [fleetData]);
+  const filteredCategories = categoryFilter
+    ? fleet.categories.filter(c => c.category === categoryFilter)
+    : fleet.categories;
 
-  const filteredData = useMemo(() => {
-    let result = fleetData;
-
-    if (summaryFilter === 'needs-attention') {
-      result = result.filter(r => r.workflowStatus !== 'clean');
-    } else if (summaryFilter === 'clean') {
-      result = result.filter(r => r.workflowStatus === 'clean');
-    }
-
-    if (statusFilter) {
-      result = result.filter(r => r.workflowStatus === statusFilter);
-    }
-
-    return result;
-  }, [fleetData, summaryFilter, statusFilter]);
-
-  const hasActiveFilters = summaryFilter !== null || statusFilter !== null;
-
-  const clearFilters = useCallback(() => {
-    setSummaryFilter(null);
-    setStatusFilter(null);
-  }, []);
-
-  const toggleSummaryFilter = useCallback((filter: SummaryFilter) => {
-    setSummaryFilter(prev => prev === filter ? null : filter);
-    setStatusFilter(null);
-  }, []);
-
-  const toggleStatusFilter = useCallback((status: WorkflowStatus) => {
-    setStatusFilter(prev => prev === status ? null : status);
-    setSummaryFilter(null);
-  }, []);
-
-  const columns: TableColumn<FleetQualityRow>[] = [
-    {
-      title: 'Repository',
-      field: 'repoName',
-      render: (row: FleetQualityRow) => (
-        <Link
-          className={classes.repoLink}
-          onClick={(e: React.MouseEvent) => {
-            e.stopPropagation();
-            navigate(`/self-service/repositories/${row.repoName}?tab=quality`);
-          }}
-        >
-          {row.repoName}
-        </Link>
-      ),
-    },
-    {
-      title: 'Status',
-      sorting: false,
-      render: (row: FleetQualityRow) => <StatusCell row={row} />,
-    },
-    {
-      title: 'Issues',
-      field: 'remainingCount',
-      defaultSort: 'desc',
-      render: (row: FleetQualityRow) => {
-        if (row.remainingCount === 0) {
-          return <Typography style={{ fontSize: 13, color: '#999' }}>—</Typography>;
-        }
-        return (
-          <Box>
-            <Typography style={{ fontSize: 13, fontWeight: 600, color: '#333', lineHeight: 1.3 }}>
-              {row.fixableCount > 0 && (
-                <span style={{ color: statusColors.info }}>{row.fixableCount} fixable</span>
-              )}
-              {row.fixableCount > 0 && row.manualCount > 0 && (
-                <span style={{ color: '#999' }}>{' · '}</span>
-              )}
-              {row.manualCount > 0 && (
-                <span style={{ color: '#8a6d00' }}>{row.manualCount} manual</span>
-              )}
-            </Typography>
-          </Box>
-        );
-      },
-    },
-    {
-      title: 'Last scan',
-      field: 'lastScannedAt',
-      render: (row: FleetQualityRow) => (
-        <Typography style={{ fontSize: 13, color: '#666' }}>
-          {row.lastScannedAt}
-        </Typography>
-      ),
-    },
-  ];
+  const sevOrder: SeverityClass[] = ['critical', 'high', 'medium', 'low', 'info'];
 
   return (
     <Box>
-      {/* Summary bar — clickable filters */}
+      {/* Summary bar */}
       <Box className={classes.summaryBar}>
-        <Box
-          className={`${classes.summaryChip} ${summaryFilter === 'needs-attention' ? classes.summaryChipActive : ''}`}
-          onClick={() => toggleSummaryFilter('needs-attention')}
-        >
-          <Typography className={classes.summaryValue} style={{ color: totals.reposWithIssues > 0 ? statusColors.error : statusColors.success }}>
-            {totals.reposWithIssues}
+        <Box className={classes.summaryChip} style={{ cursor: 'default', borderColor: 'transparent' }}>
+          <Typography className={classes.summaryValue} style={{ color: statusColors.error }}>
+            {fleet.totalViolations}
           </Typography>
           <Typography className={classes.summaryLabel}>
-            need attention
-          </Typography>
-        </Box>
-        <Box
-          className={`${classes.summaryChip} ${summaryFilter === 'clean' ? classes.summaryChipActive : ''}`}
-          onClick={() => toggleSummaryFilter('clean')}
-        >
-          <Typography className={classes.summaryValue} style={{ color: statusColors.success }}>
-            {totals.clean}
-          </Typography>
-          <Typography className={classes.summaryLabel}>
-            clean
+            violations
           </Typography>
         </Box>
         <Box className={classes.summaryChip} style={{ cursor: 'default', borderColor: 'transparent' }}>
           <Typography className={classes.summaryValue}>
-            {totals.violations}
+            {fleet.reposWithIssues}
           </Typography>
           <Typography className={classes.summaryLabel}>
-            issues remaining
+            of {fleet.totalRepos} repos affected
           </Typography>
         </Box>
-        {totals.fixable > 0 && (
-          <Box className={classes.summaryChip} style={{ cursor: 'default', borderColor: 'transparent' }}>
-            <Typography className={classes.summaryValue} style={{ color: statusColors.info }}>
-              {totals.fixable}
-            </Typography>
-            <Typography className={classes.summaryLabel}>
-              auto-fixable
-            </Typography>
-          </Box>
+        <Box style={{ flex: 1 }} />
+        {categoryFilter && (
+          <Chip
+            size="small"
+            label={`Category: ${fleet.categories.find(c => c.category === categoryFilter)?.label}`}
+            onDelete={() => setCategoryFilter(null)}
+            style={{ fontSize: 11, height: 24 }}
+            color="primary"
+            variant="outlined"
+          />
         )}
-        {totals.manual > 0 && (
-          <Box className={classes.summaryChip} style={{ cursor: 'default', borderColor: 'transparent' }}>
-            <Typography className={classes.summaryValue} style={{ color: '#8a6d00' }}>
-              {totals.manual}
-            </Typography>
-            <Typography className={classes.summaryLabel}>
-              manual review
-            </Typography>
-          </Box>
+        {severityFilter && (
+          <Chip
+            size="small"
+            label={`Severity: ${severityFilter}`}
+            onDelete={() => setSeverityFilter(null)}
+            style={{ fontSize: 11, height: 24, textTransform: 'capitalize' }}
+            color="primary"
+            variant="outlined"
+          />
         )}
       </Box>
 
-      {/* Status filter chips */}
-      <Box className={classes.filterRow}>
-        <Typography style={{ fontSize: 12, color: '#999', marginRight: 4 }}>
-          Status:
-        </Typography>
-        {STATUS_FILTER_OPTIONS.map(opt => {
-          const isActive = statusFilter === opt.value;
-          const chipStyle = STATUS_CHIP_STYLES[opt.value];
+      {/* Severity breakdown — clickable filters */}
+      <Box className={classes.sevBar}>
+        {sevOrder.map(sev => {
+          const count = fleet.bySeverity[sev];
+          if (count === 0) return null;
+          const isActive = severityFilter === sev;
+          const color = SEVERITY_COLORS[sev];
           return (
-            <Chip
-              key={opt.value}
-              size="small"
-              label={opt.label}
-              className={classes.filterChip}
-              onClick={() => toggleStatusFilter(opt.value)}
-              variant={isActive ? 'default' : 'outlined'}
-              style={isActive ? {
-                backgroundColor: chipStyle.bg,
-                color: chipStyle.color,
-                borderColor: chipStyle.color,
-                border: `1px solid ${chipStyle.color}`,
-              } : {}}
-            />
+            <Box
+              key={sev}
+              className={`${classes.sevItem} ${isActive ? classes.sevItemActive : ''}`}
+              style={{
+                backgroundColor: isActive ? `${color}12` : undefined,
+                borderColor: isActive ? `${color}60` : undefined,
+              }}
+              onClick={() => setSeverityFilter(isActive ? null : sev)}
+            >
+              <Box style={{ width: 10, height: 10, borderRadius: 2, backgroundColor: color }} />
+              <Typography style={{ fontSize: 12, textTransform: 'capitalize', color: isActive ? color : '#555', fontWeight: isActive ? 600 : 400 }}>
+                {sev}
+              </Typography>
+              <Typography style={{ fontSize: 12, fontWeight: 700, color }}>{count}</Typography>
+            </Box>
           );
         })}
-        {hasActiveFilters && (
-          <Button
-            size="small"
-            onClick={clearFilters}
-            style={{ textTransform: 'none', fontSize: 12, marginLeft: 4 }}
-          >
-            Clear
-          </Button>
-        )}
       </Box>
 
-      <Table<FleetQualityRow>
-        columns={columns}
-        data={filteredData}
-        title=""
-        options={{
-          paging: false,
-          search: false,
-          sorting: true,
-          padding: 'dense',
-          rowStyle: { cursor: 'pointer' },
-        }}
-        style={{ width: '100%', overflowX: 'hidden' }}
-        onRowClick={(_event, rowData) => {
-          if (rowData) {
-            const row = rowData as FleetQualityRow;
-            navigate(`/self-service/repositories/${row.repoName}?tab=quality`);
-          }
-        }}
-      />
+      {/* Category sections */}
+      {filteredCategories.map(cat => (
+        <CategorySection
+          key={cat.category}
+          category={cat}
+          expanded={expandedCategories.has(cat.category)}
+          onToggle={() => toggleCategory(cat.category)}
+          severityFilter={severityFilter}
+        />
+      ))}
+
+      {filteredCategories.length === 0 && (
+        <Box style={{ textAlign: 'center', padding: '48px 24px' }}>
+          <Typography style={{ fontSize: 14, color: '#888' }}>
+            No violations match the current filters.
+          </Typography>
+        </Box>
+      )}
     </Box>
   );
 };

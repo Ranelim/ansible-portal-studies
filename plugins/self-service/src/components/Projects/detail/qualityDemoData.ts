@@ -449,6 +449,114 @@ export function getProjectSeverityBreakdown(repoName: string): Record<SeverityCl
   return QUALITY_DATA[repoName]?.severityBreakdown;
 }
 
+export type FleetViolationRule = {
+  ruleId: string;
+  message: string;
+  severity: SeverityClass;
+  category: ViolationCategory;
+  repos: { name: string; count: number; fixTier: QualityViolation['fixTier'] }[];
+  totalCount: number;
+};
+
+export type FleetViolationCategory = {
+  category: ViolationCategory;
+  label: string;
+  totalViolations: number;
+  reposAffected: number;
+  rules: FleetViolationRule[];
+};
+
+export function getFleetViolationData(): {
+  categories: FleetViolationCategory[];
+  totalViolations: number;
+  totalRepos: number;
+  reposWithIssues: number;
+  bySeverity: Record<SeverityClass, number>;
+} {
+  const ruleMap = new Map<string, FleetViolationRule>();
+  const allRepoNames = new Set<string>();
+  const reposWithViolations = new Set<string>();
+
+  for (const [repoName, data] of Object.entries(QUALITY_DATA)) {
+    allRepoNames.add(repoName);
+    if (data.violations.length === 0 && data.totalViolations > 0) {
+      // Has violations but not detailed — use severity breakdown
+      reposWithViolations.add(repoName);
+      continue;
+    }
+    for (const v of data.violations) {
+      reposWithViolations.add(repoName);
+      const existing = ruleMap.get(v.ruleId);
+      if (existing) {
+        const repoEntry = existing.repos.find(r => r.name === repoName);
+        if (repoEntry) {
+          repoEntry.count++;
+        } else {
+          existing.repos.push({ name: repoName, count: 1, fixTier: v.fixTier });
+        }
+        existing.totalCount++;
+      } else {
+        ruleMap.set(v.ruleId, {
+          ruleId: v.ruleId,
+          message: v.message,
+          severity: v.severity,
+          category: v.category,
+          repos: [{ name: repoName, count: 1, fixTier: v.fixTier }],
+          totalCount: 1,
+        });
+      }
+    }
+  }
+
+  const categoryOrder: ViolationCategory[] = ['aap-compatibility', 'security', 'lint', 'best-practice'];
+  const categoryLabels: Record<ViolationCategory, string> = {
+    'aap-compatibility': 'AAP compatibility',
+    'security': 'Security',
+    'lint': 'Lint',
+    'best-practice': 'Best practice',
+  };
+  const sevOrder: SeverityClass[] = ['critical', 'high', 'medium', 'low', 'info'];
+
+  const categories: FleetViolationCategory[] = categoryOrder.map(cat => {
+    const rules = Array.from(ruleMap.values())
+      .filter(r => r.category === cat)
+      .sort((a, b) => sevOrder.indexOf(a.severity) - sevOrder.indexOf(b.severity));
+    const repoSet = new Set<string>();
+    rules.forEach(r => r.repos.forEach(repo => repoSet.add(repo.name)));
+    return {
+      category: cat,
+      label: categoryLabels[cat],
+      totalViolations: rules.reduce((sum, r) => sum + r.totalCount, 0),
+      reposAffected: repoSet.size,
+      rules,
+    };
+  }).filter(c => c.totalViolations > 0);
+
+  const bySeverity: Record<SeverityClass, number> = { critical: 0, high: 0, medium: 0, low: 0, info: 0 };
+  for (const r of ruleMap.values()) {
+    bySeverity[r.severity] += r.totalCount;
+  }
+
+  // Add repos that have totalViolations but no detailed violations
+  let totalViolations = Array.from(ruleMap.values()).reduce((s, r) => s + r.totalCount, 0);
+  for (const [repoName, data] of Object.entries(QUALITY_DATA)) {
+    if (data.violations.length === 0 && data.totalViolations > 0) {
+      totalViolations += data.totalViolations;
+      for (const sev of sevOrder) {
+        bySeverity[sev] += data.severityBreakdown[sev];
+      }
+    }
+  }
+
+  return {
+    categories,
+    totalViolations,
+    totalRepos: allRepoNames.size,
+    reposWithIssues: reposWithViolations.size,
+    bySeverity,
+  };
+}
+
 export const SEVERITY_COLORS: Record<SeverityClass, string> = {
   critical: '#A30000',
   high: '#C9190B',
