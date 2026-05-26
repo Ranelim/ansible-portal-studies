@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { DEVSPACES_BASE_URL, DEMO_CONNECTIONS } from '../../Admin/syncDemoData';
 import { useUserRoleContext } from '../../../hooks/useUserRole';
 
@@ -10,37 +10,35 @@ import {
   CardContent,
   Button,
   Chip,
-  Paper,
-  LinearProgress,
   Tooltip,
   Collapse,
   IconButton,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow,
 } from '@material-ui/core';
 import CheckCircleIcon from '@material-ui/icons/CheckCircle';
-import WarningIcon from '@material-ui/icons/Warning';
 import ErrorIcon from '@material-ui/icons/Error';
-import PlayArrowIcon from '@material-ui/icons/PlayArrow';
-import BuildIcon from '@material-ui/icons/Build';
 import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
 import ExpandLessIcon from '@material-ui/icons/ExpandLess';
 import OpenInNewIcon from '@material-ui/icons/OpenInNew';
 import CodeIcon from '@material-ui/icons/Code';
 import AutorenewIcon from '@material-ui/icons/Autorenew';
+import BuildIcon from '@material-ui/icons/Build';
+import HistoryIcon from '@material-ui/icons/History';
+import VerifiedUserOutlinedIcon from '@material-ui/icons/VerifiedUserOutlined';
 import { statusColors } from '../../common/statusColors';
 import {
   type ProjectQualityData,
   type ScanResult,
-  type AiProposal,
   type SeverityClass,
   type QualityViolation,
   type ViolationCategory,
+  type RemediationStatus,
   SEVERITY_COLORS,
 } from './qualityDemoData';
-
-export type OperationStatus = 'idle' | 'running' | 'awaiting_approval' | 'complete';
-
-// Progress steps for the inline running state
-type ProgressStep = { label: string; status: 'done' | 'active' | 'pending' };
 
 // ---------------------------------------------------------------------------
 // Severity Bar — matches APME's compact severity breakdown
@@ -104,7 +102,7 @@ const SeverityBar = ({
 };
 
 // ---------------------------------------------------------------------------
-// Stacked severity progress bar (like APME's colored horizontal bar)
+// Stacked severity progress bar
 // ---------------------------------------------------------------------------
 const SeverityProgressBar = ({ breakdown }: { breakdown: Record<SeverityClass, number> }) => {
   const total = Object.values(breakdown).reduce((a, b) => a + b, 0);
@@ -131,77 +129,163 @@ const SeverityProgressBar = ({ breakdown }: { breakdown: Record<SeverityClass, n
 };
 
 // ---------------------------------------------------------------------------
-// Inline Progress — shows pipeline-like steps when Check/Remediate runs
+// Health Score Ring — compact circular score
 // ---------------------------------------------------------------------------
-const InlineProgress = ({ isRemediate }: { isRemediate?: boolean }) => {
-  const [activeStep, setActiveStep] = useState(0);
-  const steps: ProgressStep[] = isRemediate
-    ? [
-        { label: 'Cloning repository', status: 'done' },
-        { label: 'Formatting files', status: 'active' },
-        { label: 'Running Tier 1 remediation', status: 'pending' },
-        { label: 'Running AI analysis', status: 'pending' },
-      ]
-    : [
-        { label: 'Cloning repository', status: 'done' },
-        { label: 'Scanning content', status: 'active' },
-        { label: 'Analyzing violations', status: 'pending' },
-      ];
-
-  // Simulate progress
-  useState(() => {
-    const timer = setInterval(() => {
-      setActiveStep(prev => {
-        if (prev < steps.length - 1) return prev + 1;
-        clearInterval(timer);
-        return prev;
-      });
-    }, 1200);
-    return () => clearInterval(timer);
-  });
-
-  const progress = ((activeStep + 1) / steps.length) * 100;
+const HealthScoreRing = ({ score }: { score: number }) => {
+  const size = 56;
+  const stroke = 5;
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  const offset = c - (score / 100) * c;
+  const color = score >= 80 ? statusColors.success : score >= 50 ? statusColors.warning : statusColors.error;
 
   return (
-    <Card variant="outlined" style={{ borderRadius: 12, marginBottom: 24 }}>
-      <CardContent style={{ padding: '20px 24px' }}>
-        <Box display="flex" alignItems="center" justifyContent="space-between" style={{ marginBottom: 12 }}>
-          <Typography style={{ fontSize: 14, fontWeight: 600 }}>
-            {isRemediate ? 'Remediating...' : 'Checking...'}
-          </Typography>
-          <Typography style={{ fontSize: 12, color: '#666' }}>
-            {Math.round(progress)}%
-          </Typography>
-        </Box>
-        <LinearProgress
-          variant="determinate"
-          value={progress}
-          style={{ height: 6, borderRadius: 3, marginBottom: 16 }}
+    <Box style={{ position: 'relative', width: size, height: size }}>
+      <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#eee" strokeWidth={stroke} />
+        <circle
+          cx={size / 2} cy={size / 2} r={r} fill="none"
+          stroke={color} strokeWidth={stroke}
+          strokeDasharray={c} strokeDashoffset={offset}
+          strokeLinecap="round"
         />
-        <Box style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {steps.map((step, i) => (
-            <Box key={i} display="flex" alignItems="center" style={{ gap: 8 }}>
-              <Chip
-                size="small"
-                label={step.label.split(' ')[0].toLowerCase()}
-                style={{
-                  fontSize: 10, height: 18, fontFamily: 'monospace',
-                  backgroundColor: i <= activeStep ? `${statusColors.info}15` : 'rgba(0,0,0,0.04)',
-                  color: i <= activeStep ? statusColors.info : '#999',
-                }}
-              />
-              <Typography style={{
-                fontSize: 12,
-                color: i <= activeStep ? '#333' : '#999',
-                fontWeight: i === activeStep ? 500 : 400,
-              }}>
-                {step.label}{i === activeStep ? '...' : ''}
+      </svg>
+      <Box style={{
+        position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        <Typography style={{ fontSize: 16, fontWeight: 700, color }}>{score}</Typography>
+      </Box>
+    </Box>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// Remediation Status Banner
+// ---------------------------------------------------------------------------
+const REMEDIATION_CONFIG: Record<RemediationStatus, {
+  label: string; color: string; icon: 'spinning' | 'check' | 'error' | 'none';
+  description: (summary?: ProjectQualityData['remediationSummary']) => string;
+} | null> = {
+  none: null,
+  available: {
+    label: 'Remediation available',
+    color: statusColors.info,
+    icon: 'none',
+    description: () => 'APME can auto-fix some violations. Trigger "Fix with AI" to create a remediation branch.',
+  },
+  'in-progress': {
+    label: 'Remediation in progress',
+    color: statusColors.info,
+    icon: 'spinning',
+    description: () => 'APME is analyzing violations and generating fixes. This runs as a GitHub Actions workflow.',
+  },
+  'branch-ready': {
+    label: 'Remediation branch ready',
+    color: statusColors.warning,
+    icon: 'none',
+    description: (s) => s
+      ? `${s.addressed} of ${s.addressed + s.remaining} violations addressed (${s.autoFixed} auto-fixed, ${s.aiProposed} AI-proposed). Review the branch and create a pull request.`
+      : 'Fixes are ready on a remediation branch. Review the changes and create a pull request.',
+  },
+  'pr-open': {
+    label: 'Pull request open',
+    color: statusColors.warning,
+    icon: 'none',
+    description: (s) => s
+      ? `${s.addressed} violations addressed. Review the pull request, then merge when satisfied.`
+      : 'A pull request with remediation fixes is open for review.',
+  },
+  'pr-merged': {
+    label: 'Remediation merged',
+    color: statusColors.success,
+    icon: 'check',
+    description: (s) => s
+      ? `${s.addressed} violations fixed. ${s.remaining > 0 ? `${s.remaining} remaining violations require manual attention.` : 'All fixable violations resolved.'}`
+      : 'Remediation changes have been merged.',
+  },
+};
+
+const RemediationBanner = ({
+  status, quality, repoUrl, branch,
+}: {
+  status: RemediationStatus;
+  quality: ProjectQualityData;
+  repoUrl?: string;
+  branch?: string;
+}) => {
+  const { hasRole } = useUserRoleContext();
+  const config = REMEDIATION_CONFIG[status];
+  if (!config) return null;
+
+  return (
+    <Card variant="outlined" style={{
+      borderRadius: 12, marginBottom: 20,
+      borderColor: `${config.color}40`, borderWidth: 1,
+      backgroundColor: `${config.color}08`,
+    }}>
+      <CardContent style={{ padding: '16px 20px' }}>
+        <Box display="flex" alignItems="flex-start" justifyContent="space-between">
+          <Box display="flex" alignItems="flex-start" style={{ gap: 12 }}>
+            {config.icon === 'spinning' && (
+              <AutorenewIcon style={{
+                fontSize: 20, color: config.color, marginTop: 2,
+                animation: 'spin 1.5s linear infinite',
+              }} />
+            )}
+            {config.icon === 'check' && (
+              <CheckCircleIcon style={{ fontSize: 20, color: config.color, marginTop: 2 }} />
+            )}
+            {config.icon === 'error' && (
+              <ErrorIcon style={{ fontSize: 20, color: config.color, marginTop: 2 }} />
+            )}
+            <Box>
+              <Typography style={{ fontSize: 14, fontWeight: 600, color: '#333' }}>
+                {config.label}
               </Typography>
-              {i < activeStep && (
-                <CheckCircleIcon style={{ fontSize: 14, color: statusColors.success }} />
-              )}
+              <Typography style={{ fontSize: 13, color: '#666', marginTop: 2, lineHeight: 1.5 }}>
+                {config.description(quality.remediationSummary)}
+              </Typography>
             </Box>
-          ))}
+          </Box>
+          <Box display="flex" style={{ gap: 8, flexShrink: 0 }}>
+            {status === 'branch-ready' && quality.remediationBranch && isDevSpacesConnected && hasRole('developer') && (
+              <Tooltip title="Open the remediation branch in Dev Spaces to review changes" arrow>
+                <Button
+                  size="small" variant="outlined"
+                  startIcon={<CodeIcon style={{ fontSize: 14 }} />}
+                  onClick={() => window.open(`${DEVSPACES_BASE_URL}/#${repoUrl}/tree/${quality.remediationBranch}`, '_blank')}
+                  style={{ textTransform: 'none', fontSize: 12, fontWeight: 500 }}
+                >
+                  Review in Dev Spaces
+                </Button>
+              </Tooltip>
+            )}
+            {status === 'pr-open' && quality.remediationPrUrl && (
+              <>
+                {isDevSpacesConnected && hasRole('developer') && (
+                  <Tooltip title="Open the pull request branch in Dev Spaces" arrow>
+                    <Button
+                      size="small" variant="outlined"
+                      startIcon={<CodeIcon style={{ fontSize: 14 }} />}
+                      onClick={() => window.open(`${DEVSPACES_BASE_URL}/#${repoUrl}/tree/${quality.remediationBranch ?? 'main'}`, '_blank')}
+                      style={{ textTransform: 'none', fontSize: 12 }}
+                    >
+                      Review in Dev Spaces
+                    </Button>
+                  </Tooltip>
+                )}
+                <Button
+                  size="small" variant="contained" color="primary"
+                  startIcon={<OpenInNewIcon style={{ fontSize: 14 }} />}
+                  onClick={() => window.open(quality.remediationPrUrl, '_blank')}
+                  style={{ textTransform: 'none', fontSize: 12, fontWeight: 500 }}
+                >
+                  View pull request
+                </Button>
+              </>
+            )}
+          </Box>
         </Box>
       </CardContent>
     </Card>
@@ -247,7 +331,7 @@ const ViolationRow = ({
         {v.fixTier !== 'manual' && (
           <Chip
             size="small"
-            label={v.fixTier === 'deterministic' ? 'Fixed' : 'AI'}
+            label={v.fixTier === 'deterministic' ? 'Auto-fixable' : 'AI-fixable'}
             style={{
               fontSize: 10, height: 18,
               backgroundColor: v.fixTier === 'deterministic' ? `${statusColors.success}15` : `${statusColors.info}15`,
@@ -309,7 +393,7 @@ const ViolationRow = ({
 };
 
 // ---------------------------------------------------------------------------
-// Violations Card — grouped by file (matches APME's violations view)
+// Violations Card — grouped by file
 // ---------------------------------------------------------------------------
 const ViolationsCard = ({
   violations,
@@ -343,7 +427,6 @@ const ViolationsCard = ({
     return counts;
   }, [violations]);
 
-  // Group by file
   const grouped = useMemo(() => {
     const map = new Map<string, QualityViolation[]>();
     filtered.forEach(v => {
@@ -356,7 +439,6 @@ const ViolationsCard = ({
 
   return (
     <Box>
-      {/* Filter bar */}
       <Box style={{ padding: '12px 16px', borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
         <Box display="flex" alignItems="center" justifyContent="space-between">
           <Typography style={{ fontSize: 14, fontWeight: 600 }}>
@@ -387,7 +469,6 @@ const ViolationsCard = ({
         </Box>
       </Box>
 
-      {/* File groups */}
       {grouped.map(([file, fileViolations]) => (
         <Box key={file}>
           <Box
@@ -404,7 +485,7 @@ const ViolationsCard = ({
             <Typography style={{ fontSize: 11, color: '#999' }}>
               {fileViolations.length} issue{fileViolations.length !== 1 ? 's' : ''}
               {fileViolations.filter(v => v.fixTier !== 'manual').length > 0 &&
-                ` · ${fileViolations.filter(v => v.fixTier !== 'manual').length} fixed`}
+                ` · ${fileViolations.filter(v => v.fixTier !== 'manual').length} fixable`}
             </Typography>
           </Box>
           {fileViolations.map((v, i) => (
@@ -422,228 +503,90 @@ const ViolationsCard = ({
 };
 
 // ---------------------------------------------------------------------------
-// Proposal Review Panel (AI proposals for review)
+// Scan History Section
 // ---------------------------------------------------------------------------
-const ProposalCard = ({
-  proposal,
-  selected,
-  onToggle,
-}: {
-  proposal: AiProposal;
-  selected: boolean;
-  onToggle: () => void;
-}) => {
+const TRIGGER_LABELS: Record<string, string> = {
+  push: 'Push',
+  pull_request: 'Pull request',
+  schedule: 'Schedule',
+  manual: 'Manual',
+};
+
+const ScanHistorySection = ({ scans }: { scans: ScanResult[] }) => {
   const [expanded, setExpanded] = useState(false);
-  const isDeclined = proposal.status === 'declined';
-  const confidencePercent = Math.round(proposal.confidence * 100);
+
+  if (scans.length === 0) return null;
 
   return (
-    <Paper
-      variant="outlined"
-      style={{
-        marginBottom: 8, borderRadius: 8,
-        borderColor: selected ? statusColors.info : undefined,
-        borderWidth: selected ? 2 : 1,
-        opacity: isDeclined ? 0.7 : 1,
-      }}
-    >
+    <Card variant="outlined" style={{ borderRadius: 12, marginTop: 20 }}>
       <Box
-        display="flex" alignItems="center"
-        style={{ padding: '10px 14px', gap: 10, cursor: isDeclined ? 'default' : 'pointer' }}
-        onClick={isDeclined ? undefined : onToggle}
+        display="flex" alignItems="center" justifyContent="space-between"
+        style={{ padding: '12px 20px', cursor: 'pointer' }}
+        onClick={() => setExpanded(!expanded)}
       >
-        {!isDeclined && (
-          <input type="checkbox" checked={selected} readOnly style={{ accentColor: statusColors.info, width: 16, height: 16 }} />
-        )}
-        <Box flex={1} minWidth={0}>
-          <Box display="flex" alignItems="center" style={{ gap: 8 }}>
-            <Chip size="small" label={proposal.ruleId} variant="outlined" style={{ fontSize: 11, height: 20, fontFamily: 'monospace' }} />
-            <Typography style={{ fontSize: 12, color: '#666' }}>{proposal.file}:{proposal.lineStart}</Typography>
-            <Chip size="small" label={`Tier ${proposal.tier}`} variant="outlined" style={{ fontSize: 10, height: 18 }} />
-          </Box>
+        <Box display="flex" alignItems="center" style={{ gap: 8 }}>
+          <HistoryIcon style={{ fontSize: 18, color: '#666' }} />
+          <Typography style={{ fontSize: 14, fontWeight: 600 }}>
+            Scan history ({scans.length})
+          </Typography>
         </Box>
-        {!isDeclined && (
-          <Tooltip title={`${confidencePercent}% confidence`} arrow>
-            <Box style={{ width: 60, display: 'flex', alignItems: 'center', gap: 4 }}>
-              <Box style={{ flex: 1, height: 4, borderRadius: 2, backgroundColor: '#e0e0e0', overflow: 'hidden' }}>
-                <Box style={{
-                  width: `${confidencePercent}%`, height: '100%', borderRadius: 2,
-                  backgroundColor: confidencePercent >= 80 ? statusColors.success : confidencePercent >= 50 ? statusColors.warning : statusColors.error,
-                }} />
-              </Box>
-              <Typography style={{ fontSize: 10, color: '#666', minWidth: 28 }}>{confidencePercent}%</Typography>
-            </Box>
-          </Tooltip>
-        )}
-        <Button
-          size="small"
-          onClick={(e) => { e.stopPropagation(); setExpanded(v => !v); }}
-          style={{ textTransform: 'none', fontSize: 11, minWidth: 'auto', padding: '2px 8px' }}
-        >
-          {expanded ? 'Hide' : isDeclined ? 'Why?' : 'Show'}
-        </Button>
+        {expanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
       </Box>
       <Collapse in={expanded}>
-        <Box style={{ padding: '0 14px 12px', borderTop: '1px solid #eee' }}>
-          {proposal.explanation && (
-            <Typography style={{ fontSize: 12, color: '#555', marginTop: 8, lineHeight: 1.5 }}>
-              {isDeclined ? <><strong>Reason: </strong>{proposal.explanation}</> : proposal.explanation}
-            </Typography>
-          )}
-          {proposal.suggestion && (
-            <Typography style={{ fontSize: 12, color: '#555', marginTop: 4, lineHeight: 1.5 }}>
-              <strong>Suggestion: </strong>{proposal.suggestion}
-            </Typography>
-          )}
-          {proposal.diffHunk && (
-            <Paper variant="outlined" style={{ marginTop: 8, padding: 10, borderRadius: 6, backgroundColor: '#f6f8fa', overflow: 'auto' }}>
-              <pre style={{ margin: 0, fontSize: 11, lineHeight: 1.5, color: '#24292f', fontFamily: "'Consolas', monospace" }}>
-                {proposal.diffHunk.split('\n').map((line, i) => {
-                  let color = '#24292f';
-                  if (line.startsWith('+') && !line.startsWith('+++')) color = '#1a7f37';
-                  if (line.startsWith('-') && !line.startsWith('---')) color = '#cf222e';
-                  if (line.startsWith('@@')) color = '#6639ba';
-                  return <span key={i} style={{ color, display: 'block' }}>{line}</span>;
-                })}
-              </pre>
-            </Paper>
-          )}
-        </Box>
+        <Table size="small">
+          <TableHead>
+            <TableRow>
+              <TableCell style={{ fontSize: 12, fontWeight: 600, color: '#666' }}>Date</TableCell>
+              <TableCell style={{ fontSize: 12, fontWeight: 600, color: '#666' }}>Violations</TableCell>
+              <TableCell style={{ fontSize: 12, fontWeight: 600, color: '#666' }}>Trigger</TableCell>
+              <TableCell style={{ fontSize: 12, fontWeight: 600, color: '#666' }}>Commit</TableCell>
+              <TableCell style={{ fontSize: 12, fontWeight: 600, color: '#666' }}>Source</TableCell>
+              <TableCell style={{ fontSize: 12, fontWeight: 600, color: '#666' }} align="right" />
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {scans.map(scan => (
+              <TableRow key={scan.scanId} hover>
+                <TableCell style={{ fontSize: 12 }}>{scan.createdAt}</TableCell>
+                <TableCell>
+                  <Chip
+                    size="small"
+                    label={scan.totalViolations === 0 ? 'Clean' : `${scan.totalViolations} violations`}
+                    style={{
+                      fontSize: 10, height: 20,
+                      backgroundColor: scan.totalViolations === 0 ? `${statusColors.success}15` : `${statusColors.error}15`,
+                      color: scan.totalViolations === 0 ? statusColors.success : statusColors.error,
+                      fontWeight: 600,
+                    }}
+                  />
+                </TableCell>
+                <TableCell>
+                  <Chip size="small" label={TRIGGER_LABELS[scan.trigger ?? 'manual'] ?? scan.trigger} variant="outlined" style={{ fontSize: 10, height: 18 }} />
+                </TableCell>
+                <TableCell style={{ fontSize: 11, fontFamily: 'monospace', color: '#666' }}>
+                  {scan.commitHash.slice(0, 7)}
+                </TableCell>
+                <TableCell style={{ fontSize: 11, color: '#666' }}>
+                  {scan.scanSource === 'github-action' ? 'GitHub Actions' : 'Manual'}
+                </TableCell>
+                <TableCell align="right">
+                  {scan.ciRunUrl && (
+                    <Tooltip title="View CI run">
+                      <IconButton size="small" onClick={() => window.open(scan.ciRunUrl, '_blank')}>
+                        <OpenInNewIcon style={{ fontSize: 14 }} />
+                      </IconButton>
+                    </Tooltip>
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       </Collapse>
-    </Paper>
-  );
-};
-
-export const ProposalReviewPanel = ({
-  proposals,
-  onApprove,
-}: {
-  proposals: AiProposal[];
-  onApprove: (ids: string[]) => void;
-}) => {
-  const proposed = useMemo(() => proposals.filter(p => p.status !== 'declined'), [proposals]);
-  const declined = useMemo(() => proposals.filter(p => p.status === 'declined'), [proposals]);
-  const [selected, setSelected] = useState<Set<string>>(() => new Set());
-  const [showDeclined, setShowDeclined] = useState(false);
-
-  const toggleSelect = useCallback((id: string) => {
-    setSelected(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      return next;
-    });
-  }, []);
-
-  const toggleAll = useCallback(() => {
-    setSelected(prev =>
-      prev.size === proposed.length ? new Set() : new Set(proposed.map(p => p.id)),
-    );
-  }, [proposed]);
-
-  return (
-    <Card variant="outlined" style={{ borderRadius: 12, marginBottom: 24 }}>
-      <CardContent style={{ padding: 20 }}>
-        <Box display="flex" justifyContent="space-between" alignItems="flex-start" style={{ marginBottom: 16 }}>
-          <Box>
-            <Chip size="small" label="AI review" style={{ backgroundColor: '#F0AB0020', color: '#73510D', fontWeight: 600, fontSize: 11, marginBottom: 4 }} />
-            <Typography style={{ fontWeight: 600, fontSize: '1.25rem', marginTop: 4 }}>
-              {proposed.length} AI proposal{proposed.length !== 1 ? 's' : ''}
-            </Typography>
-            <Typography style={{ fontSize: 13, color: '#666' }}>Review each proposed change and select which to apply.</Typography>
-          </Box>
-          <Box display="flex" style={{ gap: 8 }}>
-            <Button size="small" variant="outlined" onClick={toggleAll} style={{ textTransform: 'none', fontSize: 12 }}>
-              {selected.size === proposed.length ? 'Deselect all' : 'Select all'}
-            </Button>
-            <Button size="small" onClick={() => onApprove([])} style={{ textTransform: 'none', fontSize: 12 }}>Skip all</Button>
-            <Button size="small" variant="contained" color="primary" onClick={() => onApprove(Array.from(selected))} style={{ textTransform: 'none', fontSize: 12 }}>
-              Apply {selected.size} selected
-            </Button>
-          </Box>
-        </Box>
-        {proposed.map(p => (
-          <ProposalCard key={p.id} proposal={p} selected={selected.has(p.id)} onToggle={() => toggleSelect(p.id)} />
-        ))}
-        {declined.length > 0 && (
-          <Box style={{ marginTop: 16 }}>
-            <Box display="flex" alignItems="center" style={{ gap: 8, cursor: 'pointer' }} onClick={() => setShowDeclined(v => !v)}>
-              {showDeclined ? <ExpandLessIcon style={{ fontSize: 16 }} /> : <ExpandMoreIcon style={{ fontSize: 16 }} />}
-              <Chip size="small" label="Declined by AI" style={{ backgroundColor: '#F0AB0020', color: '#73510D', fontSize: 10 }} />
-              <Typography style={{ fontSize: 12, color: '#666' }}>
-                {declined.length} violation{declined.length !== 1 ? 's' : ''} the AI could not fix
-              </Typography>
-            </Box>
-            <Collapse in={showDeclined}>
-              <Box style={{ marginTop: 8 }}>
-                {declined.map(p => (<ProposalCard key={p.id} proposal={p} selected={false} onToggle={() => {}} />))}
-              </Box>
-            </Collapse>
-          </Box>
-        )}
-      </CardContent>
     </Card>
   );
 };
 
-// ---------------------------------------------------------------------------
-// Result Banner — shown after operation completes
-// ---------------------------------------------------------------------------
-export const ResultBanner = ({
-  scan,
-  isRemediate,
-  onViewDetails,
-  onDismiss,
-  onCreatePR,
-}: {
-  scan: ScanResult;
-  isRemediate?: boolean;
-  onViewDetails: () => void;
-  onDismiss: () => void;
-  onCreatePR?: () => void;
-}) => {
-  return (
-    <Card variant="outlined" style={{ borderRadius: 12, marginBottom: 24, borderColor: statusColors.success, borderWidth: 2 }}>
-      <CardContent style={{ padding: '24px 24px', textAlign: 'center' }}>
-        <CheckCircleIcon style={{ fontSize: 40, color: statusColors.success, marginBottom: 8 }} />
-        <Typography style={{ fontWeight: 600, fontSize: 15, marginBottom: 4 }}>
-          {isRemediate ? 'Remediation complete' : 'Operation Complete'}
-        </Typography>
-        <Box display="flex" justifyContent="center" style={{ gap: 24, marginTop: 12, marginBottom: 16 }}>
-          <Box style={{ textAlign: 'center' }}>
-            <Typography style={{ fontSize: 22, fontWeight: 700 }}>{scan.totalViolations}</Typography>
-            <Typography style={{ fontSize: 11, color: '#666' }}>Violations</Typography>
-          </Box>
-          <Box style={{ textAlign: 'center' }}>
-            <Typography style={{ fontSize: 22, fontWeight: 700, color: statusColors.success }}>{scan.fixable}</Typography>
-            <Typography style={{ fontSize: 11, color: '#666' }}>Fixable</Typography>
-          </Box>
-          <Box style={{ textAlign: 'center' }}>
-            <Typography style={{ fontSize: 22, fontWeight: 700, color: statusColors.warning }}>{scan.manualReview}</Typography>
-            <Typography style={{ fontSize: 11, color: '#666' }}>Manual</Typography>
-          </Box>
-        </Box>
-        <Box display="flex" justifyContent="center" style={{ gap: 8 }}>
-          {isRemediate && onCreatePR && (
-            <Button
-              size="small" variant="contained" color="primary"
-              startIcon={<OpenInNewIcon style={{ fontSize: 14 }} />}
-              onClick={onCreatePR}
-              style={{ textTransform: 'none', fontSize: 12, fontWeight: 500 }}
-            >
-              Create pull request
-            </Button>
-          )}
-          <Button size="small" variant="outlined" color="primary" onClick={onViewDetails} style={{ textTransform: 'none', fontSize: 12 }}>
-            View details
-          </Button>
-          <Button size="small" onClick={onDismiss} style={{ textTransform: 'none', fontSize: 12 }}>
-            Dismiss
-          </Button>
-        </Box>
-      </CardContent>
-    </Card>
-  );
-};
 
 // ---------------------------------------------------------------------------
 // Main QualityTab
@@ -651,15 +594,9 @@ export const ResultBanner = ({
 export const QualityTab = ({
   quality,
   projectName,
-  initialView,
-  initialScanId,
+  initialSeverity,
   repoUrl,
   branch,
-  onCheck,
-  onRemediate,
-  opStatus,
-  onDismissResult,
-  initialSeverity,
 }: {
   quality: ProjectQualityData | null;
   projectName: string;
@@ -668,68 +605,26 @@ export const QualityTab = ({
   initialSeverity?: SeverityClass | null;
   repoUrl?: string;
   branch?: string;
-  onCheck?: () => void;
-  onRemediate?: () => void;
-  opStatus?: OperationStatus;
-  onDismissResult?: () => void;
 }) => {
+  const { hasRole } = useUserRoleContext();
   const [categoryFilter, setCategoryFilter] = useState<ViolationCategory | 'all'>('all');
   const [severityFilter, setSeverityFilter] = useState<SeverityClass | null>(initialSeverity ?? null);
-  const [lastWasRemediate, setLastWasRemediate] = useState(false);
 
-  // Empty state — never scanned
   if (!quality) {
     return (
       <Box style={{ marginTop: 24 }}>
-        {/* Scan bar */}
-        <Box display="flex" alignItems="center" justifyContent="space-between" style={{ marginBottom: 20 }}>
-          <Typography style={{ fontSize: 13, color: '#999' }}>
-            No scans yet
-          </Typography>
-          {onCheck && (
-            <Button
-              variant="outlined" size="small"
-              startIcon={<PlayArrowIcon style={{ fontSize: 16 }} />}
-              onClick={onCheck}
-              style={{ textTransform: 'none', fontWeight: 500 }}
-            >
-              Scan
-            </Button>
-          )}
-        </Box>
         <Card variant="outlined" style={{ borderRadius: 12 }}>
           <CardContent style={{ padding: '48px 24px', textAlign: 'center' }}>
-            <Typography style={{ fontSize: 14, color: '#666', maxWidth: 360, margin: '0 auto' }}>
-              Run your first scan to check this project for compatibility issues, security risks, and best practice violations.
+            <VerifiedUserOutlinedIcon style={{ fontSize: 40, color: '#ccc', marginBottom: 12 }} />
+            <Typography style={{ fontSize: 16, fontWeight: 500, marginBottom: 8 }}>
+              No quality scans yet
+            </Typography>
+            <Typography style={{ fontSize: 13, color: '#888', maxWidth: 400, margin: '0 auto' }}>
+              Quality scans run automatically as GitHub Actions when you push to this repository.
+              Configure the APME scan workflow to check for compatibility issues, security risks, and best practice violations.
             </Typography>
           </CardContent>
         </Card>
-      </Box>
-    );
-  }
-
-  // Running state — inline progress
-  if (opStatus === 'running') {
-    return (
-      <Box style={{ marginTop: 24 }}>
-        <InlineProgress isRemediate={lastWasRemediate} />
-      </Box>
-    );
-  }
-
-  // Complete state — show result banner
-  if (opStatus === 'complete') {
-    return (
-      <Box style={{ marginTop: 24 }}>
-        <ResultBanner
-          scan={quality.latestScan}
-          isRemediate={lastWasRemediate}
-          onViewDetails={() => { onDismissResult?.(); }}
-          onDismiss={() => { onDismissResult?.(); }}
-          onCreatePR={() => {
-            window.open('https://github.com/acme-corp/rhel-patching/pull/42', '_blank');
-          }}
-        />
       </Box>
     );
   }
@@ -740,90 +635,145 @@ export const QualityTab = ({
 
   return (
     <Box style={{ marginTop: 24 }}>
-      {/* Scan bar — context + action */}
-      <Box display="flex" alignItems="center" justifyContent="space-between" style={{ marginBottom: 16 }}>
-        <Typography style={{ fontSize: 13, color: '#666' }}>
-          Last scan {quality.lastScannedAt} · commit <code style={{ fontSize: 12 }}>{quality.lastScannedCommit}</code>
-        </Typography>
-        {onCheck && (
-          <Tooltip title="Scans your repository for compatibility, security, and best practice issues" arrow>
-            <Button
-              variant="outlined" size="small"
-              startIcon={<PlayArrowIcon style={{ fontSize: 16 }} />}
-              onClick={() => { setLastWasRemediate(false); onCheck(); }}
-              style={{ textTransform: 'none', fontWeight: 500 }}
-            >
-              Scan
-            </Button>
-          </Tooltip>
+      {/* Score + scan context bar */}
+      <Box display="flex" alignItems="center" justifyContent="space-between" style={{ marginBottom: 20 }}>
+        <Box display="flex" alignItems="center" style={{ gap: 16 }}>
+          <HealthScoreRing score={quality.healthScore} />
+          <Box>
+            <Typography style={{ fontSize: 14, fontWeight: 600 }}>
+              Quality score: {quality.healthScore}/100
+            </Typography>
+            <Typography style={{ fontSize: 12, color: '#666' }}>
+              Last scan {quality.lastScannedAt} · commit <code style={{ fontSize: 11 }}>{quality.lastScannedCommit?.slice(0, 7)}</code>
+              {scan.trigger && ` · ${TRIGGER_LABELS[scan.trigger] ?? scan.trigger}`}
+            </Typography>
+          </Box>
+        </Box>
+        {scan.ciRunUrl && (
+          <Button
+            size="small" variant="text"
+            startIcon={<OpenInNewIcon style={{ fontSize: 14 }} />}
+            onClick={() => window.open(scan.ciRunUrl, '_blank')}
+            style={{ textTransform: 'none', fontSize: 12, color: '#666' }}
+          >
+            View CI run
+          </Button>
         )}
       </Box>
 
-      {/* Unified results card — summary header + violations as one surface */}
-      <Card variant="outlined" style={{ borderRadius: 12 }}>
-        {/* Summary section */}
-        <Box style={{ padding: '16px 20px', borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
-          <Box display="flex" alignItems="center" justifyContent="space-between">
-            <Box display="flex" alignItems="center" style={{ gap: 16 }}>
-              <Typography style={{ fontSize: 28, fontWeight: 700, color: statusColors.error }}>
-                {scan.totalViolations}
-              </Typography>
-              <Box>
-                <Typography style={{ fontSize: 14, fontWeight: 500 }}>
-                  Violations
-                </Typography>
-                <Typography style={{ fontSize: 12, color: '#666' }}>
-                  {fixableCount} auto-fixable · {manualCount} manual review
-                </Typography>
-              </Box>
-            </Box>
-            {onRemediate && fixableCount > 0 && (
-              <Box style={{ textAlign: 'right' }}>
-                <Tooltip
-                  title="Applies deterministic and AI-assisted fixes to your code, then opens a pull request for you to review and merge."
-                  arrow
-                  placement="bottom-end"
-                >
-                  <Button
-                    variant="contained" color="primary" size="small"
-                    startIcon={<BuildIcon style={{ fontSize: 16 }} />}
-                    onClick={() => { setLastWasRemediate(true); onRemediate(); }}
-                    style={{ textTransform: 'none', fontWeight: 600 }}
-                  >
-                    Auto-fix {fixableCount} issues
-                  </Button>
-                </Tooltip>
-                <Typography style={{ fontSize: 11, color: '#888', marginTop: 4 }}>
-                  Creates a pull request with the fixes
-                </Typography>
-              </Box>
-            )}
-          </Box>
-          {/* Severity breakdown — clickable filters */}
-          <Box style={{ marginTop: 12 }}>
-            <SeverityProgressBar breakdown={scan.severityBreakdown} />
-            <Box style={{ marginTop: 6 }}>
-              <SeverityBar
-                breakdown={scan.severityBreakdown}
-                activeSeverity={severityFilter}
-                onSeverityClick={setSeverityFilter}
-              />
-            </Box>
-          </Box>
-        </Box>
+      {/* Remediation banner */}
+      {quality.remediationStatus !== 'none' && (
+        <RemediationBanner
+          status={quality.remediationStatus}
+          quality={quality}
+          repoUrl={repoUrl}
+          branch={branch}
+        />
+      )}
 
-        {/* Violations list — same card, below the divider */}
-        {quality.violations.length > 0 && (
-          <ViolationsCard
-            violations={quality.violations}
-            categoryFilter={categoryFilter}
-            setCategoryFilter={setCategoryFilter}
-            severityFilter={severityFilter}
-            repoUrl={repoUrl}
-            branch={branch}
-          />
-        )}
-      </Card>
+      {/* Clean state */}
+      {scan.totalViolations === 0 ? (
+        <Card variant="outlined" style={{ borderRadius: 12 }}>
+          <CardContent style={{ padding: '32px 24px', textAlign: 'center' }}>
+            <CheckCircleIcon style={{ fontSize: 40, color: statusColors.success, marginBottom: 8 }} />
+            <Typography style={{ fontSize: 16, fontWeight: 500 }}>
+              No violations detected
+            </Typography>
+            <Typography style={{ fontSize: 13, color: '#666', marginTop: 4 }}>
+              This project passed all quality checks. Great work!
+            </Typography>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          {/* Violations summary card */}
+          <Card variant="outlined" style={{ borderRadius: 12 }}>
+            {/* Summary header */}
+            <Box style={{ padding: '16px 20px', borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
+              <Box display="flex" alignItems="center" justifyContent="space-between">
+                <Box display="flex" alignItems="center" style={{ gap: 16 }}>
+                  <Typography style={{ fontSize: 28, fontWeight: 700, color: statusColors.error }}>
+                    {scan.totalViolations}
+                  </Typography>
+                  <Box>
+                    <Typography style={{ fontSize: 14, fontWeight: 500 }}>
+                      Violations
+                    </Typography>
+                    <Typography style={{ fontSize: 12, color: '#666' }}>
+                      {fixableCount} auto-fixable · {manualCount} manual review
+                    </Typography>
+                  </Box>
+                </Box>
+                {hasRole('developer') && fixableCount > 0 && quality.remediationStatus === 'none' && (
+                  <Box style={{ textAlign: 'right' }}>
+                    <Tooltip
+                      title="Triggers an APME remediation workflow via GitHub Actions. Fixes will be available on a branch for you to review in Dev Spaces or your IDE."
+                      arrow
+                      placement="bottom-end"
+                    >
+                      <Button
+                        variant="contained" color="primary" size="small"
+                        startIcon={<BuildIcon style={{ fontSize: 16 }} />}
+                        style={{ textTransform: 'none', fontWeight: 600 }}
+                      >
+                        Fix with AI
+                      </Button>
+                    </Tooltip>
+                    <Typography style={{ fontSize: 11, color: '#888', marginTop: 4 }}>
+                      Review changes in Dev Spaces before merging
+                    </Typography>
+                  </Box>
+                )}
+                {hasRole('developer') && quality.remediationStatus === 'available' && (
+                  <Box style={{ textAlign: 'right' }}>
+                    <Tooltip
+                      title="Triggers an APME remediation workflow via GitHub Actions. Fixes will be available on a branch for you to review."
+                      arrow
+                      placement="bottom-end"
+                    >
+                      <Button
+                        variant="contained" color="primary" size="small"
+                        startIcon={<BuildIcon style={{ fontSize: 16 }} />}
+                        style={{ textTransform: 'none', fontWeight: 600 }}
+                      >
+                        Fix with AI
+                      </Button>
+                    </Tooltip>
+                    <Typography style={{ fontSize: 11, color: '#888', marginTop: 4 }}>
+                      Review changes in Dev Spaces before merging
+                    </Typography>
+                  </Box>
+                )}
+              </Box>
+              <Box style={{ marginTop: 12 }}>
+                <SeverityProgressBar breakdown={scan.severityBreakdown} />
+                <Box style={{ marginTop: 6 }}>
+                  <SeverityBar
+                    breakdown={scan.severityBreakdown}
+                    activeSeverity={severityFilter}
+                    onSeverityClick={setSeverityFilter}
+                  />
+                </Box>
+              </Box>
+            </Box>
+
+            {/* Violations list */}
+            {quality.violations.length > 0 && (
+              <ViolationsCard
+                violations={quality.violations}
+                categoryFilter={categoryFilter}
+                setCategoryFilter={setCategoryFilter}
+                severityFilter={severityFilter}
+                repoUrl={repoUrl}
+                branch={branch}
+              />
+            )}
+          </Card>
+        </>
+      )}
+
+      {/* Scan history */}
+      <ScanHistorySection scans={quality.scanHistory} />
     </Box>
   );
 };

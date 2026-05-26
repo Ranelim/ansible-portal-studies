@@ -59,10 +59,8 @@ import {
 import { useProjectDetailStyles } from './styles';
 import { statusColors } from '../../common/statusColors';
 import { getProjectQuality } from './qualityDemoData';
-import { QualityTab, type OperationStatus } from './QualityTab';
+import { QualityTab } from './QualityTab';
 import { DependenciesTab } from './DependenciesTab';
-import PlayArrowIcon from '@material-ui/icons/PlayArrow';
-import BuildIcon from '@material-ui/icons/Build';
 import VerifiedUserOutlinedIcon from '@material-ui/icons/VerifiedUserOutlined';
 import Chip from '@material-ui/core/Chip';
 
@@ -914,12 +912,10 @@ const ActionsMenu = ({
   project,
   isPushedToAap,
   onPushToAap,
-  onCheck,
 }: {
   project: DemoProject;
   isPushedToAap: boolean;
   onPushToAap: () => void;
-  onCheck: () => void;
 }) => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const { hasRole } = useUserRoleContext();
@@ -938,13 +934,6 @@ const ActionsMenu = ({
         transformOrigin={{ vertical: 'top', horizontal: 'right' }}
         getContentAnchorEl={null}
       >
-        <MenuItem onClick={() => { setAnchorEl(null); onCheck(); }}>
-          <ListItemIcon>
-            <PlayArrowIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText primary="Check for violations" />
-        </MenuItem>
-        <Divider />
         {isPushed ? (
           <MenuItem onClick={() => setAnchorEl(null)}>
             <ListItemIcon>
@@ -995,7 +984,6 @@ export const ProjectDetailsPage = () => {
   const [qualityInitialView, setQualityInitialView] = useState<'latest-scan' | undefined>(undefined);
   const [initialScanId] = useState<string | null>(urlScan);
   const [starred, setStarred] = useState(false);
-  const [opStatus, setOpStatus] = useState<OperationStatus>('idle');
   const [isPushedToAap, setIsPushedToAap] = useState(() =>
     loadAapPushedRepos().has(projectName ?? ''),
   );
@@ -1058,17 +1046,6 @@ export const ProjectDetailsPage = () => {
 
   const quality = getProjectQuality(project.name);
 
-  const handleCheck = (_remediate: boolean) => {
-    setOpStatus('running');
-    setTimeout(() => {
-      if (quality?.proposals && quality.proposals.length > 0) {
-        setOpStatus('awaiting_approval');
-      } else {
-        setOpStatus('complete');
-      }
-    }, 3000);
-  };
-
   return (
     <Page themeId="app">
       <Content>
@@ -1123,7 +1100,6 @@ export const ProjectDetailsPage = () => {
               project={project}
               isPushedToAap={isPushedToAap}
               onPushToAap={openPushModal}
-              onCheck={() => { setSelectedTab(1); handleCheck(false); }}
             />
           </Box>
         </Box>
@@ -1176,10 +1152,6 @@ export const ProjectDetailsPage = () => {
             initialSeverity={urlSeverity}
             repoUrl={project.repo.url}
             branch={project.repo.branch}
-            onCheck={() => handleCheck(false)}
-            onRemediate={() => handleCheck(true)}
-            opStatus={opStatus}
-            onDismissResult={() => setOpStatus('idle')}
           />
         )}
         {selectedTab === 2 && <CIActivityTab project={project} />}
