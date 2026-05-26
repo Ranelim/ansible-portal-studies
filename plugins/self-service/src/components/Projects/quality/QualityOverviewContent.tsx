@@ -23,20 +23,21 @@ import {
 } from '../detail/qualityDemoData';
 
 const STATUS_CHIP_STYLES: Record<string, { bg: string; color: string }> = {
-  'needs-scan': { bg: '#f5f5f5', color: '#666' },
-  'issues-found': { bg: `${statusColors.error}10`, color: statusColors.error },
-  'fix-in-progress': { bg: `${statusColors.info}10`, color: statusColors.info },
-  'pr-open': { bg: `${statusColors.info}10`, color: statusColors.info },
-  'remaining': { bg: `${statusColors.warning}10`, color: '#8a6d00' },
+  'not-scanned': { bg: '#f5f5f5', color: '#666' },
+  'scanning': { bg: `${statusColors.info}10`, color: statusColors.info },
   'clean': { bg: `${statusColors.success}10`, color: statusColors.success },
+  'has-violations': { bg: `${statusColors.error}10`, color: statusColors.error },
+  'remediation-available': { bg: `${statusColors.info}10`, color: statusColors.info },
+  'remediation-in-review': { bg: `${statusColors.info}10`, color: statusColors.info },
+  'remaining': { bg: `${statusColors.warning}10`, color: '#8a6d00' },
 };
 
 const STATUS_FILTER_OPTIONS: { value: WorkflowStatus; label: string }[] = [
-  { value: 'issues-found', label: 'Issues found' },
-  { value: 'pr-open', label: 'PR open' },
+  { value: 'has-violations', label: 'Has violations' },
+  { value: 'remediation-in-review', label: 'In review' },
   { value: 'remaining', label: 'Remaining' },
   { value: 'clean', label: 'Clean' },
-  { value: 'needs-scan', label: 'Needs scan' },
+  { value: 'not-scanned', label: 'Not scanned' },
 ];
 
 type SummaryFilter = 'needs-attention' | 'clean' | null;
@@ -213,7 +214,7 @@ const PipelinePopover = ({
 const StatusCell = ({ row }: { row: FleetQualityRow }) => {
   const classes = useStyles();
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
-  const style = STATUS_CHIP_STYLES[row.workflowStatus] ?? STATUS_CHIP_STYLES['needs-scan'];
+  const style = STATUS_CHIP_STYLES[row.workflowStatus] ?? STATUS_CHIP_STYLES['not-scanned'];
 
   return (
     <>
@@ -228,7 +229,7 @@ const StatusCell = ({ row }: { row: FleetQualityRow }) => {
         style={{
           backgroundColor: style.bg,
           color: style.color,
-          border: row.workflowStatus === 'needs-scan' ? '1px solid #ddd' : 'none',
+          border: row.workflowStatus === 'not-scanned' ? '1px solid #ddd' : 'none',
         }}
       />
       <PipelinePopover
@@ -251,14 +252,18 @@ export const QualityOverviewContent = () => {
 
   const totals = useMemo(() => {
     let violations = 0;
+    let fixable = 0;
+    let manual = 0;
     let reposWithIssues = 0;
     let clean = 0;
     for (const row of fleetData) {
       violations += row.remainingCount;
+      fixable += row.fixableCount;
+      manual += row.manualCount;
       if (row.workflowStatus !== 'clean') reposWithIssues++;
       else clean++;
     }
-    return { violations, reposWithIssues, clean, total: fleetData.length };
+    return { violations, fixable, manual, reposWithIssues, clean, total: fleetData.length };
   }, [fleetData]);
 
   const filteredData = useMemo(() => {
@@ -323,11 +328,20 @@ export const QualityOverviewContent = () => {
         if (row.remainingCount === 0) {
           return <Typography style={{ fontSize: 13, color: '#999' }}>—</Typography>;
         }
-        const color = row.highestSeverity ? SEVERITY_COLORS[row.highestSeverity] : '#333';
         return (
-          <Typography style={{ fontSize: 13, fontWeight: 600, color }}>
-            {row.remainingCount}
-          </Typography>
+          <Box>
+            <Typography style={{ fontSize: 13, fontWeight: 600, color: '#333', lineHeight: 1.3 }}>
+              {row.fixableCount > 0 && (
+                <span style={{ color: statusColors.info }}>{row.fixableCount} fixable</span>
+              )}
+              {row.fixableCount > 0 && row.manualCount > 0 && (
+                <span style={{ color: '#999' }}>{' · '}</span>
+              )}
+              {row.manualCount > 0 && (
+                <span style={{ color: '#8a6d00' }}>{row.manualCount} manual</span>
+              )}
+            </Typography>
+          </Box>
         );
       },
     },
@@ -376,6 +390,26 @@ export const QualityOverviewContent = () => {
             issues remaining
           </Typography>
         </Box>
+        {totals.fixable > 0 && (
+          <Box className={classes.summaryChip} style={{ cursor: 'default', borderColor: 'transparent' }}>
+            <Typography className={classes.summaryValue} style={{ color: statusColors.info }}>
+              {totals.fixable}
+            </Typography>
+            <Typography className={classes.summaryLabel}>
+              auto-fixable
+            </Typography>
+          </Box>
+        )}
+        {totals.manual > 0 && (
+          <Box className={classes.summaryChip} style={{ cursor: 'default', borderColor: 'transparent' }}>
+            <Typography className={classes.summaryValue} style={{ color: '#8a6d00' }}>
+              {totals.manual}
+            </Typography>
+            <Typography className={classes.summaryLabel}>
+              manual review
+            </Typography>
+          </Box>
+        )}
       </Box>
 
       {/* Status filter chips */}

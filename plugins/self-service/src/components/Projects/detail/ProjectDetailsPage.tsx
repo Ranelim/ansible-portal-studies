@@ -635,12 +635,29 @@ type CIRun = {
 
 const DEMO_CI_RUNS: Record<string, CIRun[]> = {
   'rhel-patching': [
-    { id: 'CI #847', status: 'success', event: 'ansible-lint', trigger: 'push', time: '2 hours ago', duration: '3m 12s' },
-    { id: 'CI #846', status: 'failure', event: 'integration-test', trigger: 'push', time: '5 hours ago', duration: '7m 44s' },
+    { id: 'CI #849', status: 'failure', event: 'quality-scan', trigger: 'push', time: '2 hours ago', duration: '0m 38s' },
+    { id: 'CI #848', status: 'success', event: 'ansible-lint', trigger: 'push', time: '2 hours ago', duration: '3m 12s' },
+    { id: 'CI #847', status: 'failure', event: 'integration-test', trigger: 'push', time: '5 hours ago', duration: '7m 44s' },
+    { id: 'CI #846', status: 'success', event: 'quality-scan', trigger: 'pull request', time: '1 day ago', duration: '0m 35s' },
     { id: 'CI #845', status: 'success', event: 'ansible-lint', trigger: 'pull request', time: '1 day ago', duration: '2m 58s' },
     { id: 'CI #844', status: 'success', event: 'integration-test', trigger: 'push', time: '1 day ago', duration: '8m 02s' },
-    { id: 'CI #843', status: 'success', event: 'ansible-lint', trigger: 'push', time: '2 days ago', duration: '3m 05s' },
-    { id: 'CI #842', status: 'cancelled', event: 'integration-test', trigger: 'push', time: '3 days ago', duration: '1m 22s' },
+    { id: 'CI #843', status: 'failure', event: 'quality-scan', trigger: 'schedule', time: '2 days ago', duration: '0m 41s' },
+    { id: 'CI #842', status: 'success', event: 'ansible-lint', trigger: 'push', time: '2 days ago', duration: '3m 05s' },
+    { id: 'CI #841', status: 'cancelled', event: 'integration-test', trigger: 'push', time: '3 days ago', duration: '1m 22s' },
+  ],
+  'network-firewall-rules': [
+    { id: 'CI #56', status: 'failure', event: 'quality-scan', trigger: 'push', time: '1 day ago', duration: '0m 42s' },
+    { id: 'CI #55', status: 'success', event: 'ansible-lint', trigger: 'push', time: '1 day ago', duration: '1m 22s' },
+    { id: 'CI #54', status: 'failure', event: 'quality-scan', trigger: 'schedule', time: '3 days ago', duration: '0m 39s' },
+  ],
+  'cloud-provisioner': [
+    { id: 'CI #104', status: 'success', event: 'quality-scan', trigger: 'push', time: '4 hours ago', duration: '0m 22s' },
+    { id: 'CI #103', status: 'success', event: 'ansible-lint', trigger: 'push', time: '4 hours ago', duration: '1m 48s' },
+    { id: 'CI #102', status: 'success', event: 'integration-test', trigger: 'push', time: '1 day ago', duration: '6m 15s' },
+  ],
+  'backup-automation': [
+    { id: 'CI #21', status: 'failure', event: 'quality-scan', trigger: 'schedule', time: '3 days ago', duration: '1m 15s' },
+    { id: 'CI #20', status: 'failure', event: 'ansible-lint', trigger: 'push', time: '4 days ago', duration: '1m 02s' },
   ],
   'web-app-scaling-suite': [
     { id: 'CI #312', status: 'success', event: 'ansible-lint', trigger: 'push', time: '1 day ago', duration: '2m 45s' },

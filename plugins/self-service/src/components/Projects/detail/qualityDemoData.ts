@@ -45,6 +45,10 @@ export type ScanResult = {
   remediatedCount: number;
   severityBreakdown: Record<SeverityClass, number>;
   commitHash: string;
+  scanSource: 'github-action' | 'manual';
+  trigger?: 'push' | 'pull_request' | 'schedule' | 'manual';
+  ciRunUrl?: string;
+  ciRunId?: string;
 };
 
 export type CollectionDependency = {
@@ -61,6 +65,14 @@ export type PythonDependency = {
   highestSeverity?: SeverityClass;
 };
 
+export type RemediationStatus =
+  | 'none'
+  | 'available'
+  | 'in-progress'
+  | 'branch-ready'
+  | 'pr-open'
+  | 'pr-merged';
+
 export type ProjectQualityData = {
   healthScore: number;
   totalViolations: number;
@@ -76,6 +88,15 @@ export type ProjectQualityData = {
   ansibleCoreVersion: string;
   collections: CollectionDependency[];
   pythonPackages: PythonDependency[];
+  remediationStatus: RemediationStatus;
+  remediationPrUrl?: string;
+  remediationBranch?: string;
+  remediationSummary?: {
+    addressed: number;
+    remaining: number;
+    autoFixed: number;
+    aiProposed: number;
+  };
 };
 
 const QUALITY_DATA: Record<string, ProjectQualityData> = {
@@ -93,55 +114,69 @@ const QUALITY_DATA: Record<string, ProjectQualityData> = {
       { scanIndex: 4, totalViolations: 10, fixable: 7 },
       { scanIndex: 5, totalViolations: 7, fixable: 5 },
     ],
+    remediationStatus: 'remediation-in-review',
+    remediationPrUrl: 'https://github.com/acme-corp/rhel-patching/pull/42',
+    remediationBranch: 'apme/remediate-014',
+    remediationSummary: { addressed: 10, remaining: 2, autoFixed: 8, aiProposed: 2 },
     latestScan: {
       scanId: 'scan-rhel-014',
-      scanType: 'remediate',
+      scanType: 'check',
       createdAt: '2 hours ago',
       totalViolations: 12,
       fixable: 10,
       aiCandidates: 3,
-      aiAccepted: 2,
-      aiDeclined: 1,
+      aiAccepted: 0,
+      aiDeclined: 0,
       manualReview: 2,
-      remediatedCount: 4,
+      remediatedCount: 0,
       severityBreakdown: { critical: 1, high: 3, medium: 5, low: 2, info: 1 },
       commitHash: 'a3f1b2c',
+      scanSource: 'github-action',
+      trigger: 'push',
+      ciRunUrl: 'https://github.com/acme-corp/rhel-patching/actions/runs/9841',
+      ciRunId: 'Quality Scan #287',
     },
     scanHistory: [
       {
-        scanId: 'scan-rhel-014', scanType: 'remediate', createdAt: 'Apr 14, 2026 10:22',
-        totalViolations: 12, fixable: 10, aiCandidates: 3, aiAccepted: 2, aiDeclined: 1,
-        manualReview: 2, remediatedCount: 4,
+        scanId: 'scan-rhel-014', scanType: 'check', createdAt: 'May 25, 2026 10:22',
+        totalViolations: 12, fixable: 10, aiCandidates: 3, aiAccepted: 0, aiDeclined: 0,
+        manualReview: 2, remediatedCount: 0,
         severityBreakdown: { critical: 1, high: 3, medium: 5, low: 2, info: 1 },
-        commitHash: 'a3f1b2c',
+        commitHash: 'a3f1b2c', scanSource: 'github-action', trigger: 'push',
+        ciRunUrl: 'https://github.com/acme-corp/rhel-patching/actions/runs/9841',
+        ciRunId: 'Quality Scan #287',
       },
       {
-        scanId: 'scan-rhel-013', scanType: 'check', createdAt: 'Apr 12, 2026 14:05',
+        scanId: 'scan-rhel-013', scanType: 'check', createdAt: 'May 23, 2026 14:05',
         totalViolations: 10, fixable: 7, aiCandidates: 4, aiAccepted: 0, aiDeclined: 0,
         manualReview: 3, remediatedCount: 0,
         severityBreakdown: { critical: 0, high: 2, medium: 4, low: 3, info: 1 },
-        commitHash: 'f8e2d1a',
+        commitHash: 'f8e2d1a', scanSource: 'github-action', trigger: 'pull_request',
+        ciRunId: 'Quality Scan #285',
       },
       {
-        scanId: 'scan-rhel-012', scanType: 'remediate', createdAt: 'Apr 10, 2026 09:15',
-        totalViolations: 12, fixable: 8, aiCandidates: 5, aiAccepted: 4, aiDeclined: 1,
-        manualReview: 3, remediatedCount: 7,
+        scanId: 'scan-rhel-012', scanType: 'check', createdAt: 'May 21, 2026 09:15',
+        totalViolations: 12, fixable: 8, aiCandidates: 5, aiAccepted: 0, aiDeclined: 0,
+        manualReview: 3, remediatedCount: 0,
         severityBreakdown: { critical: 1, high: 2, medium: 5, low: 3, info: 1 },
-        commitHash: 'c4b3a9f',
+        commitHash: 'c4b3a9f', scanSource: 'github-action', trigger: 'push',
+        ciRunId: 'Quality Scan #280',
       },
       {
-        scanId: 'scan-rhel-011', scanType: 'check', createdAt: 'Apr 8, 2026 16:30',
+        scanId: 'scan-rhel-011', scanType: 'check', createdAt: 'May 19, 2026 16:30',
         totalViolations: 15, fixable: 10, aiCandidates: 6, aiAccepted: 0, aiDeclined: 0,
         manualReview: 5, remediatedCount: 0,
         severityBreakdown: { critical: 1, high: 3, medium: 6, low: 4, info: 1 },
-        commitHash: 'b2a7e3d',
+        commitHash: 'b2a7e3d', scanSource: 'github-action', trigger: 'schedule',
+        ciRunId: 'Quality Scan #275',
       },
       {
-        scanId: 'scan-rhel-010', scanType: 'remediate', createdAt: 'Apr 5, 2026 11:00',
-        totalViolations: 18, fixable: 12, aiCandidates: 7, aiAccepted: 5, aiDeclined: 2,
-        manualReview: 5, remediatedCount: 8,
+        scanId: 'scan-rhel-010', scanType: 'check', createdAt: 'May 16, 2026 11:00',
+        totalViolations: 18, fixable: 12, aiCandidates: 7, aiAccepted: 0, aiDeclined: 0,
+        manualReview: 5, remediatedCount: 0,
         severityBreakdown: { critical: 2, high: 4, medium: 6, low: 4, info: 2 },
-        commitHash: 'e1d5c8b',
+        commitHash: 'e1d5c8b', scanSource: 'github-action', trigger: 'push',
+        ciRunId: 'Quality Scan #268',
       },
     ],
     violations: [
@@ -223,8 +258,9 @@ const QUALITY_DATA: Record<string, ProjectQualityData> = {
       { scanIndex: 3, totalViolations: 18, fixable: 11 },
       { scanIndex: 4, totalViolations: 14, fixable: 9 },
     ],
+    remediationStatus: 'available',
     latestScan: {
-      scanId: 'scan-web-008',
+      scanId: 'scan-net-008',
       scanType: 'check',
       createdAt: '1 day ago',
       totalViolations: 14,
@@ -236,9 +272,44 @@ const QUALITY_DATA: Record<string, ProjectQualityData> = {
       remediatedCount: 0,
       severityBreakdown: { critical: 1, high: 3, medium: 5, low: 4, info: 1 },
       commitHash: 'e7d2f1a',
+      scanSource: 'github-action',
+      trigger: 'push',
+      ciRunId: 'Quality Scan #54',
     },
-    scanHistory: [],
-    violations: [],
+    scanHistory: [
+      {
+        scanId: 'scan-net-008', scanType: 'check', createdAt: 'May 24, 2026 08:15',
+        totalViolations: 14, fixable: 9, aiCandidates: 5, aiAccepted: 0, aiDeclined: 0,
+        manualReview: 5, remediatedCount: 0,
+        severityBreakdown: { critical: 1, high: 3, medium: 5, low: 4, info: 1 },
+        commitHash: 'e7d2f1a', scanSource: 'github-action', trigger: 'push',
+        ciRunId: 'Quality Scan #54',
+      },
+      {
+        scanId: 'scan-net-007', scanType: 'check', createdAt: 'May 22, 2026 16:40',
+        totalViolations: 18, fixable: 11, aiCandidates: 6, aiAccepted: 0, aiDeclined: 0,
+        manualReview: 7, remediatedCount: 0,
+        severityBreakdown: { critical: 1, high: 4, medium: 6, low: 5, info: 2 },
+        commitHash: 'd3b8e1c', scanSource: 'github-action', trigger: 'schedule',
+        ciRunId: 'Quality Scan #51',
+      },
+    ],
+    violations: [
+      { ruleId: 'fqcn[action-core]', message: 'Use FQCN for builtin module actions', file: 'tasks/apply-rules.yml', lineStart: 8, severity: 'medium', fixTier: 'deterministic', category: 'lint' },
+      { ruleId: 'fqcn[action-core]', message: 'Use FQCN for builtin module actions', file: 'tasks/validate-rules.yml', lineStart: 15, severity: 'medium', fixTier: 'deterministic', category: 'lint' },
+      { ruleId: 'risky-file-permissions', message: 'File permissions unset or incorrect', file: 'tasks/apply-rules.yml', lineStart: 22, severity: 'high', fixTier: 'ai', category: 'security' },
+      { ruleId: 'no-changed-when', message: 'Commands should not change things if nothing needs doing', file: 'tasks/validate-rules.yml', lineStart: 31, severity: 'medium', fixTier: 'ai', category: 'lint' },
+      { ruleId: 'name[missing]', message: 'All tasks should be named', file: 'tasks/rollback.yml', lineStart: 3, severity: 'medium', fixTier: 'deterministic', category: 'best-practice' },
+      { ruleId: 'name[missing]', message: 'All tasks should be named', file: 'tasks/rollback.yml', lineStart: 12, severity: 'medium', fixTier: 'deterministic', category: 'best-practice' },
+      { ruleId: 'yaml[truthy]', message: 'Truthy value should be one of [false, true]', file: 'defaults/main.yml', lineStart: 5, severity: 'low', fixTier: 'deterministic', category: 'lint' },
+      { ruleId: 'yaml[truthy]', message: 'Truthy value should be one of [false, true]', file: 'defaults/main.yml', lineStart: 12, severity: 'low', fixTier: 'deterministic', category: 'lint' },
+      { ruleId: 'aap-deprecated-module', message: 'paloalto.panos.panos_security_rule deprecated in collection 3.0 — use paloalto.panos.panos_security_policy', file: 'tasks/apply-rules.yml', lineStart: 35, severity: 'high', fixTier: 'deterministic', category: 'aap-compatibility' },
+      { ruleId: 'aap-collection-update', message: 'paloalto.panos 2.19.0 has known issues — update to >= 3.0.0', file: 'collections/requirements.yml', lineStart: 2, severity: 'high', fixTier: 'deterministic', category: 'aap-compatibility' },
+      { ruleId: 'aap-removed-config', message: 'callback_whitelist renamed to callbacks_enabled (removed in ansible-core 2.17)', file: 'ansible.cfg', lineStart: 4, severity: 'critical', fixTier: 'deterministic', category: 'aap-compatibility' },
+      { ruleId: 'deprecated-module', message: 'Module ansible.netcommon.net_ping is deprecated — use vendor-specific ping module', file: 'tasks/validate-rules.yml', lineStart: 44, severity: 'low', fixTier: 'manual', category: 'lint' },
+      { ruleId: 'no-jinja-when', message: 'Jinja2 templates should not be used in when conditions', file: 'tasks/apply-rules.yml', lineStart: 48, severity: 'low', fixTier: 'deterministic', category: 'lint' },
+      { ruleId: 'meta-no-info', message: 'Role metadata should contain relevant info', file: 'meta/main.yml', lineStart: 1, severity: 'info', fixTier: 'manual', category: 'best-practice' },
+    ],
     proposals: [],
     ansibleCoreVersion: '2.15.8',
     collections: [
@@ -265,8 +336,9 @@ const QUALITY_DATA: Record<string, ProjectQualityData> = {
       { scanIndex: 2, totalViolations: 5, fixable: 4 },
       { scanIndex: 3, totalViolations: 3, fixable: 2 },
     ],
+    remediationStatus: 'none',
     latestScan: {
-      scanId: 'scan-cis-022',
+      scanId: 'scan-cloud-022',
       scanType: 'check',
       createdAt: '4 hours ago',
       totalViolations: 3,
@@ -278,9 +350,25 @@ const QUALITY_DATA: Record<string, ProjectQualityData> = {
       remediatedCount: 0,
       severityBreakdown: { critical: 0, high: 0, medium: 1, low: 1, info: 1 },
       commitHash: 'b4f9c2d',
+      scanSource: 'github-action',
+      trigger: 'push',
+      ciRunId: 'Quality Scan #102',
     },
-    scanHistory: [],
-    violations: [],
+    scanHistory: [
+      {
+        scanId: 'scan-cloud-022', scanType: 'check', createdAt: 'May 25, 2026 14:30',
+        totalViolations: 3, fixable: 2, aiCandidates: 1, aiAccepted: 0, aiDeclined: 0,
+        manualReview: 1, remediatedCount: 0,
+        severityBreakdown: { critical: 0, high: 0, medium: 1, low: 1, info: 1 },
+        commitHash: 'b4f9c2d', scanSource: 'github-action', trigger: 'push',
+        ciRunId: 'Quality Scan #102',
+      },
+    ],
+    violations: [
+      { ruleId: 'yaml[truthy]', message: 'Truthy value should be one of [false, true]', file: 'defaults/main.yml', lineStart: 3, severity: 'low', fixTier: 'deterministic', category: 'lint' },
+      { ruleId: 'no-changed-when', message: 'Commands should not change things if nothing needs doing', file: 'tasks/provision-ec2.yml', lineStart: 18, severity: 'medium', fixTier: 'ai', category: 'lint' },
+      { ruleId: 'meta-no-info', message: 'Role metadata should contain relevant info', file: 'meta/main.yml', lineStart: 1, severity: 'info', fixTier: 'manual', category: 'best-practice' },
+    ],
     proposals: [],
     ansibleCoreVersion: '2.16.3',
     collections: [
@@ -303,8 +391,9 @@ const QUALITY_DATA: Record<string, ProjectQualityData> = {
       { scanIndex: 2, totalViolations: 25, fixable: 14 },
       { scanIndex: 3, totalViolations: 21, fixable: 12 },
     ],
+    remediationStatus: 'none',
     latestScan: {
-      scanId: 'scan-fw-005',
+      scanId: 'scan-bak-005',
       scanType: 'check',
       createdAt: '3 days ago',
       totalViolations: 21,
@@ -316,8 +405,20 @@ const QUALITY_DATA: Record<string, ProjectQualityData> = {
       remediatedCount: 0,
       severityBreakdown: { critical: 2, high: 5, medium: 8, low: 4, info: 2 },
       commitHash: 'c1d8e3f',
+      scanSource: 'github-action',
+      trigger: 'schedule',
+      ciRunId: 'Quality Scan #19',
     },
-    scanHistory: [],
+    scanHistory: [
+      {
+        scanId: 'scan-bak-005', scanType: 'check', createdAt: 'May 22, 2026 06:00',
+        totalViolations: 21, fixable: 12, aiCandidates: 6, aiAccepted: 0, aiDeclined: 0,
+        manualReview: 9, remediatedCount: 0,
+        severityBreakdown: { critical: 2, high: 5, medium: 8, low: 4, info: 2 },
+        commitHash: 'c1d8e3f', scanSource: 'github-action', trigger: 'schedule',
+        ciRunId: 'Quality Scan #19',
+      },
+    ],
     violations: [],
     proposals: [],
     ansibleCoreVersion: '2.15.4',
@@ -363,12 +464,13 @@ export type PipelineStep = {
 };
 
 export type WorkflowStatus =
-  | 'needs-scan'
-  | 'issues-found'
-  | 'fix-in-progress'
-  | 'pr-open'
-  | 'remaining'
-  | 'clean';
+  | 'not-scanned'
+  | 'scanning'
+  | 'clean'
+  | 'has-violations'
+  | 'remediation-available'
+  | 'remediation-in-review'
+  | 'remaining';
 
 export type FleetQualityRow = {
   repoName: string;
@@ -376,8 +478,10 @@ export type FleetQualityRow = {
   statusLabel: string;
   issuesCount: number;
   fixableCount: number;
+  manualCount: number;
   remainingCount: number;
   highestSeverity: SeverityClass | null;
+  severityBreakdown: Record<SeverityClass, number>;
   lastScannedAt: string;
   lastScannedCommit: string;
   pipeline: PipelineStep[];
@@ -386,47 +490,46 @@ export type FleetQualityRow = {
 export function getFleetQualityData(): FleetQualityRow[] {
   const scenarios: Record<string, { status: WorkflowStatus; label: string; remaining: number; pipeline: PipelineStep[] }> = {
     'rhel-patching': {
-      status: 'clean',
-      label: 'Clean',
-      remaining: 0,
+      status: 'remediation-in-review',
+      label: '10 addressed · review in IDE',
+      remaining: 2,
       pipeline: [
-        { label: 'Scanned', status: 'done', detail: '2 hours ago · commit a3f1b2c' },
-        { label: 'Auto-fixed', status: 'done', detail: '10 of 12 issues' },
-        { label: 'PR #42 merged', status: 'done', detail: '1 hour ago' },
-        { label: 'Resolved', status: 'done' },
+        { label: 'Scanned', status: 'done', detail: '2 hours ago · push · commit a3f1b2c' },
+        { label: '12 violations found', status: 'done', detail: '1 critical · 3 high · 5 medium' },
+        { label: '10 addressed (8 auto + 2 AI)', status: 'done', detail: 'PR #42 open for review' },
+        { label: 'Review in Dev Spaces', status: 'active', detail: '2 remaining need manual fix' },
       ],
     },
     'network-firewall-rules': {
-      status: 'issues-found',
-      label: '14 issues found',
+      status: 'has-violations',
+      label: '14 violations found',
       remaining: 14,
       pipeline: [
-        { label: 'Scanned', status: 'done', detail: '1 day ago · commit e7d2f1a' },
-        { label: 'Auto-fix', status: 'pending' },
-        { label: 'Pull request', status: 'pending' },
-        { label: 'Merge', status: 'pending' },
+        { label: 'Scanned', status: 'done', detail: '1 day ago · push · commit e7d2f1a' },
+        { label: '14 violations found', status: 'active', detail: '1 critical · 3 high · 5 medium' },
+        { label: 'Remediation', status: 'pending', detail: '9 auto-fixable · 5 manual' },
+        { label: 'Review in IDE', status: 'pending' },
       ],
     },
     'cloud-provisioner': {
-      status: 'pr-open',
-      label: 'PR open (2 fixed)',
-      remaining: 1,
+      status: 'has-violations',
+      label: '3 minor issues',
+      remaining: 3,
       pipeline: [
-        { label: 'Scanned', status: 'done', detail: '4 hours ago · commit b4f9c2d' },
-        { label: 'Auto-fixed', status: 'done', detail: '2 of 3 issues' },
-        { label: 'PR #18 open', status: 'active', detail: 'Awaiting review' },
-        { label: 'Merge', status: 'pending' },
+        { label: 'Scanned', status: 'done', detail: '4 hours ago · push · commit b4f9c2d' },
+        { label: '3 violations found', status: 'active', detail: '1 medium · 1 low · 1 info' },
+        { label: 'Fix in IDE', status: 'pending', detail: '2 auto-fixable · 1 manual' },
       ],
     },
     'backup-automation': {
       status: 'remaining',
-      label: '9 remaining',
-      remaining: 9,
+      label: '21 violations · needs attention',
+      remaining: 21,
       pipeline: [
-        { label: 'Scanned', status: 'done', detail: '3 days ago · commit c1d8e3f' },
-        { label: 'Auto-fixed', status: 'done', detail: '12 of 21 issues' },
-        { label: 'PR #7 merged', status: 'done', detail: '2 days ago' },
-        { label: '9 need manual fix', status: 'active' },
+        { label: 'Scanned', status: 'done', detail: '3 days ago · scheduled · commit c1d8e3f' },
+        { label: '21 violations found', status: 'active', detail: '2 critical · 5 high · 8 medium' },
+        { label: 'Remediation', status: 'pending', detail: '12 auto-fixable · 9 manual' },
+        { label: 'Review in IDE', status: 'pending' },
       ],
     },
   };
@@ -441,19 +544,20 @@ export function getFleetQualityData(): FleetQualityRow[] {
 
     return {
       repoName: name,
-      workflowStatus: scenario?.status ?? 'needs-scan',
-      statusLabel: scenario?.label ?? 'Needs scan',
+      workflowStatus: scenario?.status ?? 'not-scanned',
+      statusLabel: scenario?.label ?? 'Not scanned',
       issuesCount: data.totalViolations,
       fixableCount: data.latestScan.fixable,
+      manualCount: data.latestScan.manualReview,
       remainingCount: scenario?.remaining ?? data.totalViolations,
       highestSeverity: highest,
+      severityBreakdown: data.severityBreakdown,
       lastScannedAt: data.lastScannedAt,
       lastScannedCommit: data.lastScannedCommit,
       pipeline: scenario?.pipeline ?? [
         { label: 'Scan', status: 'pending' },
-        { label: 'Auto-fix', status: 'pending' },
-        { label: 'Pull request', status: 'pending' },
-        { label: 'Merge', status: 'pending' },
+        { label: 'Results', status: 'pending' },
+        { label: 'Review in IDE', status: 'pending' },
       ],
     };
   });
