@@ -17,8 +17,13 @@ import {
   Checkbox,
   Tabs,
   Tab,
+  Menu,
+  MenuItem,
+  ListItemText,
+  Divider,
   makeStyles,
 } from '@material-ui/core';
+import ArrowDropDownIcon from '@material-ui/icons/ArrowDropDown';
 import CheckCircleIcon from '@material-ui/icons/CheckCircle';
 import OpenInNewIcon from '@material-ui/icons/OpenInNew';
 import CodeIcon from '@material-ui/icons/Code';
@@ -1430,7 +1435,7 @@ const useQualityStyles = makeStyles(theme => ({
       backgroundColor: '#f9f9f9',
     },
   },
-  colCheckbox: { width: 36, textAlign: 'center' as const },
+  colCheckbox: { width: 48, paddingLeft: 14 },
   colSeverity: { width: 80 },
   colFix: { width: 140 },
   colDescription: { minWidth: 200 },
@@ -1611,7 +1616,9 @@ export const QualityTabUnified = ({
   const { hasRole } = useUserRoleContext();
   const isDeveloper = hasRole('developer');
   const [categoryFilter, setCategoryFilter] = useState<ViolationCategory | 'all'>('all');
-  const [severityFilter, setSeverityFilter] = useState<SeverityClass | null>(initialSeverity ?? null);
+  const [severityFilters, setSeverityFilters] = useState<Set<SeverityClass>>(initialSeverity ? new Set([initialSeverity]) : new Set());
+  type FixTierFilter = 'deterministic' | 'ai' | 'manual';
+  const [fixFilters, setFixFilters] = useState<Set<FixTierFilter>>(new Set());
   const [violationStatuses, setViolationStatuses] = useState<Map<string, UnifiedViolationStatus>>(new Map());
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -1619,6 +1626,22 @@ export const QualityTabUnified = ({
   const [progress, setProgress] = useState(0);
   const [scanning, setScanning] = useState(false);
   const [scanProgress, setScanProgress] = useState(0);
+
+  const toggleSeverityFilter = (sev: SeverityClass) => {
+    setSeverityFilters(prev => {
+      const next = new Set(prev);
+      if (next.has(sev)) next.delete(sev); else next.add(sev);
+      return next;
+    });
+  };
+
+  const toggleFixFilter = (tier: FixTierFilter) => {
+    setFixFilters(prev => {
+      const next = new Set(prev);
+      if (next.has(tier)) next.delete(tier); else next.add(tier);
+      return next;
+    });
+  };
 
   type SortColumn = 'severity' | 'fix' | 'rule' | 'file';
   const [sortColumn, setSortColumn] = useState<SortColumn>('severity');
@@ -1628,6 +1651,8 @@ export const QualityTabUnified = ({
     if (sortColumn === col) setSortAsc(!sortAsc);
     else { setSortColumn(col); setSortAsc(col === 'file' || col === 'rule'); }
   };
+
+  const [selectMenuAnchor, setSelectMenuAnchor] = useState<null | HTMLElement>(null);
 
   if (!quality) {
     return (
@@ -1755,7 +1780,8 @@ export const QualityTabUnified = ({
 
   const filteredViolations = useMemo(() => {
     let result = quality.violations;
-    if (severityFilter) result = result.filter(v => v.severity === severityFilter);
+    if (severityFilters.size > 0) result = result.filter(v => severityFilters.has(v.severity));
+    if (fixFilters.size > 0) result = result.filter(v => fixFilters.has(v.fixTier));
     if (categoryFilter !== 'all') result = result.filter(v => v.category === categoryFilter);
 
     const sorted = [...result].sort((a, b) => {
@@ -1769,7 +1795,13 @@ export const QualityTabUnified = ({
       return sortAsc ? cmp : -cmp;
     });
     return sorted;
-  }, [quality.violations, categoryFilter, severityFilter, sortColumn, sortAsc]);
+  }, [quality.violations, categoryFilter, severityFilters, fixFilters, sortColumn, sortAsc]);
+
+  const selectByPredicate = (predicate: (v: QualityViolation) => boolean) => {
+    const keys = filteredViolations.filter(v => predicate(v) && getStatus(v) === 'open').map(v => getViolationKey(v));
+    setSelectedIds(prev => { const n = new Set(prev); keys.forEach(k => n.add(k)); return n; });
+    setSelectMenuAnchor(null);
+  };
 
   const categoryCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -1818,45 +1850,102 @@ export const QualityTabUnified = ({
         </Card>
       ) : (
         <>
-          {/* Summary stats — inline severity counts, active one gets a pill highlight + dismiss */}
+          {/* Summary + quick filters: severity on the left, fix type on the right */}
           <Box style={{ marginBottom: 16 }}>
-            <Box display="flex" alignItems="center" style={{ gap: 12, marginBottom: 8 }}>
-              <Typography style={{ fontSize: 13 }}>
-                <strong>{scan.totalViolations}</strong> violations
-              </Typography>
-              {(['critical', 'high', 'medium', 'low', 'info'] as SeverityClass[]).map(sev => {
-                const count = scan.severityBreakdown[sev];
-                if (!count) return null;
-                const isActive = severityFilter === sev;
+            <Box display="flex" alignItems="center" justifyContent="space-between" style={{ marginBottom: 8 }}>
+              {/* Left: violation count + severity quick filters */}
+              <Box display="flex" alignItems="center" style={{ gap: 10 }}>
+                <Typography style={{ fontSize: 13 }}>
+                  <strong>{scan.totalViolations}</strong> violations
+                </Typography>
+                <span style={{ color: '#d2d2d2', fontSize: 13 }}>|</span>
+                {(['critical', 'high', 'medium', 'low', 'info'] as SeverityClass[]).map(sev => {
+                  const count = scan.severityBreakdown[sev];
+                  if (!count) return null;
+                  const isActive = severityFilters.has(sev);
+                  const anyActive = severityFilters.size > 0;
 
-                return (
-                  <span
-                    key={sev}
-                    onClick={() => setSeverityFilter(isActive ? null : sev)}
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 4,
-                      fontSize: 13,
-                      cursor: 'pointer',
-                      padding: '2px 8px',
-                      borderRadius: 10,
-                      backgroundColor: isActive ? `${SEVERITY_COLORS[sev]}18` : 'transparent',
-                      border: isActive ? `1px solid ${SEVERITY_COLORS[sev]}40` : '1px solid transparent',
-                      opacity: severityFilter && !isActive ? 0.4 : 1,
-                      transition: 'all 0.15s ease',
-                    }}
-                  >
-                    <strong style={{ color: SEVERITY_COLORS[sev] }}>{count}</strong>
-                    <span style={{ textTransform: 'capitalize' }}>{sev}</span>
-                    {isActive && (
-                      <CloseIcon style={{ fontSize: 12, color: SEVERITY_COLORS[sev], marginLeft: 2 }} />
-                    )}
-                  </span>
-                );
-              })}
+                  return (
+                    <span
+                      key={sev}
+                      onClick={() => toggleSeverityFilter(sev)}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        fontSize: 13,
+                        cursor: 'pointer',
+                        padding: '2px 8px',
+                        borderRadius: 10,
+                        backgroundColor: isActive ? `${SEVERITY_COLORS[sev]}18` : 'transparent',
+                        border: isActive ? `1px solid ${SEVERITY_COLORS[sev]}40` : '1px solid transparent',
+                        opacity: anyActive && !isActive ? 0.4 : 1,
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      <strong style={{ color: SEVERITY_COLORS[sev] }}>{count}</strong>
+                      <span style={{ textTransform: 'capitalize' }}>{sev}</span>
+                      {isActive && (
+                        <CloseIcon style={{ fontSize: 12, color: SEVERITY_COLORS[sev], marginLeft: 2 }} />
+                      )}
+                    </span>
+                  );
+                })}
+              </Box>
+              {/* Right: fix type quick filters */}
+              <Box display="flex" alignItems="center" style={{ gap: 10 }}>
+                {([
+                  { tier: 'deterministic' as FixTierFilter, label: 'Auto-fix', color: '#2e7d32' },
+                  { tier: 'ai' as FixTierFilter, label: 'AI-assisted', color: '#6a1b9a' },
+                  { tier: 'manual' as FixTierFilter, label: 'Manual', color: '#6a6e73' },
+                ]).map(({ tier, label, color }) => {
+                  const count = quality.violations.filter(v => v.fixTier === tier).length;
+                  if (!count) return null;
+                  const isActive = fixFilters.has(tier);
+                  const anyActive = fixFilters.size > 0;
+
+                  return (
+                    <span
+                      key={tier}
+                      onClick={() => toggleFixFilter(tier)}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        fontSize: 13,
+                        cursor: 'pointer',
+                        padding: '2px 8px',
+                        borderRadius: 10,
+                        backgroundColor: isActive ? `${color}18` : 'transparent',
+                        border: isActive ? `1px solid ${color}40` : '1px solid transparent',
+                        opacity: anyActive && !isActive ? 0.4 : 1,
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      <strong style={{ color }}>{count}</strong>
+                      <span>{label}</span>
+                      {isActive && (
+                        <CloseIcon style={{ fontSize: 12, color, marginLeft: 2 }} />
+                      )}
+                    </span>
+                  );
+                })}
+              </Box>
             </Box>
             <SeverityProgressBar breakdown={scan.severityBreakdown} />
+            {(severityFilters.size > 0 || fixFilters.size > 0) && (
+              <Box display="flex" alignItems="center" style={{ marginTop: 8, gap: 8 }}>
+                <Typography style={{ fontSize: 12, color: '#6a6e73' }}>
+                  Showing {filteredViolations.length} of {scan.totalViolations} violations
+                </Typography>
+                <span
+                  onClick={() => { setSeverityFilters(new Set()); setFixFilters(new Set()); }}
+                  style={{ fontSize: 12, color: '#06c', cursor: 'pointer' }}
+                >
+                  Clear filters
+                </span>
+              </Box>
+            )}
           </Box>
 
           {/* ── BANNERS — floating with margin, not glued to table ── */}
@@ -1985,17 +2074,84 @@ export const QualityTabUnified = ({
               <thead>
                 <tr>
                   <th className={classes.colCheckbox}>
-                    <Checkbox
-                      size="small"
-                      checked={
-                        filteredViolations.filter(v => v.fixTier !== 'manual' && getStatus(v) === 'open').length > 0 &&
-                        filteredViolations.filter(v => v.fixTier !== 'manual' && getStatus(v) === 'open').every(v => selectedIds.has(getViolationKey(v)))
-                      }
-                      onChange={handleSelectAll}
-                      color="primary"
-                      style={{ padding: 0 }}
-                      disabled={pageState === 'in-progress'}
-                    />
+                    <Box display="inline-flex" alignItems="center">
+                      <Checkbox
+                        size="small"
+                        checked={
+                          filteredViolations.filter(v => v.fixTier !== 'manual' && getStatus(v) === 'open').length > 0 &&
+                          filteredViolations.filter(v => v.fixTier !== 'manual' && getStatus(v) === 'open').every(v => selectedIds.has(getViolationKey(v)))
+                        }
+                        indeterminate={
+                          selectedIds.size > 0 &&
+                          !filteredViolations.filter(v => v.fixTier !== 'manual' && getStatus(v) === 'open').every(v => selectedIds.has(getViolationKey(v)))
+                        }
+                        onChange={handleSelectAll}
+                        color="primary"
+                        style={{ padding: 0 }}
+                        disabled={pageState === 'in-progress'}
+                      />
+                      <ArrowDropDownIcon
+                        style={{ fontSize: 16, color: '#6a6e73', cursor: 'pointer', marginLeft: -2 }}
+                        onClick={(e) => setSelectMenuAnchor(e.currentTarget)}
+                      />
+                    </Box>
+                    <Menu
+                      anchorEl={selectMenuAnchor}
+                      open={Boolean(selectMenuAnchor)}
+                      onClose={() => setSelectMenuAnchor(null)}
+                      getContentAnchorEl={null}
+                      anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+                      transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+                      PaperProps={{ style: { minWidth: 260, padding: '4px 0' } }}
+                    >
+                      <Box style={{ padding: '4px 16px 8px', borderBottom: '1px solid #eee' }}>
+                        <Typography style={{ fontSize: 11, fontWeight: 600, color: '#6a6e73', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                          Select by fix type
+                        </Typography>
+                      </Box>
+                      <MenuItem onClick={() => selectByPredicate(v => v.fixTier !== 'manual')}>
+                        <ListItemText
+                          primary={<span style={{ fontSize: 13 }}>All fixable violations ({filteredViolations.filter(v => v.fixTier !== 'manual' && getStatus(v) === 'open').length})</span>}
+                          secondary={<span style={{ fontSize: 11 }}>Includes both automated and AI-assisted fixes</span>}
+                        />
+                      </MenuItem>
+                      <MenuItem onClick={() => selectByPredicate(v => v.fixTier === 'deterministic')}>
+                        <ListItemText
+                          primary={<span style={{ fontSize: 13 }}>Automated fixes only ({filteredViolations.filter(v => v.fixTier === 'deterministic' && getStatus(v) === 'open').length})</span>}
+                          secondary={<span style={{ fontSize: 11 }}>Safe, deterministic transformations</span>}
+                        />
+                      </MenuItem>
+                      <MenuItem onClick={() => selectByPredicate(v => v.fixTier === 'ai')}>
+                        <ListItemText
+                          primary={<span style={{ fontSize: 13 }}>AI-assisted fixes only ({filteredViolations.filter(v => v.fixTier === 'ai' && getStatus(v) === 'open').length})</span>}
+                          secondary={<span style={{ fontSize: 11 }}>Requires review before applying</span>}
+                        />
+                      </MenuItem>
+                      <Box style={{ padding: '8px 16px 4px', borderTop: '1px solid #eee', borderBottom: '1px solid #eee', marginTop: 4 }}>
+                        <Typography style={{ fontSize: 11, fontWeight: 600, color: '#6a6e73', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                          Select by severity
+                        </Typography>
+                      </Box>
+                      {(['critical', 'high', 'medium', 'low'] as SeverityClass[]).map(sev => {
+                        const count = filteredViolations.filter(v => v.severity === sev && v.fixTier !== 'manual' && getStatus(v) === 'open').length;
+                        if (!count) return null;
+                        return (
+                          <MenuItem key={sev} onClick={() => selectByPredicate(v => v.severity === sev && v.fixTier !== 'manual')}>
+                            <ListItemText
+                              primary={
+                                <span style={{ fontSize: 13 }}>
+                                  <strong style={{ color: SEVERITY_COLORS[sev], textTransform: 'capitalize' }}>{sev}</strong> — {count} fixable
+                                </span>
+                              }
+                            />
+                          </MenuItem>
+                        );
+                      })}
+                      <Divider style={{ margin: '4px 0' }} />
+                      <MenuItem onClick={() => { setSelectedIds(new Set()); setSelectMenuAnchor(null); }}>
+                        <ListItemText primary={<span style={{ fontSize: 13 }}>Clear selection</span>} />
+                      </MenuItem>
+                    </Menu>
                   </th>
                   {([
                     { col: 'severity' as SortColumn, label: 'Severity', cls: classes.colSeverity },
