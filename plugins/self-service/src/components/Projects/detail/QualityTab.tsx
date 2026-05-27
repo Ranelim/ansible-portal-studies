@@ -1524,8 +1524,9 @@ const useQualityStyles = makeStyles(theme => ({
   bannerIdle: { backgroundColor: '#e8f4ff', borderColor: '#73bcf7' },
   bannerProgress: { backgroundColor: '#f5f0ff', borderColor: '#b2a3db' },
   bannerProposals: { backgroundColor: '#f8fdf8', borderColor: '#5ba352' },
+  bannerReview: { backgroundColor: '#f5f0ff', borderColor: '#b2a3db' },
   bannerEditing: { backgroundColor: '#fffcf2', borderColor: '#f0ab00' },
-  bannerPrOpen: { backgroundColor: '#e8f4ff', borderColor: '#73bcf7' },
+  bannerPrOpen: { backgroundColor: '#e7f5e7', borderColor: '#5ba352' },
   bannerMerged: { backgroundColor: '#e7f5e7', borderColor: '#5ba352' },
   bannerStat: { display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 13 },
   bannerDot: { width: 8, height: 8, borderRadius: '50%', display: 'inline-block' },
@@ -1621,7 +1622,7 @@ export const QualityTabUnified = ({
   const [fixFilters, setFixFilters] = useState<Set<FixTierFilter>>(new Set());
   const [violationStatuses, setViolationStatuses] = useState<Map<string, UnifiedViolationStatus>>(new Map());
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [pageState, setPageState] = useState<'idle' | 'in-progress' | 'proposals-ready' | 'editing-devspaces' | 'creating-pr' | 'pr-open' | 'pr-merged'>('idle');
   const [progress, setProgress] = useState(0);
   const [scanning, setScanning] = useState(false);
@@ -1704,28 +1705,38 @@ export const QualityTabUnified = ({
     setTimeout(() => { setScanning(false); }, 2500);
   };
 
+  const [hasPr, setHasPr] = useState(false);
+
   const handleRemediate = () => {
     if (selectedIds.size === 0) return;
     setPageState('in-progress');
     setTimeout(() => {
+      const proposedKeys = new Set<string>();
       setViolationStatuses(prev => {
         const next = new Map(prev);
         quality.violations.forEach(v => {
           const key = getViolationKey(v);
           if (!selectedIds.has(key)) return;
           if (v.fixTier === 'deterministic') next.set(key, 'fixed');
-          else if (v.fixTier === 'ai') next.set(key, 'proposed');
+          else if (v.fixTier === 'ai') {
+            next.set(key, 'proposed');
+            proposedKeys.add(key);
+          }
         });
         return next;
       });
       setSelectedIds(new Set());
       setPageState('proposals-ready');
+      setExpandedIds(proposedKeys);
     }, 3000);
   };
 
-  const handleApprove = (key: string) => { setViolationStatuses(prev => { const n = new Map(prev); n.set(key, 'approved'); return n; }); setExpandedId(null); };
-  const handleDecline = (key: string) => { setViolationStatuses(prev => { const n = new Map(prev); n.set(key, 'open'); return n; }); setExpandedId(null); };
-  const handleEditInDevSpaces = (key: string) => { setViolationStatuses(prev => { const n = new Map(prev); n.set(key, 'editing'); return n; }); setExpandedId(null); };
+  const collapseOne = (key: string) => setExpandedIds(prev => { const n = new Set(prev); n.delete(key); return n; });
+  const toggleExpanded = (key: string) => setExpandedIds(prev => { const n = new Set(prev); if (n.has(key)) n.delete(key); else n.add(key); return n; });
+
+  const handleApprove = (key: string) => { setViolationStatuses(prev => { const n = new Map(prev); n.set(key, 'approved'); return n; }); collapseOne(key); };
+  const handleDecline = (key: string) => { setViolationStatuses(prev => { const n = new Map(prev); n.set(key, 'open'); return n; }); collapseOne(key); };
+  const handleEditInDevSpaces = (key: string) => { setViolationStatuses(prev => { const n = new Map(prev); n.set(key, 'editing'); return n; }); collapseOne(key); };
 
   const handleEditAllInDevSpaces = () => {
     setViolationStatuses(prev => {
@@ -1744,6 +1755,7 @@ export const QualityTabUnified = ({
         for (const [key, s] of n) { if (s === 'fixed' || s === 'approved' || s === 'editing') n.set(key, 'in-pr'); }
         return n;
       });
+      setHasPr(true);
       setPageState('pr-open');
     }, 1500);
   };
@@ -1773,7 +1785,7 @@ export const QualityTabUnified = ({
     else setSelectedIds(new Set(fixable.map(v => getViolationKey(v))));
   };
 
-  const handleReset = () => { setViolationStatuses(new Map()); setSelectedIds(new Set()); setExpandedId(null); setPageState('idle'); };
+  const handleReset = () => { setViolationStatuses(new Map()); setSelectedIds(new Set()); setExpandedIds(new Set()); setHasPr(false); setPageState('idle'); };
 
   const SEVERITY_ORDER: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3, info: 4 };
   const FIX_ORDER: Record<string, number> = { deterministic: 0, ai: 1, manual: 2 };
@@ -1948,24 +1960,38 @@ export const QualityTabUnified = ({
             )}
           </Box>
 
-          {/* ── BANNERS — floating with margin, not glued to table ── */}
-          {pageState === 'idle' && isDeveloper && fixableCount > 0 && (
-            <Box className={`${classes.banner} ${classes.bannerIdle}`} style={{ marginBottom: 16, borderRadius: 6 }}>
+          {/* ── A. REMEDIATION STATUS BAR — persistent lifecycle tracker ── */}
+
+          {/* Action bar — unified idle + selection state */}
+          {isDeveloper && fixableCount > 0 && (pageState === 'idle' || pageState === 'proposals-ready' || pageState === 'pr-open') && (
+            <Box className={`${classes.banner} ${classes.bannerIdle}`} style={{ marginBottom: 12, borderRadius: 6 }}>
               <Box className={classes.bannerRow}>
                 <Typography style={{ fontSize: 13 }}>
-                  <strong>{fixableCount}</strong> violations can be auto-fixed
-                  {selectedIds.size > 0 && <span style={{ color: '#004d99', fontWeight: 500 }}> — {selectedIds.size} selected</span>}
+                  {selectedIds.size > 0
+                    ? <><strong>{selectedIds.size}</strong> of {fixableCount} fixable violation{fixableCount !== 1 ? 's' : ''} selected</>
+                    : <><strong>{fixableCount}</strong> violation{fixableCount !== 1 ? 's' : ''} can be auto-fixed</>}
                 </Typography>
-                <Button variant="contained" color="primary" size="small" disabled={selectedIds.size === 0} onClick={handleRemediate}
-                  style={{ textTransform: 'none', fontSize: 13, fontWeight: 500 }}>
-                  Fix selected violations
-                </Button>
+                <Box display="flex" alignItems="center" style={{ gap: 8 }}>
+                  {selectedIds.size > 0 && (
+                    <Button size="small" variant="text"
+                      onClick={() => setSelectedIds(new Set())}
+                      style={{ textTransform: 'none', fontSize: 12, color: '#6a6e73', padding: '4px 8px' }}>
+                      Clear
+                    </Button>
+                  )}
+                  <Button variant="contained" color="primary" size="small"
+                    disabled={selectedIds.size === 0}
+                    onClick={handleRemediate}
+                    style={{ textTransform: 'none', fontSize: 13, fontWeight: 500 }}>
+                    Fix {selectedIds.size > 0 ? `${selectedIds.size} violation${selectedIds.size !== 1 ? 's' : ''}` : 'violations'}
+                  </Button>
+                </Box>
               </Box>
             </Box>
           )}
 
           {pageState === 'in-progress' && (
-            <Box className={`${classes.banner} ${classes.bannerProgress}`} style={{ marginBottom: 16, borderRadius: 6 }}>
+            <Box className={`${classes.banner} ${classes.bannerProgress}`} style={{ marginBottom: 12, borderRadius: 6 }}>
               <Box display="flex" alignItems="center" style={{ gap: 8 }}>
                 <AutorenewIcon className={classes.spinIcon} style={{ fontSize: 14, color: '#6753ac' }} />
                 <Typography style={{ fontSize: 13, color: '#6753ac', fontWeight: 500 }}>Generating fixes…</Typography>
@@ -1974,41 +2000,67 @@ export const QualityTabUnified = ({
             </Box>
           )}
 
-          {pageState === 'proposals-ready' && (
-            <Box className={`${classes.banner} ${classes.bannerProposals}`} style={{ marginBottom: 16, borderRadius: 6 }}>
+          {/* Existing PR banner — shown during proposals-ready when a PR already exists */}
+          {pageState === 'proposals-ready' && hasPr && (
+            <Box className={`${classes.banner} ${classes.bannerPrOpen}`} style={{ marginBottom: 12, borderRadius: 6 }}>
+              <Box className={classes.bannerRow}>
+                <Box display="flex" alignItems="center" style={{ gap: 8 }}>
+                  <Chip size="small" label="PR #99" className={classes.prBadge} />
+                  <Typography style={{ fontSize: 13 }}>
+                    <strong>{inPrCount}</strong> {inPrCount === 1 ? 'fix' : 'fixes'} in pull request
+                  </Typography>
+                </Box>
+                <Button size="small" variant="outlined"
+                  startIcon={<OpenInNewIcon style={{ fontSize: 14 }} />}
+                  onClick={() => window.open(`${repoUrl}/pull/99`, '_blank')}
+                  style={{ textTransform: 'none', fontSize: 12, padding: '4px 12px' }}>
+                  View pull request
+                </Button>
+              </Box>
+            </Box>
+          )}
+
+          {/* PR-ready banner — completed fixes ready to ship or add to PR */}
+          {pageState === 'proposals-ready' && prReadyCount > 0 && (
+            <Box className={`${classes.banner} ${classes.bannerProposals}`} style={{ marginBottom: 12, borderRadius: 6 }}>
               <Box className={classes.bannerRow}>
                 <Box display="flex" alignItems="center" style={{ gap: 12 }}>
                   {fixedCount > 0 && <span className={classes.bannerStat}><span className={classes.bannerDot} style={{ backgroundColor: '#5ba352' }} /><strong>{fixedCount}</strong> auto-fixed</span>}
-                  {proposedCount > 0 && <span className={classes.bannerStat}><span className={classes.bannerDot} style={{ backgroundColor: '#6753ac' }} /><strong>{proposedCount}</strong> AI to review</span>}
+                  {approvedCount > 0 && <span className={classes.bannerStat}><span className={classes.bannerDot} style={{ backgroundColor: '#5ba352' }} /><strong>{approvedCount}</strong> approved</span>}
+                </Box>
+                <Button variant="contained" color="primary" size="small" onClick={handleCreatePr}
+                  style={{ textTransform: 'none', fontSize: 13, fontWeight: 500 }}>
+                  {hasPr
+                    ? `Add ${prReadyCount} ${prReadyCount === 1 ? 'fix' : 'fixes'} to pull request`
+                    : `Create pull request with ${prReadyCount} ${prReadyCount === 1 ? 'fix' : 'fixes'}`}
+                </Button>
+              </Box>
+            </Box>
+          )}
+
+          {/* Review banner — AI proposals needing human attention */}
+          {pageState === 'proposals-ready' && (proposedCount > 0 || editingCount > 0) && (
+            <Box className={`${classes.banner} ${classes.bannerReview}`} style={{ marginBottom: 12, borderRadius: 6 }}>
+              <Box className={classes.bannerRow}>
+                <Box display="flex" alignItems="center" style={{ gap: 12 }}>
+                  {proposedCount > 0 && <span className={classes.bannerStat}><span className={classes.bannerDot} style={{ backgroundColor: '#6753ac' }} /><strong>{proposedCount}</strong> AI {proposedCount === 1 ? 'proposal' : 'proposals'} to review</span>}
                   {approvedCount > 0 && <span className={classes.bannerStat}><span className={classes.bannerDot} style={{ backgroundColor: '#5ba352' }} /><strong>{approvedCount}</strong> approved</span>}
                   {editingCount > 0 && <span className={classes.bannerStat}><span className={classes.bannerDot} style={{ backgroundColor: '#f0ab00' }} /><strong>{editingCount}</strong> editing</span>}
                 </Box>
                 <Box display="flex" alignItems="center" style={{ gap: 6 }}>
-                  {proposedCount > 0 && isDevSpacesConnected && (
+                  {isDevSpacesConnected && (
                     <Button size="small" variant="outlined" startIcon={<CodeIcon style={{ fontSize: 14 }} />}
                       onClick={handleEditAllInDevSpaces} className={classes.btnDevSpaces}>
-                      Review all in Dev Spaces
+                      Review in Dev Spaces
                     </Button>
                   )}
-                  {selectedIds.size > 0 && (
-                    <Button size="small" variant="outlined" onClick={handleRemediate} style={{ textTransform: 'none', fontSize: 12, padding: '4px 12px' }}>
-                      Fix {selectedIds.size} more
-                    </Button>
-                  )}
-                  <Button variant="contained" color="primary" size="small" disabled={prReadyCount === 0} onClick={handleCreatePr}
-                    style={{ textTransform: 'none', fontSize: 13, fontWeight: 500 }}>
-                    Create pull request{prReadyCount > 0 ? ` (${prReadyCount})` : ''}
-                  </Button>
                 </Box>
               </Box>
-              {fixableCount > 0 && selectedIds.size === 0 && (
-                <Typography className={classes.bannerSubtext}>{fixableCount} more can be fixed — select and click "Fix more" to include.</Typography>
-              )}
             </Box>
           )}
 
           {pageState === 'editing-devspaces' && (
-            <Box className={`${classes.banner} ${classes.bannerEditing}`} style={{ marginBottom: 16, borderRadius: 6 }}>
+            <Box className={`${classes.banner} ${classes.bannerEditing}`} style={{ marginBottom: 12, borderRadius: 6 }}>
               <Box className={classes.bannerRow}>
                 <Box display="flex" alignItems="center" style={{ gap: 8 }}>
                   <CodeIcon style={{ fontSize: 16, color: '#795600' }} />
@@ -2029,7 +2081,7 @@ export const QualityTabUnified = ({
           )}
 
           {pageState === 'creating-pr' && (
-            <Box className={`${classes.banner} ${classes.bannerProgress}`} style={{ marginBottom: 16, borderRadius: 6 }}>
+            <Box className={`${classes.banner} ${classes.bannerProgress}`} style={{ marginBottom: 12, borderRadius: 6 }}>
               <Box display="flex" alignItems="center" style={{ gap: 8 }}>
                 <AutorenewIcon className={classes.spinIcon} style={{ fontSize: 14, color: '#06c' }} />
                 <Typography style={{ fontSize: 13, color: '#06c', fontWeight: 500 }}>Creating pull request…</Typography>
@@ -2038,26 +2090,32 @@ export const QualityTabUnified = ({
           )}
 
           {pageState === 'pr-open' && (
-            <Box className={`${classes.banner} ${classes.bannerPrOpen}`} style={{ marginBottom: 16, borderRadius: 6 }}>
+            <Box className={`${classes.banner} ${classes.bannerPrOpen}`} style={{ marginBottom: 12, borderRadius: 6 }}>
               <Box className={classes.bannerRow}>
                 <Box display="flex" alignItems="center" style={{ gap: 8 }}>
                   <Chip size="small" label="PR #99" className={classes.prBadge} />
-                  <Typography style={{ fontSize: 13 }}><strong>{inPrCount}</strong> fixes ready for code review</Typography>
+                  <Typography style={{ fontSize: 13 }}>
+                    <strong>{inPrCount}</strong> {inPrCount === 1 ? 'fix' : 'fixes'} ready for code review
+                    {fixableCount > 0 && <span style={{ color: '#6a6e73', marginLeft: 8 }}>· {fixableCount} more can be fixed</span>}
+                  </Typography>
                 </Box>
                 <Box display="flex" alignItems="center" style={{ gap: 6 }}>
-                  <Button size="small" variant="outlined" onClick={handleMergePr} style={{ textTransform: 'none', fontSize: 12, padding: '4px 12px' }}>Merge</Button>
-                  {isDevSpacesConnected && (
-                    <Button size="small" variant="contained" color="primary" startIcon={<CodeIcon style={{ fontSize: 14 }} />}
-                      onClick={() => window.open(`${DEVSPACES_BASE_URL}/#${repoUrl}/tree/${remBranch}`, '_blank')}
-                      style={{ textTransform: 'none', fontSize: 13, fontWeight: 500 }}>Review in Dev Spaces</Button>
-                  )}
+                  <span onClick={handleMergePr} style={{ fontSize: 11, color: '#999', cursor: 'pointer', textDecoration: 'underline' }}>
+                    Simulate merge
+                  </span>
+                  <Button size="small" variant="contained" color="primary"
+                    startIcon={<OpenInNewIcon style={{ fontSize: 14 }} />}
+                    onClick={() => window.open(`${repoUrl}/pull/99`, '_blank')}
+                    style={{ textTransform: 'none', fontSize: 13, fontWeight: 500 }}>
+                    View pull request
+                  </Button>
                 </Box>
               </Box>
             </Box>
           )}
 
           {pageState === 'pr-merged' && (
-            <Box className={`${classes.banner} ${classes.bannerMerged}`} style={{ marginBottom: 16, borderRadius: 6 }}>
+            <Box className={`${classes.banner} ${classes.bannerMerged}`} style={{ marginBottom: 12, borderRadius: 6 }}>
               <Box className={classes.bannerRow}>
                 <Box display="flex" alignItems="center" style={{ gap: 8 }}>
                   <CheckCircleIcon style={{ fontSize: 16, color: '#5ba352' }} />
@@ -2067,6 +2125,8 @@ export const QualityTabUnified = ({
               </Box>
             </Box>
           )}
+
+          {/* Selection bar removed — merged into unified action bar above */}
 
           {/* ── Violations table ── */}
           <Box style={{ border: '1px solid #d2d2d2', borderRadius: 6, overflow: 'hidden' }}>
@@ -2179,9 +2239,9 @@ export const QualityTabUnified = ({
                 {filteredViolations.map((v, i) => {
                   const key = getViolationKey(v);
                   const status = getStatus(v);
-                  const isSelectable = v.fixTier !== 'manual' && status === 'open' && (pageState === 'idle' || pageState === 'proposals-ready');
+                  const isSelectable = v.fixTier !== 'manual' && status === 'open' && (pageState === 'idle' || pageState === 'proposals-ready' || pageState === 'pr-open');
                   const isProposed = status === 'proposed';
-                  const isExpanded = expandedId === key;
+                  const isExpanded = expandedIds.has(key);
                   const proposal = DEMO_PROPOSALS[v.ruleId];
                   const isSelected = selectedIds.has(key);
 
@@ -2214,7 +2274,7 @@ export const QualityTabUnified = ({
                       <td className={classes.colFix}>
                         <FixChipStyled method={v.fixTier} status={status} classes={classes} />
                       </td>
-                      <td className={classes.colDescription} onClick={() => { if (isProposed) setExpandedId(isExpanded ? null : key); }}>
+                      <td className={classes.colDescription} onClick={() => { if (isProposed) toggleExpanded(key); }}>
                         <span className={classes.ruleId}>{v.ruleId}</span>
                         <span className={`${classes.description} ${status === 'resolved' ? classes.descriptionResolved : ''}`}>
                           {v.message}
