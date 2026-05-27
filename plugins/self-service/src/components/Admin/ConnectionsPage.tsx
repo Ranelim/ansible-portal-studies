@@ -22,6 +22,7 @@ import ComputerIcon from '@material-ui/icons/Computer';
 import OpenInNewIcon from '@material-ui/icons/OpenInNew';
 import AddIcon from '@material-ui/icons/Add';
 import CloseIcon from '@material-ui/icons/Close';
+import VerifiedUserOutlinedIcon from '@material-ui/icons/VerifiedUserOutlined';
 import { SvgIcon } from '@material-ui/core';
 
 const AnsibleIcon = (props: any) => (
@@ -554,6 +555,36 @@ export const ConnectionsPage = () => {
             </Box>
           </>
         )}
+
+        <Typography className={classes.sectionTitle}>
+          Quality scanning
+        </Typography>
+        <Box className={classes.cardGrid}>
+          <Card className={classes.card} style={{ cursor: 'default' }}>
+            <CardContent style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', height: '100%' }}>
+              <Box display="flex" alignItems="flex-start" style={{ gap: 16 }}>
+                <Box style={{ width: 40, height: 40, borderRadius: 8, backgroundColor: '#e7f1fa', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <VerifiedUserOutlinedIcon style={{ fontSize: 20, color: '#0066cc' }} />
+                </Box>
+                <Box style={{ flex: 1 }}>
+                  <Box display="flex" alignItems="center" style={{ gap: 8, marginBottom: 4 }}>
+                    <Typography style={{ fontWeight: 600, fontSize: 14 }}>APME Quality Scanning</Typography>
+                    <Chip label="Connected" size="small" style={{ backgroundColor: '#e6f9e6', color: '#1e4620', fontSize: 11, height: 20 }} />
+                  </Box>
+                  <Typography style={{ fontSize: 12, color: '#6a6e73', marginBottom: 2 }}>Content Modernization Engine</Typography>
+                  <Typography style={{ fontSize: 12, color: '#6a6e73', marginBottom: 8 }}>
+                    Scans automation content for compatibility violations against target AAP versions. Results appear in the Quality tab and as SARIF annotations in Dev Spaces.
+                  </Typography>
+                  <Box style={{ fontSize: 12, color: '#151515' }}>
+                    <Typography style={{ fontSize: 12 }}><strong>Target:</strong> AAP 2.7 (ansible-core 2.17)</Typography>
+                    <Typography style={{ fontSize: 12 }}><strong>Schedule:</strong> On every commit + weekly</Typography>
+                    <Typography style={{ fontSize: 12 }}><strong>Repos:</strong> 4 repositories scanned</Typography>
+                  </Box>
+                </Box>
+              </Box>
+            </CardContent>
+          </Card>
+        </Box>
       </Content>
     </Page>
   );

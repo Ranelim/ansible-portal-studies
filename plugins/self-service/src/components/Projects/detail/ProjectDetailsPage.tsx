@@ -37,6 +37,7 @@ import {
   StepLabel,
   LinearProgress,
   CircularProgress,
+  Tooltip,
 } from '@material-ui/core';
 import Breadcrumbs from '@material-ui/core/Breadcrumbs';
 import NavigateNextIcon from '@material-ui/icons/NavigateNext';
@@ -1095,6 +1096,19 @@ export const ProjectDetailsPage = () => {
               >
                 Edit in Dev Spaces
               </Button>
+            )}
+            {!isDevSpacesConfigured && pageHasRole('developer') && (
+              <Tooltip title="Edit in Dev Spaces is available when your administrator connects a Dev Spaces instance." arrow>
+                <span>
+                  <Button
+                    variant="outlined" size="small" disabled
+                    startIcon={<CodeIcon style={{ fontSize: 16 }} />}
+                    style={{ textTransform: 'none', fontWeight: 500 }}
+                  >
+                    Edit in Dev Spaces
+                  </Button>
+                </span>
+              </Tooltip>
             )}
             <ActionsMenu
               project={project}

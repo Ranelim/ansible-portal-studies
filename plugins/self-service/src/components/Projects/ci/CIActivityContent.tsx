@@ -9,6 +9,7 @@ import {
   TextField,
   InputAdornment,
   IconButton,
+  Button,
   FormControl,
   Select,
   MenuItem,
@@ -24,8 +25,12 @@ import CancelIcon from '@material-ui/icons/Cancel';
 import ScheduleIcon from '@material-ui/icons/Schedule';
 import OpenInNewIcon from '@material-ui/icons/OpenInNew';
 import VerifiedUserOutlinedIcon from '@material-ui/icons/VerifiedUserOutlined';
+import CodeIcon from '@material-ui/icons/Code';
 import { CatalogFilterLayout } from '@backstage/plugin-catalog-react';
 import { statusColors } from '../../common/statusColors';
+import { DEVSPACES_BASE_URL, DEMO_CONNECTIONS } from '../../Admin/syncDemoData';
+
+const isDevSpacesConnected = DEMO_CONNECTIONS.find(c => c.id === 'devspaces')?.status === 'Active';
 
 type CIRunStatus = 'success' | 'failure' | 'running' | 'cancelled' | 'queued';
 
@@ -400,6 +405,20 @@ export const CIActivityContent = () => {
       field: 'time',
       width: '120px',
     },
+    ...(isDevSpacesConnected ? [{
+      title: '',
+      field: 'actions' as keyof CIRun,
+      width: '140px',
+      sorting: false,
+      render: (row: CIRun) => row.status === 'failure' ? (
+        <Button size="small" variant="text"
+          startIcon={<CodeIcon style={{ fontSize: 14 }} />}
+          onClick={(e: React.MouseEvent) => { e.stopPropagation(); window.open(`${DEVSPACES_BASE_URL}/#https://github.com/${row.project}/tree/${row.branch}`, '_blank'); }}
+          style={{ textTransform: 'none', fontSize: 11, color: '#0066cc', whiteSpace: 'nowrap' }}>
+          Fix in Dev Spaces
+        </Button>
+      ) : null,
+    }] as TableColumn<CIRun>[] : []),
   ];
 
   return (

@@ -1109,23 +1109,30 @@ export const QualityTab = ({
           )}
 
           {!bannerDismissed && activeRemStatus === 'pr-merged' && (
-            <Box
-              display="flex" alignItems="center" justifyContent="space-between"
-              style={{
-                padding: '10px 20px',
-                backgroundColor: `${statusColors.success}08`,
-                borderBottom: '1px solid rgba(0,0,0,0.08)',
-              }}
-            >
-              <Box display="flex" alignItems="center" style={{ gap: 8 }}>
-                <CheckCircleIcon style={{ fontSize: 16, color: statusColors.success }} />
-                <Typography style={{ fontSize: 13, color: statusColors.success, fontWeight: 500 }}>
-                  Remediation merged successfully.
+            <Box style={{ borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
+              <Box
+                display="flex" alignItems="center" justifyContent="space-between"
+                style={{
+                  padding: '10px 20px',
+                  backgroundColor: `${statusColors.success}08`,
+                }}
+              >
+                <Box display="flex" alignItems="center" style={{ gap: 8 }}>
+                  <CheckCircleIcon style={{ fontSize: 16, color: statusColors.success }} />
+                  <Typography style={{ fontSize: 13, color: statusColors.success, fontWeight: 500 }}>
+                    Remediation merged successfully.
+                  </Typography>
+                </Box>
+                <IconButton size="small" onClick={() => setBannerDismissed(true)} style={{ padding: 4 }}>
+                  <CloseIcon style={{ fontSize: 16, color: '#999' }} />
+                </IconButton>
+              </Box>
+              <Box style={{ padding: '6px 20px 8px', backgroundColor: `${statusColors.success}04` }}>
+                <Typography style={{ fontSize: 12, color: '#6a6e73' }}>
+                  <AutorenewIcon style={{ fontSize: 12, verticalAlign: 'middle', marginRight: 4 }} />
+                  A re-scan will run automatically on the merged commit to confirm resolution before your AAP upgrade.
                 </Typography>
               </Box>
-              <IconButton size="small" onClick={() => setBannerDismissed(true)} style={{ padding: 4 }}>
-                <CloseIcon style={{ fontSize: 16, color: '#999' }} />
-              </IconButton>
             </Box>
           )}
 
@@ -2014,7 +2021,7 @@ export const QualityTabUnified = ({
       <Box display="flex" alignItems="center" justifyContent="space-between" style={{ marginBottom: 16 }}>
         <Typography style={{ fontSize: 13, color: '#6a6e73' }}>
           {scanning ? <>Scanning repository…</> : (
-            <>Last scan {quality.lastScannedAt} · commit <code style={{ fontSize: 11 }}>{quality.lastScannedCommit?.slice(0, 7)}</code>
+            <><strong style={{ color: '#151515', fontWeight: 600 }}>Scanning against: AAP 2.7</strong> <span style={{ opacity: 0.7 }}>(ansible-core 2.17)</span> · Last scan {quality.lastScannedAt} · commit <code style={{ fontSize: 11 }}>{quality.lastScannedCommit?.slice(0, 7)}</code>
             {scan.trigger && ` · ${TRIGGER_LABELS[scan.trigger] ?? scan.trigger}`}</>
           )}
         </Typography>
@@ -2321,6 +2328,12 @@ export const QualityTabUnified = ({
                   <Typography style={{ fontSize: 13, color: '#1e4620', fontWeight: 500 }}>PR #99 merged — <strong>{resolvedCount}</strong> violations resolved</Typography>
                 </Box>
                 {fixableCount > 0 && <Typography style={{ fontSize: 12, color: '#6a6e73' }}>{fixableCount} remaining can be fixed</Typography>}
+              </Box>
+              <Box style={{ padding: '6px 16px 8px', borderTop: '1px solid rgba(30, 70, 32, 0.1)' }}>
+                <Typography style={{ fontSize: 12, color: '#6a6e73' }}>
+                  <AutorenewIcon style={{ fontSize: 12, verticalAlign: 'middle', marginRight: 4 }} />
+                  A re-scan will run automatically on the merged commit to confirm resolution before your AAP upgrade.
+                </Typography>
               </Box>
             </Box>
           )}
