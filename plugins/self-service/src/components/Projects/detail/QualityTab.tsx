@@ -1771,6 +1771,10 @@ export const QualityTabUnified = ({
   const [scanProgress, setScanProgress] = useState(0);
   const [idleBannerDismissed, setIdleBannerDismissed] = useState(false);
 
+  const [activeTab, setActiveTab] = useState<0 | 1>(0);
+  type RemediationFilter = 'all' | 'pending-review' | 'ready' | 'in-pr';
+  const [remFilter, setRemFilter] = useState<RemediationFilter>('all');
+
   const toggleSeverityFilter = (sev: SeverityClass) => {
     setSeverityFilters(prev => {
       const next = new Set(prev);
@@ -1844,6 +1848,8 @@ export const QualityTabUnified = ({
     setScanning(true);
     setViolationStatuses(new Map());
     setSelectedIds(new Set());
+    setActiveTab(0);
+    setRemFilter('all');
     setPageState('idle');
     setTimeout(() => { setScanning(false); }, 2500);
   };
@@ -1871,6 +1877,10 @@ export const QualityTabUnified = ({
       setSelectedIds(new Set());
       setPageState('proposals-ready');
       setExpandedIds(proposedKeys);
+      if (proposedKeys.size > 0) {
+        setActiveTab(1);
+        setRemFilter('pending-review');
+      }
     }, 3000);
   };
 
@@ -1936,7 +1946,7 @@ export const QualityTabUnified = ({
     else setSelectedIds(new Set(fixable.map(v => getViolationKey(v))));
   };
 
-  const handleReset = () => { setViolationStatuses(new Map()); setSelectedIds(new Set()); setExpandedIds(new Set()); setHasPr(false); setPageState('idle'); };
+  const handleReset = () => { setViolationStatuses(new Map()); setSelectedIds(new Set()); setExpandedIds(new Set()); setHasPr(false); setActiveTab(0); setRemFilter('all'); setPageState('idle'); };
 
   const SEVERITY_ORDER: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3, info: 4 };
   const FIX_ORDER: Record<string, number> = { deterministic: 0, ai: 1, manual: 2 };
@@ -1959,6 +1969,26 @@ export const QualityTabUnified = ({
     });
     return sorted;
   }, [quality.violations, categoryFilter, severityFilters, fixFilters, sortColumn, sortAsc]);
+
+  const remediationViolations = useMemo(() => {
+    const remediated = quality.violations.filter(v => {
+      const s = getStatus(v);
+      return s !== 'open';
+    });
+    if (remFilter === 'all') return remediated;
+    return remediated.filter(v => {
+      const s = getStatus(v);
+      switch (remFilter) {
+        case 'pending-review': return s === 'proposed' || s === 'editing';
+        case 'ready': return s === 'fixed' || s === 'approved';
+        case 'in-pr': return s === 'in-pr' || s === 'resolved';
+        default: return true;
+      }
+    });
+  }, [quality.violations, violationStatuses, remFilter]);
+
+  const showRemediationTab = pageState !== 'idle' && pageState !== 'in-progress';
+  const remTabCount = quality.violations.filter(v => getStatus(v) !== 'open').length;
 
   const selectByPredicate = (predicate: (v: QualityViolation) => boolean) => {
     const keys = filteredViolations.filter(v => predicate(v) && getStatus(v) === 'open').map(v => getViolationKey(v));
@@ -2201,6 +2231,11 @@ export const QualityTabUnified = ({
                   {editingCount > 0 && <span className={classes.bannerStat}><span className={classes.bannerDot} style={{ backgroundColor: '#f0ab00' }} /><strong>{editingCount}</strong> editing</span>}
                 </Box>
                 <Box display="flex" alignItems="center" style={{ gap: 6 }}>
+                  <Button size="small" variant="contained" color="primary"
+                    onClick={() => { setActiveTab(1); setRemFilter('pending-review'); }}
+                    style={{ textTransform: 'none', fontSize: 12, fontWeight: 500 }}>
+                    Review {proposedCount} {proposedCount === 1 ? 'proposal' : 'proposals'}
+                  </Button>
                   {isDevSpacesConnected && (
                     <Button size="small" variant="outlined" startIcon={<CodeIcon style={{ fontSize: 14 }} />}
                       onClick={handleEditAllInDevSpaces} className={classes.btnDevSpaces}>
@@ -2278,6 +2313,44 @@ export const QualityTabUnified = ({
               </Box>
             </Box>
           )}
+
+          {/* Tab bar — appears once remediation has been triggered */}
+          {showRemediationTab && (
+            <Box style={{ borderBottom: '1px solid #d2d2d2', marginBottom: 12 }}>
+              <Tabs
+                value={activeTab}
+                onChange={(_: any, v: number) => setActiveTab(v as 0 | 1)}
+                indicatorColor="primary"
+                textColor="primary"
+                style={{ minHeight: 36 }}
+              >
+                <Tab
+                  label={`Violations (${scan.totalViolations})`}
+                  style={{ textTransform: 'none', fontSize: 13, minHeight: 36, fontWeight: activeTab === 0 ? 600 : 400 }}
+                />
+                <Tab
+                  label={
+                    <Box display="flex" alignItems="center" style={{ gap: 6 }}>
+                      Remediation ({remTabCount})
+                      {proposedCount > 0 && (
+                        <Box component="span" style={{
+                          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                          minWidth: 18, height: 18, borderRadius: 9, fontSize: 10, fontWeight: 600,
+                          backgroundColor: '#6753ac', color: '#fff', padding: '0 5px',
+                        }}>
+                          {proposedCount}
+                        </Box>
+                      )}
+                    </Box>
+                  }
+                  style={{ textTransform: 'none', fontSize: 13, minHeight: 36, fontWeight: activeTab === 1 ? 600 : 400 }}
+                />
+              </Tabs>
+            </Box>
+          )}
+
+          {/* ── TAB 0: Violations ── */}
+          {(activeTab === 0 || !showRemediationTab) && (<>
 
           {/* Toolbar — detached, above table */}
           {isDeveloper && (
@@ -2591,6 +2664,218 @@ export const QualityTabUnified = ({
               </tbody>
             </table>
           </Box>
+
+          </>)}
+
+          {/* ── TAB 1: Remediation ── */}
+          {activeTab === 1 && showRemediationTab && (
+            <Box>
+              {/* Remediation sub-filters */}
+              <Box display="flex" alignItems="center" style={{ gap: 6, marginBottom: 12 }}>
+                {([
+                  { key: 'all' as RemediationFilter, label: 'All', count: remTabCount },
+                  { key: 'pending-review' as RemediationFilter, label: 'Pending review', count: proposedCount + editingCount, color: '#6753ac' },
+                  { key: 'ready' as RemediationFilter, label: 'Ready to ship', count: fixedCount + approvedCount, color: '#2e7d32' },
+                  { key: 'in-pr' as RemediationFilter, label: 'In pull request', count: inPrCount + resolvedCount, color: '#0066cc' },
+                ] as const).filter(f => f.key === 'all' || f.count > 0).map(f => (
+                  <Chip
+                    key={f.key} size="small" clickable
+                    label={f.key === 'all' ? f.label : `${f.label} (${f.count})`}
+                    onClick={() => setRemFilter(f.key)}
+                    variant={remFilter === f.key ? 'default' : 'outlined'}
+                    style={{
+                      fontSize: 12, height: 24,
+                      backgroundColor: remFilter === f.key && f.key !== 'all' ? `${f.color}15` : remFilter === f.key ? '#f0f0f0' : undefined,
+                      color: remFilter === f.key && f.key !== 'all' ? f.color : undefined,
+                      borderColor: remFilter === f.key && f.key !== 'all' ? `${f.color}40` : undefined,
+                      fontWeight: remFilter === f.key ? 600 : 400,
+                    }}
+                  />
+                ))}
+              </Box>
+
+              {remediationViolations.length === 0 ? (
+                <Box style={{ padding: '32px 24px', textAlign: 'center' }}>
+                  <Typography style={{ fontSize: 14, color: '#6a6e73' }}>
+                    No items match this filter.
+                  </Typography>
+                </Box>
+              ) : (
+                <Box style={{ border: '1px solid #d2d2d2', borderRadius: 6, overflow: 'hidden' }}>
+                  <table className={classes.violationsTable}>
+                    <thead>
+                      <tr>
+                        <th className={classes.colSeverity}>Severity</th>
+                        <th className={classes.colFix}>Fix</th>
+                        <th className={classes.colDescription}>Rule & Description</th>
+                        <th className={classes.colFile}>File</th>
+                        <th className={classes.colActions}>
+                          <DarkTooltip title="Open project in Dev Spaces" arrow enterDelay={200}>
+                            <IconButton size="small"
+                              onClick={() => window.open('/devspaces-mockup.html', '_blank')}
+                              style={{ padding: 6, borderRadius: 4, border: '1px solid #d2d2d2', background: '#fafafa' }}>
+                              <CodeIcon style={{ fontSize: 16, color: '#6a6e73' }} />
+                            </IconButton>
+                          </DarkTooltip>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {remediationViolations.map((v, i) => {
+                        const key = getViolationKey(v);
+                        const status = getStatus(v);
+                        const isProposed = status === 'proposed';
+                        const isExpanded = expandedIds.has(key);
+                        const proposal = DEMO_PROPOSALS[v.ruleId];
+                        const sevStyle = FILLED_SEVERITY[v.severity] || FILLED_SEVERITY.info;
+                        const codeCtx = DEMO_CODE_CONTEXT[v.ruleId];
+                        const devSpacesUrl = `/devspaces-mockup.html`;
+
+                        const rowClasses = [
+                          status === 'fixed' || status === 'approved' ? classes.rowDone : '',
+                          status === 'editing' ? classes.rowEditing : '',
+                          status === 'in-pr' ? classes.rowInPr : '',
+                          status === 'resolved' ? classes.rowResolved : '',
+                          classes.rowClickable,
+                          isExpanded ? classes.rowExpanded : '',
+                        ].filter(Boolean).join(' ');
+
+                        return [
+                          <tr key={`rem-${v.ruleId}-${v.lineStart}-${i}`} className={rowClasses}>
+                            <td className={classes.colSeverity}>
+                              <DarkTooltip title={{
+                                  critical: 'Critical — Must fix before deployment',
+                                  high: 'High — Should fix soon',
+                                  medium: 'Medium — Recommended improvement',
+                                  low: 'Low — Optional enhancement',
+                                  info: 'Info — No action required',
+                                }[v.severity] ?? ''} arrow enterDelay={200}>
+                                <span className={classes.severityChip} style={{ backgroundColor: sevStyle.bg, color: sevStyle.color }}>
+                                  {v.severity}
+                                </span>
+                              </DarkTooltip>
+                            </td>
+                            <td className={classes.colFix}>
+                              <FixChipStyled method={v.fixTier} status={status} classes={classes} />
+                            </td>
+                            <td className={classes.colDescription} onClick={() => toggleExpanded(key)} style={{ cursor: 'pointer' }}>
+                              <ChevronRightIcon className={`${classes.chevron} ${isExpanded ? classes.chevronOpen : ''}`} />
+                              <span className={classes.ruleId}>{v.ruleId}</span>
+                              <span className={`${classes.description} ${status === 'resolved' ? classes.descriptionResolved : ''}`}>
+                                {v.message}
+                              </span>
+                            </td>
+                            <td className={classes.colFile}>
+                              <a className={classes.fileLink} href="#"
+                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.open(`${repoUrl}/blob/${branch ?? 'main'}/${v.file}#L${v.lineStart}`, '_blank'); }}>
+                                {v.file.split('/').pop()}:{v.lineStart}
+                                <OpenInNewIcon style={{ fontSize: 11, marginLeft: 3, verticalAlign: 'middle', opacity: 0.6 }} />
+                              </a>
+                            </td>
+                            <td className={classes.colActions}>
+                              <DarkTooltip title={`Open in Dev Spaces: ${v.file}:${v.lineStart}`} arrow enterDelay={200}>
+                                <IconButton size="small"
+                                  onClick={(e) => { e.stopPropagation(); window.open(devSpacesUrl, '_blank'); }}
+                                  style={{ padding: 6, borderRadius: 4, border: '1px solid #d2d2d2', background: '#fafafa' }}>
+                                  <CodeIcon style={{ fontSize: 16, color: '#6a6e73' }} />
+                                </IconButton>
+                              </DarkTooltip>
+                            </td>
+                          </tr>,
+                          isExpanded ? (
+                            <tr key={`rem-${v.ruleId}-${v.lineStart}-${i}-detail`}>
+                              <td colSpan={5} style={{ padding: 0 }}>
+                                <Collapse in={true}>
+                                  {isProposed && proposal ? (
+                                    <Box className={classes.proposalPreview}>
+                                      <Box display="flex" alignItems="center" style={{ gap: 8 }}>
+                                        <Typography className={classes.proposalTitle}>{proposal.desc}</Typography>
+                                        {proposal.tier === 'ai' && (
+                                          <Chip size="small" label={`${Math.round((DEMO_PROPOSALS_CONFIDENCE[v.ruleId] ?? 0.85) * 100)}% confidence`}
+                                            style={{ fontSize: 10, height: 18,
+                                              backgroundColor: (DEMO_PROPOSALS_CONFIDENCE[v.ruleId] ?? 0.85) >= 0.9 ? '#e7f5e7' : '#fdf2e5',
+                                              color: (DEMO_PROPOSALS_CONFIDENCE[v.ruleId] ?? 0.85) >= 0.9 ? '#1e4620' : '#6b3a00' }} />
+                                        )}
+                                      </Box>
+                                      <Box className={classes.proposalDiff}>
+                                        <Box>
+                                          <Box className={classes.diffPanelHeaderRemoved}>Before</Box>
+                                          <Box className={classes.diffCodeRemoved}>
+                                            {proposal.removed.map((line, li) => <Box key={li}>{line}</Box>)}
+                                          </Box>
+                                        </Box>
+                                        <Box>
+                                          <Box className={classes.diffPanelHeaderAdded}>After (proposed)</Box>
+                                          <Box className={classes.diffCodeAdded}>
+                                            {proposal.added.map((line, li) => <Box key={li}>{line}</Box>)}
+                                          </Box>
+                                        </Box>
+                                      </Box>
+                                      <Box className={classes.proposalActions}>
+                                        <Box display="flex" alignItems="center" style={{ gap: 6 }}>
+                                          {isDevSpacesConnected && (
+                                            <Button size="small" variant="outlined" startIcon={<CodeIcon style={{ fontSize: 13 }} />}
+                                              onClick={() => handleEditInDevSpaces(key)} className={classes.btnDevSpaces}>
+                                              Edit in Dev Spaces
+                                            </Button>
+                                          )}
+                                          <Typography style={{ fontSize: 11, color: '#6a6e73' }}>Modify before committing</Typography>
+                                        </Box>
+                                        <Box display="flex" alignItems="center" style={{ gap: 6 }}>
+                                          <Button size="small" variant="outlined" onClick={() => handleDecline(key)}
+                                            style={{ textTransform: 'none', fontSize: 12, padding: '4px 12px' }}>Decline</Button>
+                                          <Button size="small" variant="contained" onClick={() => handleApprove(key)} className={classes.btnApprove}>
+                                            Approve as-is
+                                          </Button>
+                                        </Box>
+                                      </Box>
+                                    </Box>
+                                  ) : (
+                                    <Box style={{ padding: '12px 16px 16px 48px' }}>
+                                      {codeCtx && (
+                                        <Box className={classes.codeContext}>
+                                          {codeCtx.lines.map((line, li) => (
+                                            <Box key={li} className={`${classes.codeLine} ${line.highlighted ? classes.codeLineHighlighted : ''}`}>
+                                              <span className={classes.codeLineNum}>{line.num}</span>
+                                              <span className={classes.codeLineText}>{line.text}</span>
+                                            </Box>
+                                          ))}
+                                        </Box>
+                                      )}
+                                      <Typography style={{ fontSize: 12, color: '#333', marginTop: 8, lineHeight: 1.5 }}>
+                                        {codeCtx?.detail || v.ruleDescription}
+                                      </Typography>
+                                      <Box className={classes.detailMeta}>
+                                        <span className={classes.detailMetaItem}>Validator: <strong>{v.validatorSource}</strong></span>
+                                        <span className={classes.detailMetaItem}>Scope: <strong>{v.scope}</strong></span>
+                                        <span className={classes.detailMetaItem}>Category: <strong>{v.category}</strong></span>
+                                      </Box>
+                                    </Box>
+                                  )}
+                                </Collapse>
+                              </td>
+                            </tr>
+                          ) : null,
+                        ];
+                      })}
+                    </tbody>
+                  </table>
+                </Box>
+              )}
+
+              {/* PR actions in remediation tab */}
+              {prReadyCount > 0 && (
+                <Box display="flex" alignItems="center" justifyContent="flex-end" style={{ marginTop: 12, gap: 6 }}>
+                  <Button variant="contained" color="primary" size="small" onClick={handleCreatePr}
+                    style={{ textTransform: 'none', fontSize: 13, fontWeight: 500 }}>
+                    {hasPr
+                      ? `Add ${prReadyCount} ${prReadyCount === 1 ? 'fix' : 'fixes'} to pull request`
+                      : `Create pull request with ${prReadyCount} ${prReadyCount === 1 ? 'fix' : 'fixes'}`}
+                  </Button>
+                </Box>
+              )}
+            </Box>
+          )}
 
         </>
       )}
