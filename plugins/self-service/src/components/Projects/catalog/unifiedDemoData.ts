@@ -276,8 +276,6 @@ export type GitRepository = {
 };
 
 const DISCOVERED_ONLY_NAMES = new Set([
-  'network-firewall-rules',
-  'cloud-provisioner',
   'backup-automation',
 ]);
 

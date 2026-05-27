@@ -59,7 +59,7 @@ import {
 import { useProjectDetailStyles } from './styles';
 import { statusColors } from '../../common/statusColors';
 import { getProjectQuality } from './qualityDemoData';
-import { QualityTab } from './QualityTab';
+import { QualityTab, QualityTabUnified } from './QualityTab';
 import { DependenciesTab } from './DependenciesTab';
 import VerifiedUserOutlinedIcon from '@material-ui/icons/VerifiedUserOutlined';
 import Chip from '@material-ui/core/Chip';
@@ -1144,15 +1144,15 @@ export const ProjectDetailsPage = () => {
           <OverviewTab project={project} isPushedToAap={isPushedToAap} />
         )}
         {selectedTab === 1 && (
-          <QualityTab
-            quality={quality}
-            projectName={project.name}
-            initialView={qualityInitialView}
-            initialScanId={initialScanId}
-            initialSeverity={urlSeverity}
-            repoUrl={project.repo.url}
-            branch={project.repo.branch}
-          />
+            <QualityTabUnified
+              quality={quality}
+              projectName={project.name}
+              initialView={qualityInitialView}
+              initialScanId={initialScanId}
+              initialSeverity={urlSeverity}
+              repoUrl={project.repo.url}
+              branch={project.repo.branch}
+            />
         )}
         {selectedTab === 2 && <CIActivityTab project={project} />}
         {selectedTab === 3 && <DependenciesTab quality={quality} />}
