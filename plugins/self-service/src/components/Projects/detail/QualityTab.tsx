@@ -1999,7 +1999,7 @@ export const QualityTabUnified = ({
   return (
     <Box style={{ marginTop: 24 }}>
       {/* Scan context — compact subtitle style */}
-      <Box display="flex" alignItems="center" justifyContent="space-between" style={{ marginBottom: 8 }}>
+      <Box display="flex" alignItems="center" justifyContent="space-between" style={{ marginBottom: 16 }}>
         <Typography style={{ fontSize: 13, color: '#6a6e73' }}>
           {scanning ? <>Scanning repository…</> : (
             <>Last scan {quality.lastScannedAt} · commit <code style={{ fontSize: 11 }}>{quality.lastScannedCommit?.slice(0, 7)}</code>
@@ -2019,6 +2019,13 @@ export const QualityTabUnified = ({
             <Button size="small" variant="text" startIcon={<OpenInNewIcon style={{ fontSize: 14 }} />}
               onClick={() => window.open(scan.ciRunUrl, '_blank')} style={{ textTransform: 'none', fontSize: 12, color: '#6a6e73' }}>
               View CI run
+            </Button>
+          )}
+          {isDevSpacesConnected && isDeveloper && (
+            <Button size="small" variant="text" startIcon={<CodeIcon style={{ fontSize: 14 }} />}
+              onClick={() => window.open(`${DEVSPACES_BASE_URL}/#${repoUrl}/tree/${branch ?? 'main'}`, '_blank')}
+              style={{ textTransform: 'none', fontSize: 12, color: '#6a6e73' }}>
+              Edit in Dev Spaces
             </Button>
           )}
           <Button size="small" variant="text" onClick={handleReset} style={{ textTransform: 'none', fontSize: 11, color: '#999' }}>Reset</Button>
