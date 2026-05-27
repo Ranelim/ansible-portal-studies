@@ -223,6 +223,81 @@ const DEMO_PROPOSALS_CONFIDENCE: Record<string, number> = {
   'name[missing]': 0.88,
 };
 
+const DEMO_CODE_CONTEXT: Record<string, { lines: { num: number; text: string; highlighted?: boolean }[]; detail?: string }> = {
+  'meta-no-info': { lines: [
+    { num: 1, text: '# meta/main.yml' },
+    { num: 2, text: '---' },
+    { num: 3, text: 'galaxy_info:', highlighted: true },
+    { num: 4, text: '  author: ""' },
+    { num: 5, text: '  description: ""' },
+  ], detail: 'Role metadata should include author, description, license, and supported platforms to help users discover and evaluate this role.' },
+  'yaml[truthy]': { lines: [
+    { num: 6, text: 'gather_facts: true' },
+    { num: 7, text: '' },
+    { num: 8, text: 'enable_reporting: yes', highlighted: true },
+    { num: 9, text: 'verbose_output: no' },
+  ], detail: 'YAML 1.1 accepts yes/no as booleans, but YAML 1.2 does not. Use true/false for forward compatibility.' },
+  'deprecated-module': { lines: [
+    { num: 16, text: '    - name: Apply patches to all packages' },
+    { num: 17, text: '      ansible.builtin.include_tasks: patch-apply.yml' },
+    { num: 18, text: '      ansible.builtin.yum:', highlighted: true },
+    { num: 19, text: '        name: "*"' },
+    { num: 20, text: '        state: latest' },
+  ], detail: 'ansible.builtin.yum is deprecated in AAP 2.7+. Use ansible.builtin.dnf which is a drop-in replacement.' },
+  'fqcn[action-core]': { lines: [
+    { num: 11, text: '    - name: Copy patching script to target' },
+    { num: 12, text: '      copy:', highlighted: true },
+    { num: 13, text: '        src: files/patch.sh' },
+    { num: 14, text: '        dest: /tmp/patch.sh' },
+    { num: 15, text: '        mode: "0755"' },
+  ], detail: 'Use the fully qualified collection name (ansible.builtin.copy) to avoid ambiguity with custom modules sharing the same short name.' },
+  'no-changed-when': { lines: [
+    { num: 20, text: '    - name: Check current patch level' },
+    { num: 21, text: '      ansible.builtin.command:', highlighted: true },
+    { num: 22, text: '        cmd: rpm -qa --last' },
+    { num: 23, text: '      register: patch_level' },
+  ], detail: 'Commands that only read state should declare changed_when: false so Ansible reports them as "ok" rather than "changed".' },
+  'name[missing]': { lines: [
+    { num: 3, text: '    - ansible.builtin.file:', highlighted: true },
+    { num: 4, text: '        path: /var/backup/rollback' },
+    { num: 5, text: '        state: directory' },
+  ], detail: 'Unnamed tasks make playbook output hard to read and debug. Every task should have a descriptive name.' },
+  'aap-removed-param': { lines: [
+    { num: 6, text: '    - name: Check disk space' },
+    { num: 7, text: '      ansible.builtin.command:' },
+    { num: 8, text: '        cmd: df -h', highlighted: true },
+    { num: 9, text: '        warn: false', highlighted: true },
+  ], detail: 'The warn parameter was removed in ansible-core 2.17 (AAP 2.7). Commands no longer emit deprecation warnings by default.' },
+  'aap-collection-update': { lines: [
+    { num: 4, text: 'collections:' },
+    { num: 5, text: '  - name: community.general' },
+    { num: 6, text: '    version: ">=7.5.0"', highlighted: true },
+  ], detail: 'community.general 7.5.0 is unsupported in AAP 2.7. Update to >= 8.0.0 for compatibility.' },
+  'risky-file-permissions': { lines: [
+    { num: 32, text: '    - name: Write patch report' },
+    { num: 33, text: '      ansible.builtin.copy:' },
+    { num: 34, text: '        content: "{{ patch_results | to_nice_yaml }}"', highlighted: true },
+    { num: 35, text: '        dest: /var/log/patch-report.yml' },
+  ], detail: 'File created without explicit permissions inherits umask defaults, which may be too permissive. Set mode explicitly.' },
+  'aap-deprecated-module': { lines: [
+    { num: 12, text: '    - name: Install prerequisites' },
+    { num: 13, text: '      ansible.builtin.yum:', highlighted: true },
+    { num: 14, text: '        name: "{{ prereq_packages }}"' },
+    { num: 15, text: '        state: present' },
+  ], detail: 'ansible.builtin.yum is deprecated in AAP 2.5+. Use ansible.builtin.dnf as a drop-in replacement.' },
+  'aap-deprecated-syntax': { lines: [
+    { num: 20, text: '    - name: Apply security updates' },
+    { num: 21, text: '      ansible.builtin.dnf:' },
+    { num: 22, text: '        name: "{{ item }}"', highlighted: true },
+    { num: 23, text: '      with_items: "{{ packages }}"', highlighted: true },
+  ], detail: 'with_items is deprecated loop syntax. Use loop for forward compatibility with future Ansible versions.' },
+  'aap-removed-config': { lines: [
+    { num: 1, text: '[defaults]' },
+    { num: 2, text: 'inventory = ./inventory' },
+    { num: 3, text: 'callback_whitelist = profile_tasks, timer', highlighted: true },
+  ], detail: 'callback_whitelist was renamed to callbacks_enabled in ansible-core 2.17. The old name is no longer recognized.' },
+};
+
 // ---------------------------------------------------------------------------
 // Violation Row — evolves per remediation state
 // ---------------------------------------------------------------------------
@@ -1439,7 +1514,8 @@ const useQualityStyles = makeStyles(theme => ({
   colSeverity: { width: 80 },
   colFix: { width: 140 },
   colDescription: { minWidth: 200 },
-  colFile: { width: 160, whiteSpace: 'nowrap' as const },
+  colFile: { whiteSpace: 'nowrap' as const },
+  colActions: { width: 44, textAlign: 'center' as const, paddingRight: 8 },
   // Row states
   rowSelected: { backgroundColor: '#e8f4ff !important' },
   rowDone: { backgroundColor: '#f8fdf8 !important' },
@@ -1493,6 +1569,23 @@ const useQualityStyles = makeStyles(theme => ({
   description: { fontSize: 13, color: '#151515' },
   descriptionResolved: { textDecoration: 'line-through', color: '#6a6e73', opacity: 0.7 },
   expandHint: { display: 'block', fontSize: 11, color: '#6753ac', fontStyle: 'italic' as const, marginTop: 4 },
+  chevron: { fontSize: 14, color: '#999', transition: 'transform 0.15s ease', verticalAlign: 'middle', marginRight: 4, cursor: 'pointer' },
+  chevronOpen: { transform: 'rotate(90deg)' },
+  codeContext: {
+    margin: '8px 0',
+    borderRadius: 4,
+    overflow: 'hidden',
+    border: '1px solid #e0e0e0',
+    fontFamily: "'SF Mono', 'Fira Code', 'Consolas', monospace",
+    fontSize: 12,
+    lineHeight: 1.6,
+  },
+  codeLine: { display: 'flex', padding: '0 12px', '&:hover': { backgroundColor: '#f0f0f0' } },
+  codeLineHighlighted: { backgroundColor: '#fff8e1' },
+  codeLineNum: { width: 36, textAlign: 'right' as const, color: '#999', userSelect: 'none' as const, paddingRight: 12, flexShrink: 0 },
+  codeLineText: { whiteSpace: 'pre' as const, color: '#333' },
+  detailMeta: { display: 'flex', gap: 16, marginTop: 8, fontSize: 11, color: '#6a6e73' },
+  detailMetaItem: { display: 'inline-flex', alignItems: 'center', gap: 4 },
   // File link
   fileLink: {
     fontSize: 12,
@@ -1962,34 +2055,6 @@ export const QualityTabUnified = ({
 
           {/* ── A. REMEDIATION STATUS BAR — persistent lifecycle tracker ── */}
 
-          {/* Action bar — unified idle + selection state */}
-          {isDeveloper && fixableCount > 0 && (pageState === 'idle' || pageState === 'proposals-ready' || pageState === 'pr-open') && (
-            <Box className={`${classes.banner} ${classes.bannerIdle}`} style={{ marginBottom: 12, borderRadius: 6 }}>
-              <Box className={classes.bannerRow}>
-                <Typography style={{ fontSize: 13 }}>
-                  {selectedIds.size > 0
-                    ? <><strong>{selectedIds.size}</strong> of {fixableCount} fixable violation{fixableCount !== 1 ? 's' : ''} selected</>
-                    : <><strong>{fixableCount}</strong> violation{fixableCount !== 1 ? 's' : ''} can be auto-fixed</>}
-                </Typography>
-                <Box display="flex" alignItems="center" style={{ gap: 8 }}>
-                  {selectedIds.size > 0 && (
-                    <Button size="small" variant="text"
-                      onClick={() => setSelectedIds(new Set())}
-                      style={{ textTransform: 'none', fontSize: 12, color: '#6a6e73', padding: '4px 8px' }}>
-                      Clear
-                    </Button>
-                  )}
-                  <Button variant="contained" color="primary" size="small"
-                    disabled={selectedIds.size === 0}
-                    onClick={handleRemediate}
-                    style={{ textTransform: 'none', fontSize: 13, fontWeight: 500 }}>
-                    Fix {selectedIds.size > 0 ? `${selectedIds.size} violation${selectedIds.size !== 1 ? 's' : ''}` : 'violations'}
-                  </Button>
-                </Box>
-              </Box>
-            </Box>
-          )}
-
           {pageState === 'in-progress' && (
             <Box className={`${classes.banner} ${classes.bannerProgress}`} style={{ marginBottom: 12, borderRadius: 6 }}>
               <Box display="flex" alignItems="center" style={{ gap: 8 }}>
@@ -2126,93 +2191,119 @@ export const QualityTabUnified = ({
             </Box>
           )}
 
-          {/* Selection bar removed — merged into unified action bar above */}
-
           {/* ── Violations table ── */}
           <Box style={{ border: '1px solid #d2d2d2', borderRadius: 6, overflow: 'hidden' }}>
+
+            {/* Toolbar — Gmail-style inline action bar */}
+            {isDeveloper && (
+              <Box display="flex" alignItems="center" justifyContent="space-between"
+                style={{ padding: '6px 12px', borderBottom: '1px solid #e0e0e0', backgroundColor: '#fafafa' }}>
+                <Box display="flex" alignItems="center" style={{ gap: 8 }}>
+                  <Box display="inline-flex" alignItems="center"
+                    style={{ border: '1px solid #d2d2d2', borderRadius: 4, padding: '2px 4px 2px 8px', backgroundColor: '#fff', cursor: 'pointer' }}>
+                    <Checkbox
+                      size="small"
+                      checked={
+                        filteredViolations.filter(v => v.fixTier !== 'manual' && getStatus(v) === 'open').length > 0 &&
+                        filteredViolations.filter(v => v.fixTier !== 'manual' && getStatus(v) === 'open').every(v => selectedIds.has(getViolationKey(v)))
+                      }
+                      indeterminate={
+                        selectedIds.size > 0 &&
+                        !filteredViolations.filter(v => v.fixTier !== 'manual' && getStatus(v) === 'open').every(v => selectedIds.has(getViolationKey(v)))
+                      }
+                      onChange={handleSelectAll}
+                      color="primary"
+                      style={{ padding: 0 }}
+                      disabled={pageState === 'in-progress'}
+                    />
+                    <ArrowDropDownIcon
+                      style={{ fontSize: 18, color: '#6a6e73', cursor: 'pointer', marginLeft: 0 }}
+                      onClick={(e) => setSelectMenuAnchor(e.currentTarget)}
+                    />
+                  </Box>
+                  <Menu
+                    anchorEl={selectMenuAnchor}
+                    open={Boolean(selectMenuAnchor)}
+                    onClose={() => setSelectMenuAnchor(null)}
+                    getContentAnchorEl={null}
+                    anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+                    transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+                    PaperProps={{ style: { minWidth: 260, padding: '4px 0' } }}
+                  >
+                    <Box style={{ padding: '4px 16px 8px', borderBottom: '1px solid #eee' }}>
+                      <Typography style={{ fontSize: 11, fontWeight: 600, color: '#6a6e73', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                        Select by fix type
+                      </Typography>
+                    </Box>
+                    <MenuItem onClick={() => selectByPredicate(v => v.fixTier !== 'manual')}>
+                      <ListItemText
+                        primary={<span style={{ fontSize: 13 }}>All fixable violations ({filteredViolations.filter(v => v.fixTier !== 'manual' && getStatus(v) === 'open').length})</span>}
+                        secondary={<span style={{ fontSize: 11 }}>Includes both automated and AI-assisted fixes</span>}
+                      />
+                    </MenuItem>
+                    <MenuItem onClick={() => selectByPredicate(v => v.fixTier === 'deterministic')}>
+                      <ListItemText
+                        primary={<span style={{ fontSize: 13 }}>Automated fixes only ({filteredViolations.filter(v => v.fixTier === 'deterministic' && getStatus(v) === 'open').length})</span>}
+                        secondary={<span style={{ fontSize: 11 }}>Safe, deterministic transformations</span>}
+                      />
+                    </MenuItem>
+                    <MenuItem onClick={() => selectByPredicate(v => v.fixTier === 'ai')}>
+                      <ListItemText
+                        primary={<span style={{ fontSize: 13 }}>AI-assisted fixes only ({filteredViolations.filter(v => v.fixTier === 'ai' && getStatus(v) === 'open').length})</span>}
+                        secondary={<span style={{ fontSize: 11 }}>Requires review before applying</span>}
+                      />
+                    </MenuItem>
+                    <Box style={{ padding: '8px 16px 4px', borderTop: '1px solid #eee', borderBottom: '1px solid #eee', marginTop: 4 }}>
+                      <Typography style={{ fontSize: 11, fontWeight: 600, color: '#6a6e73', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                        Select by severity
+                      </Typography>
+                    </Box>
+                    {(['critical', 'high', 'medium', 'low'] as SeverityClass[]).map(sev => {
+                      const count = filteredViolations.filter(v => v.severity === sev && v.fixTier !== 'manual' && getStatus(v) === 'open').length;
+                      if (!count) return null;
+                      return (
+                        <MenuItem key={sev} onClick={() => selectByPredicate(v => v.severity === sev && v.fixTier !== 'manual')}>
+                          <ListItemText
+                            primary={
+                              <span style={{ fontSize: 13 }}>
+                                <strong style={{ color: SEVERITY_COLORS[sev], textTransform: 'capitalize' }}>{sev}</strong> — {count} fixable
+                              </span>
+                            }
+                          />
+                        </MenuItem>
+                      );
+                    })}
+                    <Divider style={{ margin: '4px 0' }} />
+                    <MenuItem onClick={() => { setSelectedIds(new Set()); setSelectMenuAnchor(null); }}>
+                      <ListItemText primary={<span style={{ fontSize: 13 }}>Clear selection</span>} />
+                    </MenuItem>
+                  </Menu>
+                  <Button variant="contained" color="primary" size="small"
+                    disabled={selectedIds.size === 0}
+                    onClick={handleRemediate}
+                    style={{ textTransform: 'none', fontSize: 12, fontWeight: 500, padding: '3px 12px' }}>
+                    Fix {selectedIds.size > 0 ? `${selectedIds.size} violation${selectedIds.size !== 1 ? 's' : ''}` : 'violations'}
+                  </Button>
+                  {selectedIds.size > 0 && (
+                    <Button size="small" variant="text"
+                      onClick={() => setSelectedIds(new Set())}
+                      style={{ textTransform: 'none', fontSize: 11, color: '#6a6e73', padding: '3px 8px', minWidth: 0 }}>
+                      Clear
+                    </Button>
+                  )}
+                </Box>
+                <Typography style={{ fontSize: 12, color: '#6a6e73' }}>
+                  {selectedIds.size > 0
+                    ? <><strong>{selectedIds.size}</strong> of {fixableCount} selected</>
+                    : <>{fixableCount} can be auto-fixed</>}
+                </Typography>
+              </Box>
+            )}
+
             <table className={classes.violationsTable}>
               <thead>
                 <tr>
-                  <th className={classes.colCheckbox}>
-                    <Box display="inline-flex" alignItems="center">
-                      <Checkbox
-                        size="small"
-                        checked={
-                          filteredViolations.filter(v => v.fixTier !== 'manual' && getStatus(v) === 'open').length > 0 &&
-                          filteredViolations.filter(v => v.fixTier !== 'manual' && getStatus(v) === 'open').every(v => selectedIds.has(getViolationKey(v)))
-                        }
-                        indeterminate={
-                          selectedIds.size > 0 &&
-                          !filteredViolations.filter(v => v.fixTier !== 'manual' && getStatus(v) === 'open').every(v => selectedIds.has(getViolationKey(v)))
-                        }
-                        onChange={handleSelectAll}
-                        color="primary"
-                        style={{ padding: 0 }}
-                        disabled={pageState === 'in-progress'}
-                      />
-                      <ArrowDropDownIcon
-                        style={{ fontSize: 16, color: '#6a6e73', cursor: 'pointer', marginLeft: -2 }}
-                        onClick={(e) => setSelectMenuAnchor(e.currentTarget)}
-                      />
-                    </Box>
-                    <Menu
-                      anchorEl={selectMenuAnchor}
-                      open={Boolean(selectMenuAnchor)}
-                      onClose={() => setSelectMenuAnchor(null)}
-                      getContentAnchorEl={null}
-                      anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
-                      transformOrigin={{ vertical: 'top', horizontal: 'left' }}
-                      PaperProps={{ style: { minWidth: 260, padding: '4px 0' } }}
-                    >
-                      <Box style={{ padding: '4px 16px 8px', borderBottom: '1px solid #eee' }}>
-                        <Typography style={{ fontSize: 11, fontWeight: 600, color: '#6a6e73', textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                          Select by fix type
-                        </Typography>
-                      </Box>
-                      <MenuItem onClick={() => selectByPredicate(v => v.fixTier !== 'manual')}>
-                        <ListItemText
-                          primary={<span style={{ fontSize: 13 }}>All fixable violations ({filteredViolations.filter(v => v.fixTier !== 'manual' && getStatus(v) === 'open').length})</span>}
-                          secondary={<span style={{ fontSize: 11 }}>Includes both automated and AI-assisted fixes</span>}
-                        />
-                      </MenuItem>
-                      <MenuItem onClick={() => selectByPredicate(v => v.fixTier === 'deterministic')}>
-                        <ListItemText
-                          primary={<span style={{ fontSize: 13 }}>Automated fixes only ({filteredViolations.filter(v => v.fixTier === 'deterministic' && getStatus(v) === 'open').length})</span>}
-                          secondary={<span style={{ fontSize: 11 }}>Safe, deterministic transformations</span>}
-                        />
-                      </MenuItem>
-                      <MenuItem onClick={() => selectByPredicate(v => v.fixTier === 'ai')}>
-                        <ListItemText
-                          primary={<span style={{ fontSize: 13 }}>AI-assisted fixes only ({filteredViolations.filter(v => v.fixTier === 'ai' && getStatus(v) === 'open').length})</span>}
-                          secondary={<span style={{ fontSize: 11 }}>Requires review before applying</span>}
-                        />
-                      </MenuItem>
-                      <Box style={{ padding: '8px 16px 4px', borderTop: '1px solid #eee', borderBottom: '1px solid #eee', marginTop: 4 }}>
-                        <Typography style={{ fontSize: 11, fontWeight: 600, color: '#6a6e73', textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                          Select by severity
-                        </Typography>
-                      </Box>
-                      {(['critical', 'high', 'medium', 'low'] as SeverityClass[]).map(sev => {
-                        const count = filteredViolations.filter(v => v.severity === sev && v.fixTier !== 'manual' && getStatus(v) === 'open').length;
-                        if (!count) return null;
-                        return (
-                          <MenuItem key={sev} onClick={() => selectByPredicate(v => v.severity === sev && v.fixTier !== 'manual')}>
-                            <ListItemText
-                              primary={
-                                <span style={{ fontSize: 13 }}>
-                                  <strong style={{ color: SEVERITY_COLORS[sev], textTransform: 'capitalize' }}>{sev}</strong> — {count} fixable
-                                </span>
-                              }
-                            />
-                          </MenuItem>
-                        );
-                      })}
-                      <Divider style={{ margin: '4px 0' }} />
-                      <MenuItem onClick={() => { setSelectedIds(new Set()); setSelectMenuAnchor(null); }}>
-                        <ListItemText primary={<span style={{ fontSize: 13 }}>Clear selection</span>} />
-                      </MenuItem>
-                    </Menu>
-                  </th>
+                  <th className={classes.colCheckbox} />
                   {([
                     { col: 'severity' as SortColumn, label: 'Severity', cls: classes.colSeverity },
                     { col: 'fix' as SortColumn, label: 'Fix', cls: classes.colFix },
@@ -2233,6 +2324,13 @@ export const QualityTabUnified = ({
                       )}
                     </th>
                   ))}
+                  <th className={classes.colActions} title="Open in Dev Spaces">
+                    <IconButton size="small"
+                      onClick={() => window.open('/devspaces-mockup.html', '_blank')}
+                      style={{ padding: 6, borderRadius: 4, border: '1px solid #d2d2d2', background: '#fafafa' }}>
+                      <CodeIcon style={{ fontSize: 16, color: '#6a6e73' }} />
+                    </IconButton>
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -2253,11 +2351,13 @@ export const QualityTabUnified = ({
                     status === 'editing' ? classes.rowEditing : '',
                     status === 'in-pr' ? classes.rowInPr : '',
                     status === 'resolved' ? classes.rowResolved : '',
-                    isProposed ? classes.rowClickable : '',
+                    classes.rowClickable,
                     isExpanded ? classes.rowExpanded : '',
                   ].filter(Boolean).join(' ');
 
                   const sevStyle = FILLED_SEVERITY[v.severity] || FILLED_SEVERITY.info;
+                  const codeCtx = DEMO_CODE_CONTEXT[v.ruleId];
+                  const devSpacesUrl = `/devspaces-mockup.html`;
 
                   return [
                     <tr key={`${v.ruleId}-${v.lineStart}-${i}`} className={rowClasses}>
@@ -2274,73 +2374,100 @@ export const QualityTabUnified = ({
                       <td className={classes.colFix}>
                         <FixChipStyled method={v.fixTier} status={status} classes={classes} />
                       </td>
-                      <td className={classes.colDescription} onClick={() => { if (isProposed) toggleExpanded(key); }}>
+                      <td className={classes.colDescription} onClick={() => toggleExpanded(key)} style={{ cursor: 'pointer' }}>
+                        <ChevronRightIcon className={`${classes.chevron} ${isExpanded ? classes.chevronOpen : ''}`} />
                         <span className={classes.ruleId}>{v.ruleId}</span>
                         <span className={`${classes.description} ${status === 'resolved' ? classes.descriptionResolved : ''}`}>
                           {v.message}
                         </span>
-                        {isProposed && !isExpanded && <span className={classes.expandHint}>Click to review proposed fix</span>}
                       </td>
                       <td className={classes.colFile}>
-                        {repoUrl && isDevSpacesConnected ? (
-                          <a className={classes.fileLink}
-                            href="#"
-                            title={`Open in Dev Spaces: ${v.file}:${v.lineStart}`}
-                            onClick={(e) => { e.preventDefault(); window.open(`${DEVSPACES_BASE_URL}#${repoUrl}/tree/${branch ?? 'main'}/${v.file}?line=${v.lineStart}`, '_blank'); }}>
-                            {v.file.split('/').pop()}:{v.lineStart}
-                          </a>
-                        ) : (
-                          <span style={{ fontSize: 12, fontFamily: "'SF Mono', 'Fira Code', monospace", color: '#6a6e73' }}>{v.file.split('/').pop()}:{v.lineStart}</span>
-                        )}
+                        <a className={classes.fileLink}
+                          href="#"
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.open(`${repoUrl}/blob/${branch ?? 'main'}/${v.file}#L${v.lineStart}`, '_blank'); }}>
+                          {v.file.split('/').pop()}:{v.lineStart}
+                          <OpenInNewIcon style={{ fontSize: 11, marginLeft: 3, verticalAlign: 'middle', opacity: 0.6 }} />
+                        </a>
+                      </td>
+                      <td className={classes.colActions}>
+                        <IconButton size="small"
+                          title={`Open in Dev Spaces: ${v.file}:${v.lineStart}`}
+                          onClick={(e) => { e.stopPropagation(); window.open(devSpacesUrl, '_blank'); }}
+                          style={{ padding: 6, borderRadius: 4, border: '1px solid #d2d2d2', background: '#fafafa' }}>
+                          <CodeIcon style={{ fontSize: 16, color: '#6a6e73' }} />
+                        </IconButton>
                       </td>
                     </tr>,
-                    isExpanded && isProposed && proposal ? (
-                      <tr key={`${v.ruleId}-${v.lineStart}-${i}-proposal`}>
-                        <td colSpan={5} style={{ padding: 0 }}>
+                    isExpanded ? (
+                      <tr key={`${v.ruleId}-${v.lineStart}-${i}-detail`}>
+                        <td colSpan={6} style={{ padding: 0 }}>
                           <Collapse in={true}>
-                            <Box className={classes.proposalPreview}>
-                              <Box display="flex" alignItems="center" style={{ gap: 8 }}>
-                                <Typography className={classes.proposalTitle}>{proposal.desc}</Typography>
-                                {proposal.tier === 'ai' && (
-                                  <Chip size="small" label={`${Math.round((DEMO_PROPOSALS_CONFIDENCE[v.ruleId] ?? 0.85) * 100)}% confidence`}
-                                    style={{ fontSize: 10, height: 18,
-                                      backgroundColor: (DEMO_PROPOSALS_CONFIDENCE[v.ruleId] ?? 0.85) >= 0.9 ? '#e7f5e7' : '#fdf2e5',
-                                      color: (DEMO_PROPOSALS_CONFIDENCE[v.ruleId] ?? 0.85) >= 0.9 ? '#1e4620' : '#6b3a00' }} />
-                                )}
-                              </Box>
-                              <Box className={classes.proposalDiff}>
-                                <Box>
-                                  <Box className={classes.diffPanelHeaderRemoved}>Before</Box>
-                                  <Box className={classes.diffCodeRemoved}>
-                                    {proposal.removed.map((line, li) => <Box key={li}>{line}</Box>)}
-                                  </Box>
-                                </Box>
-                                <Box>
-                                  <Box className={classes.diffPanelHeaderAdded}>After (proposed)</Box>
-                                  <Box className={classes.diffCodeAdded}>
-                                    {proposal.added.map((line, li) => <Box key={li}>{line}</Box>)}
-                                  </Box>
-                                </Box>
-                              </Box>
-                              <Box className={classes.proposalActions}>
-                                <Box display="flex" alignItems="center" style={{ gap: 6 }}>
-                                  {isDevSpacesConnected && (
-                                    <Button size="small" variant="outlined" startIcon={<CodeIcon style={{ fontSize: 13 }} />}
-                                      onClick={() => handleEditInDevSpaces(key)} className={classes.btnDevSpaces}>
-                                      Edit in Dev Spaces
-                                    </Button>
+                            {isProposed && proposal ? (
+                              <Box className={classes.proposalPreview}>
+                                <Box display="flex" alignItems="center" style={{ gap: 8 }}>
+                                  <Typography className={classes.proposalTitle}>{proposal.desc}</Typography>
+                                  {proposal.tier === 'ai' && (
+                                    <Chip size="small" label={`${Math.round((DEMO_PROPOSALS_CONFIDENCE[v.ruleId] ?? 0.85) * 100)}% confidence`}
+                                      style={{ fontSize: 10, height: 18,
+                                        backgroundColor: (DEMO_PROPOSALS_CONFIDENCE[v.ruleId] ?? 0.85) >= 0.9 ? '#e7f5e7' : '#fdf2e5',
+                                        color: (DEMO_PROPOSALS_CONFIDENCE[v.ruleId] ?? 0.85) >= 0.9 ? '#1e4620' : '#6b3a00' }} />
                                   )}
-                                  <Typography style={{ fontSize: 11, color: '#6a6e73' }}>Modify before committing</Typography>
                                 </Box>
-                                <Box display="flex" alignItems="center" style={{ gap: 6 }}>
-                                  <Button size="small" variant="outlined" onClick={() => handleDecline(key)}
-                                    style={{ textTransform: 'none', fontSize: 12, padding: '4px 12px' }}>Decline</Button>
-                                  <Button size="small" variant="contained" onClick={() => handleApprove(key)} className={classes.btnApprove}>
-                                    Approve as-is
-                                  </Button>
+                                <Box className={classes.proposalDiff}>
+                                  <Box>
+                                    <Box className={classes.diffPanelHeaderRemoved}>Before</Box>
+                                    <Box className={classes.diffCodeRemoved}>
+                                      {proposal.removed.map((line, li) => <Box key={li}>{line}</Box>)}
+                                    </Box>
+                                  </Box>
+                                  <Box>
+                                    <Box className={classes.diffPanelHeaderAdded}>After (proposed)</Box>
+                                    <Box className={classes.diffCodeAdded}>
+                                      {proposal.added.map((line, li) => <Box key={li}>{line}</Box>)}
+                                    </Box>
+                                  </Box>
+                                </Box>
+                                <Box className={classes.proposalActions}>
+                                  <Box display="flex" alignItems="center" style={{ gap: 6 }}>
+                                    {isDevSpacesConnected && (
+                                      <Button size="small" variant="outlined" startIcon={<CodeIcon style={{ fontSize: 13 }} />}
+                                        onClick={() => handleEditInDevSpaces(key)} className={classes.btnDevSpaces}>
+                                        Edit in Dev Spaces
+                                      </Button>
+                                    )}
+                                    <Typography style={{ fontSize: 11, color: '#6a6e73' }}>Modify before committing</Typography>
+                                  </Box>
+                                  <Box display="flex" alignItems="center" style={{ gap: 6 }}>
+                                    <Button size="small" variant="outlined" onClick={() => handleDecline(key)}
+                                      style={{ textTransform: 'none', fontSize: 12, padding: '4px 12px' }}>Decline</Button>
+                                    <Button size="small" variant="contained" onClick={() => handleApprove(key)} className={classes.btnApprove}>
+                                      Approve as-is
+                                    </Button>
+                                  </Box>
                                 </Box>
                               </Box>
-                            </Box>
+                            ) : (
+                              <Box style={{ padding: '12px 16px 16px 62px' }}>
+                                {codeCtx && (
+                                  <Box className={classes.codeContext}>
+                                    {codeCtx.lines.map((line, li) => (
+                                      <Box key={li} className={`${classes.codeLine} ${line.highlighted ? classes.codeLineHighlighted : ''}`}>
+                                        <span className={classes.codeLineNum}>{line.num}</span>
+                                        <span className={classes.codeLineText}>{line.text}</span>
+                                      </Box>
+                                    ))}
+                                  </Box>
+                                )}
+                                <Typography style={{ fontSize: 12, color: '#333', marginTop: 8, lineHeight: 1.5 }}>
+                                  {codeCtx?.detail || v.ruleDescription}
+                                </Typography>
+                                <Box className={classes.detailMeta}>
+                                  <span className={classes.detailMetaItem}>Validator: <strong>{v.validatorSource}</strong></span>
+                                  <span className={classes.detailMetaItem}>Scope: <strong>{v.scope}</strong></span>
+                                  <span className={classes.detailMetaItem}>Category: <strong>{v.category}</strong></span>
+                                </Box>
+                              </Box>
+                            )}
                           </Collapse>
                         </td>
                       </tr>
@@ -2350,6 +2477,7 @@ export const QualityTabUnified = ({
               </tbody>
             </table>
           </Box>
+
         </>
       )}
     </Box>
