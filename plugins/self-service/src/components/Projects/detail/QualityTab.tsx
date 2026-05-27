@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { DEVSPACES_BASE_URL, DEMO_CONNECTIONS } from '../../Admin/syncDemoData';
+import { DEMO_CONNECTIONS } from '../../Admin/syncDemoData';
 import { useUserRoleContext } from '../../../hooks/useUserRole';
 
 const isDevSpacesConnected = DEMO_CONNECTIONS.find(c => c.id === 'devspaces')?.status === 'Active';
@@ -430,7 +430,8 @@ const ViolationRow = ({
                 size="small"
                 onClick={(e: React.MouseEvent) => {
                   e.stopPropagation();
-                  window.open(`${DEVSPACES_BASE_URL}#${repoUrl}/tree/${branch ?? 'main'}/${v.file}?line=${v.lineStart}`, '_blank');
+                  const rsStatus = rowState === 'fixing' ? 'fixed' : rowState === 'proposal' ? 'proposed' : 'open';
+                  window.open(`/devspaces-mockup.html?file=${encodeURIComponent(v.file)}&line=${v.lineStart}&tier=${v.fixTier}&status=${rsStatus}`, '_blank');
                 }}
                 style={{ padding: 4, borderRadius: 4 }}
               >
@@ -526,7 +527,8 @@ const ViolationRow = ({
                 }}
                 onClick={(e: React.MouseEvent) => {
                   e.stopPropagation();
-                  window.open(`${DEVSPACES_BASE_URL}#${repoUrl}/tree/${branch ?? 'main'}/${v.file}?line=${v.lineStart}`, '_blank');
+                  const rsStatus = rowState === 'fixing' ? 'fixed' : rowState === 'proposal' ? 'proposed' : 'open';
+                  window.open(`/devspaces-mockup.html?file=${encodeURIComponent(v.file)}&line=${v.lineStart}&tier=${v.fixTier}&status=${rsStatus}`, '_blank');
                 }}
                 onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.textDecoration = 'underline'; }}
                 onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.textDecoration = 'none'; }}
@@ -933,7 +935,7 @@ export const QualityTab = ({
                   <Button
                     size="small" variant="outlined"
                     startIcon={<CodeIcon style={{ fontSize: 14 }} />}
-                    onClick={() => window.open(`${DEVSPACES_BASE_URL}/#${repoUrl}/tree/${branch ?? 'main'}`, '_blank')}
+                    onClick={() => window.open('/devspaces-mockup.html', '_blank')}
                     style={{ textTransform: 'none', fontSize: 12, fontWeight: 500 }}
                   >
                     Review in Dev Spaces
@@ -1077,7 +1079,7 @@ export const QualityTab = ({
                   <Button
                     size="small" variant="outlined"
                     startIcon={<CodeIcon style={{ fontSize: 14 }} />}
-                    onClick={() => window.open(`${DEVSPACES_BASE_URL}/#${repoUrl}/tree/${demoQuality.remediationBranch ?? 'main'}`, '_blank')}
+                    onClick={() => window.open('/devspaces-mockup.html?state=remediated', '_blank')}
                     style={{ textTransform: 'none', fontSize: 12, fontWeight: 500 }}
                   >
                     Review in Dev Spaces
@@ -1198,7 +1200,7 @@ export const QualityTab = ({
                   <Button
                     size="small" variant="outlined"
                     startIcon={<CodeIcon style={{ fontSize: 14 }} />}
-                    onClick={() => window.open(`${DEVSPACES_BASE_URL}/#${repoUrl}/tree/${branch ?? 'main'}`, '_blank')}
+                    onClick={() => window.open('/devspaces-mockup.html', '_blank')}
                     style={{ textTransform: 'none', fontSize: 11, fontWeight: 500, padding: '2px 10px' }}
                   >
                     Review in Dev Spaces
@@ -1377,7 +1379,7 @@ export const QualityTab = ({
                       {repoUrl && isDevSpacesConnected && (
                         <DarkTooltip title={`Open ${file} in Dev Spaces`} arrow>
                           <IconButton size="small"
-                            onClick={() => window.open(`${DEVSPACES_BASE_URL}#${repoUrl}/tree/${branch ?? 'main'}/${file}`, '_blank')}
+                            onClick={() => window.open(`/devspaces-mockup.html?file=${encodeURIComponent(file)}`, '_blank')}
                             style={{ padding: 4 }}>
                             <CodeIcon style={{ fontSize: 16, color: '#999' }} />
                           </IconButton>
@@ -1894,7 +1896,16 @@ export const QualityTabUnified = ({
 
   const handleApprove = (key: string) => { setViolationStatuses(prev => { const n = new Map(prev); n.set(key, 'approved'); return n; }); collapseOne(key); };
   const handleDecline = (key: string) => { setViolationStatuses(prev => { const n = new Map(prev); n.set(key, 'open'); return n; }); collapseOne(key); };
-  const handleEditInDevSpaces = (key: string) => { setViolationStatuses(prev => { const n = new Map(prev); n.set(key, 'editing'); return n; }); collapseOne(key); };
+  const handleEditInDevSpaces = (key: string, file?: string, line?: number, tier?: string) => {
+    const currentStatus = violationStatuses.get(key) ?? 'open';
+    setViolationStatuses(prev => { const n = new Map(prev); n.set(key, 'editing'); return n; }); collapseOne(key);
+    const params = new URLSearchParams();
+    if (file) params.set('file', file);
+    if (line) params.set('line', String(line));
+    if (tier) params.set('tier', tier);
+    params.set('status', currentStatus);
+    window.open(`/devspaces-mockup.html?${params}`, '_blank');
+  };
 
   const handleEditAllInDevSpaces = () => {
     setViolationStatuses(prev => {
@@ -1903,6 +1914,7 @@ export const QualityTabUnified = ({
       return n;
     });
     setPageState('editing-devspaces');
+    window.open('/devspaces-mockup.html?state=remediated', '_blank');
   };
 
   const handleCreatePr = () => {
@@ -2023,7 +2035,7 @@ export const QualityTabUnified = ({
           )}
           {isDevSpacesConnected && isDeveloper && (
             <Button size="small" variant="text" startIcon={<CodeIcon style={{ fontSize: 14 }} />}
-              onClick={() => window.open(`${DEVSPACES_BASE_URL}/#${repoUrl}/tree/${branch ?? 'main'}`, '_blank')}
+              onClick={() => window.open('/devspaces-mockup.html', '_blank')}
               style={{ textTransform: 'none', fontSize: 12, color: '#6a6e73' }}>
               Edit in Dev Spaces
             </Button>
@@ -2259,7 +2271,7 @@ export const QualityTabUnified = ({
                 <Box display="flex" alignItems="center" style={{ gap: 6 }}>
                   <Button size="small" variant="outlined" onClick={handleSimulatePush} style={{ textTransform: 'none', fontSize: 12, padding: '4px 12px' }}>Simulate push</Button>
                   <Button size="small" variant="contained" color="primary" startIcon={<CodeIcon style={{ fontSize: 14 }} />}
-                    onClick={() => window.open(`${DEVSPACES_BASE_URL}/#${repoUrl}/tree/${remBranch}`, '_blank')}
+                    onClick={() => window.open('/devspaces-mockup.html?state=scm', '_blank')}
                     style={{ textTransform: 'none', fontSize: 13, fontWeight: 500 }}>Open Dev Spaces</Button>
                 </Box>
               </Box>
@@ -2535,7 +2547,7 @@ export const QualityTabUnified = ({
 
                   const sevStyle = FILLED_SEVERITY[v.severity] || FILLED_SEVERITY.info;
                   const codeCtx = DEMO_CODE_CONTEXT[v.ruleId];
-                  const devSpacesUrl = `/devspaces-mockup.html`;
+                  const devSpacesUrl = `/devspaces-mockup.html?file=${encodeURIComponent(v.file)}&line=${v.lineStart}&tier=${v.fixTier}&status=${status}`;
 
                   return [
                     <tr key={`${v.ruleId}-${v.lineStart}-${i}`} className={rowClasses}>
@@ -2618,13 +2630,20 @@ export const QualityTabUnified = ({
                                   <Box display="flex" alignItems="center" style={{ gap: 6 }}>
                                     {isDevSpacesConnected && (
                                       <Button size="small" variant="outlined" startIcon={<CodeIcon style={{ fontSize: 13 }} />}
-                                        onClick={() => handleEditInDevSpaces(key)} className={classes.btnDevSpaces}>
+                                        onClick={() => handleEditInDevSpaces(key, v.file, v.lineStart, v.fixTier)} className={classes.btnDevSpaces}>
                                         Edit in Dev Spaces
                                       </Button>
                                     )}
                                     <Typography style={{ fontSize: 11, color: '#6a6e73' }}>Modify before committing</Typography>
                                   </Box>
                                   <Box display="flex" alignItems="center" style={{ gap: 6 }}>
+                                    {isDevSpacesConnected && (
+                                      <Button size="small" variant="text" startIcon={<CodeIcon style={{ fontSize: 13 }} />}
+                                        onClick={() => window.open(`/devspaces-mockup.html?file=${encodeURIComponent(v.file)}&line=${v.lineStart}&tier=${v.fixTier}&status=${status}`, '_blank')}
+                                        style={{ textTransform: 'none', fontSize: 12, padding: '4px 8px', color: '#6a6e73', marginRight: 2 }}>
+                                        View in Dev Spaces
+                                      </Button>
+                                    )}
                                     <Button size="small" variant="outlined" onClick={() => handleDecline(key)}
                                       style={{ textTransform: 'none', fontSize: 12, padding: '4px 12px' }}>Decline</Button>
                                     <Button size="small" variant="contained" onClick={() => handleApprove(key)} className={classes.btnApprove}>

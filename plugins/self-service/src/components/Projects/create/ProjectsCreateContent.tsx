@@ -91,7 +91,6 @@ const TemplateCard = ({
   onStart: (template: DemoTemplate) => void;
 }) => {
   const classes = useStyles();
-
   return (
     <Card
       className={classes.card}

@@ -10,6 +10,8 @@ import {
   IconButton,
   InputLabel,
   MenuItem,
+  Radio,
+  RadioGroup,
   Select,
   Stepper,
   Step,
@@ -47,6 +49,10 @@ type WizardFormState = {
   executionEnvironment: string;
   autoCreateProject: boolean;
   autoCreateJobTemplate: boolean;
+  apmeScanSchedule: 'commits-only' | 'weekly' | 'custom';
+  apmeCustomFrequency: string;
+  apmeCustomDay: string;
+  apmeCustomTime: string;
 };
 
 const BRANCH_CREATE_NEW = '__create_new__';
@@ -70,6 +76,10 @@ const createInitialState = (): WizardFormState => ({
   executionEnvironment: 'ee-supported',
   autoCreateProject: true,
   autoCreateJobTemplate: true,
+  apmeScanSchedule: 'weekly',
+  apmeCustomFrequency: 'daily',
+  apmeCustomDay: 'monday',
+  apmeCustomTime: '09:00',
 });
 
 const WIZARD_STEPS = [
@@ -87,6 +97,11 @@ const WIZARD_STEPS = [
     title: 'Destination',
     description: 'Configure how this repository connects to your Ansible Automation Platform.',
     why: 'Connecting to AAP lets your automation be executed, scheduled, and monitored centrally. This step ensures your AAP project and job templates are registered and ready to run.',
+  },
+  {
+    title: 'Quality scanning',
+    description: 'Review the automated quality checks included with this repository.',
+    why: 'Quality scanning catches compatibility issues, security risks, and anti-patterns early. Scans run as a GitHub Action on every commit — results appear in the Portal and your IDE automatically.',
   },
   {
     title: 'Review',
@@ -250,6 +265,17 @@ const useStyles = makeStyles(theme => ({
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
+  },
+  apmeSection: {
+    border: `1px solid ${theme.palette.divider}`,
+    borderRadius: theme.shape.borderRadius,
+    padding: theme.spacing(2.5),
+    marginBottom: theme.spacing(2),
+  },
+  apmeSectionHeader: {
+    fontWeight: 600,
+    fontSize: 15,
+    marginBottom: theme.spacing(1),
   },
   reviewRow: {
     display: 'flex',
@@ -707,7 +733,148 @@ const DestinationStep = ({
   );
 };
 
-// ─── Step 4: Review & Create ──────────────────────────────────────────────────
+// ─── Step 4: Quality Scanning ─────────────────────────────────────────────────
+
+const PipelineQualityStep = ({
+  form,
+  setForm,
+}: {
+  form: WizardFormState;
+  setForm: React.Dispatch<React.SetStateAction<WizardFormState>>;
+}) => {
+  const classes = useStyles();
+
+  return (
+    <Box>
+      <Typography variant="body2" color="textSecondary" style={{ marginBottom: 20 }}>
+        APME quality scanning runs as a GitHub Action and checks your content for
+        compatibility issues, security risks, and best-practice violations. Choose
+        how often scans run.
+      </Typography>
+
+      <RadioGroup
+        value={form.apmeScanSchedule}
+        onChange={e =>
+          setForm(prev => ({
+            ...prev,
+            apmeScanSchedule: e.target.value as 'commits-only' | 'weekly' | 'custom',
+          }))
+        }
+      >
+        <Box className={classes.apmeSection} style={form.apmeScanSchedule === 'commits-only' ? { borderColor: '#1976d2' } : undefined}>
+          <FormControlLabel
+            value="commits-only"
+            control={<Radio color="primary" />}
+            label={
+              <Box>
+                <Typography variant="body2" style={{ fontWeight: 500 }}>
+                  On every commit
+                </Typography>
+                <Typography variant="caption" color="textSecondary">
+                  Scans run on push and pull request. Best for actively developed repositories.
+                </Typography>
+              </Box>
+            }
+          />
+        </Box>
+
+        <Box className={classes.apmeSection} style={form.apmeScanSchedule === 'weekly' ? { borderColor: '#1976d2' } : undefined}>
+          <FormControlLabel
+            value="weekly"
+            control={<Radio color="primary" />}
+            label={
+              <Box>
+                <Typography variant="body2" style={{ fontWeight: 500 }}>
+                  On every commit + weekly
+                </Typography>
+                <Typography variant="caption" color="textSecondary">
+                  Also runs a weekly scan to catch issues from new rules or deprecations, even when the repo is inactive.
+                </Typography>
+              </Box>
+            }
+          />
+        </Box>
+
+        <Box className={classes.apmeSection} style={form.apmeScanSchedule === 'custom' ? { borderColor: '#1976d2' } : undefined}>
+          <FormControlLabel
+            value="custom"
+            control={<Radio color="primary" />}
+            label={
+              <Box>
+                <Typography variant="body2" style={{ fontWeight: 500 }}>
+                  Custom schedule
+                </Typography>
+                <Typography variant="caption" color="textSecondary">
+                  Choose how often and when scheduled scans run.
+                </Typography>
+              </Box>
+            }
+          />
+          {form.apmeScanSchedule === 'custom' && (
+            <Box display="flex" alignItems="center" style={{ marginTop: 12, marginLeft: 32, gap: 12, flexWrap: 'wrap' }}>
+              <FormControl variant="outlined" size="small" style={{ minWidth: 130 }}>
+                <InputLabel>Every</InputLabel>
+                <Select
+                  value={form.apmeCustomFrequency}
+                  onChange={e =>
+                    setForm(prev => ({ ...prev, apmeCustomFrequency: e.target.value as string }))
+                  }
+                  label="Every"
+                >
+                  <MenuItem value="daily">Day</MenuItem>
+                  <MenuItem value="every-3-days">3 days</MenuItem>
+                  <MenuItem value="weekly">Week</MenuItem>
+                  <MenuItem value="monthly">Month</MenuItem>
+                </Select>
+              </FormControl>
+              {(form.apmeCustomFrequency === 'weekly' || form.apmeCustomFrequency === 'monthly') && (
+                <FormControl variant="outlined" size="small" style={{ minWidth: 130 }}>
+                  <InputLabel>On</InputLabel>
+                  <Select
+                    value={form.apmeCustomDay}
+                    onChange={e =>
+                      setForm(prev => ({ ...prev, apmeCustomDay: e.target.value as string }))
+                    }
+                    label="On"
+                  >
+                    <MenuItem value="monday">Monday</MenuItem>
+                    <MenuItem value="tuesday">Tuesday</MenuItem>
+                    <MenuItem value="wednesday">Wednesday</MenuItem>
+                    <MenuItem value="thursday">Thursday</MenuItem>
+                    <MenuItem value="friday">Friday</MenuItem>
+                    <MenuItem value="saturday">Saturday</MenuItem>
+                    <MenuItem value="sunday">Sunday</MenuItem>
+                  </Select>
+                </FormControl>
+              )}
+              <TextField
+                label="At"
+                type="time"
+                variant="outlined"
+                size="small"
+                value={form.apmeCustomTime}
+                onChange={e =>
+                  setForm(prev => ({ ...prev, apmeCustomTime: e.target.value }))
+                }
+                InputLabelProps={{ shrink: true }}
+                style={{ width: 120 }}
+              />
+              <Typography variant="caption" color="textSecondary">
+                UTC
+              </Typography>
+            </Box>
+          )}
+        </Box>
+      </RadioGroup>
+
+      <Typography variant="caption" color="textSecondary" style={{ marginTop: 8, display: 'block' }}>
+        You can change the scan schedule later by editing the workflow file in your repository.
+      </Typography>
+    </Box>
+  );
+};
+
+// ─── Step 5: Review & Create ──────────────────────────────────────────────────
 
 const ReviewStep = ({
   form,
@@ -858,6 +1025,21 @@ const ReviewStep = ({
           </Typography>
         </Box>
       </Box>
+
+      <Box className={classes.reviewSection}>
+        <Typography className={classes.reviewSectionTitle}>
+          Quality scanning
+          <EditButton step={3} />
+        </Typography>
+        <Box className={classes.reviewRow}>
+          <Typography className={classes.reviewLabel}>Scan schedule</Typography>
+          <Typography className={classes.reviewValue}>
+            {form.apmeScanSchedule === 'commits-only' && 'On every commit'}
+            {form.apmeScanSchedule === 'weekly' && 'On every commit + weekly'}
+            {form.apmeScanSchedule === 'custom' && `On every commit + every ${form.apmeCustomFrequency === 'daily' ? 'day' : form.apmeCustomFrequency === 'every-3-days' ? '3 days' : form.apmeCustomFrequency} at ${form.apmeCustomTime} UTC`}
+          </Typography>
+        </Box>
+      </Box>
     </Box>
   );
 };
@@ -879,6 +1061,8 @@ const isStepValid = (step: number, form: WizardFormState): boolean => {
     case 2:
       return true;
     case 3:
+      return true;
+    case 4:
       return true;
     default:
       return true;
@@ -976,6 +1160,9 @@ export const ProjectCreateWizardContent = ({
           <DestinationStep form={form} setForm={setForm} />
         )}
         {activeStep === 3 && (
+          <PipelineQualityStep form={form} setForm={setForm} />
+        )}
+        {activeStep === 4 && (
           <ReviewStep
             form={form}
             template={template}
