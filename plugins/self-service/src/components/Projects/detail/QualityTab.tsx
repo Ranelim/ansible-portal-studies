@@ -22,6 +22,8 @@ import {
   ListItemText,
   Divider,
   makeStyles,
+  withStyles,
+  Theme,
 } from '@material-ui/core';
 import ArrowDropDownIcon from '@material-ui/icons/ArrowDropDown';
 import CheckCircleIcon from '@material-ui/icons/CheckCircle';
@@ -41,6 +43,21 @@ import {
   type RemediationStatus,
   SEVERITY_COLORS,
 } from './qualityDemoData';
+
+const DarkTooltip = withStyles((theme: Theme) => ({
+  tooltip: {
+    backgroundColor: '#1b1d21',
+    color: '#fff',
+    fontSize: 12,
+    padding: '6px 12px',
+    borderRadius: 4,
+    maxWidth: 320,
+    boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
+  },
+  arrow: {
+    color: '#1b1d21',
+  },
+}))(Tooltip);
 
 // ---------------------------------------------------------------------------
 // Severity Bar
@@ -124,15 +141,15 @@ const SeverityProgressBar = ({ breakdown }: { breakdown: Record<SeverityClass, n
         const count = breakdown[sev];
         if (count === 0) return null;
         return (
-          <Box
-            key={sev}
-            title={`${sevTooltips[sev]} (${count} violation${count !== 1 ? 's' : ''})`}
-            style={{
-              width: `${(count / total) * 100}%`,
-              backgroundColor: SEVERITY_COLORS[sev],
-              cursor: 'default',
-            }}
-          />
+          <DarkTooltip key={sev} title={`${sevTooltips[sev]} (${count} violation${count !== 1 ? 's' : ''})`} arrow enterDelay={200}>
+            <Box
+              style={{
+                width: `${(count / total) * 100}%`,
+                backgroundColor: SEVERITY_COLORS[sev],
+                cursor: 'default',
+              }}
+            />
+          </DarkTooltip>
         );
       })}
     </Box>
@@ -408,7 +425,7 @@ const ViolationRow = ({
         {/* IDE column */}
         {repoUrl && isDevSpacesConnected && hasRole('developer') ? (
           <Box style={{ width: 28, display: 'flex', justifyContent: 'center', flexShrink: 0 }}>
-            <Tooltip title={`Open ${v.file}:${v.lineStart} in Dev Spaces`} arrow>
+            <DarkTooltip title={`Open ${v.file}:${v.lineStart} in Dev Spaces`} arrow>
               <IconButton
                 size="small"
                 onClick={(e: React.MouseEvent) => {
@@ -419,7 +436,7 @@ const ViolationRow = ({
               >
                 <CodeIcon style={{ fontSize: 16, color: '#999' }} />
               </IconButton>
-            </Tooltip>
+            </DarkTooltip>
           </Box>
         ) : null}
       </Box>
@@ -1358,13 +1375,13 @@ export const QualityTab = ({
                           style={{ fontSize: 10, height: 18, backgroundColor: 'rgba(0,0,0,0.06)', color: '#666' }} />
                       </Box>
                       {repoUrl && isDevSpacesConnected && (
-                        <Tooltip title={`Open ${file} in Dev Spaces`} arrow>
+                        <DarkTooltip title={`Open ${file} in Dev Spaces`} arrow>
                           <IconButton size="small"
                             onClick={() => window.open(`${DEVSPACES_BASE_URL}#${repoUrl}/tree/${branch ?? 'main'}/${file}`, '_blank')}
                             style={{ padding: 4 }}>
                             <CodeIcon style={{ fontSize: 16, color: '#999' }} />
                           </IconButton>
-                        </Tooltip>
+                        </DarkTooltip>
                       )}
                     </Box>
 
@@ -1714,10 +1731,12 @@ const FixChipStyled = ({ method, status, classes }: { method: 'deterministic' | 
   }
 
   return (
-    <span className={`${classes.fixChip} ${chipClass}`} title={tooltip}>
-      <span className={classes.fixChipIcon}>{icon}</span>
-      {label}
-    </span>
+    <DarkTooltip title={tooltip} arrow enterDelay={200}>
+      <span className={`${classes.fixChip} ${chipClass}`}>
+        <span className={classes.fixChipIcon}>{icon}</span>
+        {label}
+      </span>
+    </DarkTooltip>
   );
 };
 
@@ -2017,9 +2036,8 @@ export const QualityTabUnified = ({
                   };
 
                   return (
+                    <DarkTooltip key={sev} title={`${sevTips[sev]}. Click to ${isActive ? 'remove' : 'add'} filter. (${count})`} arrow enterDelay={200}>
                     <span
-                      key={sev}
-                      title={`${sevTips[sev]}. Click to ${isActive ? 'remove' : 'add'} filter. (${count})`}
                       onClick={() => toggleSeverityFilter(sev)}
                       style={{
                         display: 'inline-flex',
@@ -2041,6 +2059,7 @@ export const QualityTabUnified = ({
                         <CloseIcon style={{ fontSize: 12, color: SEVERITY_COLORS[sev], marginLeft: 2 }} />
                       )}
                     </span>
+                    </DarkTooltip>
                   );
                 })}
               </Box>
@@ -2057,9 +2076,8 @@ export const QualityTabUnified = ({
                   const anyActive = fixFilters.size > 0;
 
                   return (
+                    <DarkTooltip key={tier} title={`${tip}. Click to ${isActive ? 'remove' : 'add'} filter. (${count})`} arrow enterDelay={200}>
                     <span
-                      key={tier}
-                      title={`${tip}. Click to ${isActive ? 'remove' : 'add'} filter. (${count})`}
                       onClick={() => toggleFixFilter(tier)}
                       style={{
                         display: 'inline-flex',
@@ -2081,6 +2099,7 @@ export const QualityTabUnified = ({
                         <CloseIcon style={{ fontSize: 12, color, marginLeft: 2 }} />
                       )}
                     </span>
+                    </DarkTooltip>
                   );
                 })}
               </Box>
@@ -2408,12 +2427,14 @@ export const QualityTabUnified = ({
                       )}
                     </th>
                   ))}
-                  <th className={classes.colActions} title="Open in Dev Spaces">
-                    <IconButton size="small"
-                      onClick={() => window.open('/devspaces-mockup.html', '_blank')}
-                      style={{ padding: 6, borderRadius: 4, border: '1px solid #d2d2d2', background: '#fafafa' }}>
-                      <CodeIcon style={{ fontSize: 16, color: '#6a6e73' }} />
-                    </IconButton>
+                  <th className={classes.colActions}>
+                    <DarkTooltip title="Open project in Dev Spaces" arrow enterDelay={200}>
+                      <IconButton size="small"
+                        onClick={() => window.open('/devspaces-mockup.html', '_blank')}
+                        style={{ padding: 6, borderRadius: 4, border: '1px solid #d2d2d2', background: '#fafafa' }}>
+                        <CodeIcon style={{ fontSize: 16, color: '#6a6e73' }} />
+                      </IconButton>
+                    </DarkTooltip>
                   </th>
                 </tr>
               </thead>
@@ -2451,16 +2472,17 @@ export const QualityTabUnified = ({
                           onChange={() => setSelectedIds(prev => { const n = new Set(prev); if (n.has(key)) n.delete(key); else n.add(key); return n; })} />
                       </td>
                       <td className={classes.colSeverity}>
-                        <span className={classes.severityChip} style={{ backgroundColor: sevStyle.bg, color: sevStyle.color }}
-                          title={{
+                        <DarkTooltip title={{
                             critical: 'Critical — Must fix before deployment',
                             high: 'High — Should fix soon',
                             medium: 'Medium — Recommended improvement',
                             low: 'Low — Optional enhancement',
                             info: 'Info — No action required',
-                          }[v.severity]}>
-                          {v.severity}
-                        </span>
+                          }[v.severity] ?? ''} arrow enterDelay={200}>
+                          <span className={classes.severityChip} style={{ backgroundColor: sevStyle.bg, color: sevStyle.color }}>
+                            {v.severity}
+                          </span>
+                        </DarkTooltip>
                       </td>
                       <td className={classes.colFix}>
                         <FixChipStyled method={v.fixTier} status={status} classes={classes} />
@@ -2481,12 +2503,13 @@ export const QualityTabUnified = ({
                         </a>
                       </td>
                       <td className={classes.colActions}>
-                        <IconButton size="small"
-                          title={`Open in Dev Spaces: ${v.file}:${v.lineStart}`}
-                          onClick={(e) => { e.stopPropagation(); window.open(devSpacesUrl, '_blank'); }}
-                          style={{ padding: 6, borderRadius: 4, border: '1px solid #d2d2d2', background: '#fafafa' }}>
-                          <CodeIcon style={{ fontSize: 16, color: '#6a6e73' }} />
-                        </IconButton>
+                        <DarkTooltip title={`Open in Dev Spaces: ${v.file}:${v.lineStart}`} arrow enterDelay={200}>
+                          <IconButton size="small"
+                            onClick={(e) => { e.stopPropagation(); window.open(devSpacesUrl, '_blank'); }}
+                            style={{ padding: 6, borderRadius: 4, border: '1px solid #d2d2d2', background: '#fafafa' }}>
+                            <CodeIcon style={{ fontSize: 16, color: '#6a6e73' }} />
+                          </IconButton>
+                        </DarkTooltip>
                       </td>
                     </tr>,
                     isExpanded ? (
