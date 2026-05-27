@@ -1620,6 +1620,15 @@ export const QualityTabUnified = ({
   const [scanning, setScanning] = useState(false);
   const [scanProgress, setScanProgress] = useState(0);
 
+  type SortColumn = 'severity' | 'fix' | 'rule' | 'file';
+  const [sortColumn, setSortColumn] = useState<SortColumn>('severity');
+  const [sortAsc, setSortAsc] = useState(false);
+
+  const handleSort = (col: SortColumn) => {
+    if (sortColumn === col) setSortAsc(!sortAsc);
+    else { setSortColumn(col); setSortAsc(col === 'file' || col === 'rule'); }
+  };
+
   if (!quality) {
     return (
       <Box style={{ marginTop: 24 }}>
@@ -1741,12 +1750,26 @@ export const QualityTabUnified = ({
 
   const handleReset = () => { setViolationStatuses(new Map()); setSelectedIds(new Set()); setExpandedId(null); setPageState('idle'); };
 
+  const SEVERITY_ORDER: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3, info: 4 };
+  const FIX_ORDER: Record<string, number> = { deterministic: 0, ai: 1, manual: 2 };
+
   const filteredViolations = useMemo(() => {
     let result = quality.violations;
     if (severityFilter) result = result.filter(v => v.severity === severityFilter);
     if (categoryFilter !== 'all') result = result.filter(v => v.category === categoryFilter);
-    return result;
-  }, [quality.violations, categoryFilter, severityFilter]);
+
+    const sorted = [...result].sort((a, b) => {
+      let cmp = 0;
+      switch (sortColumn) {
+        case 'severity': cmp = SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity]; break;
+        case 'fix': cmp = FIX_ORDER[a.fixTier] - FIX_ORDER[b.fixTier]; break;
+        case 'rule': cmp = a.ruleId.localeCompare(b.ruleId); break;
+        case 'file': cmp = a.file.localeCompare(b.file) || a.lineStart - b.lineStart; break;
+      }
+      return sortAsc ? cmp : -cmp;
+    });
+    return sorted;
+  }, [quality.violations, categoryFilter, severityFilter, sortColumn, sortAsc]);
 
   const categoryCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -1974,10 +1997,26 @@ export const QualityTabUnified = ({
                       disabled={pageState === 'in-progress'}
                     />
                   </th>
-                  <th className={classes.colSeverity}>Severity</th>
-                  <th className={classes.colFix}>Fix</th>
-                  <th className={classes.colDescription}>Rule &amp; Description</th>
-                  <th className={classes.colFile}>File</th>
+                  {([
+                    { col: 'severity' as SortColumn, label: 'Severity', cls: classes.colSeverity },
+                    { col: 'fix' as SortColumn, label: 'Fix', cls: classes.colFix },
+                    { col: 'rule' as SortColumn, label: 'Rule & Description', cls: classes.colDescription },
+                    { col: 'file' as SortColumn, label: 'File', cls: classes.colFile },
+                  ]).map(({ col, label, cls }) => (
+                    <th
+                      key={col}
+                      className={cls}
+                      onClick={() => handleSort(col)}
+                      style={{ cursor: 'pointer', userSelect: 'none' }}
+                    >
+                      {label}
+                      {sortColumn === col && (
+                        <span style={{ marginLeft: 4, fontSize: 10, opacity: 0.6 }}>
+                          {sortAsc ? '▲' : '▼'}
+                        </span>
+                      )}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
@@ -1990,8 +2029,10 @@ export const QualityTabUnified = ({
                   const proposal = DEMO_PROPOSALS[v.ruleId];
                   const isSelected = selectedIds.has(key);
 
+                  const isProcessing = pageState === 'in-progress' && isSelected;
+
                   const rowClasses = [
-                    isSelected ? classes.rowSelected : '',
+                    isProcessing ? classes.rowProcessing : isSelected ? classes.rowSelected : '',
                     status === 'fixed' || status === 'approved' ? classes.rowDone : '',
                     status === 'editing' ? classes.rowEditing : '',
                     status === 'in-pr' ? classes.rowInPr : '',
@@ -2005,10 +2046,9 @@ export const QualityTabUnified = ({
                   return [
                     <tr key={`${v.ruleId}-${v.lineStart}-${i}`} className={rowClasses}>
                       <td className={classes.colCheckbox}>
-                        {isSelectable ? (
-                          <Checkbox size="small" checked={isSelected} color="primary" style={{ padding: 0 }}
-                            onChange={() => setSelectedIds(prev => { const n = new Set(prev); if (n.has(key)) n.delete(key); else n.add(key); return n; })} />
-                        ) : <span style={{ display: 'inline-block', width: 16, height: 16 }} />}
+                        <Checkbox size="small" checked={isSelected} color="primary" style={{ padding: 0 }}
+                          disabled={!isSelectable}
+                          onChange={() => setSelectedIds(prev => { const n = new Set(prev); if (n.has(key)) n.delete(key); else n.add(key); return n; })} />
                       </td>
                       <td className={classes.colSeverity}>
                         <span className={classes.severityChip} style={{ backgroundColor: sevStyle.bg, color: sevStyle.color }}>
