@@ -1753,6 +1753,7 @@ export const QualityTabUnified = ({
   quality,
   projectName,
   initialSeverity,
+  initialRuleFilter,
   repoUrl,
   branch,
 }: {
@@ -1761,6 +1762,7 @@ export const QualityTabUnified = ({
   initialView?: 'latest-scan';
   initialScanId?: string | null;
   initialSeverity?: SeverityClass | null;
+  initialRuleFilter?: string | null;
   repoUrl?: string;
   branch?: string;
 }) => {
@@ -1769,6 +1771,7 @@ export const QualityTabUnified = ({
   const isDeveloper = hasRole('developer');
   const [categoryFilter, setCategoryFilter] = useState<ViolationCategory | 'all'>('all');
   const [severityFilters, setSeverityFilters] = useState<Set<SeverityClass>>(initialSeverity ? new Set([initialSeverity]) : new Set());
+  const [ruleFilter, setRuleFilter] = useState<string | null>(initialRuleFilter ?? null);
   type FixTierFilter = 'deterministic' | 'ai' | 'manual';
   const [fixFilters, setFixFilters] = useState<Set<FixTierFilter>>(new Set());
   const [violationStatuses, setViolationStatuses] = useState<Map<string, UnifiedViolationStatus>>(new Map());
@@ -1809,6 +1812,14 @@ export const QualityTabUnified = ({
   };
 
   const [selectMenuAnchor, setSelectMenuAnchor] = useState<null | HTMLElement>(null);
+
+  useEffect(() => {
+    if (!ruleFilter || !quality) return;
+    const matching = quality.violations.filter(v => v.ruleId === ruleFilter);
+    if (matching.length > 0 && matching.length <= 3) {
+      setExpandedIds(new Set(matching.map(v => getViolationKey(v))));
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!quality) {
     return (
@@ -1969,6 +1980,7 @@ export const QualityTabUnified = ({
 
   const filteredViolations = useMemo(() => {
     let result = quality.violations;
+    if (ruleFilter) result = result.filter(v => v.ruleId === ruleFilter);
     if (severityFilters.size > 0) result = result.filter(v => severityFilters.has(v.severity));
     if (fixFilters.size > 0) result = result.filter(v => fixFilters.has(v.fixTier));
     if (categoryFilter !== 'all') result = result.filter(v => v.category === categoryFilter);
@@ -1990,7 +2002,7 @@ export const QualityTabUnified = ({
       return sortAsc ? cmp : -cmp;
     });
     return sorted;
-  }, [quality.violations, categoryFilter, severityFilters, fixFilters, viewTab, violationStatuses, sortColumn, sortAsc]);
+  }, [quality.violations, categoryFilter, severityFilters, fixFilters, ruleFilter, viewTab, violationStatuses, sortColumn, sortAsc]);
 
   const showViewTabs = fixedCount > 0 || proposedCount > 0 || approvedCount > 0 || editingCount > 0;
   const needsReviewCount = proposedCount + editingCount;
@@ -2436,11 +2448,25 @@ export const QualityTabUnified = ({
                   </Button>
                 )}
               </Box>
-              <Typography style={{ fontSize: 12, color: '#6a6e73' }}>
-                {selectedIds.size > 0
-                  ? <><strong>{selectedIds.size}</strong> of {fixableCount} selected</>
-                  : <>{fixableCount} can be auto-fixed</>}
-              </Typography>
+              {ruleFilter ? (
+                <Chip
+                  size="small"
+                  label={(() => {
+                    const matchingRule = quality.violations.find(v => v.ruleId === ruleFilter);
+                    return matchingRule ? matchingRule.message : ruleFilter;
+                  })()}
+                  onDelete={() => setRuleFilter(null)}
+                  style={{ fontSize: 11, height: 24, maxWidth: 360 }}
+                  color="primary"
+                  variant="outlined"
+                />
+              ) : (
+                <Typography style={{ fontSize: 12, color: '#6a6e73' }}>
+                  {selectedIds.size > 0
+                    ? <><strong>{selectedIds.size}</strong> of {fixableCount} selected</>
+                    : <>{fixableCount} can be auto-fixed</>}
+                </Typography>
+              )}
             </Box>
           )}
 
