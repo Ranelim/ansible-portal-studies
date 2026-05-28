@@ -2640,11 +2640,11 @@ export const QualityTabUnified = ({
                       <tr key={`${v.ruleId}-${v.lineStart}-${i}-detail`}>
                         <td colSpan={6} style={{ padding: 0 }}>
                           <Collapse in={true}>
-                            {isProposed && proposal ? (
+                            {proposal && status !== 'open' ? (
                               <Box className={classes.proposalPreview}>
                                 <Box display="flex" alignItems="center" style={{ gap: 8 }}>
                                   <Typography className={classes.proposalTitle}>{proposal.desc}</Typography>
-                                  {proposal.tier === 'ai' && (
+                                  {proposal.tier === 'ai' && isProposed && (
                                     <Chip size="small" label={`${Math.round((DEMO_PROPOSALS_CONFIDENCE[v.ruleId] ?? 0.85) * 100)}% confidence`}
                                       style={{ fontSize: 10, height: 18,
                                         backgroundColor: (DEMO_PROPOSALS_CONFIDENCE[v.ruleId] ?? 0.85) >= 0.9 ? '#e7f5e7' : '#fdf2e5',
@@ -2659,37 +2659,56 @@ export const QualityTabUnified = ({
                                     </Box>
                                   </Box>
                                   <Box>
-                                    <Box className={classes.diffPanelHeaderAdded}>After (proposed)</Box>
+                                    <Box className={classes.diffPanelHeaderAdded}>
+                                      {status === 'fixed' || status === 'approved' || status === 'resolved' ? 'After (applied)' : 'After (proposed)'}
+                                    </Box>
                                     <Box className={classes.diffCodeAdded}>
                                       {proposal.added.map((line, li) => <Box key={li}>{line}</Box>)}
                                     </Box>
                                   </Box>
                                 </Box>
-                                <Box className={classes.proposalActions}>
-                                  <Box display="flex" alignItems="center" style={{ gap: 6 }}>
-                                    {isDevSpacesConnected && (
-                                      <Button size="small" variant="outlined" startIcon={<CodeIcon style={{ fontSize: 13 }} />}
-                                        onClick={() => handleEditInDevSpaces(key, v.file, v.lineStart, v.fixTier)} className={classes.btnDevSpaces}>
-                                        Edit in Dev Spaces
+                                {isProposed ? (
+                                  <Box className={classes.proposalActions}>
+                                    <Box display="flex" alignItems="center" style={{ gap: 6 }}>
+                                      {isDevSpacesConnected && (
+                                        <Button size="small" variant="outlined" startIcon={<CodeIcon style={{ fontSize: 13 }} />}
+                                          onClick={() => handleEditInDevSpaces(key, v.file, v.lineStart, v.fixTier)} className={classes.btnDevSpaces}>
+                                          Edit in Dev Spaces
+                                        </Button>
+                                      )}
+                                      <Typography style={{ fontSize: 11, color: '#6a6e73' }}>Modify before committing</Typography>
+                                    </Box>
+                                    <Box display="flex" alignItems="center" style={{ gap: 6 }}>
+                                      {isDevSpacesConnected && (
+                                        <Button size="small" variant="text" startIcon={<CodeIcon style={{ fontSize: 13 }} />}
+                                          onClick={() => window.open(`/devspaces-mockup.html?file=${encodeURIComponent(v.file)}&line=${v.lineStart}&tier=${v.fixTier}&status=${status}`, '_blank')}
+                                          style={{ textTransform: 'none', fontSize: 12, padding: '4px 8px', color: '#6a6e73', marginRight: 2 }}>
+                                          View in Dev Spaces
+                                        </Button>
+                                      )}
+                                      <Button size="small" variant="outlined" onClick={() => handleDecline(key)}
+                                        style={{ textTransform: 'none', fontSize: 12, padding: '4px 12px' }}>Decline</Button>
+                                      <Button size="small" variant="contained" onClick={() => handleApprove(key)} className={classes.btnApprove}>
+                                        Approve as-is
                                       </Button>
-                                    )}
-                                    <Typography style={{ fontSize: 11, color: '#6a6e73' }}>Modify before committing</Typography>
+                                    </Box>
                                   </Box>
-                                  <Box display="flex" alignItems="center" style={{ gap: 6 }}>
+                                ) : (status === 'fixed' || status === 'approved') ? (
+                                  <Box className={classes.proposalActions}>
+                                    <Box display="flex" alignItems="center" style={{ gap: 6 }}>
+                                      <Typography style={{ fontSize: 12, color: '#6a6e73' }}>
+                                        Validator: <strong>{v.validatorSource}</strong> · Category: <strong>{v.category}</strong>
+                                      </Typography>
+                                    </Box>
                                     {isDevSpacesConnected && (
                                       <Button size="small" variant="text" startIcon={<CodeIcon style={{ fontSize: 13 }} />}
-                                        onClick={() => window.open(`/devspaces-mockup.html?file=${encodeURIComponent(v.file)}&line=${v.lineStart}&tier=${v.fixTier}&status=${status}`, '_blank')}
-                                        style={{ textTransform: 'none', fontSize: 12, padding: '4px 8px', color: '#6a6e73', marginRight: 2 }}>
-                                        View in Dev Spaces
+                                        onClick={() => window.open(devSpacesUrl, '_blank')}
+                                        style={{ textTransform: 'none', fontSize: 12, padding: '4px 8px', color: '#6a6e73' }}>
+                                        Inspect in Dev Spaces
                                       </Button>
                                     )}
-                                    <Button size="small" variant="outlined" onClick={() => handleDecline(key)}
-                                      style={{ textTransform: 'none', fontSize: 12, padding: '4px 12px' }}>Decline</Button>
-                                    <Button size="small" variant="contained" onClick={() => handleApprove(key)} className={classes.btnApprove}>
-                                      Approve as-is
-                                    </Button>
                                   </Box>
-                                </Box>
+                                ) : null}
                               </Box>
                             ) : (
                               <Box style={{ padding: '12px 16px 16px 62px' }}>
