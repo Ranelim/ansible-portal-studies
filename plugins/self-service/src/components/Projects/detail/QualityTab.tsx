@@ -2185,13 +2185,13 @@ export const QualityTabUnified = ({
             <Box className={`${classes.banner} ${classes.bannerIdle}`} style={{ marginBottom: 12, borderRadius: 6 }}>
               <Box className={classes.bannerRow}>
                 <Typography style={{ fontSize: 13 }}>
-                  <strong>{fixableCount}</strong> violation{fixableCount !== 1 ? 's' : ''} can be auto-fixed — let APME generate fixes for review.
+                  <strong>{fixableCount}</strong> violation{fixableCount !== 1 ? 's' : ''} can be remediated — let APME generate fixes for review.
                 </Typography>
                 <Box display="flex" alignItems="center" style={{ gap: 8 }}>
                   <Button variant="contained" color="primary" size="small"
                     onClick={handleFixAll}
                     style={{ textTransform: 'none', fontSize: 13, fontWeight: 500 }}>
-                    Fix all violations
+                    Remediate all violations
                   </Button>
                   <IconButton size="small" onClick={() => setIdleBannerDismissed(true)} style={{ padding: 4 }}>
                     <CloseIcon style={{ fontSize: 14, color: '#6a6e73' }} />
@@ -2438,7 +2438,7 @@ export const QualityTabUnified = ({
                   disabled={selectedIds.size === 0 || pageState === 'in-progress'}
                   onClick={handleRemediate}
                   style={{ textTransform: 'none', fontSize: 13, fontWeight: 500, padding: '5px 16px' }}>
-                  {pageState === 'in-progress' ? 'Fixing…' : `Fix ${selectedIds.size > 0 ? `${selectedIds.size} violation${selectedIds.size !== 1 ? 's' : ''}` : 'violations'}`}
+                  {pageState === 'in-progress' ? 'Remediating…' : `Remediate ${selectedIds.size > 0 ? `${selectedIds.size} violation${selectedIds.size !== 1 ? 's' : ''}` : 'violations'}`}
                 </Button>
                 {selectedIds.size > 0 && (
                   <Button size="small" variant="text"
@@ -2462,9 +2462,16 @@ export const QualityTabUnified = ({
                 />
               ) : (
                 <Typography style={{ fontSize: 12, color: '#6a6e73' }}>
-                  {selectedIds.size > 0
-                    ? <><strong>{selectedIds.size}</strong> of {fixableCount} selected</>
-                    : <>{fixableCount} can be auto-fixed</>}
+                  {selectedIds.size > 0 ? (() => {
+                    const selectedViolations = quality.violations.filter(v => selectedIds.has(getViolationKey(v)));
+                    const autoCount = selectedViolations.filter(v => v.fixTier === 'deterministic').length;
+                    const aiCount = selectedViolations.filter(v => v.fixTier === 'ai').length;
+                    return <>
+                      {autoCount > 0 && <><strong>{autoCount}</strong> auto-fix{autoCount !== 1 ? 'es' : ''}</>}
+                      {autoCount > 0 && aiCount > 0 && ', '}
+                      {aiCount > 0 && <><strong>{aiCount}</strong> need{aiCount === 1 ? 's' : ''} review</>}
+                    </>;
+                  })() : <>{fixableCount} can be auto-fixed</>}
                 </Typography>
               )}
             </Box>
