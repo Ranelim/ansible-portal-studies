@@ -10,6 +10,7 @@ import {
   InputAdornment,
   IconButton,
   Button,
+  Tooltip,
   FormControl,
   Select,
   MenuItem,
@@ -408,15 +409,16 @@ export const CIActivityContent = () => {
     ...(isDevSpacesConnected ? [{
       title: '',
       field: 'actions' as keyof CIRun,
-      width: '140px',
+      width: '48px',
       sorting: false,
       render: (row: CIRun) => row.status === 'failure' ? (
-        <Button size="small" variant="text"
-          startIcon={<CodeIcon style={{ fontSize: 14 }} />}
-          onClick={(e: React.MouseEvent) => { e.stopPropagation(); window.open(`${DEVSPACES_BASE_URL}/#https://github.com/${row.project}/tree/${row.branch}`, '_blank'); }}
-          style={{ textTransform: 'none', fontSize: 11, color: '#0066cc', whiteSpace: 'nowrap' }}>
-          Fix in Dev Spaces
-        </Button>
+        <Tooltip title="Edit in Dev Spaces" arrow>
+          <IconButton size="small"
+            onClick={(e: React.MouseEvent) => { e.stopPropagation(); window.open(`${DEVSPACES_BASE_URL}/#https://github.com/${row.project}/tree/${row.branch}`, '_blank'); }}
+            style={{ padding: 6, borderRadius: 4, border: '1px solid #d2d2d2', background: '#fafafa' }}>
+            <CodeIcon style={{ fontSize: 16, color: '#6a6e73' }} />
+          </IconButton>
+        </Tooltip>
       ) : null,
     }] as TableColumn<CIRun>[] : []),
   ];

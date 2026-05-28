@@ -3,10 +3,10 @@ import {
   Box,
   Typography,
   Chip,
-  Link,
   makeStyles,
   Collapse,
   IconButton,
+  Tooltip,
 } from '@material-ui/core';
 import { useNavigate } from 'react-router-dom';
 import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
@@ -15,6 +15,7 @@ import SecurityIcon from '@material-ui/icons/Security';
 import BugReportIcon from '@material-ui/icons/BugReport';
 import BuildIcon from '@material-ui/icons/Build';
 import VerifiedUserOutlinedIcon from '@material-ui/icons/VerifiedUserOutlined';
+import GitHubIcon from '@material-ui/icons/GitHub';
 import { statusColors } from '../../common/statusColors';
 import {
   getFleetViolationData,
@@ -42,35 +43,17 @@ const CATEGORY_COLORS: Record<ViolationCategory, string> = {
 const useStyles = makeStyles(theme => ({
   summaryBar: {
     display: 'flex',
-    gap: theme.spacing(0.5),
-    alignItems: 'center',
-    marginBottom: theme.spacing(2),
-    flexWrap: 'wrap' as const,
-  },
-  summaryChip: {
-    padding: '6px 12px',
-    borderRadius: 8,
-    border: `1px solid ${theme.palette.divider}`,
-    backgroundColor: theme.palette.background.paper,
-    display: 'flex',
     alignItems: 'baseline',
-    gap: 6,
-    cursor: 'pointer',
-    transition: 'all 0.15s',
-    '&:hover': { borderColor: theme.palette.primary.main },
-  },
-  summaryChipActive: {
-    borderColor: theme.palette.primary.main,
-    backgroundColor: `${theme.palette.primary.main}08`,
-    boxShadow: `0 0 0 1px ${theme.palette.primary.main}`,
+    gap: 8,
+    marginBottom: theme.spacing(2),
   },
   summaryValue: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 700,
     lineHeight: 1,
   },
   summaryLabel: {
-    fontSize: 12,
+    fontSize: 13,
     color: theme.palette.text.secondary,
   },
   categoryCard: {
@@ -78,6 +61,13 @@ const useStyles = makeStyles(theme => ({
     borderRadius: 12,
     marginBottom: theme.spacing(2),
     overflow: 'hidden',
+  },
+  categoryCardPrimary: {
+    border: '1px solid #0066CC30',
+    borderRadius: 12,
+    marginBottom: theme.spacing(2),
+    overflow: 'hidden',
+    boxShadow: '0 1px 4px rgba(0, 102, 204, 0.08)',
   },
   categoryHeader: {
     display: 'flex',
@@ -118,17 +108,16 @@ const useStyles = makeStyles(theme => ({
     color: '#333',
     flex: 1,
   },
-  ruleId: {
-    fontSize: 11,
-    fontFamily: 'monospace',
-    color: '#888',
-    marginTop: 2,
-  },
   repoChip: {
     fontSize: 11,
     height: 22,
     cursor: 'pointer',
-    '&:hover': { boxShadow: '0 0 0 1px rgba(0,0,0,0.15)' },
+    color: '#0066CC',
+    borderColor: '#0066CC40',
+    '&:hover': {
+      borderColor: '#0066CC',
+      backgroundColor: '#0066CC08',
+    },
   },
   repoList: {
     display: 'flex',
@@ -172,33 +161,31 @@ const RuleRow = ({ rule }: { rule: FleetViolationRule }) => {
           backgroundColor: `${color}15`, color, marginTop: 2, flexShrink: 0,
         }}
       />
-      <Box flex={1} minWidth={0}>
-        <Typography className={classes.ruleMessage}>{rule.message}</Typography>
-        <Typography className={classes.ruleId}>{rule.ruleId}</Typography>
-      </Box>
+      <Tooltip title={`Rule: ${rule.ruleId}`} arrow enterDelay={400}>
+        <Box flex={1} minWidth={0}>
+          <Typography className={classes.ruleMessage}>{rule.message}</Typography>
+        </Box>
+      </Tooltip>
       <Box className={classes.repoList}>
         {rule.repos.map(repo => (
           <Chip
             key={repo.name}
             size="small"
-            label={`${repo.name}${repo.count > 1 ? ` (${repo.count})` : ''}`}
+            label={
+              <Box display="flex" alignItems="center" style={{ gap: 4 }}>
+                <GitHubIcon style={{ fontSize: 11, color: '#888' }} />
+                {`${repo.name}${repo.count > 1 ? ` (${repo.count})` : ''}`}
+              </Box>
+            }
             className={classes.repoChip}
             variant="outlined"
             onClick={(e: React.MouseEvent) => {
               e.stopPropagation();
-              navigate(`/self-service/repositories/${repo.name}?tab=quality`);
+              navigate(`/self-service/repositories/${repo.name}?tab=quality&rule=${encodeURIComponent(rule.ruleId)}`);
             }}
           />
         ))}
       </Box>
-      <Chip
-        size="small"
-        label={`${rule.totalCount}`}
-        style={{
-          fontSize: 11, height: 22, fontWeight: 700, minWidth: 28,
-          backgroundColor: `${color}12`, color, flexShrink: 0,
-        }}
-      />
     </Box>
   );
 };
@@ -207,27 +194,30 @@ const CategorySection = ({
   category,
   expanded,
   onToggle,
-  severityFilter,
+  severityFilters,
+  isPrimary,
 }: {
   category: FleetViolationCategory;
   expanded: boolean;
   onToggle: () => void;
-  severityFilter: SeverityClass | null;
+  severityFilters: Set<SeverityClass>;
+  isPrimary?: boolean;
 }) => {
   const classes = useStyles();
   const color = CATEGORY_COLORS[category.category];
   const icon = CATEGORY_ICONS[category.category];
 
-  const filteredRules = severityFilter
-    ? category.rules.filter(r => r.severity === severityFilter)
+  const hasFilter = severityFilters.size > 0;
+  const filteredRules = hasFilter
+    ? category.rules.filter(r => severityFilters.has(r.severity))
     : category.rules;
 
   const filteredTotal = filteredRules.reduce((s, r) => s + r.totalCount, 0);
 
-  if (severityFilter && filteredRules.length === 0) return null;
+  if (hasFilter && filteredRules.length === 0) return null;
 
   return (
-    <Box className={classes.categoryCard}>
+    <Box className={isPrimary ? classes.categoryCardPrimary : classes.categoryCard}>
       <Box className={classes.categoryHeader} onClick={onToggle}>
         <Box className={classes.categoryIcon} style={{ backgroundColor: `${color}12`, color }}>
           {icon}
@@ -267,8 +257,15 @@ export const QualityOverviewContent = () => {
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(() =>
     new Set(fleet.categories.map(c => c.category)),
   );
-  const [severityFilter, setSeverityFilter] = useState<SeverityClass | null>(null);
-  const [categoryFilter, setCategoryFilter] = useState<ViolationCategory | null>(null);
+  const [severityFilters, setSeverityFilters] = useState<Set<SeverityClass>>(new Set());
+
+  const toggleSeverity = (sev: SeverityClass) => {
+    setSeverityFilters(prev => {
+      const next = new Set(prev);
+      if (next.has(sev)) next.delete(sev); else next.add(sev);
+      return next;
+    });
+  };
 
   const toggleCategory = (cat: string) => {
     setExpandedCategories(prev => {
@@ -278,61 +275,34 @@ export const QualityOverviewContent = () => {
     });
   };
 
-  const filteredCategories = categoryFilter
-    ? fleet.categories.filter(c => c.category === categoryFilter)
-    : fleet.categories;
-
   const sevOrder: SeverityClass[] = ['critical', 'high', 'medium', 'low', 'info'];
+  const hasFilter = severityFilters.size > 0;
+  const filteredViolationCount = hasFilter
+    ? sevOrder.reduce((sum, sev) => sum + (severityFilters.has(sev) ? fleet.bySeverity[sev] : 0), 0)
+    : fleet.totalViolations;
 
   return (
     <Box>
-      {/* Summary bar */}
+      {/* Violation count */}
       <Box className={classes.summaryBar}>
-        <Box className={classes.summaryChip} style={{ cursor: 'default', borderColor: 'transparent' }}>
-          <Typography className={classes.summaryValue} style={{ color: statusColors.error }}>
-            {fleet.totalViolations}
-          </Typography>
-          <Typography className={classes.summaryLabel}>
-            violations
-          </Typography>
-        </Box>
-        <Box className={classes.summaryChip} style={{ cursor: 'default', borderColor: 'transparent' }}>
-          <Typography className={classes.summaryValue}>
-            {fleet.reposWithIssues}
-          </Typography>
-          <Typography className={classes.summaryLabel}>
-            of {fleet.totalRepos} repos affected
-          </Typography>
-        </Box>
-        <Box style={{ flex: 1 }} />
-        {categoryFilter && (
-          <Chip
-            size="small"
-            label={`Category: ${fleet.categories.find(c => c.category === categoryFilter)?.label}`}
-            onDelete={() => setCategoryFilter(null)}
-            style={{ fontSize: 11, height: 24 }}
-            color="primary"
-            variant="outlined"
-          />
-        )}
-        {severityFilter && (
-          <Chip
-            size="small"
-            label={`Severity: ${severityFilter}`}
-            onDelete={() => setSeverityFilter(null)}
-            style={{ fontSize: 11, height: 24, textTransform: 'capitalize' }}
-            color="primary"
-            variant="outlined"
-          />
-        )}
+        <Typography className={classes.summaryValue} style={{ color: statusColors.error }}>
+          {hasFilter ? filteredViolationCount : fleet.totalViolations}
+        </Typography>
+        <Typography className={classes.summaryLabel}>
+          {hasFilter
+            ? `of ${fleet.totalViolations} violations across ${fleet.reposWithIssues} repositories`
+            : `violations across ${fleet.reposWithIssues} repositories`
+          }
+        </Typography>
       </Box>
 
-      {/* Severity breakdown — clickable filters */}
+      {/* Severity breakdown — multi-select filters */}
       <Box className={classes.sevBar}>
         {sevOrder.map(sev => {
           const count = fleet.bySeverity[sev];
           if (count === 0) return null;
-          const isActive = severityFilter === sev;
+          const isActive = severityFilters.has(sev);
+          const isDimmed = hasFilter && !isActive;
           const color = SEVERITY_COLORS[sev];
           return (
             <Box
@@ -341,8 +311,9 @@ export const QualityOverviewContent = () => {
               style={{
                 backgroundColor: isActive ? `${color}12` : undefined,
                 borderColor: isActive ? `${color}60` : undefined,
+                opacity: isDimmed ? 0.45 : 1,
               }}
-              onClick={() => setSeverityFilter(isActive ? null : sev)}
+              onClick={() => toggleSeverity(sev)}
             >
               <Box style={{ width: 10, height: 10, borderRadius: 2, backgroundColor: color }} />
               <Typography style={{ fontSize: 12, textTransform: 'capitalize', color: isActive ? color : '#555', fontWeight: isActive ? 600 : 400 }}>
@@ -352,20 +323,33 @@ export const QualityOverviewContent = () => {
             </Box>
           );
         })}
+        {hasFilter && (
+          <Chip
+            size="small"
+            label="Clear"
+            onDelete={() => setSeverityFilters(new Set())}
+            onClick={() => setSeverityFilters(new Set())}
+            style={{ fontSize: 11, height: 22, marginLeft: 4 }}
+            variant="outlined"
+          />
+        )}
       </Box>
 
-      {/* Category sections */}
-      {filteredCategories.map(cat => (
-        <CategorySection
-          key={cat.category}
-          category={cat}
-          expanded={expandedCategories.has(cat.category)}
-          onToggle={() => toggleCategory(cat.category)}
-          severityFilter={severityFilter}
-        />
-      ))}
+      {/* Category sections — AAP compatibility visually elevated */}
+      {fleet.categories
+        .filter(cat => !hasFilter || cat.rules.some(r => severityFilters.has(r.severity)))
+        .map(cat => (
+          <CategorySection
+            key={cat.category}
+            category={cat}
+            expanded={expandedCategories.has(cat.category)}
+            onToggle={() => toggleCategory(cat.category)}
+            severityFilters={severityFilters}
+            isPrimary={cat.category === 'aap-compatibility'}
+          />
+        ))}
 
-      {filteredCategories.length === 0 && (
+      {fleet.categories.filter(cat => !hasFilter || cat.rules.some(r => severityFilters.has(r.severity))).length === 0 && (
         <Box style={{ textAlign: 'center', padding: '48px 24px' }}>
           <Typography style={{ fontSize: 14, color: '#888' }}>
             No violations match the current filters.
