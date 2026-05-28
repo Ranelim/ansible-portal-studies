@@ -418,8 +418,8 @@ export const GitRepositoriesContent = () => {
   if (repos.length === 0) {
     return (
       <EmptyStateLayout
-        title="No projects discovered"
-        description="Connect a Git source in the Connections page to discover projects containing Ansible automation content. The portal will scan for playbooks, roles, collections, and execution environments."
+        title="No repositories discovered"
+        description="Connect a Git source in the Connections page to discover repositories containing Ansible automation content. The portal will scan for playbooks, roles, collections, and execution environments."
         illustration={<RepositoriesIllustration />}
       />
     );
@@ -459,7 +459,20 @@ export const GitRepositoriesContent = () => {
         </Box>
       ) as unknown as string,
       width: '20%',
-      sorting: false,
+      customSort: (a: GitRepository, b: GitRepository) => {
+        const SEVERITY_RANK: Record<string, number> = { critical: 4, high: 3, medium: 2, low: 1 };
+        const rankOf = (r: GitRepository) => {
+          if (scanningRepos.has(r.name)) return -2;
+          if (neverScannedRepos.has(r.name)) return -1;
+          const bd = getProjectSeverityBreakdown(r.name);
+          if (!bd) return -1;
+          const total = getProjectViolationCount(r.name) ?? 0;
+          if (total === 0) return 0;
+          const highest = bd.critical > 0 ? 'critical' : bd.high > 0 ? 'high' : bd.medium > 0 ? 'medium' : 'low';
+          return SEVERITY_RANK[highest] * 100 + total;
+        };
+        return rankOf(a) - rankOf(b);
+      },
       render: (row: GitRepository) => {
         const isScanning = scanningRepos.has(row.name);
         const isNeverScanned = neverScannedRepos.has(row.name);
@@ -537,9 +550,12 @@ export const GitRepositoriesContent = () => {
               )}
             </Box>
             {remLabel && (
-              <Typography style={{ fontSize: 10, color: remLabel.color, fontWeight: 500, marginTop: 2 }}>
-                {remLabel.text}
-              </Typography>
+              <Box display="flex" alignItems="center" style={{ gap: 4, marginTop: 3 }}>
+                <Box style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: remLabel.color, flexShrink: 0 }} />
+                <Typography style={{ fontSize: 11, color: remLabel.color, fontWeight: 500 }}>
+                  {remLabel.text}
+                </Typography>
+              </Box>
             )}
           </Box>
         );
