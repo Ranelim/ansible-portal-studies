@@ -1,7 +1,7 @@
-image: node:20
+image: node:20-slim
 
 variables:
-  NODE_OPTIONS: "--max-old-space-size=4096"
+  NODE_OPTIONS: "--max-old-space-size=1536"
 
 pages:
   stage: deploy
@@ -24,6 +24,8 @@ pages:
         enabled: false
       EOF
   script:
+    - yarn config set networkConcurrency 2
+    - yarn config set enableGlobalCache false
     - yarn install
     - yarn build:all
     - mkdir -p public
