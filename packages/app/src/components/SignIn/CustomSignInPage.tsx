@@ -1,11 +1,16 @@
+import { useEffect, useRef } from 'react';
 import { SignInPage } from '@backstage/core-components';
 import { SignInPageProps } from '@backstage/core-plugin-api';
-import { Box, Typography, Button, makeStyles } from '@material-ui/core';
+import { Box, Typography, Button, makeStyles, CircularProgress } from '@material-ui/core';
 import SettingsIcon from '@material-ui/icons/Settings';
 
 type CustomSignInPageProps = SignInPageProps & {
   providers: any[];
 };
+
+const isStaticDeployment =
+  typeof window !== 'undefined' &&
+  !['localhost', '127.0.0.1', '0.0.0.0'].includes(window.location.hostname);
 
 const useStyles = makeStyles(theme => ({
   setupCard: {
@@ -49,6 +54,32 @@ const useStyles = makeStyles(theme => ({
 export const CustomSignInPage = (props: CustomSignInPageProps) => {
   const classes = useStyles();
   const { providers, ...signInProps } = props;
+  const signedIn = useRef(false);
+
+  useEffect(() => {
+    if (isStaticDeployment && !signedIn.current) {
+      signedIn.current = true;
+      props.onSignInSuccess({
+        getIdToken: async () => ({ token: '' }),
+        getId: async () => 'user:development/guest',
+        getProfile: async () => ({
+          email: 'guest@portal.local',
+          displayName: 'Guest User',
+        }),
+        getCredentials: async () => ({ token: '' }),
+        signOut: async () => {},
+      } as any);
+    }
+  }, [props]);
+
+  if (isStaticDeployment) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
+        <CircularProgress size={24} style={{ marginRight: 12 }} />
+        <Typography variant="body1">Loading prototype…</Typography>
+      </Box>
+    );
+  }
 
   return (
     <>

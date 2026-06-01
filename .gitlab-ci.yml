@@ -1,0 +1,34 @@
+image: node:20
+
+variables:
+  NODE_OPTIONS: "--max-old-space-size=4096"
+
+pages:
+  stage: deploy
+  before_script:
+    - corepack enable
+    - |
+      cat > app-config.local.yaml << EOF
+      app:
+        baseUrl: ${CI_PAGES_URL}
+      backend:
+        baseUrl: ${CI_PAGES_URL}
+      signInPage: guest
+      auth:
+        providers:
+          guest:
+            dangerouslyAllowOutsideDevelopment: true
+      permission:
+        enabled: false
+      EOF
+  script:
+    - yarn install
+    - yarn build:all
+    - mkdir -p public
+    - cp -r packages/app/dist/* public/
+    - cp public/index.html public/404.html
+  artifacts:
+    paths:
+      - public
+  rules:
+    - if: $CI_COMMIT_BRANCH == "design/trunk"
