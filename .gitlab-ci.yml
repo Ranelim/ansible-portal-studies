@@ -5,6 +5,8 @@ variables:
 
 pages:
   stage: deploy
+  tags:
+    - itup-alm-x86
   before_script:
     - corepack enable
     - |
