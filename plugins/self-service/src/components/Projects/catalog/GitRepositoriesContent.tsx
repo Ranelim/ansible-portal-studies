@@ -43,6 +43,7 @@ import CategoryIcon from '@material-ui/icons/Category';
 import MemoryIcon from '@material-ui/icons/Memory';
 import Popover from '@material-ui/core/Popover';
 import CloseIcon from '@material-ui/icons/Close';
+import SyncIcon from '@material-ui/icons/Sync';
 import { useNavigate } from 'react-router-dom';
 import { CatalogFilterLayout } from '@backstage/plugin-catalog-react';
 import { DismissibleBanner } from '../../common/DismissibleBanner';
@@ -71,6 +72,12 @@ const hasActiveFilters = (filters: ActiveFilters) =>
   filters.provider !== 'all';
 
 const useStyles = makeStyles(theme => ({
+  '@global': {
+    '@keyframes spin': {
+      from: { transform: 'rotate(0deg)' },
+      to: { transform: 'rotate(360deg)' },
+    },
+  },
   filterLabel: {
     marginTop: theme.spacing(2),
     fontWeight: 600,
@@ -529,29 +536,31 @@ export const GitRepositoriesContent = () => {
 
         return (
           <Box
-            style={{ cursor: 'pointer' }}
+            display="flex" alignItems="center" style={{ gap: 6, cursor: 'pointer' }}
             onClick={(e: React.MouseEvent) => {
               e.stopPropagation();
               navigate(`/self-service/repositories/${row.name}?tab=quality`);
             }}
           >
-            <Box display="flex" alignItems="center" style={{ gap: 6 }}>
-              <Chip size="small" label={`${highestCount} ${highest}`} style={{
-                fontSize: 11, height: 20,
-                backgroundColor: `${color}18`,
-                color,
-                fontWeight: 600,
-                cursor: 'pointer',
-              }} />
-              {total > highestCount && (
-                <Typography variant="body2" color="textSecondary" style={{ fontSize: 11 }}>
-                  +{total - highestCount}
-                </Typography>
-              )}
-            </Box>
+            <Chip size="small" label={`${highestCount} ${highest}`} style={{
+              fontSize: 11, height: 20,
+              backgroundColor: `${color}18`,
+              color,
+              fontWeight: 600,
+              cursor: 'pointer',
+            }} />
+            {total > highestCount && (
+              <Typography variant="body2" color="textSecondary" style={{ fontSize: 11 }}>
+                +{total - highestCount}
+              </Typography>
+            )}
             {remLabel && (
-              <Box display="flex" alignItems="center" style={{ gap: 4, marginTop: 3 }}>
-                <Box style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: remLabel.color, flexShrink: 0 }} />
+              <Box display="flex" alignItems="center" style={{ gap: 3 }}>
+                {remStatus === 'in-progress' ? (
+                  <SyncIcon style={{ fontSize: 13, color: remLabel.color, animation: 'spin 1.2s linear infinite' }} />
+                ) : (
+                  <Box style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: remLabel.color, flexShrink: 0 }} />
+                )}
                 <Typography style={{ fontSize: 11, color: remLabel.color, fontWeight: 500 }}>
                   {remLabel.text}
                 </Typography>
