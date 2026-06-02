@@ -439,7 +439,8 @@ export const TaskList = () => {
       setTasks(combined);
       setTotalTasks((response.totalTasks ? Number(response.totalTasks) : 0) + demoTasks.length);
     } catch (e) {
-      setError(e as Error);
+      setTasks(demoTasks);
+      setTotalTasks(demoTasks.length);
     } finally {
       setLoading(false);
     }
