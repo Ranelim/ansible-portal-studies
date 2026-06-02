@@ -22,6 +22,7 @@ import {
 import {
   Button,
   CircularProgress,
+  LinearProgress,
   Link,
   makeStyles,
   Typography,
@@ -75,6 +76,8 @@ function getStatusLabel(status: string): string {
   switch (status) {
     case 'processing':
       return 'Running';
+    case 'awaiting_approval':
+      return 'Awaiting approval';
     case 'completed':
       return 'Completed';
     case 'failed':
@@ -95,8 +98,10 @@ function StatusIcon({ status }: { status: string }) {
       return <ErrorOutlineIcon style={{ fontSize: size, color: '#f44336' }} />;
     case 'cancelled':
       return <BlockIcon style={{ fontSize: size, color: '#ff9800' }} />;
+    case 'awaiting_approval':
+      return <PauseCircleOutlineIcon style={{ fontSize: size, color: '#ff9800' }} />;
     default:
-      return <LoopIcon style={{ fontSize: size, color: '#42a5f5' }} />;
+      return <CircularProgress size={size} style={{ color: '#42a5f5' }} />;
   }
 }
 
@@ -467,6 +472,25 @@ ansible-navigator:
         'RHAAP_JOB_LAUNCH_DATA {"id":1501,"url":"https://aap.example.com/jobs/1501/output"}',
         'Job 1501 status: running',
         'Applying migration v2.4.1 to orders-db...',
+      ],
+    },
+  },
+  'demo-workflow-running': {
+    templateName: 'aws-provisioning-workflow',
+    templateTitle: 'AWS Provisioning Workflow',
+    templateType: 'workflow-job-template',
+    status: 'processing',
+    steps: [
+      { id: 'launch-workflow', name: 'Launch workflow', status: 'processing' },
+    ],
+    stepLogs: {
+      'launch-workflow': [
+        'Beginning step AWS Provisioning Workflow',
+        'Launching workflow job template id 3070.',
+        'RHAAP_WORKFLOW_LAUNCH_DATA {"id":3070,"url":"https://aap.example.com/execution/workflows/3070/output"}',
+        'Workflow job 3070 status: running',
+        'Node "Validate Network" completed successfully.',
+        'Node "Provision Instances" is running...',
       ],
     },
   },
@@ -958,8 +982,12 @@ export const RunTask = () => {
       return 'completed';
     }
     if (task.status === 'cancelled') return 'cancelled';
+    const allStepStatuses = steps ? Object.values(steps).map((s: any) => s.status) : [];
+    if (allStepStatuses.includes('awaiting_approval')) return 'awaiting_approval';
+    const allLogText = stepLogs ? Object.values(stepLogs).flat().join(' ').toLowerCase() : '';
+    if (allLogText.includes('awaiting approval') || allLogText.includes('waiting for approval')) return 'awaiting_approval';
     return 'processing';
-  }, [task, completed, error]);
+  }, [task, completed, error, steps, stepLogs]);
 
   useEffect(() => {
     if (taskStatus !== 'processing' && isCanceling) {
@@ -995,7 +1023,15 @@ export const RunTask = () => {
         content: (demoTask.stepLogs?.['launch-job'] || []).join('\n'),
       }]);
     } else if (type === 'workflow-job-template') {
-      if (taskId === 'demo-workflow-partial-failure') {
+      if (taskId === 'demo-workflow-running') {
+        setAapLogs([
+          { id: 1, label: 'Validate Network', status: 'successful', hasPlaybookOutput: true, content: 'Validating VPC and subnet configuration...\nNetwork validation passed.' },
+          { id: 2, label: 'Provision Instances', status: 'running', hasPlaybookOutput: true, content: 'Launching 2 × t3.small in us-east-1...' },
+          { id: 3, label: 'Deploy Configuration', status: 'waiting', hasPlaybookOutput: false },
+          { id: 4, label: 'Configure Monitoring', status: 'waiting', hasPlaybookOutput: false },
+          { id: 5, label: 'Final Verification', status: 'waiting', hasPlaybookOutput: false },
+        ]);
+      } else if (taskId === 'demo-workflow-partial-failure') {
         setAapLogs([
           { id: 1, label: 'Validate Network', status: 'successful', hasPlaybookOutput: true, content: 'Validating VPC and subnet configuration...\nNetwork validation passed.' },
           { id: 2, label: 'Provision Instances', status: 'successful', hasPlaybookOutput: true, content: 'Launching 2 × t3.small in us-east-1...\nInstances provisioned successfully.' },
@@ -1474,7 +1510,7 @@ export const RunTask = () => {
                         ? '#f44336'
                         : taskStatus === 'completed'
                           ? '#4caf50'
-                          : taskStatus === 'cancelled'
+                          : taskStatus === 'cancelled' || taskStatus === 'awaiting_approval'
                             ? '#ff9800'
                             : '#42a5f5',
                   }}
@@ -1573,11 +1609,15 @@ export const RunTask = () => {
           </Box>
         </Box>
 
+        {/* Progress bar for running state */}
+        {taskStatus === 'processing' && (
+          <LinearProgress
+            style={{ borderRadius: 2, marginBottom: 16, height: 3 }}
+          />
+        )}
+
         {/* Awaiting approval zone — visible when workflow is waiting for approval */}
-        {taskStatus === 'processing' && (() => {
-          const allLogs = Object.values(stepLogs).flat().join(' ').toLowerCase();
-          return allLogs.includes('awaiting approval') || allLogs.includes('waiting');
-        })() && (
+        {taskStatus === 'awaiting_approval' && (
           <Box
             marginBottom={2}
             style={{

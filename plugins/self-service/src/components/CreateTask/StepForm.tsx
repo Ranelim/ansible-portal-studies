@@ -398,8 +398,18 @@ export const StepForm = ({
   const handleFinalSubmit = useCallback(
     async (secrets?: Record<string, string>) => {
       try {
-        const authToken = await aapAuth.getAccessToken();
-        const finalData = { ...formData, token: authToken };
+        let authToken: string | undefined;
+        try {
+          authToken = await Promise.race([
+            aapAuth.getAccessToken(),
+            new Promise<undefined>((_, reject) =>
+              setTimeout(() => reject(new Error('timeout')), 2000),
+            ),
+          ]);
+        } catch {
+          // AAP auth unavailable (e.g. guest login) — proceed without token
+        }
+        const finalData = { ...formData, ...(authToken ? { token: authToken } : {}) };
         await submitFunction(finalData, secrets);
         clearPersistedFormData();
       } catch (error) {

@@ -420,6 +420,44 @@ export const TaskList = () => {
       createdAt: new Date(Date.now() - 150 * 60 * 1000).toISOString(),
       createdBy: 'user:default/guest',
     } as unknown as ScaffolderTask,
+    {
+      id: 'demo-workflow-partial-failure',
+      spec: {
+        apiVersion: 'scaffolder.backstage.io/v1beta3',
+        steps: [],
+        parameters: {},
+        templateInfo: {
+          entityRef: 'template:default/aws-provisioning-workflow',
+          entity: {
+            metadata: { name: 'aws-provisioning-workflow', title: 'AWS Provisioning Workflow' },
+            spec: { type: 'workflow-job-template' },
+          } as any,
+        },
+        user: { entity: { metadata: { title: 'Guest User' } } as any },
+      },
+      status: 'failed',
+      createdAt: new Date(Date.now() - 180 * 60 * 1000).toISOString(),
+      createdBy: 'user:default/guest',
+    } as unknown as ScaffolderTask,
+    {
+      id: 'demo-workflow-running',
+      spec: {
+        apiVersion: 'scaffolder.backstage.io/v1beta3',
+        steps: [],
+        parameters: {},
+        templateInfo: {
+          entityRef: 'template:default/aws-provisioning-workflow',
+          entity: {
+            metadata: { name: 'aws-provisioning-workflow', title: 'AWS Provisioning Workflow' },
+            spec: { type: 'workflow-job-template' },
+          } as any,
+        },
+        user: { entity: { metadata: { title: 'Guest User' } } as any },
+      },
+      status: 'processing',
+      createdAt: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
+      createdBy: 'user:default/guest',
+    } as unknown as ScaffolderTask,
   ], []);
 
   const fetchTasks = useCallback(async () => {
