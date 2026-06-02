@@ -98,6 +98,7 @@
 
   .squiggle-error { text-decoration: underline wavy #f44747; text-decoration-skip-ink: none; text-underline-offset: 3px; }
   .squiggle-warning { text-decoration: underline wavy #cca700; text-decoration-skip-ink: none; text-underline-offset: 3px; }
+  .squiggle-info { text-decoration: underline wavy #3794ff; text-decoration-skip-ink: none; text-underline-offset: 3px; }
 
   /* Syntax */
   .kw { color: #c586c0; }
@@ -176,6 +177,20 @@
   .inline-applied { margin: 0 0 0 48px; padding: 4px 12px; font-size: 11px; color: #3fb950; background: rgba(46,160,67,0.08); border-left: 3px solid #238636; display: flex; align-items: center; gap: 6px; }
   .inline-applied button { padding: 1px 8px; font-size: 10px; border: 1px solid #555; border-radius: 3px; background: transparent; color: #999; cursor: pointer; }
 
+  /* Manual violation — info gutter icon */
+  .line-info-icon { position: absolute; left: 4px; top: 1px; font-size: 14px; cursor: pointer; z-index: 5; opacity: 0.85; filter: drop-shadow(0 0 2px rgba(0,0,0,0.5)); }
+  .line-info-icon:hover { opacity: 1; transform: scale(1.15); }
+
+  /* Manual violation — inline guidance panel */
+  .inline-guidance { margin: 0 0 0 48px; border: 1px solid #454545; border-radius: 4px; background: #252526; overflow: hidden; animation: fadeIn 0.2s ease; }
+  .inline-guidance-header { display: flex; align-items: center; justify-content: space-between; padding: 6px 12px; background: #2d2d2d; border-bottom: 1px solid #454545; font-size: 11px; }
+  .inline-guidance-label { color: #ccc; display: flex; align-items: center; gap: 6px; }
+  .tier-tag.manual { background: #3b3113; color: #cca700; }
+  .inline-guidance-body { padding: 8px 12px; font-size: 12px; line-height: 1.6; color: #bbb; }
+  .inline-guidance-body code { background: #333; padding: 1px 5px; border-radius: 3px; font-family: 'Menlo', 'Consolas', monospace; font-size: 11px; color: #d4d4d4; }
+  .inline-guidance-body a { color: #3794ff; text-decoration: none; }
+  .inline-guidance-body a:hover { text-decoration: underline; }
+
   .hidden { display: none !important; }
 </style>
 </head>
@@ -214,7 +229,7 @@
     <div class="tree-item" data-file="ansible.cfg"><span class="file-icon cfg">⚙</span> ansible.cfg <span class="badge err">1</span></div>
     <div class="tree-item" data-file="collections/requirements.yml"><span class="file-icon yaml">📄</span> collections/requirements.yml <span class="badge warn">1</span></div>
     <div class="tree-item" data-file="defaults/main.yml"><span class="file-icon yaml">📄</span> defaults/main.yml <span class="badge warn">1</span></div>
-    <div class="tree-item" data-file="meta/main.yml"><span class="file-icon yaml">📄</span> meta/main.yml</div>
+    <div class="tree-item" data-file="meta/main.yml"><span class="file-icon yaml">📄</span> meta/main.yml <span class="badge" style="background:#3794ff;">1</span></div>
     <div class="tree-item" data-file="tasks/main.yml"><span class="file-icon yaml">📄</span> tasks/main.yml <span class="badge err">2</span></div>
     <div class="tree-item" data-file="tasks/patch-apply.yml"><span class="file-icon yaml">📄</span> tasks/patch-apply.yml <span class="badge err">2</span></div>
     <div class="tree-item" data-file="tasks/pre-check.yml"><span class="file-icon yaml">📄</span> tasks/pre-check.yml <span class="badge warn">2</span></div>
@@ -402,7 +417,7 @@ const ALL_PROBLEMS = [
     { sev: 'warning', msg: 'All tasks should be named', rule: 'name[missing]', loc: 'Ln 5', fixable: true },
   ]},
   { file: 'meta/main.yml', icon: '📄', issues: [
-    { sev: 'info', msg: 'Role metadata should contain relevant info', rule: 'meta-no-info', loc: 'Ln 1', fixable: false },
+    { sev: 'info', msg: 'Role metadata should contain relevant info', rule: 'meta-no-info', loc: 'Ln 3', fixable: false },
   ]},
 ];
 
@@ -735,7 +750,7 @@ const FILE_CONTENT = {
     lines: [
       { num: 1, html: '<span class="comment"># meta/main.yml</span>' },
       { num: 2, html: '<span class="key">---</span>' },
-      { num: 3, html: '<span class="key">galaxy_info</span>:' },
+      { num: 3, html: '<span class="squiggle-info"><span class="key">galaxy_info</span></span>:', info: true, infoTag: 'meta-no-info' },
       { num: 4, html: '  <span class="key">author</span>: <span class="str">ops-team</span>' },
       { num: 5, html: '  <span class="key">description</span>: <span class="str">""</span>' },
       { num: 6, html: '  <span class="key">license</span>: <span class="str">Apache-2.0</span>' },
@@ -800,6 +815,19 @@ const INLINE_FIXES = {
   },
 };
 
+const MANUAL_GUIDANCE = {
+  'tasks/report.yml:18': {
+    rule: 'deprecated-module',
+    description: 'The <code>mail</code> module is deprecated. Replace with <code>community.general.mail</code> or use <code>ansible.builtin.uri</code> for webhook-based notifications.',
+    docUrl: 'https://docs.ansible.com/ansible/latest/collections/community/general/mail_module.html',
+  },
+  'meta/main.yml:3': {
+    rule: 'meta-no-info',
+    description: 'Role metadata should include author, description, license, and supported platforms to help users discover and evaluate this role. Populate the empty fields in <code>galaxy_info</code>.',
+    docUrl: 'https://docs.ansible.com/ansible/latest/dev_guide/developing_roles.html#role-metadata',
+  },
+};
+
 // Resolve which file to show
 const DEFAULT_FILE = 'tasks/main.yml';
 
@@ -819,28 +847,35 @@ function renderEditorLines(container, lines, opts) {
     let cls = 'editor-line';
     let numStyle = '';
     let tag = '';
-    let lightbulb = '';
+    let gutterIcon = '';
     if (l.removed) cls += ' diff-removed diff-gutter-removed';
     if (l.added) cls += ' diff-added diff-gutter-added';
     if (l.err) { numStyle = ' style="color:#f44747;"'; }
     if (l.warn) { numStyle = ' style="color:#cca700;"'; }
+    if (l.info) { numStyle = ' style="color:#3794ff;"'; }
     if (l.errTag) tag = '  <span style="color:#555; font-size:11px;">← ' + l.errTag + '</span>';
     if (l.warnTag) tag = '  <span style="color:#555; font-size:11px;">← ' + l.warnTag + '</span>';
+    if (l.infoTag) tag = '  <span style="color:#555; font-size:11px;">← ' + l.infoTag + '</span>';
     const bg = l.err && !l.removed ? ' style="background:rgba(244,71,71,0.08);"' :
-               l.warn && !l.removed ? ' style="background:rgba(204,167,0,0.08);"' : '';
+               l.warn && !l.removed ? ' style="background:rgba(204,167,0,0.08);"' :
+               l.info && !l.removed ? ' style="background:rgba(55,148,255,0.06);"' : '';
 
-    if (!isDiff && (l.errTag || l.warnTag)) {
+    const hasTag = l.errTag || l.warnTag || l.infoTag;
+    if (!isDiff && hasTag) {
       const fixKey = activeFile + ':' + l.num;
       if (INLINE_FIXES[fixKey]) {
-        lightbulb = '<span class="line-lightbulb" onclick="toggleSuggestion(\'' + fixKey + '\', this)" title="APME: Quick fix available">💡</span>';
+        gutterIcon = '<span class="line-lightbulb" onclick="toggleSuggestion(\'' + fixKey + '\', this)" title="APME: Quick fix available">💡</span>';
+      } else if (MANUAL_GUIDANCE[fixKey]) {
+        gutterIcon = '<span class="line-info-icon" onclick="toggleGuidance(\'' + fixKey + '\')" title="APME: Manual remediation — view guidance">ℹ️</span>';
       }
     }
 
-    html += '<div class="' + cls + '"' + bg + ' data-line="' + l.num + '">' + lightbulb + '<span class="line-number"' + numStyle + '>' + l.num + '</span><span class="line-content">' + l.html + tag + '</span></div>';
+    html += '<div class="' + cls + '"' + bg + ' data-line="' + l.num + '">' + gutterIcon + '<span class="line-number"' + numStyle + '>' + l.num + '</span><span class="line-content">' + l.html + tag + '</span></div>';
 
-    if (!isDiff && (l.errTag || l.warnTag)) {
+    if (!isDiff && hasTag) {
       const fixKey = activeFile + ':' + l.num;
       const fix = INLINE_FIXES[fixKey];
+      const guidance = MANUAL_GUIDANCE[fixKey];
       if (fix) {
         html += '<div class="inline-suggestion hidden" id="suggestion-' + fixKey.replace(/[\/:.]/g, '-') + '">';
         html += '<div class="inline-suggestion-header">';
@@ -855,6 +890,15 @@ function renderEditorLines(container, lines, opts) {
         html += '<div class="inline-suggestion-diff">';
         fix.removed.forEach(r => { html += '<div class="diff-line removed">' + escapeHtml(r) + '</div>'; });
         fix.added.forEach(a => { html += '<div class="diff-line added">' + escapeHtml(a) + '</div>'; });
+        html += '</div></div>';
+      } else if (guidance) {
+        html += '<div class="inline-guidance hidden" id="guidance-' + fixKey.replace(/[\/:.]/g, '-') + '">';
+        html += '<div class="inline-guidance-header">';
+        html += '<span class="inline-guidance-label"><span class="tier-tag manual">Manual</span> ' + guidance.rule + '</span>';
+        html += '<span class="inline-suggestion-actions"><button class="btn-dismiss" onclick="dismissGuidance(\'' + fixKey + '\')">Dismiss</button></span>';
+        html += '</div>';
+        html += '<div class="inline-guidance-body">' + guidance.description;
+        if (guidance.docUrl) html += '<br><br><a href="' + guidance.docUrl + '" target="_blank">📄 View documentation →</a>';
         html += '</div></div>';
       }
     }
@@ -971,6 +1015,18 @@ function toggleSuggestion(fixKey, el) {
 
 function dismissSuggestion(fixKey) {
   const id = 'suggestion-' + fixKey.replace(/[\/:.]/g, '-');
+  const widget = document.getElementById(id);
+  if (widget) widget.classList.add('hidden');
+}
+
+function toggleGuidance(fixKey) {
+  const id = 'guidance-' + fixKey.replace(/[\/:.]/g, '-');
+  const widget = document.getElementById(id);
+  if (widget) widget.classList.toggle('hidden');
+}
+
+function dismissGuidance(fixKey) {
+  const id = 'guidance-' + fixKey.replace(/[\/:.]/g, '-');
   const widget = document.getElementById(id);
   if (widget) widget.classList.add('hidden');
 }
@@ -1110,8 +1166,16 @@ const paramStatus = params.get('status'); // 'open', 'fixed', 'proposed', 'appro
 const hasFileContext = paramFile && paramLine;
 
 function findRule() {
-  return ALL_PROBLEMS.flatMap(f => f.file === activeFile ? f.issues : [])
-    .find(i => i.loc === 'Ln ' + paramLine);
+  const issues = ALL_PROBLEMS.flatMap(f => f.file === activeFile ? f.issues : []);
+  return issues.find(i => i.loc === 'Ln ' + paramLine) || issues[0];
+}
+
+function findActualLine() {
+  const issues = ALL_PROBLEMS.flatMap(f => f.file === activeFile ? f.issues : []);
+  const exact = issues.find(i => i.loc === 'Ln ' + paramLine);
+  if (exact) return paramLine;
+  if (issues[0]) return issues[0].loc.replace('Ln ', '');
+  return paramLine;
 }
 
 function updateExplorerBadge(file, type) {
@@ -1132,8 +1196,10 @@ function updateExplorerBadge(file, type) {
 function enterViolationMode() {
   document.getElementById('notif-remediate').classList.add('hidden');
   const rule = findRule();
-  const fixKey = activeFile + ':' + paramLine;
+  const actualLine = findActualLine();
+  const fixKey = activeFile + ':' + actualLine;
   const fix = INLINE_FIXES[fixKey];
+  const manualGuidance = MANUAL_GUIDANCE[fixKey];
   if (rule && fix) {
     const tierLabel = fix.tier === 'ai'
       ? 'AI-assisted fix available' + (fix.confidence ? ' (' + fix.confidence + '% confidence)' : '')
@@ -1141,16 +1207,23 @@ function enterViolationMode() {
     document.getElementById('notif-ai-review-text').innerHTML =
       '<strong>APME:</strong> <strong>' + rule.rule + '</strong> — ' + rule.msg + '. ' + tierLabel + ' — click 💡 or expand below.';
     document.getElementById('notif-ai-review').classList.remove('hidden');
-  } else if (rule && paramTier === 'manual') {
+  } else if (rule && (paramTier === 'manual' || manualGuidance)) {
     document.getElementById('notif-manual-text').innerHTML =
       '<strong>APME:</strong> <strong>' + rule.rule + '</strong> — ' + rule.msg + '. No auto-fix available — manual remediation required.';
     document.getElementById('notif-manual').classList.remove('hidden');
   }
-  highlightLine(paramLine);
-  // Auto-expand the inline suggestion for this violation
+  highlightLine(actualLine);
   if (fix) {
     setTimeout(() => {
       const id = 'suggestion-' + fixKey.replace(/[\/:.]/g, '-');
+      const widget = document.getElementById(id);
+      if (widget) widget.classList.remove('hidden');
+    }, 300);
+  }
+  const guidance = MANUAL_GUIDANCE[fixKey];
+  if (guidance) {
+    setTimeout(() => {
+      const id = 'guidance-' + fixKey.replace(/[\/:.]/g, '-');
       const widget = document.getElementById(id);
       if (widget) widget.classList.remove('hidden');
     }, 300);
@@ -1161,6 +1234,7 @@ function enterViolationMode() {
 function enterAutoFixedMode() {
   document.getElementById('notif-remediate').classList.add('hidden');
   const rule = findRule();
+  const actualLine = findActualLine();
   const ruleName = rule ? rule.rule : 'violation';
   const ruleMsg = rule ? rule.msg : '';
   document.getElementById('notif-auto-fixed-text').innerHTML =
@@ -1171,24 +1245,26 @@ function enterAutoFixedMode() {
   switchToDiff();
   renderProblems();
   updateExplorerBadge(activeFile, 'modified');
-  if (paramLine) setTimeout(() => highlightLine(paramLine), 150);
+  setTimeout(() => highlightLine(actualLine), 150);
 }
 
 // Post-remediation: AI proposal, show violation with suggestion auto-expanded
 function enterProposedMode() {
   document.getElementById('notif-remediate').classList.add('hidden');
   const rule = findRule();
-  const fix = INLINE_FIXES[activeFile + ':' + paramLine];
+  const actualLine = findActualLine();
+  const fixKey = activeFile + ':' + actualLine;
+  const fix = INLINE_FIXES[fixKey];
   if (rule) {
     document.getElementById('notif-ai-review-text').innerHTML =
       '<strong>APME AI suggestion</strong> for <strong>' + rule.rule + '</strong> — ' + rule.msg +
       '. Review the proposed fix below and apply, edit manually, or dismiss.';
   }
   document.getElementById('notif-ai-review').classList.remove('hidden');
-  highlightLine(paramLine);
+  highlightLine(actualLine);
   if (fix) {
     setTimeout(() => {
-      const id = 'suggestion-' + (activeFile + ':' + paramLine).replace(/[\/:.]/g, '-');
+      const id = 'suggestion-' + fixKey.replace(/[\/:.]/g, '-');
       const widget = document.getElementById(id);
       if (widget) widget.classList.remove('hidden');
     }, 300);
