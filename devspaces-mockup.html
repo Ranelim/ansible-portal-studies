@@ -866,7 +866,7 @@ function renderEditorLines(container, lines, opts) {
       if (INLINE_FIXES[fixKey]) {
         gutterIcon = '<span class="line-lightbulb" onclick="toggleSuggestion(\'' + fixKey + '\', this)" title="APME: Quick fix available">💡</span>';
       } else if (MANUAL_GUIDANCE[fixKey]) {
-        gutterIcon = '<span class="line-info-icon" onclick="toggleGuidance(\'' + fixKey + '\')" title="APME: Manual remediation — view guidance">ℹ️</span>';
+        gutterIcon = '<span class="line-lightbulb" onclick="toggleGuidance(\'' + fixKey + '\')" title="APME: Manual remediation — view guidance">💡</span>';
       }
     }
 
