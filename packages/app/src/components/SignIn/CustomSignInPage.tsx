@@ -60,13 +60,16 @@ export const CustomSignInPage = (props: CustomSignInPageProps) => {
     if (isStaticDeployment && !signedIn.current) {
       signedIn.current = true;
       props.onSignInSuccess({
-        getIdToken: async () => ({ token: '' }),
-        getId: async () => 'user:development/guest',
-        getProfile: async () => ({
+        getProfileInfo: async () => ({
           email: 'guest@portal.local',
           displayName: 'Guest User',
         }),
-        getCredentials: async () => ({ token: '' }),
+        getBackstageIdentity: async () => ({
+          type: 'user' as const,
+          userEntityRef: 'user:development/guest',
+          ownershipEntityRefs: ['user:development/guest'],
+        }),
+        getCredentials: async () => ({}),
         signOut: async () => {},
       } as any);
     }
