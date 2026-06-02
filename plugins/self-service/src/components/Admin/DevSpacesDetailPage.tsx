@@ -48,7 +48,7 @@ const useStyles = makeStyles(theme => ({
 export const DevSpacesDetailPage = () => {
   const classes = useStyles();
   const [connected, setConnected] = useState(true);
-  const [savedUrl, setSavedUrl] = useState('https://devspaces.apps.example.com');
+  const [savedUrl, setSavedUrl] = useState('https://devspaces.apps.ansible-rhdh.testing.ansible.com');
   const [urlInput, setUrlInput] = useState('');
   const [disconnectOpen, setDisconnectOpen] = useState(false);
 

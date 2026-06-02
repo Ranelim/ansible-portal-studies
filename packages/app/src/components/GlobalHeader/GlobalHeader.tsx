@@ -43,7 +43,7 @@ import { OmniSearch } from '../search/OmniSearch';
 import ComputerIcon from '@material-ui/icons/Computer';
 import redHatLogo from '../../assets/redhat-logo.png';
 
-const DEVSPACES_DASHBOARD_URL = 'https://devspaces.apps.example.com/dashboard/#/workspaces';
+const DEVSPACES_DASHBOARD_URL = '/devspaces-mockup.html?state=scm';
 const IS_DEVSPACES_CONNECTED = true;
 
 const useStyles = makeStyles(theme => ({

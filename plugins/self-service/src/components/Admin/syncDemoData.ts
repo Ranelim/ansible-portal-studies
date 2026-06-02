@@ -60,8 +60,10 @@ export type ConnectionProvider = {
   syncJobs: { name: string; interval: string; enabled: boolean }[];
 };
 
-/** Central Dev Spaces base URL used by all prototype touchpoints. */
-export const DEVSPACES_BASE_URL = 'https://devspaces.apps.example.com';
+/** Central Dev Spaces base URL used by all prototype touchpoints.
+ *  Points to the local VS Code mockup so all "Edit in Dev Spaces" buttons
+ *  work in both local dev and the static GitLab Pages deployment. */
+export const DEVSPACES_BASE_URL = '/devspaces-mockup.html';
 
 export const DEMO_CONNECTIONS: ConnectionProvider[] = [
   {
@@ -130,7 +132,7 @@ export const DEMO_CONNECTIONS: ConnectionProvider[] = [
     name: 'OpenShift Dev Spaces',
     type: 'devtools',
     status: 'Active',
-    host: 'devspaces.apps.example.com',
+    host: 'devspaces.apps.ansible-rhdh.testing.ansible.com',
     syncJobs: [],
   },
 ];
