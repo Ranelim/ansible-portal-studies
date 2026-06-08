@@ -3,7 +3,7 @@ import { useApi, identityApiRef } from '@backstage/core-plugin-api';
 import { catalogApiRef } from '@backstage/plugin-catalog-react';
 import { parseEntityRef } from '@backstage/catalog-model';
 
-export type UserRole = 'sme' | 'developer' | 'admin';
+export type UserRole = 'sme' | 'developer' | 'operator' | 'admin';
 
 const ROLE_ANNOTATION = 'ansible.portal/role';
 const CACHE_TTL_MS = 5 * 60 * 1000;
@@ -11,6 +11,7 @@ const CACHE_TTL_MS = 5 * 60 * 1000;
 const ROLE_HIERARCHY: Record<UserRole, number> = {
   sme: 0,
   developer: 1,
+  operator: 1,
   admin: 2,
 };
 

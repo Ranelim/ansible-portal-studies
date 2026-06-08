@@ -35,6 +35,7 @@ import { SyncJobDetailPage } from '../Admin/SyncJobDetailPage';
 // Pipeline Policies removed — prototype-only concept
 import { ContentSourcesPage } from '../Admin/ContentSourcesPage';
 import { LearningPage } from '../Learning/LearningPage';
+import { CompliancePage } from '../Compliance/CompliancePage';
 import { SetupWizardPage } from '../Setup/SetupWizardPage';
 import { GeneralPage } from '../Admin/GeneralPage';
 import { DevSpacesDetailPage } from '../Admin/DevSpacesDetailPage';
@@ -147,6 +148,7 @@ const RouteViewContent = () => {
             </RequirePermission>
           }
         />
+        <Route path="compliance" element={<CompliancePage />} />
         <Route path="learning" element={<LearningPage />} />
         <Route path="admin/general" element={<GeneralPage />} />
         <Route path="admin/integrations" element={<ConnectionsPage />} />

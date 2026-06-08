@@ -26,6 +26,7 @@ import SearchIcon from '@material-ui/icons/Search';
 import AddCircleOutlineIcon from '@material-ui/icons/AddCircleOutline';
 import MemoryIcon from '@material-ui/icons/Memory';
 import SchoolIcon from '@material-ui/icons/School';
+import AssignmentTurnedInIcon from '@material-ui/icons/AssignmentTurnedIn';
 import SyncIcon from '@material-ui/icons/Sync';
 import LinkIcon from '@material-ui/icons/Link';
 import VpnKeyIcon from '@material-ui/icons/VpnKey';
@@ -111,9 +112,10 @@ const GlobalRestartBanner = () => {
 };
 
 const RoleAdaptiveSidebar = () => {
-  const { hasRole } = useUserRoleContext();
-  const isDeveloper = hasRole('developer');
+  const { role, hasRole } = useUserRoleContext();
   const isAdmin = hasRole('admin');
+  const showDevelop = role === 'developer' || isAdmin;
+  const showOperate = role === 'operator' || isAdmin;
 
   return (
     <Sidebar>
@@ -135,8 +137,8 @@ const RoleAdaptiveSidebar = () => {
           text="Activity"
         />
 
-        {/* Developer section — hidden from SMEs */}
-        {isDeveloper && (
+        {/* Develop — developer and admin only */}
+        {showDevelop && (
           <>
             <SidebarDivider />
             <SidebarSectionLabel text="Develop" />
@@ -146,14 +148,27 @@ const RoleAdaptiveSidebar = () => {
               text="Git Repositories"
             />
             <SidebarItem
+              icon={CategoryIcon}
+              to="/self-service/collections"
+              text="Collections"
+            />
+            <SidebarItem
               icon={MemoryIcon}
               to="/self-service/ee"
               text="Execution Environments"
             />
+          </>
+        )}
+
+        {/* Operate — operator and admin only */}
+        {showOperate && (
+          <>
+            <SidebarDivider />
+            <SidebarSectionLabel text="Operate" />
             <SidebarItem
-              icon={CategoryIcon}
-              to="/self-service/collections"
-              text="Collections"
+              icon={AssignmentTurnedInIcon}
+              to="/self-service/compliance"
+              text="Compliance"
             />
           </>
         )}
@@ -161,7 +176,7 @@ const RoleAdaptiveSidebar = () => {
         <SidebarDivider />
         <SidebarSectionLabel text="Learn" />
         <SidebarItem icon={LibraryBooks} to="docs" text="Documentation" />
-        <SidebarItem icon={SchoolIcon} to="/self-service/learning" text="Learning" />
+        <SidebarItem icon={SchoolIcon} to="/self-service/learning" text="Learning Paths" />
 
         {/* Administration — admin only */}
         {isAdmin && (
@@ -171,7 +186,7 @@ const RoleAdaptiveSidebar = () => {
             <SidebarItem
               icon={SettingsIcon}
               to="/self-service/admin/general"
-              text="General"
+              text="Settings"
             />
             <SidebarItem
               icon={LinkIcon}
@@ -179,19 +194,14 @@ const RoleAdaptiveSidebar = () => {
               text="Integrations"
             />
             <SidebarItem
-              icon={SyncIcon}
-              to="/self-service/admin/sync-activity"
-              text="Sync status"
-            />
-            <SidebarItem
-              icon={MemoryIcon}
-              to="/self-service/admin/ee-builder"
-              text="EE Builder"
-            />
-            <SidebarItem
               icon={VpnKeyIcon}
               to="rbac"
               text="Access Control"
+            />
+            <SidebarItem
+              icon={SyncIcon}
+              to="/self-service/admin/sync-activity"
+              text="Sync Status"
             />
           </>
         )}

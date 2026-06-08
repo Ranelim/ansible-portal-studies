@@ -29,6 +29,7 @@ import ExitToAppIcon from '@material-ui/icons/ExitToApp';
 import PersonOutlineIcon from '@material-ui/icons/PersonOutline';
 import BuildIcon from '@material-ui/icons/Build';
 import SupervisorAccountIcon from '@material-ui/icons/SupervisorAccount';
+import SecurityIcon from '@material-ui/icons/Security';
 import OpenInNewIcon from '@material-ui/icons/OpenInNew';
 import PlaylistAddCheckIcon from '@material-ui/icons/PlaylistAddCheck';
 import { makeStyles, alpha } from '@material-ui/core/styles';
@@ -329,6 +330,7 @@ export const GlobalHeader = () => {
 
   const { role: currentRole, hasRole } = useUserRoleContext();
   const isDeveloper = hasRole('developer');
+  const showOperate = currentRole === 'operator' || currentRole === 'admin';
 
   if (location.pathname.includes('/setup')) {
     return null;
@@ -485,7 +487,16 @@ export const GlobalHeader = () => {
               <ListItemText primary="Create execution environment" secondary="Build a custom EE" />
             </MenuItem>
           )}
-          {isDeveloper && <Divider />}
+          {showOperate && (
+            <MenuItem
+              onClick={() => { setCreateAnchor(null); navigate('/self-service/compliance'); }}
+              className={classes.menuItem}
+            >
+              <ListItemIcon><SecurityIcon fontSize="small" /></ListItemIcon>
+              <ListItemText primary="Run compliance scan" secondary="Scan hosts against compliance profiles" />
+            </MenuItem>
+          )}
+          {(isDeveloper || showOperate) && <Divider />}
           <MenuItem
             onClick={() => { setCreateAnchor(null); navigate('/create'); }}
             className={classes.menuItem}
@@ -616,6 +627,7 @@ export const GlobalHeader = () => {
           {([
             { role: 'sme' as UserRole, label: 'SME', icon: <PersonOutlineIcon fontSize="small" /> },
             { role: 'developer' as UserRole, label: 'Developer', icon: <BuildIcon fontSize="small" /> },
+            { role: 'operator' as UserRole, label: 'Operator', icon: <SecurityIcon fontSize="small" /> },
             { role: 'admin' as UserRole, label: 'Admin', icon: <SupervisorAccountIcon fontSize="small" /> },
           ]).map(({ role: r, label, icon }) => (
             <MenuItem

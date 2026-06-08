@@ -226,10 +226,13 @@ const app = createApp({
 });
 
 const RoleLandingRedirect = () => {
-  const { hasRole } = useUserRoleContext();
-  const target = hasRole('developer')
-    ? '/self-service/repositories'
-    : '/create';
+  const { role, hasRole } = useUserRoleContext();
+  let target = '/create';
+  if (role === 'operator') {
+    target = '/self-service/compliance';
+  } else if (hasRole('developer')) {
+    target = '/self-service/repositories';
+  }
   return <Navigate to={target} replace />;
 };
 
