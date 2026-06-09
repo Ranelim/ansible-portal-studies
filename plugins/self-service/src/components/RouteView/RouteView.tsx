@@ -151,6 +151,8 @@ const RouteViewContent = () => {
         <Route path="compliance" element={<CompliancePage />} />
         <Route path="compliance/scans" element={<CompliancePage />} />
         <Route path="compliance/scan/:scanId" element={<CompliancePage />} />
+        <Route path="compliance/profiles" element={<CompliancePage />} />
+        <Route path="compliance/profiles/:profileDefId" element={<CompliancePage />} />
         <Route path="learning" element={<LearningPage />} />
         <Route path="admin/general" element={<GeneralPage />} />
         <Route path="admin/integrations" element={<ConnectionsPage />} />

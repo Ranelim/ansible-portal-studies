@@ -123,6 +123,17 @@ const useStaticTemplateStyles = makeStyles(theme => ({
 const StaticScaffolderFallback = () => {
   const classes = useStaticTemplateStyles();
   const navigate = useNavigate();
+  const [categoryFilter, setCategoryFilter] = React.useState('');
+
+  const categories = React.useMemo(() => {
+    const types = new Set(DEMO_TEMPLATES.map(t => t.type));
+    return Array.from(types).sort();
+  }, []);
+
+  const filteredTemplates = categoryFilter
+    ? DEMO_TEMPLATES.filter(t => t.type === categoryFilter)
+    : DEMO_TEMPLATES;
+
   return (
     <Box className={classes.root}>
       <Typography className={classes.pageTitle}>Templates</Typography>
@@ -142,11 +153,16 @@ const StaticScaffolderFallback = () => {
           <Box className={classes.sidebarSection}>
             <Typography className={classes.sidebarLabel}>Ansible RHDH</Typography>
             <Box className={`${classes.sidebarItem} ${classes.sidebarItemActive}`}>
-              <span>All</span><span>{DEMO_TEMPLATES.length}</span>
+              <span>All</span><span>{filteredTemplates.length}</span>
             </Box>
           </Box>
           <Typography className={classes.filterLabel}>Categories</Typography>
-          <select className={classes.filterSelect}><option value="">All</option></select>
+          <select className={classes.filterSelect} value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}>
+            <option value="">All</option>
+            {categories.map(cat => (
+              <option key={cat} value={cat}>{cat.charAt(0).toUpperCase() + cat.slice(1)}</option>
+            ))}
+          </select>
           <Typography className={classes.filterLabel}>Tags</Typography>
           <select className={classes.filterSelect}><option value="">All</option></select>
           <Typography className={classes.filterLabel}>Owner</Typography>
@@ -154,7 +170,7 @@ const StaticScaffolderFallback = () => {
         </Box>
         <Box flex={1}>
           <Grid container spacing={2}>
-            {DEMO_TEMPLATES.map(t => (
+            {filteredTemplates.map(t => (
               <Grid item xs={12} sm={6} key={t.name}>
                 <Card className={classes.card} variant="outlined">
                   <Box className={classes.cardHeader}>

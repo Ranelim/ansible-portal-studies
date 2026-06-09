@@ -17,8 +17,13 @@ import {
   Switch,
   Popover,
   Tooltip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
   makeStyles,
 } from '@material-ui/core';
+import WarningIcon from '@material-ui/icons/Warning';
 import KeyboardArrowDownIcon from '@material-ui/icons/KeyboardArrowDown';
 import KeyboardArrowRightIcon from '@material-ui/icons/KeyboardArrowRight';
 import CheckCircleIcon from '@material-ui/icons/CheckCircle';
@@ -220,26 +225,34 @@ const RuleRow = ({
   rule,
   selected,
   onToggle,
+  fixed,
+  readOnly,
 }: {
   rule: ComplianceRule;
   selected: boolean;
   onToggle: () => void;
+  fixed?: boolean;
+  readOnly?: boolean;
 }) => {
   const classes = useStyles();
   const [expanded, setExpanded] = useState(false);
   const sevCfg = SEVERITY_CONFIG[rule.severity];
+  const isDimmed = rule.failCount === 0 || fixed;
 
   return (
     <>
-      <TableRow className={classes.row} onClick={() => setExpanded(!expanded)} style={rule.failCount === 0 ? { opacity: 0.4 } : undefined}>
+      <TableRow className={classes.row} onClick={() => setExpanded(!expanded)} style={isDimmed ? { opacity: 0.4 } : undefined}>
         <TableCell padding="checkbox" onClick={e => e.stopPropagation()}>
-          {rule.failCount > 0 && (
+          {!readOnly && rule.failCount > 0 && (
             <Checkbox
               checked={selected}
               onChange={onToggle}
               size="small"
               color="primary"
             />
+          )}
+          {fixed && (
+            <CheckCircleIcon style={{ fontSize: 18, color: statusColors.success }} />
           )}
         </TableCell>
         <TableCell style={{ width: 32, padding: '8px 0 8px 8px' }}>
@@ -271,26 +284,50 @@ const RuleRow = ({
         </TableCell>
         <TableCell>{rule.category}</TableCell>
         <TableCell>
-          <HostsCell rule={rule} />
-        </TableCell>
-        <TableCell>
-          {rule.failCount > 0 ? (
-            <Typography style={{ color: statusColors.error, fontWeight: 600, fontSize: 13 }}>
-              {rule.failCount} failing
-            </Typography>
+          {fixed ? (
+            <Chip
+              size="small"
+              label="Fixed"
+              style={{ backgroundColor: `${statusColors.success}15`, color: statusColors.success, fontWeight: 600, fontSize: 10, height: 20 }}
+            />
           ) : (
-            <Typography style={{ color: statusColors.success, fontSize: 13 }}>
-              All passing
-            </Typography>
+            <HostsCell rule={rule} />
           )}
         </TableCell>
       </TableRow>
       <TableRow>
-        <TableCell colSpan={7} style={{ padding: 0, borderBottom: expanded ? undefined : 'none' }}>
+        <TableCell colSpan={6} style={{ padding: 0, borderBottom: expanded ? undefined : 'none' }}>
           <Collapse in={expanded} timeout="auto" unmountOnExit>
             <Box className={classes.expandedContent}>
               <Typography style={{ fontSize: 13, marginBottom: 12, lineHeight: 1.6 }}>
                 {rule.description}
+              </Typography>
+
+              {rule.remediationSnippet && (
+                <Box style={{ marginBottom: 16 }}>
+                  <Typography style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, color: 'rgba(0,0,0,0.45)', marginBottom: 6 }}>
+                    Remediation task
+                  </Typography>
+                  <Box
+                    style={{
+                      backgroundColor: '#1e1e2e',
+                      borderRadius: 6,
+                      padding: 12,
+                      fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+                      fontSize: 11,
+                      lineHeight: 1.6,
+                      color: '#cdd6f4',
+                      whiteSpace: 'pre',
+                      overflowX: 'auto',
+                    }}
+                  >
+                    {rule.remediationSnippet}
+                  </Box>
+                </Box>
+              )}
+
+              <Typography style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, color: 'rgba(0,0,0,0.45)', marginBottom: 6 }}>
+                Host results
               </Typography>
               <Box className={classes.hostGrid}>
                 {rule.hostResults.map(host => (
@@ -322,18 +359,34 @@ const RuleRow = ({
 export const FindingsContent = ({
   profileId,
   profileStatus,
+  onRemediate,
+  remediatedRuleIds = [],
 }: {
   profileId: string;
   profileStatus: ProfileStatus;
+  onRemediate?: (ruleIds: string[]) => void;
+  remediatedRuleIds?: string[];
 }) => {
   const classes = useStyles();
   const allRules = getProfileFindings(profileId);
   const [showPassing, setShowPassing] = useState(false);
   const [selectedRules, setSelectedRules] = useState<Set<string>>(new Set());
 
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const isVerified = profileStatus === 'verified';
+  const remediatedSet = new Set(remediatedRuleIds);
   const failingRules = allRules.filter(r => r.failCount > 0);
   const passingRules = allRules.filter(r => r.failCount === 0);
-  const displayedRules = showPassing ? allRules : failingRules;
+
+  const remainingRules = isVerified ? failingRules.filter(r => !remediatedSet.has(r.ruleId)) : [];
+  const fixedRules = isVerified ? failingRules.filter(r => remediatedSet.has(r.ruleId)) : [];
+
+  let displayedRules: ComplianceRule[];
+  if (isVerified) {
+    displayedRules = [...remainingRules, ...fixedRules, ...(showPassing ? passingRules : [])];
+  } else {
+    displayedRules = showPassing ? allRules : failingRules;
+  }
 
   const toggleRule = (ruleId: string) => {
     setSelectedRules(prev => {
@@ -352,7 +405,7 @@ export const FindingsContent = ({
     }
   };
 
-  const isRemediating = profileStatus === 'remediation-in-progress';
+  const isRemediating = profileStatus === 'remediating';
 
   return (
     <>
@@ -393,27 +446,16 @@ export const FindingsContent = ({
             }
           />
         </Box>
-        {selectedRules.size > 0 && (
+        {!isVerified && selectedRules.size > 0 && (
           <Button
             variant="contained"
             color="primary"
             size="small"
             startIcon={<PlayArrowIcon />}
             style={{ textTransform: 'none', fontWeight: 600 }}
+            onClick={() => setConfirmOpen(true)}
           >
             Remediate {selectedRules.size} {selectedRules.size === 1 ? 'rule' : 'rules'}
-          </Button>
-        )}
-        {selectedRules.size === 0 && failingRules.length > 0 && !isRemediating && (
-          <Button
-            variant="outlined"
-            color="primary"
-            size="small"
-            startIcon={<PlayArrowIcon />}
-            style={{ textTransform: 'none' }}
-            onClick={selectAllFailing}
-          >
-            Select all failing rules
           </Button>
         )}
       </Box>
@@ -423,7 +465,7 @@ export const FindingsContent = ({
           <TableHead>
             <TableRow>
               <TableCell padding="checkbox">
-                {failingRules.length > 0 && (
+                {!isVerified && failingRules.length > 0 && (
                   <Checkbox
                     checked={selectedRules.size === failingRules.length && failingRules.length > 0}
                     indeterminate={selectedRules.size > 0 && selectedRules.size < failingRules.length}
@@ -438,7 +480,6 @@ export const FindingsContent = ({
               <TableCell>Rule</TableCell>
               <TableCell>Category</TableCell>
               <TableCell style={{ width: 180 }}>Hosts</TableCell>
-              <TableCell style={{ width: 100 }}>Status</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -448,6 +489,8 @@ export const FindingsContent = ({
                 rule={rule}
                 selected={selectedRules.has(rule.ruleId)}
                 onToggle={() => toggleRule(rule.ruleId)}
+                fixed={isVerified && remediatedSet.has(rule.ruleId)}
+                readOnly={isVerified}
               />
             ))}
           </TableBody>
@@ -467,6 +510,54 @@ export const FindingsContent = ({
           </Typography>
         </Box>
       )}
+
+      <Dialog
+        open={confirmOpen}
+        onClose={() => setConfirmOpen(false)}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{ style: { borderRadius: 12 } }}
+      >
+        <DialogTitle disableTypography>
+          <Box display="flex" alignItems="center" style={{ gap: 10 }}>
+            <WarningIcon style={{ color: statusColors.warning, fontSize: 22 }} />
+            <Typography style={{ fontWeight: 600, fontSize: 16 }}>
+              Confirm remediation
+            </Typography>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Typography style={{ fontSize: 13, lineHeight: 1.6, marginBottom: 8 }}>
+            You are about to remediate <strong>{selectedRules.size}</strong>{' '}
+            {selectedRules.size === 1 ? 'rule' : 'rules'} across the scanned hosts.
+            This will generate and run a remediation playbook.
+          </Typography>
+          <Typography style={{ fontSize: 13, lineHeight: 1.6, color: statusColors.warning }}>
+            Remediation runs once. To fix additional rules or re-run, you will need to scan again.
+          </Typography>
+        </DialogContent>
+        <DialogActions style={{ padding: '8px 24px 16px' }}>
+          <Button
+            onClick={() => setConfirmOpen(false)}
+            style={{ textTransform: 'none' }}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={() => {
+              setConfirmOpen(false);
+              const ruleIds = Array.from(selectedRules);
+              setSelectedRules(new Set());
+              onRemediate?.(ruleIds);
+            }}
+            style={{ textTransform: 'none', fontWeight: 600 }}
+          >
+            Remediate {selectedRules.size} {selectedRules.size === 1 ? 'rule' : 'rules'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 };

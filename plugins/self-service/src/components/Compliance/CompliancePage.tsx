@@ -15,6 +15,15 @@ import {
   Collapse,
   Tooltip,
   Snackbar,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
   makeStyles,
 } from '@material-ui/core';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
@@ -22,16 +31,19 @@ import KeyboardArrowDownIcon from '@material-ui/icons/KeyboardArrowDown';
 import KeyboardArrowRightIcon from '@material-ui/icons/KeyboardArrowRight';
 import CheckCircleIcon from '@material-ui/icons/CheckCircle';
 import ErrorIcon from '@material-ui/icons/Error';
-import FiberManualRecordIcon from '@material-ui/icons/FiberManualRecord';
 import LoopIcon from '@material-ui/icons/Loop';
-import RadioButtonUncheckedIcon from '@material-ui/icons/RadioButtonUnchecked';
 import HelpOutlineIcon from '@material-ui/icons/HelpOutline';
 import AddIcon from '@material-ui/icons/Add';
 import ArrowBackIcon from '@material-ui/icons/ArrowBack';
+import EditIcon from '@material-ui/icons/Edit';
+import SecurityIcon from '@material-ui/icons/Security';
+import DeleteOutlineIcon from '@material-ui/icons/DeleteOutline';
+import FileCopyOutlinedIcon from '@material-ui/icons/FileCopyOutlined';
 import { statusColors } from '../common/statusColors';
 import {
   INVENTORIES,
   COMPLIANCE_SCANS,
+  PROFILE_DEFINITIONS,
   getScan,
   getProfile,
   getProfileScans,
@@ -45,8 +57,9 @@ import {
   type ComplianceScan,
   type ComplianceFramework,
   type ProfileStatus,
+  type ProfileDefinition,
 } from './complianceDemoData';
-import { CompliancePipeline } from './CompliancePipeline';
+import { CompliancePipeline, STEP_DEFINITIONS } from './CompliancePipeline';
 import { FindingsContent } from './FindingsContent';
 import { NewScanWizard } from './NewScanWizard';
 
@@ -62,45 +75,17 @@ const SEVERITY_COLORS = {
 
 
 // ---------------------------------------------------------------------------
-// Pipeline step helpers
-// ---------------------------------------------------------------------------
-
-const PIPELINE_STEPS = [
-  { id: 'assess', label: 'Scanned' },
-  { id: 'review', label: 'Review' },
-  { id: 'build', label: 'Build' },
-  { id: 'remediate', label: 'Remediate' },
-  { id: 'verify', label: 'Verify' },
-];
-
-function getActiveStep(status: ProfileStatus): { stepIndex: number; running: boolean } {
-  switch (status) {
-    case 'not-scanned': return { stepIndex: -1, running: false };
-    case 'assessed': return { stepIndex: 1, running: false };
-    case 'remediation-in-progress': return { stepIndex: 3, running: true };
-    case 'verification-pending': return { stepIndex: 4, running: false };
-    case 'verified': return { stepIndex: 5, running: false };
-  }
-}
-
-function getNextAction(status: ProfileStatus, hasIssues: boolean): { label: string; variant: 'contained' | 'outlined' } | null {
-  if (status === 'not-scanned') return { label: 'Scan now', variant: 'outlined' };
-  if (status === 'assessed' && hasIssues) return { label: 'Review findings', variant: 'contained' };
-  if (status === 'remediation-in-progress') return { label: 'View progress', variant: 'outlined' };
-  if (status === 'verification-pending') return { label: 'Verify now', variant: 'contained' };
-  return null;
-}
-
-// ---------------------------------------------------------------------------
 // Tabs
 // ---------------------------------------------------------------------------
 
 const tabs = [
   { id: 'inventories', label: 'Inventories' },
   { id: 'scans', label: 'Scans' },
+  { id: 'profiles', label: 'Profiles' },
 ];
 
 const getTabIndex = (pathname: string): number => {
+  if (pathname.includes('/compliance/profile')) return 2;
   if (pathname.includes('/compliance/scans') || pathname.includes('/compliance/scan/')) return 1;
   return 0;
 };
@@ -157,12 +142,8 @@ const useStyles = makeStyles(theme => ({
   profileFramework: { fontWeight: 600, fontSize: 13, minWidth: 160 },
   profileScore: { fontSize: 14, fontWeight: 700, minWidth: 50 },
   profileIssues: { display: 'flex', gap: 4, flex: 1, flexWrap: 'wrap', alignItems: 'center' },
-  pipelineInline: { display: 'flex', alignItems: 'center', gap: 2, minWidth: 120 },
-  pipelineDot: { fontSize: 10 },
   pipelineRunning: { fontSize: 12, animation: '$spin 1.2s linear infinite' },
   '@keyframes spin': { from: { transform: 'rotate(0deg)' }, to: { transform: 'rotate(360deg)' } },
-  pipelineLabel: { fontSize: 11, fontWeight: 600, marginLeft: 3 },
-  actionBtn: { textTransform: 'none', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' },
 
   // Scan history
   scanRow: {
@@ -250,36 +231,49 @@ const useStyles = makeStyles(theme => ({
     transition: 'background-color 0.15s ease',
     '&:hover': { filter: 'brightness(0.95)' },
   },
+  spinningIcon: {
+    animation: '$spin 1.2s linear infinite',
+  },
+
+  // Profile tab
+  profileCard: {
+    border: '1px solid #e8e8e8',
+    borderRadius: 8,
+    padding: '16px 20px',
+    cursor: 'pointer',
+    transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
+    '&:hover': {
+      borderColor: '#b8bbbe',
+      boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+    },
+  },
+  profileCardName: {
+    fontSize: 14,
+    fontWeight: 600,
+    color: '#151515',
+  },
+  profileCardMeta: {
+    fontSize: 12,
+    color: 'rgba(0,0,0,0.55)',
+    marginTop: 2,
+  },
+  profileDetailSection: {
+    marginBottom: 20,
+  },
+  profileDetailLabel: {
+    fontSize: 11,
+    fontWeight: 600,
+    color: 'rgba(0,0,0,0.45)',
+    textTransform: 'uppercase' as const,
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  profileDetailValue: {
+    fontSize: 13,
+    color: '#151515',
+    lineHeight: 1.6,
+  },
 }));
-
-// ---------------------------------------------------------------------------
-// Inline pipeline dots
-// ---------------------------------------------------------------------------
-
-const PipelineDots = ({ status }: { status: ProfileStatus }) => {
-  const classes = useStyles();
-  const { stepIndex, running } = getActiveStep(status);
-
-  if (status === 'not-scanned') {
-    return <Typography style={{ fontSize: 12, color: statusColors.pending }}>Not scanned</Typography>;
-  }
-
-  const currentStep = PIPELINE_STEPS[Math.min(stepIndex, PIPELINE_STEPS.length - 1)];
-
-  return (
-    <Box className={classes.pipelineInline}>
-      {PIPELINE_STEPS.map((step, i) => {
-        if (i < stepIndex) return <CheckCircleIcon key={step.id} className={classes.pipelineDot} style={{ color: statusColors.success, fontSize: 12 }} />;
-        if (i === stepIndex && running) return <LoopIcon key={step.id} className={classes.pipelineRunning} style={{ color: statusColors.warning }} />;
-        if (i === stepIndex) return <FiberManualRecordIcon key={step.id} className={classes.pipelineDot} style={{ color: statusColors.info, fontSize: 12 }} />;
-        return <RadioButtonUncheckedIcon key={step.id} className={classes.pipelineDot} style={{ color: `${statusColors.pending}50` }} />;
-      })}
-      <Typography className={classes.pipelineLabel} style={{ color: running ? statusColors.warning : stepIndex >= 5 ? statusColors.success : statusColors.info }}>
-        {stepIndex >= 5 ? 'Verified' : currentStep?.label}
-      </Typography>
-    </Box>
-  );
-};
 
 // ---------------------------------------------------------------------------
 // Profile sub-row (inside inventory accordion)
@@ -289,7 +283,6 @@ const ProfileSubRow = ({ profile }: { profile: ComplianceProfile }) => {
   const classes = useStyles();
   const navigate = useNavigate();
   const breakdown = getProfileIssueSeverity(profile.id);
-  const action = getNextAction(profile.status, breakdown.total > 0);
 
   const currentScan = getProfileScans(profile.id).find(s => s.isCurrent);
   const scanRoute = currentScan
@@ -312,9 +305,21 @@ const ProfileSubRow = ({ profile }: { profile: ComplianceProfile }) => {
         {profile.framework} {profile.frameworkVersion}
       </Typography>
 
-      <Typography className={classes.profileScore} style={{ color: scoreColor(profile.complianceScore) }}>
-        {profile.complianceScore !== null ? `${profile.complianceScore}%` : '—'}
-      </Typography>
+      <Box display="flex" alignItems="center" style={{ minWidth: 80, gap: 4 }}>
+        <Typography className={classes.profileScore} style={{ color: scoreColor(profile.complianceScore) }}>
+          {profile.complianceScore !== null ? `${profile.complianceScore}%` : '—'}
+        </Typography>
+        {profile.trend !== null && profile.trend !== 0 && (
+          <Typography style={{
+            fontSize: 10,
+            fontWeight: 600,
+            color: profile.trend > 0 ? statusColors.success : statusColors.error,
+            lineHeight: 1,
+          }}>
+            {profile.trend > 0 ? `▲ +${profile.trend}` : `▼ ${profile.trend}`}
+          </Typography>
+        )}
+      </Box>
 
       <Box className={classes.profileIssues}>
         {breakdown.total > 0 ? (
@@ -330,25 +335,22 @@ const ProfileSubRow = ({ profile }: { profile: ComplianceProfile }) => {
         ) : null}
       </Box>
 
-      <PipelineDots status={profile.status} />
+      <Typography style={{ fontSize: 12, color: statusColors.pending, minWidth: 120 }}>
+        {currentScan?.startedAt ?? profile.lastAssessedAt ?? '—'}
+      </Typography>
 
-      <Box minWidth={130} textAlign="right" onClick={e => e.stopPropagation()}>
-        {action ? (
-          <Button
-            variant={action.variant}
-            color="primary"
-            size="small"
-            className={classes.actionBtn}
-            onClick={() => navigate(scanRoute)}
-          >
-            {action.label}
-          </Button>
-        ) : profile.status === 'verified' && breakdown.total === 0 ? (
-          <Typography className={classes.compliantLabel} style={{ fontSize: 11, justifyContent: 'flex-end' }}>
-            <CheckCircleIcon style={{ fontSize: 13 }} /> Verified
-          </Typography>
-        ) : null}
-      </Box>
+      <Typography
+        style={{
+          fontSize: 12,
+          color: statusColors.info,
+          fontWeight: 500,
+          minWidth: 80,
+          textAlign: 'right',
+          cursor: 'pointer',
+        }}
+      >
+        View scan →
+      </Typography>
     </Box>
   );
 };
@@ -406,8 +408,8 @@ const InventoryAccordionRow = ({ inventory }: { inventory: Inventory }) => {
                 <Typography className={classes.profileHeaderLabel} style={{ minWidth: 160 }}>Profile</Typography>
                 <Typography className={classes.profileHeaderLabel} style={{ minWidth: 50 }}>Score</Typography>
                 <Typography className={classes.profileHeaderLabel} style={{ flex: 1 }}>Issues</Typography>
-                <Typography className={classes.profileHeaderLabel} style={{ minWidth: 120 }}>Remediation</Typography>
-                <Box minWidth={130} />
+                <Typography className={classes.profileHeaderLabel} style={{ minWidth: 120 }}>Last scanned</Typography>
+                <Box minWidth={80} />
               </Box>
               {profiles.map(p => (
                 <ProfileSubRow key={p.id} profile={p} />
@@ -554,7 +556,46 @@ const ScanWorkflow = ({ scan }: { scan: ComplianceScan }) => {
 
   const profile = getProfile(scan.profileId);
   const status = profile?.status ?? 'assessed';
-  return <PipelineDots status={status} />;
+
+  if (scan.rulesFailing === 0) {
+    return (
+      <Typography style={{ fontSize: 12, color: statusColors.success, fontWeight: 500 }}>
+        All passing
+      </Typography>
+    );
+  }
+
+  switch (status) {
+    case 'assessed':
+      return (
+        <Typography style={{ fontSize: 12, color: statusColors.info, fontWeight: 600 }}>
+          Pending
+        </Typography>
+      );
+    case 'plan-ready':
+      return (
+        <Typography style={{ fontSize: 12, color: statusColors.info, fontWeight: 600 }}>
+          Reviewing plan
+        </Typography>
+      );
+    case 'remediating':
+      return (
+        <Box className={classes.scanStatusCell}>
+          <LoopIcon style={{ fontSize: 14, color: statusColors.warning }} className={classes.pipelineRunning} />
+          <Typography style={{ fontSize: 12, fontWeight: 600, color: statusColors.warning }}>Remediating</Typography>
+        </Box>
+      );
+    case 'verified': {
+      const mockFixed = Math.max(1, Math.round(scan.rulesFailing * 0.6));
+      return (
+        <Typography style={{ fontSize: 12, fontWeight: 600, color: statusColors.success }}>
+          {mockFixed} of {scan.rulesFailing} fixed
+        </Typography>
+      );
+    }
+    default:
+      return null;
+  }
 };
 
 function getScanSeverityChips(scan: ComplianceScan): React.ReactNode {
@@ -575,8 +616,86 @@ function getScanSeverityChips(scan: ComplianceScan): React.ReactNode {
 const ScanHistoryContent = ({ scans }: { scans: ComplianceScan[] }) => {
   const classes = useStyles();
   const navigate = useNavigate();
+  const [inventoryFilter, setInventoryFilter] = useState<string>('all');
+  const [profileFilter, setProfileFilter] = useState<string>('all');
+
+  const inventories = useMemo(() => {
+    const names = new Set(scans.map(s => s.inventoryName));
+    return Array.from(names).sort();
+  }, [scans]);
+
+  const profiles = useMemo(() => {
+    const names = new Set(scans.map(s => s.profileName));
+    return Array.from(names).sort();
+  }, [scans]);
+
+  const filteredScans = useMemo(() => {
+    return scans.filter(s => {
+      if (inventoryFilter !== 'all' && s.inventoryName !== inventoryFilter) return false;
+      if (profileFilter !== 'all' && s.profileName !== profileFilter) return false;
+      return true;
+    });
+  }, [scans, inventoryFilter, profileFilter]);
+
+  const activeFilterCount = (inventoryFilter !== 'all' ? 1 : 0) + (profileFilter !== 'all' ? 1 : 0);
 
   return (
+    <Box>
+      <Box display="flex" alignItems="center" style={{ gap: 12, marginBottom: 16 }}>
+        <Box display="flex" alignItems="center" style={{ gap: 6 }}>
+          <Typography style={{ fontSize: 12, fontWeight: 600, color: 'rgba(0,0,0,0.5)' }}>Inventory</Typography>
+          <select
+            value={inventoryFilter}
+            onChange={e => setInventoryFilter(e.target.value)}
+            style={{
+              fontSize: 12,
+              padding: '4px 8px',
+              borderRadius: 4,
+              border: '1px solid #d0d0d0',
+              backgroundColor: inventoryFilter !== 'all' ? `${statusColors.info}08` : '#fff',
+              cursor: 'pointer',
+              outline: 'none',
+            }}
+          >
+            <option value="all">All inventories</option>
+            {inventories.map(name => (
+              <option key={name} value={name}>{name}</option>
+            ))}
+          </select>
+        </Box>
+        <Box display="flex" alignItems="center" style={{ gap: 6 }}>
+          <Typography style={{ fontSize: 12, fontWeight: 600, color: 'rgba(0,0,0,0.5)' }}>Profile</Typography>
+          <select
+            value={profileFilter}
+            onChange={e => setProfileFilter(e.target.value)}
+            style={{
+              fontSize: 12,
+              padding: '4px 8px',
+              borderRadius: 4,
+              border: '1px solid #d0d0d0',
+              backgroundColor: profileFilter !== 'all' ? `${statusColors.info}08` : '#fff',
+              cursor: 'pointer',
+              outline: 'none',
+            }}
+          >
+            <option value="all">All profiles</option>
+            {profiles.map(name => (
+              <option key={name} value={name}>{name}</option>
+            ))}
+          </select>
+        </Box>
+        {activeFilterCount > 0 && (
+          <Typography
+            style={{ fontSize: 12, color: statusColors.info, cursor: 'pointer', fontWeight: 500 }}
+            onClick={() => { setInventoryFilter('all'); setProfileFilter('all'); }}
+          >
+            Clear filters
+          </Typography>
+        )}
+        <Typography style={{ fontSize: 12, color: 'rgba(0,0,0,0.4)', marginLeft: 'auto' }}>
+          {filteredScans.length} {filteredScans.length === 1 ? 'scan' : 'scans'}
+        </Typography>
+      </Box>
     <TableContainer>
       <Table className={classes.table}>
         <TableHead>
@@ -588,7 +707,7 @@ const ScanHistoryContent = ({ scans }: { scans: ComplianceScan[] }) => {
           </TableRow>
         </TableHead>
         <TableBody>
-          {scans.map(scan => {
+          {filteredScans.map(scan => {
             const isCurrent = scan.isCurrent === true;
             const isRunning = scan.status === 'running';
 
@@ -649,6 +768,7 @@ const ScanHistoryContent = ({ scans }: { scans: ComplianceScan[] }) => {
         </TableBody>
       </Table>
     </TableContainer>
+    </Box>
   );
 };
 
@@ -675,17 +795,63 @@ function getRemediationBanner(status: ProfileStatus, failingCount: number, hostC
   switch (status) {
     case 'assessed':
       if (failingCount === 0) return null;
-      return { message: `${failingCount} failing rules can be remediated. Select rules to build a remediation playbook.`, color: statusColors.info, bg: `${statusColors.info}10`, cta: 'Build remediation' };
-    case 'remediation-in-progress':
-      return { message: `Running remediation playbook across ${hostCount} hosts.`, color: statusColors.warning, bg: `${statusColors.warning}10` };
-    case 'verification-pending':
-      return { message: 'Remediation complete. Run a verification scan to confirm the fixes.', color: statusColors.info, bg: `${statusColors.info}10`, cta: 'Run verification scan' };
+      return { message: `${failingCount} failing rules can be remediated. Select the rules you want to fix, then click Remediate.`, color: statusColors.info, bg: `${statusColors.info}10` };
+    case 'plan-ready':
+      return { message: 'Remediation plan is ready. Review the generated playbook, then approve to proceed.', color: statusColors.info, bg: `${statusColors.info}10` };
+    case 'remediating':
+      return { message: `Running remediation playbook across ${hostCount} hosts. Verification scan will follow automatically.`, color: statusColors.warning, bg: `${statusColors.warning}10` };
     case 'verified':
-      return { message: 'Verification complete. Remediation has been confirmed.', color: statusColors.success, bg: `${statusColors.success}10` };
+      return { message: 'Remediation and verification complete. All selected rules have been addressed.', color: statusColors.success, bg: `${statusColors.success}10` };
     default:
       return null;
   }
 }
+
+const PLAN_DELAY_MS = 2000;
+const REMEDIATE_DELAY_MS = 4000;
+const VERIFY_DELAY_MS = 3000;
+
+const MOCK_PLAYBOOK = `---
+- name: Remediate compliance findings
+  hosts: all
+  become: true
+  tasks:
+
+    - name: Ensure password minimum length is 15 characters
+      ansible.builtin.lineinfile:
+        path: /etc/security/pwquality.conf
+        regexp: '^minlen'
+        line: 'minlen = 15'
+        state: present
+
+    - name: Set SSH MaxAuthTries to 4
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^MaxAuthTries'
+        line: 'MaxAuthTries 4'
+      notify: restart sshd
+
+    - name: Enable FIPS mode
+      ansible.builtin.command:
+        cmd: fips-mode-setup --enable
+      when: ansible_fips.enabled is not defined or not ansible_fips.enabled
+
+    - name: Set audit backlog limit
+      ansible.builtin.lineinfile:
+        path: /etc/default/grub
+        regexp: '^GRUB_CMDLINE_LINUX='
+        line: 'GRUB_CMDLINE_LINUX="audit_backlog_limit=8192 audit=1"'
+      notify: rebuild grub
+
+  handlers:
+    - name: restart sshd
+      ansible.builtin.service:
+        name: sshd
+        state: restarted
+
+    - name: rebuild grub
+      ansible.builtin.command:
+        cmd: grub2-mkconfig -o /boot/grub2/grub.cfg`;
 
 const InlineScanDetail = ({ scanId }: { scanId: string }) => {
   const classes = useStyles();
@@ -693,6 +859,18 @@ const InlineScanDetail = ({ scanId }: { scanId: string }) => {
 
   const scan = getScan(scanId);
   const profile = scan ? getProfile(scan.profileId) : undefined;
+
+  const [localStatus, setLocalStatus] = useState<ProfileStatus>(profile?.status ?? 'not-scanned');
+  const [remediatedRuleIds, setRemediatedRuleIds] = useState<string[]>([]);
+  const [progress, setProgress] = useState(0);
+  const [viewingStepId, setViewingStepId] = useState<string | null>(null);
+  const progressRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (progressRef.current) clearInterval(progressRef.current);
+    };
+  }, []);
 
   if (!scan || !profile) {
     return (
@@ -709,12 +887,41 @@ const InlineScanDetail = ({ scanId }: { scanId: string }) => {
     );
   }
 
-  const hostMap = getProfileHostSummary(profile.id);
-  const hostsWithIssues = hostMap.size;
-  const hostCritical = Array.from(hostMap.values()).filter(h => h.critical > 0).length;
   const issueSeverity = getProfileIssueSeverity(profile.id);
-  const banner = getRemediationBanner(profile.status, scan.rulesFailing, scan.hostsScanned);
+  const banner = getRemediationBanner(localStatus, scan.rulesFailing, scan.hostsScanned);
   const triggerLabel = scan.triggeredBy === 'scheduled' ? 'Scheduled' : 'Manual';
+
+  const handleRemediate = (ruleIds: string[]) => {
+    setRemediatedRuleIds(ruleIds);
+    setLocalStatus('plan-ready');
+    setViewingStepId(null);
+  };
+
+  const handleApprovePlan = () => {
+    setLocalStatus('remediating');
+    setProgress(0);
+    setViewingStepId(null);
+
+    const totalMs = REMEDIATE_DELAY_MS + VERIFY_DELAY_MS;
+    const tick = 200;
+    let elapsed = 0;
+
+    progressRef.current = setInterval(() => {
+      elapsed += tick;
+      const pct = Math.min(100, Math.round((elapsed / totalMs) * 100));
+      setProgress(pct);
+
+      if (elapsed >= totalMs) {
+        if (progressRef.current) clearInterval(progressRef.current);
+        setLocalStatus('verified');
+        setProgress(100);
+      }
+    }, tick);
+  };
+
+  const handleStepClick = (stepId: string) => {
+    setViewingStepId(prev => prev === stepId ? null : stepId);
+  };
 
   return (
     <Box>
@@ -734,61 +941,741 @@ const InlineScanDetail = ({ scanId }: { scanId: string }) => {
       </Typography>
 
       <CompliancePipeline
-        profileStatus={profile.status}
-        onStepClick={() => {}}
+        profileStatus={localStatus}
+        activeStepId={viewingStepId}
+        onStepClick={handleStepClick}
       />
 
-      {/* Summary row */}
-      <Box className={classes.scanSummaryRow}>
-        <Box className={classes.scanSummaryLeft}>
-          <Typography style={{ fontSize: 13 }}>
-            <strong>{scan.rulesEvaluated}</strong> rules evaluated
-          </Typography>
-          <span style={{ color: '#d2d2d2', fontSize: 13 }}>|</span>
-          {scan.rulesFailing > 0 ? (
-            <>
+      {/* Empty state when viewing a non-active step */}
+      {(() => {
+        const naturalStepMap: Record<string, string> = {
+          'assessed': 'review',
+          'plan-ready': 'plan',
+          'remediating': 'remediate',
+          'verified': 'verified',
+        };
+        const naturalStep = naturalStepMap[localStatus];
+        const isViewingOtherStep = viewingStepId && viewingStepId !== naturalStep;
+
+        if (isViewingOtherStep) {
+          const stepDef = STEP_DEFINITIONS.find(s => s.id === viewingStepId);
+          if (!stepDef) return null;
+
+          const statusIndex: Record<string, number> = { 'review': 0, 'plan': 1, 'remediate': 2 };
+          const viewIdx = statusIndex[viewingStepId] ?? 0;
+          const currentIdx = statusIndex[naturalStep] ?? 0;
+          const isCompleted = viewIdx < currentIdx || localStatus === 'verified';
+          const isUpcoming = viewIdx > currentIdx && localStatus !== 'verified';
+
+          return (
+            <Box
+              style={{
+                border: `1px solid ${isCompleted ? `${statusColors.success}25` : '#e8e8e8'}`,
+                borderRadius: 8,
+                padding: '32px 24px',
+                textAlign: 'center',
+                backgroundColor: isCompleted ? `${statusColors.success}04` : '#fafafa',
+                marginTop: 8,
+              }}
+            >
+              {isCompleted && (
+                <CheckCircleIcon style={{ fontSize: 28, color: statusColors.success, marginBottom: 8 }} />
+              )}
+              <Typography style={{ fontSize: 15, fontWeight: 600, marginBottom: 6, color: isCompleted ? statusColors.success : 'rgba(0,0,0,0.7)' }}>
+                {isCompleted ? `${stepDef.label} — completed` : stepDef.label}
+              </Typography>
+              <Typography style={{ fontSize: 13, color: 'rgba(0,0,0,0.55)', maxWidth: 420, margin: '0 auto', lineHeight: 1.6 }}>
+                {stepDef.description}
+              </Typography>
+              {isUpcoming && (
+                <Typography style={{ fontSize: 12, color: statusColors.info, marginTop: 12, fontWeight: 500 }}>
+                  Complete the current step to get here.
+                </Typography>
+              )}
+            </Box>
+          );
+        }
+
+        return null;
+      })()}
+
+      {/* State-responsive content (hidden when viewing a non-active step) */}
+      {!viewingStepId || viewingStepId === (() => {
+        const m: Record<string, string> = { 'assessed': 'review', 'plan-ready': 'plan', 'remediating': 'remediate', 'verified': 'verified' };
+        return m[localStatus];
+      })() ? (
+      <>
+
+      {/* State-responsive summary */}
+      {(localStatus === 'assessed' || localStatus === 'not-scanned') && (
+        <>
+          <Box className={classes.scanSummaryRow}>
+            <Box className={classes.scanSummaryLeft}>
               <Typography style={{ fontSize: 13 }}>
-                <strong style={{ color: statusColors.error }}>{scan.rulesFailing}</strong> failing
+                <strong>{scan.rulesEvaluated}</strong> rules evaluated
               </Typography>
               <span style={{ color: '#d2d2d2', fontSize: 13 }}>|</span>
-              {issueSeverity.critical > 0 && (
-                <Chip size="small" label={`${issueSeverity.critical} Critical`} style={{ backgroundColor: `${SEVERITY_COLORS_DETAIL.critical}15`, color: SEVERITY_COLORS_DETAIL.critical, fontWeight: 600, fontSize: 11, height: 22 }} />
+              {scan.rulesFailing > 0 ? (
+                <>
+                  <Typography style={{ fontSize: 13 }}>
+                    <strong style={{ color: statusColors.error }}>{scan.rulesFailing}</strong> failing
+                  </Typography>
+                  <span style={{ color: '#d2d2d2', fontSize: 13 }}>|</span>
+                  {issueSeverity.critical > 0 && (
+                    <Chip size="small" label={`${issueSeverity.critical} Critical`} style={{ backgroundColor: `${SEVERITY_COLORS_DETAIL.critical}15`, color: SEVERITY_COLORS_DETAIL.critical, fontWeight: 600, fontSize: 11, height: 22 }} />
+                  )}
+                  {issueSeverity.high > 0 && (
+                    <Chip size="small" label={`${issueSeverity.high} High`} style={{ backgroundColor: `${SEVERITY_COLORS_DETAIL.high}15`, color: SEVERITY_COLORS_DETAIL.high, fontWeight: 600, fontSize: 11, height: 22 }} />
+                  )}
+                  {issueSeverity.low > 0 && (
+                    <Chip size="small" label={`${issueSeverity.low} Low`} style={{ backgroundColor: `${SEVERITY_COLORS_DETAIL.low}15`, color: SEVERITY_COLORS_DETAIL.low, fontWeight: 600, fontSize: 11, height: 22 }} />
+                  )}
+                </>
+              ) : (
+                <Typography style={{ fontSize: 13, color: statusColors.success, fontWeight: 600 }}>
+                  All passing
+                </Typography>
               )}
-              {issueSeverity.high > 0 && (
-                <Chip size="small" label={`${issueSeverity.high} High`} style={{ backgroundColor: `${SEVERITY_COLORS_DETAIL.high}15`, color: SEVERITY_COLORS_DETAIL.high, fontWeight: 600, fontSize: 11, height: 22 }} />
-              )}
-              {issueSeverity.low > 0 && (
-                <Chip size="small" label={`${issueSeverity.low} Low`} style={{ backgroundColor: `${SEVERITY_COLORS_DETAIL.low}15`, color: SEVERITY_COLORS_DETAIL.low, fontWeight: 600, fontSize: 11, height: 22 }} />
-              )}
-            </>
-          ) : (
-            <Typography style={{ fontSize: 13, color: statusColors.success, fontWeight: 600 }}>
-              All passing
-            </Typography>
+            </Box>
+            {scan.complianceScore !== null && (
+              <Typography style={{ fontSize: 14, fontWeight: 700, color: getScoreColor(scan.complianceScore) }}>
+                {scan.complianceScore}% compliant
+              </Typography>
+            )}
+          </Box>
+          {banner && (
+            <Box className={classes.scanBanner} style={{ backgroundColor: banner.bg, border: `1px solid ${banner.color}30` }}>
+              <Typography style={{ flex: 1, fontSize: 13, color: banner.color }}>
+                {banner.message}
+              </Typography>
+            </Box>
           )}
-        </Box>
-        {scan.complianceScore !== null && (
-          <Typography style={{ fontSize: 14, fontWeight: 700, color: getScoreColor(scan.complianceScore) }}>
-            {scan.complianceScore}% compliant
-          </Typography>
-        )}
-      </Box>
+        </>
+      )}
 
-      {/* Remediation banner */}
-      {banner && (
-        <Box className={classes.scanBanner} style={{ backgroundColor: banner.bg, border: `1px solid ${banner.color}30` }}>
-          <Typography style={{ flex: 1, fontSize: 13, color: banner.color }}>
-            {banner.message}
-          </Typography>
-          {banner.cta && (
-            <Button size="small" variant="contained" color="primary" style={{ textTransform: 'none', fontSize: 12, fontWeight: 600 }}>
-              {banner.cta}
-            </Button>
-          )}
+      {localStatus === 'plan-ready' && (
+        <Box className={classes.scanSummaryRow} style={{ marginBottom: 16 }}>
+          <Box className={classes.scanSummaryLeft}>
+            <Typography style={{ fontSize: 13 }}>
+              <strong style={{ color: statusColors.info }}>{remediatedRuleIds.length}</strong> {remediatedRuleIds.length === 1 ? 'rule' : 'rules'} selected for remediation
+            </Typography>
+            <span style={{ color: '#d2d2d2', fontSize: 13 }}>|</span>
+            <Typography style={{ fontSize: 13 }}>
+              <strong>{scan.rulesFailing - remediatedRuleIds.length}</strong> will remain unfixed
+            </Typography>
+          </Box>
         </Box>
       )}
 
-      <FindingsContent profileId={profile.id} profileStatus={profile.status} />
+      {localStatus === 'verified' && (() => {
+        const remaining = scan.rulesFailing - remediatedRuleIds.length;
+        const mockNewScore = Math.min(100, Math.round(scan.complianceScore! + (remediatedRuleIds.length / scan.rulesEvaluated) * 100 * 0.4));
+        return (
+          <>
+            <Box className={classes.scanSummaryRow}>
+              <Box className={classes.scanSummaryLeft}>
+                <Chip
+                  size="small"
+                  label={`${remediatedRuleIds.length} fixed`}
+                  style={{ backgroundColor: `${statusColors.success}15`, color: statusColors.success, fontWeight: 700, fontSize: 11, height: 24 }}
+                />
+                {remaining > 0 && (
+                  <Chip
+                    size="small"
+                    label={`${remaining} remaining`}
+                    style={{ backgroundColor: `${statusColors.warning}15`, color: statusColors.warning, fontWeight: 700, fontSize: 11, height: 24 }}
+                  />
+                )}
+                {remaining === 0 && (
+                  <Typography style={{ fontSize: 13, color: statusColors.success, fontWeight: 600 }}>
+                    All issues resolved
+                  </Typography>
+                )}
+              </Box>
+              {scan.complianceScore !== null && (
+                <Box display="flex" alignItems="center" style={{ gap: 8 }}>
+                  <Typography style={{ fontSize: 13, color: 'rgba(0,0,0,0.4)', textDecoration: 'line-through' }}>
+                    {scan.complianceScore}%
+                  </Typography>
+                  <Typography style={{ fontSize: 14, fontWeight: 700, color: getScoreColor(mockNewScore) }}>
+                    {mockNewScore}% compliant
+                  </Typography>
+                </Box>
+              )}
+            </Box>
+            <Box className={classes.scanBanner} style={{ backgroundColor: `${statusColors.success}10`, border: `1px solid ${statusColors.success}30` }}>
+              <Typography style={{ flex: 1, fontSize: 13, color: statusColors.success }}>
+                {remediatedRuleIds.length} {remediatedRuleIds.length === 1 ? 'rule was' : 'rules were'} remediated and verified across {scan.hostsScanned} hosts.
+                {remaining > 0 ? ` ${remaining} ${remaining === 1 ? 'rule remains' : 'rules remain'} unfixed. Scan again to remediate.` : ''}
+              </Typography>
+            </Box>
+          </>
+        );
+      })()}
+
+      {/* Step 1: Select rules */}
+      {localStatus === 'assessed' && (
+        <FindingsContent profileId={profile.id} profileStatus={localStatus} onRemediate={handleRemediate} />
+      )}
+
+      {/* Step 2: Remediation plan */}
+      {localStatus === 'plan-ready' && (
+        <Box>
+          <Box
+            style={{
+              border: `1px solid ${statusColors.info}30`,
+              borderRadius: 8,
+              padding: 20,
+              marginBottom: 16,
+              backgroundColor: `${statusColors.info}05`,
+            }}
+          >
+            <Box display="flex" alignItems="center" justifyContent="space-between" marginBottom="4px">
+              <Typography style={{ fontSize: 14, fontWeight: 600 }}>
+                Generated remediation playbook
+              </Typography>
+              <Typography style={{ fontSize: 12, fontWeight: 600, color: 'rgba(0,0,0,0.5)' }}>
+                {remediatedRuleIds.length} {remediatedRuleIds.length === 1 ? 'rule' : 'rules'} → {Math.max(remediatedRuleIds.length, remediatedRuleIds.length + Math.ceil(remediatedRuleIds.length * 0.5))} tasks · {scan.hostsScanned} hosts
+              </Typography>
+            </Box>
+            <Typography style={{ fontSize: 12, color: 'rgba(0,0,0,0.55)', marginBottom: 12 }}>
+              Review the playbook below, then approve to proceed. This will run once across all targeted hosts.
+            </Typography>
+            <Box
+              style={{
+                backgroundColor: '#1e1e2e',
+                borderRadius: 6,
+                padding: 16,
+                maxHeight: 360,
+                overflowY: 'auto',
+                fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+                fontSize: 12,
+                lineHeight: 1.7,
+                color: '#cdd6f4',
+                whiteSpace: 'pre',
+              }}
+            >
+              {MOCK_PLAYBOOK}
+            </Box>
+          </Box>
+          <Box display="flex" justifyContent="flex-end" style={{ gap: 8 }}>
+            <Button
+              variant="outlined"
+              size="small"
+              style={{ textTransform: 'none' }}
+              onClick={() => {
+                setLocalStatus('assessed');
+                setRemediatedRuleIds([]);
+              }}
+            >
+              Back to findings
+            </Button>
+            <Button
+              variant="contained"
+              color="primary"
+              size="small"
+              style={{ textTransform: 'none', fontWeight: 600 }}
+              onClick={handleApprovePlan}
+            >
+              Approve & run remediation
+            </Button>
+          </Box>
+        </Box>
+      )}
+
+      {/* Step 3: Remediate & verify — running */}
+      {localStatus === 'remediating' && (
+        <Box
+          style={{
+            border: `1px solid ${statusColors.warning}30`,
+            borderRadius: 8,
+            padding: 24,
+            textAlign: 'center',
+            backgroundColor: `${statusColors.warning}05`,
+          }}
+        >
+          <LoopIcon
+            className={classes.spinningIcon}
+            style={{
+              fontSize: 32,
+              color: statusColors.warning,
+              marginBottom: 12,
+            }}
+          />
+          <Typography style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>
+            {progress < 60 ? 'Running remediation playbook…' : 'Running verification scan…'}
+          </Typography>
+          <Typography style={{ fontSize: 12, color: 'rgba(0,0,0,0.55)', marginBottom: 16 }}>
+            {progress < 60
+              ? `Applying fixes for ${remediatedRuleIds.length} rules across ${scan.hostsScanned} hosts`
+              : 'Confirming fixes were applied successfully'}
+          </Typography>
+          <Box
+            style={{
+              width: '100%',
+              maxWidth: 400,
+              height: 6,
+              borderRadius: 3,
+              backgroundColor: '#e0e0e0',
+              margin: '0 auto',
+              overflow: 'hidden',
+            }}
+          >
+            <Box
+              style={{
+                height: '100%',
+                width: `${progress}%`,
+                borderRadius: 3,
+                backgroundColor: progress < 60 ? statusColors.warning : statusColors.info,
+                transition: 'width 0.2s ease, background-color 0.3s ease',
+              }}
+            />
+          </Box>
+          <Typography style={{ fontSize: 11, color: 'rgba(0,0,0,0.4)', marginTop: 8 }}>
+            {progress}%
+          </Typography>
+        </Box>
+      )}
+
+      {/* Step 3: Remediate & verify — done */}
+      {localStatus === 'verified' && (
+        <FindingsContent
+          profileId={profile.id}
+          profileStatus={localStatus}
+          remediatedRuleIds={remediatedRuleIds}
+        />
+      )}
+
+      </>
+      ) : null}
+    </Box>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// Profile dialog (new / edit)
+// ---------------------------------------------------------------------------
+
+const FRAMEWORKS: ComplianceFramework[] = ['DISA STIG', 'PCI-DSS', 'CIS', 'NIST 800-53'];
+
+type ProfileDialogProps = {
+  open: boolean;
+  onClose: () => void;
+  existing?: ProfileDefinition;
+};
+
+const ProfileDialog = ({ open, onClose, existing }: ProfileDialogProps) => {
+  const isEdit = !!existing;
+  const [name, setName] = useState(existing?.name ?? '');
+  const [framework, setFramework] = useState<ComplianceFramework>(existing?.framework ?? 'DISA STIG');
+  const [version, setVersion] = useState(existing?.version ?? '');
+  const [targetOS, setTargetOS] = useState(existing?.targetOS ?? '');
+  const [description, setDescription] = useState(existing?.description ?? '');
+
+  useEffect(() => {
+    if (open) {
+      setName(existing?.name ?? '');
+      setFramework(existing?.framework ?? 'DISA STIG');
+      setVersion(existing?.version ?? '');
+      setTargetOS(existing?.targetOS ?? '');
+      setDescription(existing?.description ?? '');
+    }
+  }, [open, existing]);
+
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+      <DialogTitle style={{ paddingBottom: 8 }}>
+        <Typography style={{ fontSize: 16, fontWeight: 600 }}>
+          {isEdit ? 'Edit profile' : 'New compliance profile'}
+        </Typography>
+        <Typography style={{ fontSize: 12, color: 'rgba(0,0,0,0.55)', marginTop: 2 }}>
+          {isEdit
+            ? 'Update the profile configuration below.'
+            : 'Define a compliance profile that can be assigned to inventories for scanning.'}
+        </Typography>
+      </DialogTitle>
+      <DialogContent style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingTop: 8 }}>
+        <TextField
+          label="Profile name"
+          value={name}
+          onChange={e => setName(e.target.value)}
+          fullWidth
+          variant="outlined"
+          size="small"
+          placeholder="e.g., DISA STIG for RHEL 9"
+        />
+        <Box display="flex" style={{ gap: 12 }}>
+          <FormControl variant="outlined" size="small" style={{ flex: 1 }}>
+            <InputLabel>Framework</InputLabel>
+            <Select
+              value={framework}
+              onChange={e => setFramework(e.target.value as ComplianceFramework)}
+              label="Framework"
+            >
+              {FRAMEWORKS.map(fw => (
+                <MenuItem key={fw} value={fw}>{fw}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <TextField
+            label="Version"
+            value={version}
+            onChange={e => setVersion(e.target.value)}
+            variant="outlined"
+            size="small"
+            style={{ flex: 0.6 }}
+            placeholder="e.g., V1R12"
+          />
+        </Box>
+        <TextField
+          label="Target OS"
+          value={targetOS}
+          onChange={e => setTargetOS(e.target.value)}
+          fullWidth
+          variant="outlined"
+          size="small"
+          placeholder="e.g., RHEL 9"
+        />
+        <TextField
+          label="Description"
+          value={description}
+          onChange={e => setDescription(e.target.value)}
+          fullWidth
+          variant="outlined"
+          size="small"
+          multiline
+          minRows={3}
+          placeholder="Describe the purpose and scope of this compliance profile."
+        />
+      </DialogContent>
+      <DialogActions style={{ padding: '12px 24px 16px' }}>
+        <Button onClick={onClose} style={{ textTransform: 'none' }}>
+          Cancel
+        </Button>
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={onClose}
+          style={{ textTransform: 'none', fontWeight: 600 }}
+          disabled={!name.trim() || !version.trim()}
+        >
+          {isEdit ? 'Save changes' : 'Create profile'}
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// Profile detail (inline under Profiles tab)
+// ---------------------------------------------------------------------------
+
+const ProfileDetailInline = ({ profileDefId, onBack }: { profileDefId: string; onBack: () => void }) => {
+  const classes = useStyles();
+  const profDef = PROFILE_DEFINITIONS.find(p => p.id === profileDefId);
+  const [editOpen, setEditOpen] = useState(false);
+
+  if (!profDef) {
+    return (
+      <Box>
+        <Typography
+          className={classes.scanDetailBack}
+          onClick={onBack}
+        >
+          <ArrowBackIcon style={{ fontSize: 16 }} />
+          All profiles
+        </Typography>
+        <Typography style={{ color: statusColors.pending, fontSize: 14 }}>Profile not found.</Typography>
+      </Box>
+    );
+  }
+
+  const assignedInvs = INVENTORIES.filter(inv => profDef.assignedInventories.includes(inv.id));
+
+  return (
+    <Box>
+      <Typography
+        className={classes.scanDetailBack}
+        onClick={onBack}
+      >
+        <ArrowBackIcon style={{ fontSize: 16 }} />
+        All profiles
+      </Typography>
+
+      <Box display="flex" alignItems="flex-start" justifyContent="space-between" style={{ marginBottom: 16 }}>
+        <Box>
+          <Box display="flex" alignItems="center" style={{ gap: 8, marginBottom: 4 }}>
+            <Typography className={classes.scanDetailTitle} style={{ marginBottom: 0 }}>
+              {profDef.name}
+            </Typography>
+            {profDef.isBuiltIn && (
+              <Chip size="small" label="Built-in" style={{ fontSize: 10, height: 20, backgroundColor: '#e8e8e8' }} />
+            )}
+            {!profDef.isBuiltIn && (
+              <Chip size="small" label="Custom" style={{ fontSize: 10, height: 20, backgroundColor: `${statusColors.info}15`, color: statusColors.info }} />
+            )}
+          </Box>
+          <Typography className={classes.scanDetailMeta}>
+            {profDef.framework} {profDef.version} · {profDef.targetOS} · Created {profDef.createdAt}
+          </Typography>
+        </Box>
+        <Box display="flex" style={{ gap: 8 }}>
+          {!profDef.isBuiltIn && (
+            <Tooltip title="Delete profile">
+              <IconButton size="small">
+                <DeleteOutlineIcon style={{ fontSize: 18, color: 'rgba(0,0,0,0.4)' }} />
+              </IconButton>
+            </Tooltip>
+          )}
+          <Tooltip title="Duplicate profile">
+            <IconButton size="small">
+              <FileCopyOutlinedIcon style={{ fontSize: 16, color: 'rgba(0,0,0,0.4)' }} />
+            </IconButton>
+          </Tooltip>
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<EditIcon style={{ fontSize: 14 }} />}
+            onClick={() => setEditOpen(true)}
+            style={{ textTransform: 'none', fontSize: 12 }}
+          >
+            Edit
+          </Button>
+        </Box>
+      </Box>
+
+      {/* Description */}
+      <Box className={classes.profileDetailSection}>
+        <Typography className={classes.profileDetailLabel}>Description</Typography>
+        <Typography className={classes.profileDetailValue}>{profDef.description}</Typography>
+      </Box>
+
+      {/* Metadata grid */}
+      <Box display="flex" style={{ gap: 32, marginBottom: 20 }}>
+        <Box>
+          <Typography className={classes.profileDetailLabel}>Framework</Typography>
+          <Typography className={classes.profileDetailValue}>{profDef.framework}</Typography>
+        </Box>
+        <Box>
+          <Typography className={classes.profileDetailLabel}>Version</Typography>
+          <Typography className={classes.profileDetailValue}>{profDef.version}</Typography>
+        </Box>
+        <Box>
+          <Typography className={classes.profileDetailLabel}>Target OS</Typography>
+          <Typography className={classes.profileDetailValue}>{profDef.targetOS}</Typography>
+        </Box>
+        <Box>
+          <Typography className={classes.profileDetailLabel}>Created by</Typography>
+          <Typography className={classes.profileDetailValue}>{profDef.createdBy}</Typography>
+        </Box>
+        <Box>
+          <Typography className={classes.profileDetailLabel}>Last updated</Typography>
+          <Typography className={classes.profileDetailValue}>{profDef.updatedAt}</Typography>
+        </Box>
+      </Box>
+
+      {/* Rules summary */}
+      <Box className={classes.profileDetailSection}>
+        <Typography className={classes.profileDetailLabel}>Rules</Typography>
+        <Box display="flex" alignItems="center" style={{ gap: 12, marginTop: 4 }}>
+          <Typography style={{ fontSize: 24, fontWeight: 700, color: '#151515' }}>
+            {profDef.enabledRules}
+          </Typography>
+          <Typography style={{ fontSize: 13, color: 'rgba(0,0,0,0.55)' }}>
+            of {profDef.totalRules} rules enabled
+          </Typography>
+          {profDef.enabledRules < profDef.totalRules && (
+            <Chip
+              size="small"
+              label={`${profDef.totalRules - profDef.enabledRules} disabled`}
+              style={{ fontSize: 10, height: 20, backgroundColor: `${statusColors.warning}15`, color: statusColors.warning }}
+            />
+          )}
+        </Box>
+      </Box>
+
+      {/* Categories */}
+      <Box className={classes.profileDetailSection}>
+        <Typography className={classes.profileDetailLabel}>Rule categories</Typography>
+        <Box display="flex" flexWrap="wrap" style={{ gap: 6, marginTop: 4 }}>
+          {profDef.categories.map(cat => (
+            <Chip key={cat} size="small" label={cat} style={{ fontSize: 11, height: 22 }} />
+          ))}
+        </Box>
+      </Box>
+
+      {/* Assigned inventories */}
+      <Box className={classes.profileDetailSection}>
+        <Typography className={classes.profileDetailLabel}>Assigned inventories</Typography>
+        {assignedInvs.length === 0 ? (
+          <Typography style={{ fontSize: 13, color: 'rgba(0,0,0,0.4)', fontStyle: 'italic', marginTop: 4 }}>
+            Not assigned to any inventory. Assign this profile when creating a new scan.
+          </Typography>
+        ) : (
+          <TableContainer style={{ marginTop: 4 }}>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell style={{ fontSize: 11, fontWeight: 600, color: 'rgba(0,0,0,0.55)' }}>Inventory</TableCell>
+                  <TableCell style={{ fontSize: 11, fontWeight: 600, color: 'rgba(0,0,0,0.55)' }}>Hosts</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {assignedInvs.map(inv => (
+                  <TableRow key={inv.id}>
+                    <TableCell style={{ fontSize: 13 }}>{inv.name}</TableCell>
+                    <TableCell style={{ fontSize: 13 }}>{inv.hostCount}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        )}
+      </Box>
+
+      <ProfileDialog open={editOpen} onClose={() => setEditOpen(false)} existing={profDef} />
+    </Box>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// Profiles list content
+// ---------------------------------------------------------------------------
+
+const ProfilesContent = () => {
+  const classes = useStyles();
+  const navigate = useNavigate();
+  const { profileDefId } = useParams<{ profileDefId?: string }>();
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [frameworkFilter, setFrameworkFilter] = useState<string>('all');
+
+  if (profileDefId) {
+    return (
+      <ProfileDetailInline
+        profileDefId={profileDefId}
+        onBack={() => navigate('/self-service/compliance/profiles')}
+      />
+    );
+  }
+
+  const filtered = frameworkFilter === 'all'
+    ? PROFILE_DEFINITIONS
+    : PROFILE_DEFINITIONS.filter(p => p.framework === frameworkFilter);
+
+  const uniqueFrameworks = [...new Set(PROFILE_DEFINITIONS.map(p => p.framework))];
+
+  return (
+    <Box>
+      <Box display="flex" alignItems="center" justifyContent="space-between" style={{ marginBottom: 16 }}>
+        <Box display="flex" alignItems="center" style={{ gap: 12 }}>
+          <FormControl variant="outlined" size="small" style={{ minWidth: 160 }}>
+            <InputLabel>Framework</InputLabel>
+            <Select
+              value={frameworkFilter}
+              onChange={e => setFrameworkFilter(e.target.value as string)}
+              label="Framework"
+            >
+              <MenuItem value="all">All frameworks</MenuItem>
+              {uniqueFrameworks.map(fw => (
+                <MenuItem key={fw} value={fw}>{fw}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          {frameworkFilter !== 'all' && (
+            <Button
+              size="small"
+              onClick={() => setFrameworkFilter('all')}
+              style={{ textTransform: 'none', fontSize: 12 }}
+            >
+              Clear filter
+            </Button>
+          )}
+        </Box>
+        <Button
+          variant="contained"
+          color="primary"
+          size="small"
+          startIcon={<AddIcon />}
+          onClick={() => setDialogOpen(true)}
+          style={{ textTransform: 'none', fontWeight: 600 }}
+        >
+          New profile
+        </Button>
+      </Box>
+
+      <TableContainer>
+        <Table size="small">
+          <TableHead>
+            <TableRow>
+              <TableCell style={{ fontSize: 11, fontWeight: 600, color: 'rgba(0,0,0,0.55)' }}>Profile</TableCell>
+              <TableCell style={{ fontSize: 11, fontWeight: 600, color: 'rgba(0,0,0,0.55)' }}>Framework</TableCell>
+              <TableCell style={{ fontSize: 11, fontWeight: 600, color: 'rgba(0,0,0,0.55)' }}>Target OS</TableCell>
+              <TableCell style={{ fontSize: 11, fontWeight: 600, color: 'rgba(0,0,0,0.55)' }}>Rules</TableCell>
+              <TableCell style={{ fontSize: 11, fontWeight: 600, color: 'rgba(0,0,0,0.55)' }}>Inventories</TableCell>
+              <TableCell style={{ fontSize: 11, fontWeight: 600, color: 'rgba(0,0,0,0.55)' }}>Updated</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {filtered.map(profDef => {
+              const assignedCount = profDef.assignedInventories.length;
+              return (
+                <TableRow
+                  key={profDef.id}
+                  hover
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => navigate(`/self-service/compliance/profiles/${profDef.id}`)}
+                >
+                  <TableCell>
+                    <Box display="flex" alignItems="center" style={{ gap: 8 }}>
+                      <SecurityIcon style={{ fontSize: 16, color: profDef.isBuiltIn ? 'rgba(0,0,0,0.3)' : statusColors.info }} />
+                      <Box>
+                        <Typography style={{ fontSize: 13, fontWeight: 600, color: '#151515' }}>
+                          {profDef.name}
+                        </Typography>
+                        <Typography style={{ fontSize: 11, color: 'rgba(0,0,0,0.45)' }}>
+                          {profDef.isBuiltIn ? 'Built-in' : `Created by ${profDef.createdBy}`}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </TableCell>
+                  <TableCell>
+                    <Chip
+                      size="small"
+                      label={`${profDef.framework} ${profDef.version}`}
+                      style={{ fontSize: 11, height: 22, fontWeight: 500 }}
+                    />
+                  </TableCell>
+                  <TableCell style={{ fontSize: 12 }}>{profDef.targetOS}</TableCell>
+                  <TableCell>
+                    <Typography style={{ fontSize: 12 }}>
+                      <strong>{profDef.enabledRules}</strong>
+                      <span style={{ color: 'rgba(0,0,0,0.4)' }}> / {profDef.totalRules}</span>
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    {assignedCount > 0 ? (
+                      <Chip
+                        size="small"
+                        label={`${assignedCount} ${assignedCount === 1 ? 'inventory' : 'inventories'}`}
+                        style={{ fontSize: 11, height: 22, backgroundColor: `${statusColors.success}12`, color: statusColors.success, fontWeight: 500 }}
+                      />
+                    ) : (
+                      <Typography style={{ fontSize: 12, color: 'rgba(0,0,0,0.35)', fontStyle: 'italic' }}>
+                        Unassigned
+                      </Typography>
+                    )}
+                  </TableCell>
+                  <TableCell style={{ fontSize: 12, color: 'rgba(0,0,0,0.55)' }}>
+                    {profDef.updatedAt}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </TableContainer>
+
+      <ProfileDialog open={dialogOpen} onClose={() => setDialogOpen(false)} />
     </Box>
   );
 };
@@ -809,7 +1696,7 @@ const FRAMEWORK_VERSIONS: Record<ComplianceFramework, string> = {
 export const CompliancePage = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { scanId } = useParams<{ scanId?: string }>();
+  const { scanId, profileDefId } = useParams<{ scanId?: string; profileDefId?: string }>();
   const [wizardOpen, setWizardOpen] = useState(false);
   const [runningScan, setRunningScan] = useState<ComplianceScan | null>(null);
   const [toastOpen, setToastOpen] = useState(false);
@@ -820,8 +1707,8 @@ export const CompliancePage = () => {
 
   const onTabSelect = useCallback(
     (index: number) => {
-      const path = index === 0 ? '/self-service/compliance' : '/self-service/compliance/scans';
-      navigate(path);
+      const paths = ['/self-service/compliance', '/self-service/compliance/scans', '/self-service/compliance/profiles'];
+      navigate(paths[index] || paths[0]);
     },
     [navigate],
   );
@@ -884,6 +1771,7 @@ export const CompliancePage = () => {
 
   const content = useMemo(() => {
     if (scanId) return <InlineScanDetail key={scanId} scanId={scanId} />;
+    if (selectedTab === 2) return <ProfilesContent key="profiles" />;
     if (selectedTab === 1) return <ScanHistoryContent key="scan-history" scans={allScans} />;
     return <InventoriesContent key="inventories" />;
   }, [selectedTab, allScans, scanId]);
@@ -911,7 +1799,7 @@ export const CompliancePage = () => {
         tabs={tabs.map(({ id, label }) => ({ id, label }))}
       />
       <Content>
-        {!scanId && <FleetSummary />}
+        {!scanId && !profileDefId && selectedTab !== 2 && <FleetSummary />}
         {content}
       </Content>
       <NewScanWizard

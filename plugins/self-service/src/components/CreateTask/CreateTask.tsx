@@ -89,7 +89,79 @@ const ApprovalDisclaimer = () => {
   );
 };
 
+const DemoCreateTask = ({ template }: { template: (typeof DEMO_TEMPLATES)[number] }) => {
+  const classes = useStyles();
+  const navigate = useNavigate();
+
+  return (
+    <Page themeId="app">
+      <Content>
+        <Box className={classes.root}>
+          <Breadcrumbs
+            separator={<NavigateNextIcon fontSize="small" />}
+            className={classes.breadcrumbs}
+          >
+            <RouterLink to="/self-service/repositories/list">
+              Git Repositories
+            </RouterLink>
+            <RouterLink to="/self-service/repositories/create">
+              Templates
+            </RouterLink>
+            <Typography className={classes.breadcrumbCurrent}>
+              {template.title}
+            </Typography>
+          </Breadcrumbs>
+          <ProjectCreateWizardContent
+            template={template}
+            onClose={() => navigate('/self-service/repositories/create')}
+          />
+        </Box>
+      </Content>
+    </Page>
+  );
+};
+
+const isStaticDeployment =
+  typeof window !== 'undefined' &&
+  !['localhost', '127.0.0.1', '0.0.0.0'].includes(window.location.hostname);
+
 export const CreateTask = () => {
+  const classes = useStyles();
+  const { namespace, templateName } = useParams<{
+    namespace: string;
+    templateName: string;
+  }>();
+  const navigate = useNavigate();
+
+  const demoTemplate = DEMO_TEMPLATES.find(t => t.name === templateName);
+  if (demoTemplate) {
+    return <DemoCreateTask template={demoTemplate} />;
+  }
+
+  if (isStaticDeployment) {
+    return (
+      <Page themeId="app">
+        <Content>
+          <Box className={classes.root}>
+            <Typography variant="h5" style={{ marginBottom: 8 }}>
+              Template not available
+            </Typography>
+            <Typography variant="body1" color="textSecondary" style={{ marginBottom: 24 }}>
+              This template requires a running backend and is not available in the static prototype.
+            </Typography>
+            <Button variant="outlined" color="primary" onClick={() => navigate(-1)}>
+              Go back
+            </Button>
+          </Box>
+        </Content>
+      </Page>
+    );
+  }
+
+  return <ScaffolderCreateTask />;
+};
+
+const ScaffolderCreateTask = () => {
   const classes = useStyles();
   const { namespace, templateName } = useParams<{
     namespace: string;
@@ -109,8 +181,6 @@ export const CreateTask = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
-
-  const demoTemplate = DEMO_TEMPLATES.find(t => t.name === templateName);
 
   const initialFormData = useMemo(() => {
     const state = location.state as {
@@ -147,7 +217,6 @@ export const CreateTask = () => {
         secrets,
       });
 
-      // Redirect to the task details page
       navigate(`${rootLink()}/create/tasks/${task.taskId}`);
     } catch (err) {
       console.error('Error during final submit:', err); // eslint-disable-line no-console
@@ -172,7 +241,6 @@ export const CreateTask = () => {
             setTemplateEntity(entity);
           }
         } catch {
-          // Get back to home page if we can't fetch the entity
           // fail silently
         }
       } catch (err) {
@@ -184,35 +252,6 @@ export const CreateTask = () => {
 
     fetchEntity();
   }, [templateName, namespace, scaffolderApi, catalogApi]);
-
-  if (demoTemplate) {
-    return (
-      <Page themeId="app">
-        <Content>
-          <Box className={classes.root}>
-            <Breadcrumbs
-              separator={<NavigateNextIcon fontSize="small" />}
-              className={classes.breadcrumbs}
-            >
-              <RouterLink to="/self-service/repositories/list">
-                Git Repositories
-              </RouterLink>
-              <RouterLink to="/self-service/repositories/create">
-                Templates
-              </RouterLink>
-              <Typography className={classes.breadcrumbCurrent}>
-                {demoTemplate.title}
-              </Typography>
-            </Breadcrumbs>
-            <ProjectCreateWizardContent
-              template={demoTemplate}
-              onClose={() => navigate('/self-service/repositories/create')}
-            />
-          </Box>
-        </Content>
-      </Page>
-    );
-  }
 
   if (loading) {
     return (

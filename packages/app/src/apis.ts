@@ -12,6 +12,23 @@ import {
 } from '@backstage/core-plugin-api';
 import { OAuth2 } from '@backstage/core-app-api';
 import { rhAapAuthApiRef } from '@ansible/plugin-backstage-self-service';
+import { scaffolderApiRef } from '@backstage/plugin-scaffolder-react';
+
+const isStaticDeployment =
+  typeof window !== 'undefined' &&
+  !['localhost', '127.0.0.1', '0.0.0.0'].includes(window.location.hostname);
+
+const noopScaffolderApi = {
+  scaffold: async () => ({ taskId: 'noop' }),
+  getTemplateParameterSchema: async () => ({ title: '', steps: [] }),
+  getTask: async () => ({}),
+  streamLogs: async function* () {},
+  listActions: async () => [],
+  cancelTask: async () => {},
+  listTasks: async () => ({ tasks: [] }),
+  getIntegrationsList: async () => ({ integrations: [] }),
+  event$: () => ({ subscribe: () => ({ unsubscribe: () => {} }) }),
+};
 
 export const apis: AnyApiFactory[] = [
   createApiFactory({
@@ -41,4 +58,13 @@ export const apis: AnyApiFactory[] = [
         defaultScopes: ['read'],
       }),
   }),
+  ...(isStaticDeployment
+    ? [
+        createApiFactory({
+          api: scaffolderApiRef,
+          deps: {},
+          factory: () => noopScaffolderApi as any,
+        }),
+      ]
+    : []),
 ];
