@@ -15,6 +15,8 @@ import {
   Button,
   FormControlLabel,
   Switch,
+  Popover,
+  Tooltip,
   makeStyles,
 } from '@material-ui/core';
 import KeyboardArrowDownIcon from '@material-ui/icons/KeyboardArrowDown';
@@ -116,26 +118,101 @@ const useStyles = makeStyles(theme => ({
   },
 }));
 
-const SEVERITY_CONFIG: Record<StigSeverity, { color: string; bg: string }> = {
-  'CAT I': { color: statusColors.error, bg: `${statusColors.error}15` },
-  'CAT II': { color: statusColors.warning, bg: `${statusColors.warning}15` },
-  'CAT III': { color: statusColors.info, bg: `${statusColors.info}15` },
+const SEVERITY_CONFIG: Record<StigSeverity, { label: string; color: string; bg: string; tooltip: string }> = {
+  'CAT I': {
+    label: 'Critical',
+    color: statusColors.error,
+    bg: `${statusColors.error}15`,
+    tooltip: 'CAT I — Critical severity. Could directly cause loss of confidentiality, availability, or integrity.',
+  },
+  'CAT II': {
+    label: 'High',
+    color: statusColors.warning,
+    bg: `${statusColors.warning}15`,
+    tooltip: 'CAT II — High severity. Could lead to degradation of security posture if not addressed.',
+  },
+  'CAT III': {
+    label: 'Low',
+    color: statusColors.info,
+    bg: `${statusColors.info}15`,
+    tooltip: 'CAT III — Low severity. Could marginally reduce security posture.',
+  },
 };
 
-const PassRateBar = ({ pass, total }: { pass: number; total: number }) => {
+const HostsCell = ({ rule }: { rule: ComplianceRule }) => {
   const classes = useStyles();
-  const pct = total > 0 ? (pass / total) * 100 : 0;
-  const color = pct === 100 ? statusColors.success : pct >= 70 ? statusColors.warning : statusColors.error;
+  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
+
+  const pct = rule.totalHosts > 0 ? (rule.passCount / rule.totalHosts) * 100 : 0;
+  const barColor = pct === 100 ? statusColors.success : pct >= 70 ? statusColors.warning : statusColors.error;
+
+  const handleClick = (e: React.MouseEvent<HTMLElement>) => {
+    e.stopPropagation();
+    setAnchorEl(e.currentTarget);
+  };
+
+  const passingHosts = rule.hostResults.filter(h => h.status === 'pass');
+  const failingHosts = rule.hostResults.filter(h => h.status === 'fail');
 
   return (
-    <Box display="flex" alignItems="center" style={{ gap: 8, minWidth: 120 }}>
-      <Box className={classes.passBar}>
-        <Box className={classes.passBarFill} style={{ width: `${pct}%`, backgroundColor: color }} />
+    <>
+      <Box
+        display="flex"
+        alignItems="center"
+        style={{ gap: 6, cursor: 'pointer' }}
+        onClick={handleClick}
+      >
+        {rule.failCount > 0 && (
+          <Chip
+            size="small"
+            label={`${rule.failCount} fail`}
+            style={{ backgroundColor: `${statusColors.error}15`, color: statusColors.error, fontWeight: 600, fontSize: 10, height: 20 }}
+          />
+        )}
+        {rule.passCount > 0 && (
+          <Chip
+            size="small"
+            label={`${rule.passCount} pass`}
+            style={{ backgroundColor: `${statusColors.success}15`, color: statusColors.success, fontWeight: 600, fontSize: 10, height: 20 }}
+          />
+        )}
+        <Box className={classes.passBar} style={{ maxWidth: 60 }}>
+          <Box className={classes.passBarFill} style={{ width: `${pct}%`, backgroundColor: barColor }} />
+        </Box>
       </Box>
-      <Typography style={{ fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' }}>
-        {pass}/{total}
-      </Typography>
-    </Box>
+      <Popover
+        open={Boolean(anchorEl)}
+        anchorEl={anchorEl}
+        onClose={(e: React.SyntheticEvent) => { e.stopPropagation(); setAnchorEl(null); }}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+        PaperProps={{ style: { borderRadius: 8, padding: 12, maxWidth: 300 } }}
+      >
+        <Typography style={{ fontSize: 12, fontWeight: 600, marginBottom: 8 }}>
+          {rule.totalHosts} hosts · {rule.passCount} passing · {rule.failCount} failing
+        </Typography>
+        {failingHosts.length > 0 && (
+          <Box marginBottom={passingHosts.length > 0 ? 1 : 0}>
+            {failingHosts.map(h => (
+              <Box key={h.hostname} display="flex" alignItems="center" style={{ gap: 6, marginBottom: 4 }}>
+                <CancelIcon style={{ fontSize: 14, color: statusColors.error }} />
+                <Typography style={{ fontSize: 12, fontFamily: 'monospace' }}>{h.hostname}</Typography>
+              </Box>
+            ))}
+          </Box>
+        )}
+        {passingHosts.length > 0 && (
+          <Box>
+            {passingHosts.map(h => (
+              <Box key={h.hostname} display="flex" alignItems="center" style={{ gap: 6, marginBottom: 4 }}>
+                <CheckCircleIcon style={{ fontSize: 14, color: statusColors.success }} />
+                <Typography style={{ fontSize: 12, fontFamily: 'monospace' }}>{h.hostname}</Typography>
+              </Box>
+            ))}
+          </Box>
+        )}
+      </Popover>
+    </>
   );
 };
 
@@ -154,7 +231,7 @@ const RuleRow = ({
 
   return (
     <>
-      <TableRow className={classes.row} onClick={() => setExpanded(!expanded)}>
+      <TableRow className={classes.row} onClick={() => setExpanded(!expanded)} style={rule.failCount === 0 ? { opacity: 0.4 } : undefined}>
         <TableCell padding="checkbox" onClick={e => e.stopPropagation()}>
           {rule.failCount > 0 && (
             <Checkbox
@@ -171,27 +248,30 @@ const RuleRow = ({
           </IconButton>
         </TableCell>
         <TableCell>
-          <Chip
-            size="small"
-            label={rule.severity}
-            style={{
-              backgroundColor: sevCfg.bg,
-              color: sevCfg.color,
-              fontWeight: 700,
-              fontSize: 11,
-              height: 22,
-            }}
-          />
+          <Tooltip title={sevCfg.tooltip} arrow placement="top">
+            <Chip
+              size="small"
+              label={sevCfg.label}
+              style={{
+                backgroundColor: sevCfg.bg,
+                color: sevCfg.color,
+                fontWeight: 700,
+                fontSize: 11,
+                height: 22,
+                cursor: 'help',
+              }}
+            />
+          </Tooltip>
         </TableCell>
         <TableCell>
           <Typography style={{ fontWeight: 500, fontSize: 13 }}>{rule.title}</Typography>
           <Typography style={{ fontSize: 11, color: 'rgba(0,0,0,0.5)', fontFamily: 'monospace' }}>
-            {rule.ruleId}
+            STIG: {rule.ruleId}
           </Typography>
         </TableCell>
         <TableCell>{rule.category}</TableCell>
         <TableCell>
-          <PassRateBar pass={rule.passCount} total={rule.totalHosts} />
+          <HostsCell rule={rule} />
         </TableCell>
         <TableCell>
           {rule.failCount > 0 ? (
@@ -357,7 +437,7 @@ export const FindingsContent = ({
               <TableCell style={{ width: 80 }}>Severity</TableCell>
               <TableCell>Rule</TableCell>
               <TableCell>Category</TableCell>
-              <TableCell style={{ width: 160 }}>Pass rate</TableCell>
+              <TableCell style={{ width: 180 }}>Hosts</TableCell>
               <TableCell style={{ width: 100 }}>Status</TableCell>
             </TableRow>
           </TableHead>

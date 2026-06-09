@@ -36,7 +36,6 @@ import { SyncJobDetailPage } from '../Admin/SyncJobDetailPage';
 import { ContentSourcesPage } from '../Admin/ContentSourcesPage';
 import { LearningPage } from '../Learning/LearningPage';
 import { CompliancePage } from '../Compliance/CompliancePage';
-import { ProfileDetailPage } from '../Compliance/ProfileDetailPage';
 import { SetupWizardPage } from '../Setup/SetupWizardPage';
 import { GeneralPage } from '../Admin/GeneralPage';
 import { DevSpacesDetailPage } from '../Admin/DevSpacesDetailPage';
@@ -150,9 +149,8 @@ const RouteViewContent = () => {
           }
         />
         <Route path="compliance" element={<CompliancePage />} />
-        <Route path="compliance/scan-history" element={<CompliancePage />} />
-        <Route path="compliance/:profileId" element={<ProfileDetailPage />} />
-        <Route path="compliance/:profileId/history" element={<ProfileDetailPage />} />
+        <Route path="compliance/scans" element={<CompliancePage />} />
+        <Route path="compliance/scan/:scanId" element={<CompliancePage />} />
         <Route path="learning" element={<LearningPage />} />
         <Route path="admin/general" element={<GeneralPage />} />
         <Route path="admin/integrations" element={<ConnectionsPage />} />

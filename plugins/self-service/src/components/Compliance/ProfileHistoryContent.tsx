@@ -10,13 +10,14 @@ import {
   Chip,
   makeStyles,
 } from '@material-ui/core';
+import CheckCircleIcon from '@material-ui/icons/CheckCircle';
+import ErrorIcon from '@material-ui/icons/Error';
+import FiberManualRecordIcon from '@material-ui/icons/FiberManualRecord';
 import { statusColors } from '../common/statusColors';
 import {
   getProfile,
   getProfileScans,
   type ComplianceScan,
-  type ScanType,
-  type ScanStatus,
 } from './complianceDemoData';
 
 const useStyles = makeStyles(theme => ({
@@ -82,24 +83,45 @@ const useStyles = makeStyles(theme => ({
       backgroundColor: theme.palette.action.hover,
     },
   },
+  rowSuperseded: {
+    opacity: 0.4,
+    '&:hover': {
+      opacity: 0.6,
+      backgroundColor: theme.palette.action.hover,
+    },
+  },
+  statusCell: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 6,
+  },
+  scanMeta: {
+    fontSize: 12,
+    color: theme.palette.text.secondary,
+    display: 'flex',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 2,
+  },
 }));
-
-const SCAN_TYPE_CONFIG: Record<ScanType, { label: string; color: string }> = {
-  assessment: { label: 'Assessment', color: statusColors.info },
-  remediation: { label: 'Remediation', color: statusColors.warning },
-  verification: { label: 'Verification', color: statusColors.custom },
-};
-
-const SCAN_STATUS_CONFIG: Record<ScanStatus, { label: string; color: string }> = {
-  running: { label: 'Running', color: statusColors.warning },
-  completed: { label: 'Completed', color: statusColors.success },
-  failed: { label: 'Failed', color: statusColors.error },
-};
 
 function getScoreColor(score: number): string {
   if (score >= 90) return statusColors.success;
   if (score >= 70) return statusColors.warning;
   return statusColors.error;
+}
+
+function getScanStatus(scan: ComplianceScan, isLatest: boolean): { icon: React.ReactNode; label: string; color: string } {
+  if (scan.status === 'failed') {
+    return { icon: <ErrorIcon style={{ fontSize: 16, color: statusColors.error }} />, label: 'Failed', color: statusColors.error };
+  }
+  if (!isLatest) {
+    return { icon: <FiberManualRecordIcon style={{ fontSize: 10, color: statusColors.pending }} />, label: 'Superseded', color: statusColors.pending };
+  }
+  if (scan.rulesFailing > 0) {
+    return { icon: <ErrorIcon style={{ fontSize: 16, color: statusColors.error }} />, label: `${scan.rulesFailing} issues`, color: statusColors.error };
+  }
+  return { icon: <CheckCircleIcon style={{ fontSize: 16, color: statusColors.success }} />, label: 'Compliant', color: statusColors.success };
 }
 
 const TrendChart = ({ profileId }: { profileId: string }) => {
@@ -134,55 +156,54 @@ const TrendChart = ({ profileId }: { profileId: string }) => {
   );
 };
 
-const ScanRow = ({ scan }: { scan: ComplianceScan }) => {
+const ScanRow = ({ scan, isLatest }: { scan: ComplianceScan; isLatest: boolean }) => {
   const classes = useStyles();
-  const typeCfg = SCAN_TYPE_CONFIG[scan.scanType];
-  const statusCfg = SCAN_STATUS_CONFIG[scan.status];
+  const status = getScanStatus(scan, isLatest);
 
   return (
-    <TableRow className={classes.row}>
+    <TableRow className={isLatest ? classes.row : classes.rowSuperseded}>
       <TableCell>
-        <Chip
-          size="small"
-          label={typeCfg.label}
-          style={{
-            backgroundColor: `${typeCfg.color}18`,
-            color: typeCfg.color,
-            fontWeight: 600,
-            fontSize: 11,
-          }}
-        />
+        <Typography style={{ fontWeight: 500, fontSize: 13 }}>{scan.startedAt}</Typography>
+        <Typography className={classes.scanMeta}>
+          {scan.hostsScanned} hosts scanned
+          <span style={{ color: '#ccc' }}>·</span>
+          <Chip
+            size="small"
+            variant="outlined"
+            label={scan.triggeredBy === 'scheduled' ? 'Scheduled' : 'Manual'}
+            style={{ fontSize: 10, height: 18, fontWeight: 500 }}
+          />
+        </Typography>
       </TableCell>
-      <TableCell>
-        <Chip
-          size="small"
-          variant="outlined"
-          label={scan.triggeredBy === 'scheduled' ? 'Scheduled' : 'Manual'}
-          style={{ fontSize: 11, height: 20 }}
-        />
-      </TableCell>
-      <TableCell>{scan.startedAt}</TableCell>
       <TableCell>
         {scan.complianceScore !== null ? (
-          <Typography style={{ fontWeight: 600, fontSize: 13 }}>
+          <Typography style={{ fontWeight: 600, fontSize: 14 }}>
             {scan.complianceScore}%
           </Typography>
         ) : (
           <Typography style={{ color: statusColors.pending, fontSize: 13 }}>—</Typography>
         )}
       </TableCell>
-      <TableCell>{scan.duration}</TableCell>
       <TableCell>
-        <Chip
-          size="small"
-          label={statusCfg.label}
-          style={{
-            backgroundColor: `${statusCfg.color}18`,
-            color: statusCfg.color,
-            fontWeight: 600,
-            fontSize: 11,
-          }}
-        />
+        {scan.rulesFailing > 0 ? (
+          <Typography style={{ fontWeight: 600, fontSize: 13, color: statusColors.error }}>
+            {scan.rulesFailing} of {scan.rulesEvaluated}
+          </Typography>
+        ) : scan.status === 'completed' ? (
+          <Typography style={{ fontSize: 13, color: statusColors.success, fontWeight: 500 }}>
+            0 of {scan.rulesEvaluated}
+          </Typography>
+        ) : (
+          <Typography style={{ color: statusColors.pending, fontSize: 13 }}>—</Typography>
+        )}
+      </TableCell>
+      <TableCell>
+        <Box className={classes.statusCell}>
+          {status.icon}
+          <Typography style={{ fontSize: 13, fontWeight: 600, color: status.color }}>
+            {status.label}
+          </Typography>
+        </Box>
       </TableCell>
     </TableRow>
   );
@@ -211,17 +232,15 @@ export const ProfileHistoryContent = ({ profileId }: { profileId: string }) => {
           <Table className={classes.table}>
             <TableHead>
               <TableRow>
-                <TableCell>Type</TableCell>
-                <TableCell>Trigger</TableCell>
-                <TableCell>Started</TableCell>
-                <TableCell>Score</TableCell>
-                <TableCell>Duration</TableCell>
-                <TableCell>Status</TableCell>
+                <TableCell>When</TableCell>
+                <TableCell style={{ width: 80 }}>Score</TableCell>
+                <TableCell style={{ width: 110 }}>Failing rules</TableCell>
+                <TableCell style={{ width: 160 }}>Status</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {scans.map(scan => (
-                <ScanRow key={scan.scanId} scan={scan} />
+              {scans.map((scan, i) => (
+                <ScanRow key={scan.scanId} scan={scan} isLatest={i === 0} />
               ))}
             </TableBody>
           </Table>
