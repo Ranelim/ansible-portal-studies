@@ -166,6 +166,10 @@
   .inline-suggestion-actions .btn-apply:hover { background: #2ea043; }
   .inline-suggestion-actions .btn-dismiss { background: transparent; color: #999; border: 1px solid #555; }
   .inline-suggestion-actions .btn-dismiss:hover { color: #ccc; }
+  .inline-suggestion.readonly .inline-suggestion-actions { display: none; }
+  .inline-suggestion-portal-hint { padding: 6px 12px; font-size: 11px; color: #888; background: #1e1e1e; border-top: 1px solid #333; display: flex; align-items: center; gap: 6px; }
+  .inline-suggestion-portal-hint a { color: #3794ff; text-decoration: none; }
+  .inline-suggestion-portal-hint a:hover { text-decoration: underline; }
   .inline-suggestion-diff { font-family: 'Menlo', 'Consolas', 'Courier New', monospace; font-size: 12px; line-height: 20px; }
   .inline-suggestion-diff .diff-line { padding: 0 12px; min-height: 20px; }
   .inline-suggestion-diff .diff-line.removed { background: rgba(248, 81, 73, 0.15); color: #f85149; }
@@ -297,20 +301,18 @@
       <button class="notif-btn ghost" onclick="this.parentElement.classList.add('hidden')">✕</button>
     </div>
 
-    <!-- TIER: deterministic — auto-fixed, starts on diff -->
-    <div class="notification success hidden" id="notif-auto-fixed">
-      <span class="notif-icon">✓</span>
-      <span class="notif-text" id="notif-auto-fixed-text"><strong>APME auto-fixed:</strong> This violation was automatically resolved.</span>
-      <button class="notif-btn secondary" onclick="undoAutoFix()">Undo fix</button>
-      <button class="notif-btn secondary" onclick="showScmFromReview()">Open Source Control</button>
+    <!-- Violation context banner — shows for open violations (scan results, no remediation yet) -->
+    <div class="notification info hidden" id="notif-violation">
+      <span class="notif-icon">🔍</span>
+      <span class="notif-text" id="notif-violation-text"><strong>APME:</strong> Violation found at this location.</span>
       <button class="notif-btn ghost" onclick="this.parentElement.classList.add('hidden')">✕</button>
     </div>
 
-    <!-- Violation mode banner — shows for all fixable violations pre-remediation and AI proposals -->
+    <!-- AI proposal context banner — read-only, approve/decline happens in Portal -->
     <div class="notification info hidden" id="notif-ai-review">
-      <span class="notif-icon">💡</span>
-      <span class="notif-text" id="notif-ai-review-text"><strong>APME:</strong> Fix available. Review the suggestion below.</span>
-      <button class="notif-btn secondary" onclick="this.parentElement.classList.add('hidden')">Dismiss</button>
+      <span class="notif-icon">✦</span>
+      <span class="notif-text" id="notif-ai-review-text"><strong>APME AI proposal:</strong> Review the suggested fix below. Approve or decline in the Ansible Portal.</span>
+      <button class="notif-btn ghost" onclick="this.parentElement.classList.add('hidden')">✕</button>
     </div>
 
     <!-- TIER: manual — no fix available, guidance only -->
@@ -321,11 +323,10 @@
       <button class="notif-btn ghost" onclick="this.parentElement.classList.add('hidden')">Dismiss</button>
     </div>
 
-    <!-- Post-apply notification (after applying a fix) -->
-    <div class="notification success hidden" id="notif-applied">
+    <!-- Fixed/approved context — file was modified by remediation -->
+    <div class="notification success hidden" id="notif-fixed">
       <span class="notif-icon">✓</span>
-      <span class="notif-text" id="notif-applied-text"><strong>APME:</strong> Fix applied. Review the change below, then commit when ready.</span>
-      <button class="notif-btn secondary" onclick="showScmFromReview()">Open Source Control</button>
+      <span class="notif-text" id="notif-fixed-text"><strong>APME:</strong> This violation was resolved by remediation.</span>
       <button class="notif-btn ghost" onclick="this.parentElement.classList.add('hidden')">✕</button>
     </div>
 
@@ -861,10 +862,12 @@ function renderEditorLines(container, lines, opts) {
                l.info && !l.removed ? ' style="background:rgba(55,148,255,0.06);"' : '';
 
     const hasTag = l.errTag || l.warnTag || l.infoTag;
-    if (!isDiff && hasTag) {
+    const showInlineWidgets = opts && opts.showInlineWidgets;
+
+    if (!isDiff && hasTag && showInlineWidgets) {
       const fixKey = activeFile + ':' + l.num;
       if (INLINE_FIXES[fixKey]) {
-        gutterIcon = '<span class="line-lightbulb" onclick="toggleSuggestion(\'' + fixKey + '\', this)" title="APME: Quick fix available">💡</span>';
+        gutterIcon = '<span class="line-lightbulb" onclick="toggleSuggestion(\'' + fixKey + '\', this)" title="APME: View proposed fix">💡</span>';
       } else if (MANUAL_GUIDANCE[fixKey]) {
         gutterIcon = '<span class="line-lightbulb" onclick="toggleGuidance(\'' + fixKey + '\')" title="APME: Manual remediation — view guidance">💡</span>';
       }
@@ -872,7 +875,7 @@ function renderEditorLines(container, lines, opts) {
 
     html += '<div class="' + cls + '"' + bg + ' data-line="' + l.num + '">' + gutterIcon + '<span class="line-number"' + numStyle + '>' + l.num + '</span><span class="line-content">' + l.html + tag + '</span></div>';
 
-    if (!isDiff && hasTag) {
+    if (!isDiff && hasTag && showInlineWidgets) {
       const fixKey = activeFile + ':' + l.num;
       const fix = INLINE_FIXES[fixKey];
       const guidance = MANUAL_GUIDANCE[fixKey];
@@ -880,12 +883,8 @@ function renderEditorLines(container, lines, opts) {
         html += '<div class="inline-suggestion hidden" id="suggestion-' + fixKey.replace(/[\/:.]/g, '-') + '">';
         html += '<div class="inline-suggestion-header">';
         html += '<span class="inline-suggestion-label"><span class="tier-tag ' + (fix.tier === 'ai' ? 'ai' : 'auto') + '">' +
-          (fix.tier === 'ai' ? 'AI suggestion' + (fix.confidence ? ' · ' + fix.confidence + '%' : '') : 'Auto-fix') +
+          (fix.tier === 'ai' ? 'AI proposal' + (fix.confidence ? ' · ' + fix.confidence + '%' : '') : 'Auto-fix') +
           '</span> ' + fix.rule + '</span>';
-        html += '<span class="inline-suggestion-actions">' +
-          '<button class="btn-apply" onclick="applyInlineFix(\'' + fixKey + '\')">Apply</button>' +
-          '<button class="btn-dismiss" onclick="dismissSuggestion(\'' + fixKey + '\')">Dismiss</button>' +
-          '</span>';
         html += '</div>';
         html += '<div class="inline-suggestion-diff">';
         fix.removed.forEach(r => { html += '<div class="diff-line removed">' + escapeHtml(r) + '</div>'; });
@@ -921,9 +920,12 @@ const activeFile = resolveFile(paramFile);
 document.querySelector('.titlebar-center').textContent = activeFile + ' — rhel-patching — Dev Spaces';
 document.getElementById('tab-main-label').textContent = activeFile;
 
-// Render the correct file content
+// Determine if inline widgets (lightbulbs, suggestions) should be rendered
+// Only for proposed and manual states — open state shows squiggly annotations only
+const showWidgets = paramStatus === 'proposed' || paramTier === 'manual';
+
 const fileData = FILE_CONTENT[activeFile];
-renderEditorLines(document.getElementById('editor-violations'), fileData.lines, { isDiff: false });
+renderEditorLines(document.getElementById('editor-violations'), fileData.lines, { isDiff: false, showInlineWidgets: showWidgets });
 if (fileData.diff) {
   renderEditorLines(document.getElementById('editor-diff'), fileData.diff, { isDiff: true });
 }
@@ -1032,15 +1034,7 @@ function dismissGuidance(fixKey) {
 }
 
 function applyInlineFix(fixKey) {
-  const id = 'suggestion-' + fixKey.replace(/[\/:.]/g, '-');
-  const widget = document.getElementById(id);
-  if (widget) {
-    const fix = INLINE_FIXES[fixKey];
-    widget.outerHTML = '<div class="inline-applied"><span>✓</span> <strong>' + fix.rule + '</strong> — fix applied. ' +
-      '<button onclick="this.parentElement.remove()">Dismiss</button></div>';
-  }
-  document.getElementById('tab-main-badge').className = 'tab-badge mod';
-  document.getElementById('scm-badge').classList.remove('hidden');
+  // Legacy — inline apply is no longer supported; approval happens in the Portal
 }
 
 function switchToDiff() {
@@ -1062,36 +1056,7 @@ function switchToViolations() {
   document.getElementById('scm-badge').classList.add('hidden');
 }
 
-function applyReviewFix() {
-  document.getElementById('notif-ai-review').classList.add('hidden');
-  remediated = true;
-  switchToDiff();
-
-  const rule = ALL_PROBLEMS.flatMap(f => f.file === activeFile ? f.issues : [])
-    .find(i => !paramLine || i.loc === 'Ln ' + paramLine);
-  const ruleName = rule ? rule.rule : 'violation';
-  document.getElementById('notif-applied-text').innerHTML =
-    '<strong>APME:</strong> Fix applied for <strong>' + ruleName + '</strong>. Review the change below, then commit when ready.';
-  document.getElementById('notif-applied').classList.remove('hidden');
-
-  renderProblems();
-  if (paramLine) highlightLine(paramLine);
-}
-
-function editManually() {
-  document.getElementById('notif-ai-review').classList.add('hidden');
-}
-
-function undoAutoFix() {
-  document.getElementById('notif-auto-fixed').classList.add('hidden');
-  remediated = false;
-  switchToViolations();
-  renderProblems();
-  restoreExplorerBadges();
-
-  document.getElementById('notif-remediate').classList.remove('hidden');
-  if (paramLine) highlightLine(paramLine);
-}
+// Legacy functions removed — fix approval and undo happen in the Portal, not Dev Spaces
 
 function restoreExplorerBadges() {
   ALL_PROBLEMS.forEach(f => {
@@ -1106,21 +1071,7 @@ function restoreExplorerBadges() {
   });
 }
 
-function fixAllFromReview() {
-  document.getElementById('notif-ai-review').classList.add('hidden');
-  document.getElementById('notif-running').classList.remove('hidden');
-  document.getElementById('progress-bar').classList.remove('hidden');
-  document.getElementById('progress-bar').classList.add('running');
-
-  setTimeout(() => {
-    remediated = true;
-    document.getElementById('notif-running').classList.add('hidden');
-    document.getElementById('progress-bar').classList.add('hidden');
-    document.getElementById('notif-success').classList.remove('hidden');
-    switchToDiff();
-    renderProblems();
-  }, 2200);
-}
+// fixAllFromReview removed — remediation is initiated from the Portal only
 
 function showScmFromReview() {
   document.getElementById('sidebar-scm').classList.remove('hidden');
@@ -1192,54 +1143,44 @@ function updateExplorerBadge(file, type) {
   });
 }
 
-// Pre-remediation: violation view with lightbulb, auto-expand the relevant suggestion
-function enterViolationMode() {
+// Open: violation found, no remediation yet — squiggly + tooltip only, no suggestion
+function enterOpenMode() {
   document.getElementById('notif-remediate').classList.add('hidden');
   const rule = findRule();
   const actualLine = findActualLine();
   const fixKey = activeFile + ':' + actualLine;
-  const fix = INLINE_FIXES[fixKey];
   const manualGuidance = MANUAL_GUIDANCE[fixKey];
-  if (rule && fix) {
-    const tierLabel = fix.tier === 'ai'
-      ? 'AI-assisted fix available' + (fix.confidence ? ' (' + fix.confidence + '% confidence)' : '')
-      : 'Auto-fix available';
-    document.getElementById('notif-ai-review-text').innerHTML =
-      '<strong>APME:</strong> <strong>' + rule.rule + '</strong> — ' + rule.msg + '. ' + tierLabel + ' — click 💡 or expand below.';
-    document.getElementById('notif-ai-review').classList.remove('hidden');
-  } else if (rule && (paramTier === 'manual' || manualGuidance)) {
+
+  if (rule && (paramTier === 'manual' || manualGuidance)) {
     document.getElementById('notif-manual-text').innerHTML =
       '<strong>APME:</strong> <strong>' + rule.rule + '</strong> — ' + rule.msg + '. No auto-fix available — manual remediation required.';
     document.getElementById('notif-manual').classList.remove('hidden');
+    if (manualGuidance) {
+      setTimeout(() => {
+        const id = 'guidance-' + fixKey.replace(/[\/:.]/g, '-');
+        const widget = document.getElementById(id);
+        if (widget) widget.classList.remove('hidden');
+      }, 300);
+    }
+  } else if (rule) {
+    document.getElementById('notif-violation-text').innerHTML =
+      '<strong>APME:</strong> <strong>' + rule.rule + '</strong> — ' + rule.msg + '. Review the violation in context.';
+    document.getElementById('notif-violation').classList.remove('hidden');
   }
   highlightLine(actualLine);
-  if (fix) {
-    setTimeout(() => {
-      const id = 'suggestion-' + fixKey.replace(/[\/:.]/g, '-');
-      const widget = document.getElementById(id);
-      if (widget) widget.classList.remove('hidden');
-    }, 300);
-  }
-  const guidance = MANUAL_GUIDANCE[fixKey];
-  if (guidance) {
-    setTimeout(() => {
-      const id = 'guidance-' + fixKey.replace(/[\/:.]/g, '-');
-      const widget = document.getElementById(id);
-      if (widget) widget.classList.remove('hidden');
-    }, 300);
-  }
 }
 
-// Post-remediation: deterministic fix already applied, show diff
-function enterAutoFixedMode() {
+// Fixed/Approved: deterministic or approved fix already applied — show diff silently
+function enterFixedMode() {
   document.getElementById('notif-remediate').classList.add('hidden');
   const rule = findRule();
   const actualLine = findActualLine();
   const ruleName = rule ? rule.rule : 'violation';
   const ruleMsg = rule ? rule.msg : '';
-  document.getElementById('notif-auto-fixed-text').innerHTML =
-    '<strong>APME auto-fixed:</strong> <strong>' + ruleName + '</strong> — ' + ruleMsg + '. This fix was applied automatically.';
-  document.getElementById('notif-auto-fixed').classList.remove('hidden');
+
+  document.getElementById('notif-fixed-text').innerHTML =
+    '<strong>APME:</strong> <strong>' + ruleName + '</strong> — ' + ruleMsg + '. This violation was resolved by remediation.';
+  document.getElementById('notif-fixed').classList.remove('hidden');
 
   remediated = true;
   switchToDiff();
@@ -1248,27 +1189,50 @@ function enterAutoFixedMode() {
   setTimeout(() => highlightLine(actualLine), 150);
 }
 
-// Post-remediation: AI proposal, show violation with suggestion auto-expanded
+// Proposed: AI suggestion pending — show read-only inline suggestion, approve in Portal
 function enterProposedMode() {
   document.getElementById('notif-remediate').classList.add('hidden');
   const rule = findRule();
   const actualLine = findActualLine();
   const fixKey = activeFile + ':' + actualLine;
   const fix = INLINE_FIXES[fixKey];
+
   if (rule) {
     document.getElementById('notif-ai-review-text').innerHTML =
-      '<strong>APME AI suggestion</strong> for <strong>' + rule.rule + '</strong> — ' + rule.msg +
-      '. Review the proposed fix below and apply, edit manually, or dismiss.';
+      '<strong>APME AI proposal</strong> for <strong>' + rule.rule + '</strong> — ' + rule.msg +
+      '. Review the suggested change below. Approve or decline in the Ansible Portal.';
   }
   document.getElementById('notif-ai-review').classList.remove('hidden');
   highlightLine(actualLine);
+
   if (fix) {
     setTimeout(() => {
       const id = 'suggestion-' + fixKey.replace(/[\/:.]/g, '-');
       const widget = document.getElementById(id);
-      if (widget) widget.classList.remove('hidden');
+      if (widget) {
+        widget.classList.remove('hidden');
+        widget.classList.add('readonly');
+        // Add portal hint below the diff
+        if (!widget.querySelector('.inline-suggestion-portal-hint')) {
+          const hint = document.createElement('div');
+          hint.className = 'inline-suggestion-portal-hint';
+          hint.innerHTML = '↩ <a href="javascript:window.close()">Return to Portal</a> to approve or decline this proposal';
+          widget.appendChild(hint);
+        }
+      }
     }, 300);
   }
+}
+
+// In-PR / Resolved: clean file, fix is committed — show diff
+function enterInPrMode() {
+  document.getElementById('notif-remediate').classList.add('hidden');
+  remediated = true;
+  switchToDiff();
+  renderProblems();
+  updateExplorerBadge(activeFile, 'modified');
+  const actualLine = findActualLine();
+  setTimeout(() => highlightLine(actualLine), 150);
 }
 
 // Routing: status determines what Dev Spaces shows
@@ -1278,14 +1242,16 @@ if (paramState === 'remediated') {
 } else if (paramState === 'scm') {
   startRemediation();
   setTimeout(() => showScm(), 2500);
-} else if (hasFileContext && paramStatus === 'fixed') {
-  enterAutoFixedMode();
+} else if (hasFileContext && (paramStatus === 'fixed' || paramStatus === 'approved')) {
+  enterFixedMode();
 } else if (hasFileContext && paramStatus === 'proposed') {
   enterProposedMode();
+} else if (hasFileContext && (paramStatus === 'in-pr' || paramStatus === 'resolved')) {
+  enterInPrMode();
 } else if (hasFileContext && paramTier === 'manual') {
-  enterViolationMode();
+  enterOpenMode();
 } else if (hasFileContext) {
-  enterViolationMode();
+  enterOpenMode();
 } else {
   highlightLine(paramLine);
 }
