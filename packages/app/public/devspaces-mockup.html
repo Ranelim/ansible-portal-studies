@@ -127,7 +127,14 @@
   .hover-tooltip-actions { padding: 6px 10px; border-top: 1px solid #333; display: flex; gap: 12px; }
   .hover-tooltip-actions a { color: #3794ff; font-size: 11px; text-decoration: none; cursor: pointer; }
   .hover-tooltip-actions a:hover { text-decoration: underline; }
+  .hover-tooltip-fix-method { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 3px; }
+  .hover-tooltip-fix-method.auto { background: rgba(35, 134, 54, 0.2); color: #3fb950; }
+  .hover-tooltip-fix-method.ai { background: rgba(55, 148, 255, 0.2); color: #58a6ff; }
+  .hover-tooltip-fix-method.manual { background: rgba(204, 167, 0, 0.15); color: #cca700; }
+  .hover-tooltip-portal-sev { font-size: 10px; color: #888; margin-left: 4px; }
   .squiggle-error, .squiggle-warning, .squiggle-info { cursor: default; }
+  .editor-line.target-violation { background: rgba(0, 122, 204, 0.12) !important; border-left: 3px solid #007acc !important; }
+  .editor-line.other-violation { opacity: 0.7; }
 
   /* Panel */
   .panel { height: 200px; border-top: 1px solid #007acc; background: #1e1e1e; display: flex; flex-direction: column; flex-shrink: 0; }
@@ -413,84 +420,84 @@
 // APME rule knowledge base — richer detail than SARIF messages alone
 const RULE_DETAILS = {
   'yaml[truthy]': {
-    severity: 'warning',
+    severity: 'warning', portalSeverity: 'Low', fixTier: 'auto', fixCategory: 'Syntax',
     summary: 'Truthy value should be one of [false, true]',
     why: 'YAML accepts "yes", "no", "on", "off" as booleans, but they are ambiguous and can cause unexpected behavior. Ansible best practice requires explicit true/false.',
     docs: 'https://ansible.readthedocs.io/projects/lint/rules/yaml/',
     fix: 'Replace "yes" with true, "no" with false.',
   },
   'fqcn[action-core]': {
-    severity: 'warning',
+    severity: 'warning', portalSeverity: 'Medium', fixTier: 'auto', fixCategory: 'Syntax',
     summary: 'Use Fully Qualified Collection Name for builtin module actions',
     why: 'Short module names (e.g., "copy") are deprecated. FQCN (e.g., "ansible.builtin.copy") ensures the correct module is resolved and is required for AAP 2.5+ compatibility.',
     docs: 'https://ansible.readthedocs.io/projects/lint/rules/fqcn/',
     fix: 'Prefix with ansible.builtin. (e.g., copy → ansible.builtin.copy).',
   },
   'aap-deprecated-syntax': {
-    severity: 'error',
+    severity: 'error', portalSeverity: 'High', fixTier: 'auto', fixCategory: 'Migration',
     summary: 'with_items is deprecated — use loop',
     why: 'with_* constructs are deprecated in ansible-core 2.18+ and removed in future versions. The loop keyword is the modern replacement with identical behavior.',
     docs: 'https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_loops.html',
     fix: 'Replace with_items with loop.',
   },
   'aap-deprecated-module': {
-    severity: 'error',
+    severity: 'error', portalSeverity: 'High', fixTier: 'auto', fixCategory: 'Migration',
     summary: 'Module is deprecated in target ansible-core version',
     why: 'ansible.builtin.yum is deprecated in AAP 2.5+ as RHEL 9+ uses dnf. Continuing to use yum will cause failures on newer systems.',
     docs: 'https://docs.ansible.com/ansible/latest/collections/ansible/builtin/dnf_module.html',
     fix: 'Replace ansible.builtin.yum with ansible.builtin.dnf (compatible API).',
   },
   'aap-removed-config': {
-    severity: 'error',
+    severity: 'error', portalSeverity: 'High', fixTier: 'auto', fixCategory: 'Migration',
     summary: 'Configuration option removed in target ansible-core',
     why: 'callback_whitelist was renamed to callbacks_enabled in ansible-core 2.15 and the old name was removed in 2.17. Using the old name causes a startup error.',
     docs: 'https://docs.ansible.com/ansible/latest/reference_appendices/config.html',
     fix: 'Rename callback_whitelist to callbacks_enabled.',
   },
   'aap-removed-param': {
-    severity: 'warning',
+    severity: 'warning', portalSeverity: 'Medium', fixTier: 'auto', fixCategory: 'Migration',
     summary: 'Module parameter removed in target ansible-core',
     why: 'The warn parameter on command/shell modules was removed in ansible-core 2.17 (AAP 2.7). Using it causes a module argument validation error.',
     docs: 'https://docs.ansible.com/ansible/latest/collections/ansible/builtin/command_module.html',
     fix: 'Remove the warn parameter.',
   },
   'aap-collection-update': {
-    severity: 'warning',
+    severity: 'warning', portalSeverity: 'Medium', fixTier: 'auto', fixCategory: 'Migration',
     summary: 'Collection version unsupported in target AAP',
     why: 'community.general 7.x is not supported in AAP 2.7. Version 8.0.0+ is required for compatibility with the included ansible-core version.',
     docs: 'https://access.redhat.com/articles/ansible-automation-platform-certified-content',
     fix: 'Update version constraint to >= 8.0.0.',
   },
   'no-changed-when': {
-    severity: 'warning',
+    severity: 'warning', portalSeverity: 'Medium', fixTier: 'ai', fixCategory: 'Best practice',
     summary: 'Commands should not change things if nothing needs doing',
     why: 'command/shell tasks always report "changed" unless changed_when is set. This makes playbook runs non-idempotent and masks real changes in check mode.',
     docs: 'https://ansible.readthedocs.io/projects/lint/rules/no-changed-when/',
     fix: 'Add a changed_when condition or use creates/removes.',
   },
   'risky-file-permissions': {
-    severity: 'error',
+    severity: 'error', portalSeverity: 'High', fixTier: 'ai', fixCategory: 'Security',
     summary: 'File permissions unset or incorrect',
     why: 'Files created without explicit mode inherit the umask default, which may be world-readable. This is a security risk for sensitive files like scripts and configs.',
     docs: 'https://ansible.readthedocs.io/projects/lint/rules/risky-file-permissions/',
     fix: 'Add mode: "0644" (or appropriate permissions) to the task.',
   },
   'deprecated-module': {
-    severity: 'warning',
+    severity: 'warning', portalSeverity: 'Low', fixTier: 'manual', fixCategory: 'Syntax',
     summary: 'Module is deprecated, use the replacement',
     why: 'The mail module is deprecated in favor of community.general.mail. Using deprecated modules risks breakage in future Ansible releases.',
     docs: 'https://docs.ansible.com/ansible/latest/collections/community/general/mail_module.html',
     fix: 'Replace with community.general.mail.',
   },
   'name[missing]': {
-    severity: 'warning',
+    severity: 'warning', portalSeverity: 'Medium', fixTier: 'auto', fixCategory: 'Best practice',
     summary: 'All tasks should be named',
     why: 'Unnamed tasks display as "TASK [module_name]" in output, making it hard to understand what a playbook is doing and where failures occur.',
     docs: 'https://ansible.readthedocs.io/projects/lint/rules/name/',
     fix: 'Add a descriptive name: field to the task.',
   },
   'meta-no-info': {
-    severity: 'info',
+    severity: 'info', portalSeverity: 'Info', fixTier: 'manual', fixCategory: 'Metadata',
     summary: 'Role metadata should contain relevant info',
     why: 'galaxy_info metadata helps with role discovery, documentation, and dependency resolution. Incomplete metadata reduces reusability.',
     docs: 'https://ansible.readthedocs.io/projects/lint/rules/meta-no-info/',
@@ -1051,14 +1058,21 @@ if (fileData.diff) {
     clearTimeout(hideTimer);
     const detail = RULE_DETAILS[ruleId];
     if (!detail) return;
-    const issue = ALL_PROBLEMS.flatMap(f => f.issues).find(i => i.rule === ruleId);
+
+    const tierLabels = { auto: 'Auto-fixable', ai: 'AI-fixable', manual: 'Manual only' };
+    const tierClass = detail.fixTier || 'manual';
+    const tierLabel = tierLabels[tierClass] || 'Manual only';
 
     let html = '<div class="hover-tooltip-header">';
-    html += '<span class="hover-tooltip-sev ' + detail.severity + '">' + detail.severity + '</span>';
-    html += '<span class="hover-tooltip-rule">' + ruleId + '</span>';
+    html += '<span class="hover-tooltip-sev ' + detail.severity + '">' + (detail.portalSeverity || detail.severity) + '</span>';
+    html += '<span class="hover-tooltip-fix-method ' + tierClass + '">' + tierLabel + '</span>';
+    if (detail.fixCategory) {
+      html += '<span style="color:#888; font-size:10px;">' + detail.fixCategory + '</span>';
+    }
     html += '<span class="hover-tooltip-source">APME</span>';
     html += '</div>';
     html += '<div class="hover-tooltip-body">';
+    html += '<p><code style="color:#e8912d; background:#2d2a22; padding:1px 4px; border-radius:2px; font-size:11px;">' + ruleId + '</code></p>';
     html += '<p>' + detail.summary + '</p>';
     html += '<p class="why">' + detail.why + '</p>';
     if (detail.fix) {
@@ -1110,12 +1124,18 @@ function highlightLine(lineNum) {
       ? document.getElementById('editor-diff')
       : document.getElementById('editor-violations');
     const lines = activeEditor.querySelectorAll('.editor-line');
+    const violationLines = new Set(
+      ALL_PROBLEMS.flatMap(f => f.file === activeFile ? f.issues : []).map(i => i.loc.replace('Ln ', ''))
+    );
     lines.forEach(l => {
       const numEl = l.querySelector('.line-number');
-      if (numEl && numEl.textContent.trim() === String(lineNum)) {
-        l.style.background = 'rgba(0, 122, 204, 0.25)';
-        l.style.borderLeft = '3px solid #007acc';
+      if (!numEl) return;
+      const num = numEl.textContent.trim();
+      if (num === String(lineNum)) {
+        l.classList.add('target-violation');
         l.scrollIntoView({ block: 'center' });
+      } else if (violationLines.has(num)) {
+        l.classList.add('other-violation');
       }
     });
   }, 100);
@@ -1321,10 +1341,24 @@ function enterOpenMode() {
   const actualLine = findActualLine();
   const fixKey = activeFile + ':' + actualLine;
   const manualGuidance = MANUAL_GUIDANCE[fixKey];
+  const detail = rule ? RULE_DETAILS[rule.rule] : null;
+
+  const tierLabels = { auto: 'Auto-fixable', ai: 'AI-fixable', manual: 'Manual only' };
+  const tierLabel = detail ? (tierLabels[detail.fixTier] || 'Manual only') : '';
+  const sevLabel = detail ? detail.portalSeverity : '';
+  const catLabel = detail ? detail.fixCategory : '';
+
+  const fileIssueCount = ALL_PROBLEMS
+    .flatMap(f => f.file === activeFile ? f.issues : []).length;
+  const otherCount = fileIssueCount - 1;
+  const othersNote = otherCount > 0
+    ? ' <span style="color:#888; font-size:12px;">(' + otherCount + ' other violation' + (otherCount > 1 ? 's' : '') + ' in this file)</span>'
+    : '';
 
   if (rule && (paramTier === 'manual' || manualGuidance)) {
     document.getElementById('notif-manual-text').innerHTML =
-      '<strong>APME:</strong> <strong>' + rule.rule + '</strong> — ' + rule.msg + '. No auto-fix available — manual remediation required.';
+      '<strong>APME</strong> · <strong>' + sevLabel + '</strong> · ' + tierLabel + ' · ' + catLabel +
+      '<br><strong>' + rule.rule + '</strong> — ' + rule.msg + '. Manual remediation required.' + othersNote;
     document.getElementById('notif-manual').classList.remove('hidden');
     if (manualGuidance) {
       setTimeout(() => {
@@ -1335,7 +1369,8 @@ function enterOpenMode() {
     }
   } else if (rule) {
     document.getElementById('notif-violation-text').innerHTML =
-      '<strong>APME:</strong> <strong>' + rule.rule + '</strong> — ' + rule.msg + '. Review the violation in context.';
+      '<strong>APME</strong> · <strong>' + sevLabel + '</strong> · ' + tierLabel + ' · ' + catLabel +
+      '<br><strong>' + rule.rule + '</strong> — ' + rule.msg + '. Hover the highlighted code to see details.' + othersNote;
     document.getElementById('notif-violation').classList.remove('hidden');
   }
   highlightLine(actualLine);
