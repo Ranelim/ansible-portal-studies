@@ -81,10 +81,20 @@
 
   /* Editor */
   .editor { flex: 1; overflow: auto; font-family: 'Menlo', 'Consolas', 'Courier New', monospace; font-size: 13px; line-height: 20px; padding: 8px 0; }
-  .editor-line { display: flex; padding: 0 16px 0 0; min-height: 20px; }
+  .editor-line { display: flex; padding: 0 16px 0 0; min-height: 20px; position: relative; }
   .editor-line:hover { background: #2a2d2e; }
   .line-number { width: 48px; text-align: right; padding-right: 16px; color: #555; user-select: none; flex-shrink: 0; }
   .line-content { flex: 1; white-space: pre; }
+  .line-gutter-icon { position: absolute; left: 2px; top: 1px; width: 16px; height: 18px; display: flex; align-items: center; justify-content: center; font-size: 12px; cursor: pointer; z-index: 2; opacity: 0.9; filter: saturate(1.2); }
+  .line-gutter-icon:hover { opacity: 1; transform: scale(1.15); }
+
+  /* Violation line tints — subtle background so violations are visible even without squiggles */
+  .editor-line.has-error { background: rgba(244, 71, 71, 0.06); }
+  .editor-line.has-error .line-number { color: #f44747; }
+  .editor-line.has-warning { background: rgba(204, 167, 0, 0.06); }
+  .editor-line.has-warning .line-number { color: #cca700; }
+  .editor-line.has-info { background: rgba(55, 148, 255, 0.06); }
+  .editor-line.has-info .line-number { color: #3794ff; }
 
   /* Diff lines */
   .diff-added { background: rgba(35, 134, 54, 0.2); }
@@ -961,34 +971,27 @@ function renderEditorLines(container, lines, opts) {
   let html = '';
   lines.forEach(l => {
     let cls = 'editor-line';
-    let numStyle = '';
     let tag = '';
     let gutterIcon = '';
     if (l.removed) cls += ' diff-removed diff-gutter-removed';
     if (l.added) cls += ' diff-added diff-gutter-added';
-    if (l.err) { numStyle = ' style="color:#f44747;"'; }
-    if (l.warn) { numStyle = ' style="color:#cca700;"'; }
-    if (l.info) { numStyle = ' style="color:#3794ff;"'; }
+    if (l.err && !l.removed) cls += ' has-error';
+    if (l.warn && !l.removed) cls += ' has-warning';
+    if (l.info && !l.removed) cls += ' has-info';
     if (l.errTag) tag = '  <span style="color:#555; font-size:11px;">← ' + l.errTag + '</span>';
     if (l.warnTag) tag = '  <span style="color:#555; font-size:11px;">← ' + l.warnTag + '</span>';
     if (l.infoTag) tag = '  <span style="color:#555; font-size:11px;">← ' + l.infoTag + '</span>';
-    const bg = l.err && !l.removed ? ' style="background:rgba(244,71,71,0.08);"' :
-               l.warn && !l.removed ? ' style="background:rgba(204,167,0,0.08);"' :
-               l.info && !l.removed ? ' style="background:rgba(55,148,255,0.06);"' : '';
 
     const hasTag = l.errTag || l.warnTag || l.infoTag;
+    const hasViolation = l.err || l.warn || l.info;
     const showInlineWidgets = opts && opts.showInlineWidgets;
 
-    if (!isDiff && hasTag && showInlineWidgets) {
-      const fixKey = activeFile + ':' + l.num;
-      if (INLINE_FIXES[fixKey]) {
-        gutterIcon = '<span class="line-lightbulb" onclick="toggleSuggestion(\'' + fixKey + '\', this)" title="APME: View proposed fix">💡</span>';
-      } else if (MANUAL_GUIDANCE[fixKey]) {
-        gutterIcon = '<span class="line-lightbulb" onclick="toggleGuidance(\'' + fixKey + '\')" title="APME: Manual remediation — view guidance">💡</span>';
-      }
+    // Lightbulb appears on ALL violation lines — standard VS Code affordance
+    if (!isDiff && hasViolation) {
+      gutterIcon = '<span class="line-gutter-icon" data-line="' + l.num + '" onclick="showTooltipForLine(' + l.num + ', this)" title="View violation details">💡</span>';
     }
 
-    html += '<div class="' + cls + '"' + bg + ' data-line="' + l.num + '">' + gutterIcon + '<span class="line-number"' + numStyle + '>' + l.num + '</span><span class="line-content">' + l.html + tag + '</span></div>';
+    html += '<div class="' + cls + '" data-line="' + l.num + '">' + gutterIcon + '<span class="line-number">' + l.num + '</span><span class="line-content">' + l.html + tag + '</span></div>';
 
     if (!isDiff && hasTag && showInlineWidgets) {
       const fixKey = activeFile + ':' + l.num;
@@ -1048,6 +1051,15 @@ if (fileData.diff) {
   renderEditorLines(document.getElementById('editor-diff'), fileData.diff, { isDiff: true });
 }
 
+// Global tooltip function — called by gutter lightbulb click and squiggle hover
+function showTooltipForLine(lineNum, anchorEl) {
+  const issues = ALL_PROBLEMS.flatMap(f => f.file === activeFile ? f.issues : []);
+  const issue = issues.find(i => i.loc === 'Ln ' + lineNum);
+  if (issue) {
+    window._showViolationTooltip(anchorEl, issue.rule);
+  }
+}
+
 // Wire VS Code-style hover tooltips to squiggle-annotated code
 (function initHoverTooltips() {
   const tooltip = document.getElementById('violation-tooltip');
@@ -1087,10 +1099,13 @@ if (fileData.diff) {
 
     tooltip.innerHTML = html;
     const rect = el.getBoundingClientRect();
-    tooltip.style.left = rect.left + 'px';
+    tooltip.style.left = Math.min(rect.left, window.innerWidth - 380) + 'px';
     tooltip.style.top = (rect.bottom + 4) + 'px';
     tooltip.classList.add('visible');
   }
+
+  // Expose globally for lightbulb onclick
+  window._showViolationTooltip = showTooltip;
 
   function scheduleHide() {
     hideTimer = setTimeout(() => tooltip.classList.remove('visible'), 300);
