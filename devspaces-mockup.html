@@ -108,9 +108,26 @@
   .module { color: #4ec9b0; }
   .bool { color: #569cd6; }
 
-  /* Hover */
-  .hover-tooltip { position: fixed; background: #252526; border: 1px solid #454545; border-radius: 3px; padding: 8px 12px; font-size: 12px; line-height: 1.5; max-width: 520px; z-index: 100; display: none; box-shadow: 0 2px 8px rgba(0,0,0,0.4); }
+  /* Hover tooltip — VS Code-style diagnostic popup */
+  .hover-tooltip { position: fixed; background: #252526; border: 1px solid #454545; border-radius: 3px; padding: 0; font-size: 12px; line-height: 1.5; max-width: 520px; min-width: 360px; z-index: 100; display: none; box-shadow: 0 2px 8px rgba(0,0,0,0.4); }
   .hover-tooltip.visible { display: block; }
+  .hover-tooltip-header { padding: 6px 10px; display: flex; align-items: center; gap: 6px; border-bottom: 1px solid #333; }
+  .hover-tooltip-sev { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; padding: 1px 5px; border-radius: 3px; }
+  .hover-tooltip-sev.error { background: rgba(244, 71, 71, 0.2); color: #f44747; }
+  .hover-tooltip-sev.warning { background: rgba(204, 167, 0, 0.2); color: #cca700; }
+  .hover-tooltip-sev.info { background: rgba(55, 148, 255, 0.2); color: #3794ff; }
+  .hover-tooltip-rule { color: #3794ff; font-family: monospace; font-size: 11px; }
+  .hover-tooltip-source { color: #888; font-size: 11px; margin-left: auto; }
+  .hover-tooltip-body { padding: 8px 10px; color: #ccc; }
+  .hover-tooltip-body p { margin: 0 0 6px 0; }
+  .hover-tooltip-body p:last-child { margin-bottom: 0; }
+  .hover-tooltip-body .why { color: #999; font-size: 11px; margin-top: 4px; }
+  .hover-tooltip-body a { color: #3794ff; text-decoration: none; }
+  .hover-tooltip-body a:hover { text-decoration: underline; }
+  .hover-tooltip-actions { padding: 6px 10px; border-top: 1px solid #333; display: flex; gap: 12px; }
+  .hover-tooltip-actions a { color: #3794ff; font-size: 11px; text-decoration: none; cursor: pointer; }
+  .hover-tooltip-actions a:hover { text-decoration: underline; }
+  .squiggle-error, .squiggle-warning, .squiggle-info { cursor: default; }
 
   /* Panel */
   .panel { height: 200px; border-top: 1px solid #007acc; background: #1e1e1e; display: flex; flex-direction: column; flex-shrink: 0; }
@@ -388,7 +405,99 @@
 
 <style>@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }</style>
 
+<!-- VS Code-style hover tooltip for violations -->
+<div class="hover-tooltip" id="violation-tooltip"></div>
+
 <script>
+
+// APME rule knowledge base — richer detail than SARIF messages alone
+const RULE_DETAILS = {
+  'yaml[truthy]': {
+    severity: 'warning',
+    summary: 'Truthy value should be one of [false, true]',
+    why: 'YAML accepts "yes", "no", "on", "off" as booleans, but they are ambiguous and can cause unexpected behavior. Ansible best practice requires explicit true/false.',
+    docs: 'https://ansible.readthedocs.io/projects/lint/rules/yaml/',
+    fix: 'Replace "yes" with true, "no" with false.',
+  },
+  'fqcn[action-core]': {
+    severity: 'warning',
+    summary: 'Use Fully Qualified Collection Name for builtin module actions',
+    why: 'Short module names (e.g., "copy") are deprecated. FQCN (e.g., "ansible.builtin.copy") ensures the correct module is resolved and is required for AAP 2.5+ compatibility.',
+    docs: 'https://ansible.readthedocs.io/projects/lint/rules/fqcn/',
+    fix: 'Prefix with ansible.builtin. (e.g., copy → ansible.builtin.copy).',
+  },
+  'aap-deprecated-syntax': {
+    severity: 'error',
+    summary: 'with_items is deprecated — use loop',
+    why: 'with_* constructs are deprecated in ansible-core 2.18+ and removed in future versions. The loop keyword is the modern replacement with identical behavior.',
+    docs: 'https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_loops.html',
+    fix: 'Replace with_items with loop.',
+  },
+  'aap-deprecated-module': {
+    severity: 'error',
+    summary: 'Module is deprecated in target ansible-core version',
+    why: 'ansible.builtin.yum is deprecated in AAP 2.5+ as RHEL 9+ uses dnf. Continuing to use yum will cause failures on newer systems.',
+    docs: 'https://docs.ansible.com/ansible/latest/collections/ansible/builtin/dnf_module.html',
+    fix: 'Replace ansible.builtin.yum with ansible.builtin.dnf (compatible API).',
+  },
+  'aap-removed-config': {
+    severity: 'error',
+    summary: 'Configuration option removed in target ansible-core',
+    why: 'callback_whitelist was renamed to callbacks_enabled in ansible-core 2.15 and the old name was removed in 2.17. Using the old name causes a startup error.',
+    docs: 'https://docs.ansible.com/ansible/latest/reference_appendices/config.html',
+    fix: 'Rename callback_whitelist to callbacks_enabled.',
+  },
+  'aap-removed-param': {
+    severity: 'warning',
+    summary: 'Module parameter removed in target ansible-core',
+    why: 'The warn parameter on command/shell modules was removed in ansible-core 2.17 (AAP 2.7). Using it causes a module argument validation error.',
+    docs: 'https://docs.ansible.com/ansible/latest/collections/ansible/builtin/command_module.html',
+    fix: 'Remove the warn parameter.',
+  },
+  'aap-collection-update': {
+    severity: 'warning',
+    summary: 'Collection version unsupported in target AAP',
+    why: 'community.general 7.x is not supported in AAP 2.7. Version 8.0.0+ is required for compatibility with the included ansible-core version.',
+    docs: 'https://access.redhat.com/articles/ansible-automation-platform-certified-content',
+    fix: 'Update version constraint to >= 8.0.0.',
+  },
+  'no-changed-when': {
+    severity: 'warning',
+    summary: 'Commands should not change things if nothing needs doing',
+    why: 'command/shell tasks always report "changed" unless changed_when is set. This makes playbook runs non-idempotent and masks real changes in check mode.',
+    docs: 'https://ansible.readthedocs.io/projects/lint/rules/no-changed-when/',
+    fix: 'Add a changed_when condition or use creates/removes.',
+  },
+  'risky-file-permissions': {
+    severity: 'error',
+    summary: 'File permissions unset or incorrect',
+    why: 'Files created without explicit mode inherit the umask default, which may be world-readable. This is a security risk for sensitive files like scripts and configs.',
+    docs: 'https://ansible.readthedocs.io/projects/lint/rules/risky-file-permissions/',
+    fix: 'Add mode: "0644" (or appropriate permissions) to the task.',
+  },
+  'deprecated-module': {
+    severity: 'warning',
+    summary: 'Module is deprecated, use the replacement',
+    why: 'The mail module is deprecated in favor of community.general.mail. Using deprecated modules risks breakage in future Ansible releases.',
+    docs: 'https://docs.ansible.com/ansible/latest/collections/community/general/mail_module.html',
+    fix: 'Replace with community.general.mail.',
+  },
+  'name[missing]': {
+    severity: 'warning',
+    summary: 'All tasks should be named',
+    why: 'Unnamed tasks display as "TASK [module_name]" in output, making it hard to understand what a playbook is doing and where failures occur.',
+    docs: 'https://ansible.readthedocs.io/projects/lint/rules/name/',
+    fix: 'Add a descriptive name: field to the task.',
+  },
+  'meta-no-info': {
+    severity: 'info',
+    summary: 'Role metadata should contain relevant info',
+    why: 'galaxy_info metadata helps with role discovery, documentation, and dependency resolution. Incomplete metadata reduces reusability.',
+    docs: 'https://ansible.readthedocs.io/projects/lint/rules/meta-no-info/',
+    fix: 'Fill in author, description, platforms, and min_ansible_version.',
+  },
+};
+
 const ALL_PROBLEMS = [
   { file: 'ansible.cfg', icon: '⚙', issues: [
     { sev: 'error', msg: 'callback_whitelist renamed to callbacks_enabled (removed in ansible-core 2.17)', rule: 'aap-removed-config', loc: 'Ln 3', fixable: true },
@@ -932,6 +1041,67 @@ renderEditorLines(document.getElementById('editor-violations'), fileData.lines, 
 if (fileData.diff) {
   renderEditorLines(document.getElementById('editor-diff'), fileData.diff, { isDiff: true });
 }
+
+// Wire VS Code-style hover tooltips to squiggle-annotated code
+(function initHoverTooltips() {
+  const tooltip = document.getElementById('violation-tooltip');
+  let hideTimer = null;
+
+  function showTooltip(el, ruleId) {
+    clearTimeout(hideTimer);
+    const detail = RULE_DETAILS[ruleId];
+    if (!detail) return;
+    const issue = ALL_PROBLEMS.flatMap(f => f.issues).find(i => i.rule === ruleId);
+
+    let html = '<div class="hover-tooltip-header">';
+    html += '<span class="hover-tooltip-sev ' + detail.severity + '">' + detail.severity + '</span>';
+    html += '<span class="hover-tooltip-rule">' + ruleId + '</span>';
+    html += '<span class="hover-tooltip-source">APME</span>';
+    html += '</div>';
+    html += '<div class="hover-tooltip-body">';
+    html += '<p>' + detail.summary + '</p>';
+    html += '<p class="why">' + detail.why + '</p>';
+    if (detail.fix) {
+      html += '<p style="color:#4ec9b0; font-size: 11px; margin-top: 6px;">💡 ' + detail.fix + '</p>';
+    }
+    html += '</div>';
+    html += '<div class="hover-tooltip-actions">';
+    if (detail.docs) {
+      html += '<a href="' + detail.docs + '" target="_blank">View rule documentation ↗</a>';
+    }
+    html += '<a href="javascript:void(0)" onclick="document.getElementById(\'violation-tooltip\').classList.remove(\'visible\')">Dismiss</a>';
+    html += '</div>';
+
+    tooltip.innerHTML = html;
+    const rect = el.getBoundingClientRect();
+    tooltip.style.left = rect.left + 'px';
+    tooltip.style.top = (rect.bottom + 4) + 'px';
+    tooltip.classList.add('visible');
+  }
+
+  function scheduleHide() {
+    hideTimer = setTimeout(() => tooltip.classList.remove('visible'), 300);
+  }
+
+  tooltip.addEventListener('mouseenter', () => clearTimeout(hideTimer));
+  tooltip.addEventListener('mouseleave', () => tooltip.classList.remove('visible'));
+
+  document.addEventListener('mouseover', function(e) {
+    const squiggle = e.target.closest('.squiggle-error, .squiggle-warning, .squiggle-info');
+    if (!squiggle) return;
+    const line = squiggle.closest('.editor-line');
+    if (!line) return;
+    const lineNum = line.dataset.line;
+    const issues = ALL_PROBLEMS.flatMap(f => f.file === activeFile ? f.issues : []);
+    const issue = issues.find(i => i.loc === 'Ln ' + lineNum);
+    if (issue) showTooltip(squiggle, issue.rule);
+  });
+
+  document.addEventListener('mouseout', function(e) {
+    const squiggle = e.target.closest('.squiggle-error, .squiggle-warning, .squiggle-info');
+    if (squiggle) scheduleHide();
+  });
+})();
 
 function highlightLine(lineNum) {
   if (!lineNum) return;
