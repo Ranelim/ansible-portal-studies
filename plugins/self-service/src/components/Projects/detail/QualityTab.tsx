@@ -2160,6 +2160,12 @@ export const QualityTabUnified = ({
   const filteredViolations = useMemo(() => {
     if (!quality) return [];
     let result = quality.violations;
+
+    // Step 2+: only show violations that are part of the current remediation cycle
+    if (pageState !== 'idle' && pageState !== 'in-progress') {
+      result = result.filter(v => getStatus(v) !== 'open');
+    }
+
     if (ruleFilter) result = result.filter(v => v.ruleId === ruleFilter);
     if (severityFilters.size > 0) result = result.filter(v => severityFilters.has(v.severity));
     if (fixFilters.size > 0) result = result.filter(v => fixFilters.has(v.fixTier));
@@ -2192,6 +2198,8 @@ export const QualityTabUnified = ({
   const inPrCount = violations.filter(v => getStatus(v) === 'in-pr').length;
   const resolvedCount = violations.filter(v => getStatus(v) === 'resolved').length;
   const prReadyCount = fixedCount + approvedCount;
+  const remediatedTotal = violations.filter(v => getStatus(v) !== 'open').length;
+  const remainingCount = violations.length - remediatedTotal;
   const isStep1 = pageState === 'idle' || pageState === 'in-progress';
   const showCheckboxes = pageState === 'idle';
 
@@ -2411,12 +2419,20 @@ export const QualityTabUnified = ({
     if (pageState === 'pr-merged') {
       return (
         <Box className={`${classes.banner} ${classes.bannerMerged}`}>
-          <Box display="flex" alignItems="center" style={{ gap: 8 }}>
-            <CheckCircleIcon style={{ fontSize: 16, color: '#5ba352' }} />
-            <Typography style={{ fontSize: 13, color: '#1e4620', fontWeight: 500 }}>
-              Pull request merged — <strong>{resolvedCount}</strong> violation{resolvedCount !== 1 ? 's' : ''} resolved.
-              {fixableCount > 0 && ` ${fixableCount} remaining can be remediated.`}
-            </Typography>
+          <Box className={classes.bannerRow}>
+            <Box display="flex" alignItems="center" style={{ gap: 8 }}>
+              <CheckCircleIcon style={{ fontSize: 16, color: '#5ba352' }} />
+              <Typography style={{ fontSize: 13, color: '#1e4620', fontWeight: 500 }}>
+                Pull request merged — <strong>{resolvedCount}</strong> violation{resolvedCount !== 1 ? 's' : ''} resolved.
+                {remainingCount > 0 && ` ${remainingCount} remaining in this scan.`}
+              </Typography>
+            </Box>
+            {remainingCount > 0 && isDeveloper && (
+              <Button size="small" variant="outlined" onClick={handleReset}
+                style={{ textTransform: 'none', fontSize: 12, padding: '4px 12px', borderColor: '#5ba352', color: '#1e4620' }}>
+                Start new remediation cycle
+              </Button>
+            )}
           </Box>
         </Box>
       );
@@ -2592,92 +2608,101 @@ export const QualityTabUnified = ({
             </Box>
           )}
 
-          {/* Summary + quick filters */}
-          <Box style={{ marginBottom: 16 }}>
-            <Box display="flex" alignItems="center" justifyContent="space-between" style={{ marginBottom: 8 }}>
-              <Box display="flex" alignItems="center" style={{ gap: 10 }}>
-                <Typography style={{ fontSize: 13 }}>
-                  <strong>{scan.totalViolations}</strong> violations
-                </Typography>
-                <span style={{ color: '#d2d2d2', fontSize: 13 }}>|</span>
-                {(['critical', 'high', 'medium', 'low', 'info'] as SeverityClass[]).map(sev => {
-                  const count = scan.severityBreakdown[sev];
-                  if (!count) return null;
-                  const isActive = severityFilters.has(sev);
-                  const anyActive = severityFilters.size > 0;
-                  const sevTips: Record<SeverityClass, string> = {
-                    critical: 'Critical — Must fix before deployment',
-                    high: 'High — Should fix soon',
-                    medium: 'Medium — Recommended improvement',
-                    low: 'Low — Optional enhancement',
-                    info: 'Info — No action required',
-                  };
-                  return (
-                    <DarkTooltip key={sev} title={`${sevTips[sev]}. Click to ${isActive ? 'remove' : 'add'} filter. (${count})`} arrow enterDelay={200}>
-                      <span
-                        onClick={() => toggleSeverityFilter(sev)}
-                        style={{
-                          display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 13, cursor: 'pointer',
-                          padding: '2px 8px', borderRadius: 10,
-                          backgroundColor: isActive ? `${SEVERITY_COLORS[sev]}18` : 'transparent',
-                          border: isActive ? `1px solid ${SEVERITY_COLORS[sev]}40` : '1px solid transparent',
-                          opacity: anyActive && !isActive ? 0.4 : 1, transition: 'all 0.15s ease',
-                        }}
-                      >
-                        <strong style={{ color: SEVERITY_COLORS[sev] }}>{count}</strong>
-                        <span style={{ textTransform: 'capitalize' }}>{sev}</span>
-                        {isActive && <CloseIcon style={{ fontSize: 12, color: SEVERITY_COLORS[sev], marginLeft: 2 }} />}
-                      </span>
-                    </DarkTooltip>
-                  );
-                })}
+          {/* Summary + quick filters — full breakdown in step 1, focused summary in step 2+ */}
+          {isStep1 ? (
+            <Box style={{ marginBottom: 16 }}>
+              <Box display="flex" alignItems="center" justifyContent="space-between" style={{ marginBottom: 8 }}>
+                <Box display="flex" alignItems="center" style={{ gap: 10 }}>
+                  <Typography style={{ fontSize: 13 }}>
+                    <strong>{scan.totalViolations}</strong> violations
+                  </Typography>
+                  <span style={{ color: '#d2d2d2', fontSize: 13 }}>|</span>
+                  {(['critical', 'high', 'medium', 'low', 'info'] as SeverityClass[]).map(sev => {
+                    const count = scan.severityBreakdown[sev];
+                    if (!count) return null;
+                    const isActive = severityFilters.has(sev);
+                    const anyActive = severityFilters.size > 0;
+                    const sevTips: Record<SeverityClass, string> = {
+                      critical: 'Critical — Must fix before deployment',
+                      high: 'High — Should fix soon',
+                      medium: 'Medium — Recommended improvement',
+                      low: 'Low — Optional enhancement',
+                      info: 'Info — No action required',
+                    };
+                    return (
+                      <DarkTooltip key={sev} title={`${sevTips[sev]}. Click to ${isActive ? 'remove' : 'add'} filter. (${count})`} arrow enterDelay={200}>
+                        <span
+                          onClick={() => toggleSeverityFilter(sev)}
+                          style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 13, cursor: 'pointer',
+                            padding: '2px 8px', borderRadius: 10,
+                            backgroundColor: isActive ? `${SEVERITY_COLORS[sev]}18` : 'transparent',
+                            border: isActive ? `1px solid ${SEVERITY_COLORS[sev]}40` : '1px solid transparent',
+                            opacity: anyActive && !isActive ? 0.4 : 1, transition: 'all 0.15s ease',
+                          }}
+                        >
+                          <strong style={{ color: SEVERITY_COLORS[sev] }}>{count}</strong>
+                          <span style={{ textTransform: 'capitalize' }}>{sev}</span>
+                          {isActive && <CloseIcon style={{ fontSize: 12, color: SEVERITY_COLORS[sev], marginLeft: 2 }} />}
+                        </span>
+                      </DarkTooltip>
+                    );
+                  })}
+                </Box>
+                <Box display="flex" alignItems="center" style={{ gap: 10 }}>
+                  {([
+                    { tier: 'deterministic' as FixTierFilter, label: 'Auto-fix', color: '#2e7d32', tip: TIER_TOOLTIPS.deterministic },
+                    { tier: 'ai' as FixTierFilter, label: 'AI-assisted', color: '#6a1b9a', tip: TIER_TOOLTIPS.ai },
+                    { tier: 'manual' as FixTierFilter, label: 'Manual', color: '#6a6e73', tip: TIER_TOOLTIPS.manual },
+                  ]).map(({ tier, label, color, tip }) => {
+                    const count = quality.violations.filter(v => v.fixTier === tier).length;
+                    if (!count) return null;
+                    const isActive = fixFilters.has(tier);
+                    const anyActive = fixFilters.size > 0;
+                    return (
+                      <DarkTooltip key={tier} title={`${tip} Click to ${isActive ? 'remove' : 'add'} filter. (${count})`} arrow enterDelay={200}>
+                        <span
+                          onClick={() => toggleFixFilter(tier)}
+                          style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 13, cursor: 'pointer',
+                            padding: '2px 8px', borderRadius: 10,
+                            backgroundColor: isActive ? `${color}18` : 'transparent',
+                            border: isActive ? `1px solid ${color}40` : '1px solid transparent',
+                            opacity: anyActive && !isActive ? 0.4 : 1, transition: 'all 0.15s ease',
+                          }}
+                        >
+                          <strong style={{ color }}>{count}</strong>
+                          <span>{label}</span>
+                          {isActive && <CloseIcon style={{ fontSize: 12, color, marginLeft: 2 }} />}
+                        </span>
+                      </DarkTooltip>
+                    );
+                  })}
+                </Box>
               </Box>
-              <Box display="flex" alignItems="center" style={{ gap: 10 }}>
-                {([
-                  { tier: 'deterministic' as FixTierFilter, label: 'Auto-fix', color: '#2e7d32', tip: TIER_TOOLTIPS.deterministic },
-                  { tier: 'ai' as FixTierFilter, label: 'AI-assisted', color: '#6a1b9a', tip: TIER_TOOLTIPS.ai },
-                  { tier: 'manual' as FixTierFilter, label: 'Manual', color: '#6a6e73', tip: TIER_TOOLTIPS.manual },
-                ]).map(({ tier, label, color, tip }) => {
-                  const count = quality.violations.filter(v => v.fixTier === tier).length;
-                  if (!count) return null;
-                  const isActive = fixFilters.has(tier);
-                  const anyActive = fixFilters.size > 0;
-                  return (
-                    <DarkTooltip key={tier} title={`${tip} Click to ${isActive ? 'remove' : 'add'} filter. (${count})`} arrow enterDelay={200}>
-                      <span
-                        onClick={() => toggleFixFilter(tier)}
-                        style={{
-                          display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 13, cursor: 'pointer',
-                          padding: '2px 8px', borderRadius: 10,
-                          backgroundColor: isActive ? `${color}18` : 'transparent',
-                          border: isActive ? `1px solid ${color}40` : '1px solid transparent',
-                          opacity: anyActive && !isActive ? 0.4 : 1, transition: 'all 0.15s ease',
-                        }}
-                      >
-                        <strong style={{ color }}>{count}</strong>
-                        <span>{label}</span>
-                        {isActive && <CloseIcon style={{ fontSize: 12, color, marginLeft: 2 }} />}
-                      </span>
-                    </DarkTooltip>
-                  );
-                })}
-              </Box>
+              <SeverityProgressBar breakdown={scan.severityBreakdown} />
+              {(severityFilters.size > 0 || fixFilters.size > 0) && (
+                <Box display="flex" alignItems="center" style={{ marginTop: 8, gap: 8 }}>
+                  <Typography style={{ fontSize: 12, color: '#6a6e73' }}>
+                    Showing {filteredViolations.length} of {scan.totalViolations} violations
+                  </Typography>
+                  <span
+                    onClick={() => { setSeverityFilters(new Set()); setFixFilters(new Set()); }}
+                    style={{ fontSize: 12, color: '#06c', cursor: 'pointer' }}
+                  >
+                    Clear filters
+                  </span>
+                </Box>
+              )}
             </Box>
-            <SeverityProgressBar breakdown={scan.severityBreakdown} />
-            {(severityFilters.size > 0 || fixFilters.size > 0) && (
-              <Box display="flex" alignItems="center" style={{ marginTop: 8, gap: 8 }}>
-                <Typography style={{ fontSize: 12, color: '#6a6e73' }}>
-                  Showing {filteredViolations.length} of {scan.totalViolations} violations
-                </Typography>
-                <span
-                  onClick={() => { setSeverityFilters(new Set()); setFixFilters(new Set()); }}
-                  style={{ fontSize: 12, color: '#06c', cursor: 'pointer' }}
-                >
-                  Clear filters
-                </span>
-              </Box>
-            )}
-          </Box>
+          ) : (
+            <Box display="flex" alignItems="center" justifyContent="space-between" style={{ marginBottom: 12 }}>
+              <Typography style={{ fontSize: 13, color: '#6a6e73' }}>
+                Reviewing <strong style={{ color: '#151515' }}>{remediatedTotal}</strong> of {scan.totalViolations} violations
+                {remainingCount > 0 && <> · {remainingCount} remaining for future remediation</>}
+              </Typography>
+            </Box>
+          )}
 
           {/* Violations table */}
           {pageState !== 'in-progress' && pageState !== 'creating-pr' && (
