@@ -915,6 +915,9 @@ const params = new URLSearchParams(window.location.search);
 const paramFile = params.get('file');
 const paramLine = params.get('line');
 const paramState = params.get('state');
+const paramTier = params.get('tier');
+const paramStatus = params.get('status');
+const hasFileContext = paramFile && paramLine;
 
 const activeFile = resolveFile(paramFile);
 document.querySelector('.titlebar-center').textContent = activeFile + ' — rhel-patching — Dev Spaces';
@@ -1112,9 +1115,7 @@ document.querySelectorAll('#sidebar-explorer .tree-item').forEach(el => {
 // Initial render
 renderProblems();
 
-const paramTier = params.get('tier'); // 'deterministic', 'ai', 'manual'
-const paramStatus = params.get('status'); // 'open', 'fixed', 'proposed', 'approved', 'editing', etc.
-const hasFileContext = paramFile && paramLine;
+// paramTier, paramStatus, hasFileContext declared with other params above
 
 function findRule() {
   const issues = ALL_PROBLEMS.flatMap(f => f.file === activeFile ? f.issues : []);
