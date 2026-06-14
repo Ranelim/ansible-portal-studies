@@ -2399,16 +2399,9 @@ export const QualityTabUnified = ({
               <span onClick={handleMergePr} style={{ fontSize: 11, color: '#999', cursor: 'pointer', textDecoration: 'underline' }}>
                 Simulate merge
               </span>
-              {isDevSpacesConnected && isDeveloper && (
-                <Button size="small" variant="contained" color="primary" startIcon={<CodeIcon style={{ fontSize: 14 }} />}
-                  onClick={() => window.open('/devspaces-mockup.html?state=remediated', '_blank')}
-                  style={{ textTransform: 'none', fontSize: 13, fontWeight: 500 }}>
-                  Review in Dev Spaces
-                </Button>
-              )}
-              <Button size="small" variant="outlined" startIcon={<OpenInNewIcon style={{ fontSize: 14 }} />}
+              <Button size="small" variant="contained" color="primary" startIcon={<OpenInNewIcon style={{ fontSize: 14 }} />}
                 onClick={() => window.open(`${repoUrl}/pull/99`, '_blank')}
-                style={{ textTransform: 'none', fontSize: 12, padding: '4px 12px' }}>
+                style={{ textTransform: 'none', fontSize: 13, fontWeight: 500 }}>
                 View pull request
               </Button>
             </Box>
@@ -2472,7 +2465,6 @@ export const QualityTabUnified = ({
               Edit in Dev Spaces
             </Button>
           )}
-          <Button size="small" variant="text" onClick={handleReset} style={{ textTransform: 'none', fontSize: 11, color: '#999' }}>Reset</Button>
         </Box>
       </Box>
       {scanning && <LinearProgress variant="determinate" value={scanProgress} style={{ height: 4, borderRadius: 2, marginBottom: 8 }} />}
