@@ -1075,7 +1075,7 @@ function showTooltipForLine(lineNum, anchorEl) {
     const tierLabel = tierLabels[tierClass] || 'Manual only';
 
     let html = '<div class="hover-tooltip-header">';
-    html += '<span class="hover-tooltip-sev ' + detail.severity + '">' + (detail.portalSeverity || detail.severity) + '</span>';
+    html += '<span class="hover-tooltip-sev ' + detail.severity + '">Severity: ' + (detail.portalSeverity || detail.severity) + '</span>';
     html += '<span class="hover-tooltip-fix-method ' + tierClass + '">' + tierLabel + '</span>';
     if (detail.fixCategory) {
       html += '<span style="color:#888; font-size:10px;">' + detail.fixCategory + '</span>';
@@ -1369,7 +1369,7 @@ function enterOpenMode() {
 
   if (rule && (paramTier === 'manual' || manualGuidance)) {
     document.getElementById('notif-manual-text').innerHTML =
-      '<strong>APME</strong> · <strong>' + sevLabel + '</strong> · ' + tierLabel + ' · ' + catLabel +
+      '<strong>APME</strong> · Severity: <strong>' + sevLabel + '</strong> · ' + tierLabel + ' · ' + catLabel +
       '<br><strong>' + rule.rule + '</strong> — ' + rule.msg + '. Manual remediation required.' + othersNote;
     document.getElementById('notif-manual').classList.remove('hidden');
     if (manualGuidance) {
@@ -1381,8 +1381,8 @@ function enterOpenMode() {
     }
   } else if (rule) {
     document.getElementById('notif-violation-text').innerHTML =
-      '<strong>APME</strong> · <strong>' + sevLabel + '</strong> · ' + tierLabel + ' · ' + catLabel +
-      '<br><strong>' + rule.rule + '</strong> — ' + rule.msg + '. Hover the highlighted code to see details.' + othersNote;
+      '<strong>APME</strong> · Severity: <strong>' + sevLabel + '</strong> · ' + tierLabel + ' · ' + catLabel +
+      '<br><strong>' + rule.rule + '</strong> — ' + rule.msg + '. Hover the highlighted code or click 💡 to see details.' + othersNote;
     document.getElementById('notif-violation').classList.remove('hidden');
   }
   highlightLine(actualLine);
