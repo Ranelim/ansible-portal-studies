@@ -7,6 +7,7 @@ import {
   Button,
   CircularProgress,
   makeStyles,
+  useTheme,
 } from '@material-ui/core';
 import CloseIcon from '@material-ui/icons/Close';
 import ErrorIcon from '@material-ui/icons/Error';
@@ -95,6 +96,7 @@ export const HealthScorePopover = ({
   onNavigateToQuality,
 }: HealthScorePopoverProps) => {
   const classes = useStyles();
+  const theme = useTheme();
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
 
   const quality = qualityProp ?? getProjectQuality(repoName);
@@ -164,7 +166,7 @@ export const HealthScorePopover = ({
                   {healthLabel(healthScore)}
                 </Typography>
               </Box>
-              <Typography style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
+              <Typography style={{ fontSize: 12, color: theme.palette.text.secondary, marginTop: 4 }}>
                 {totalViolations === 0
                   ? 'No violations detected'
                   : `${totalViolations} violation${totalViolations !== 1 ? 's' : ''} found`}
@@ -185,7 +187,7 @@ export const HealthScorePopover = ({
             </Box>
           ) : (
             <>
-              <Typography style={{ fontSize: 11, fontWeight: 600, color: '#666', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>
+              <Typography style={{ fontSize: 11, fontWeight: 600, color: theme.palette.text.secondary, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>
                 Top issues
               </Typography>
               {topViolations.map((v, i) => (
@@ -195,14 +197,14 @@ export const HealthScorePopover = ({
                     <Typography style={{ fontSize: 12, fontWeight: 500 }} noWrap>
                       {v.message}
                     </Typography>
-                    <Typography style={{ fontSize: 11, color: '#999', fontFamily: 'monospace' }}>
+                    <Typography style={{ fontSize: 11, color: theme.palette.text.disabled, fontFamily: 'monospace' }}>
                       {v.ruleId} · {v.file}:{v.lineStart}
                     </Typography>
                   </Box>
                 </Box>
               ))}
               {violations.length > topViolations.length && (
-                <Typography style={{ fontSize: 11, color: '#999', marginTop: 4 }}>
+                <Typography style={{ fontSize: 11, color: theme.palette.text.disabled, marginTop: 4 }}>
                   +{violations.length - topViolations.length} more
                 </Typography>
               )}
@@ -210,7 +212,7 @@ export const HealthScorePopover = ({
           )}
 
           <Box className={classes.footer}>
-            <Typography style={{ fontSize: 11, color: '#999' }}>
+            <Typography style={{ fontSize: 11, color: theme.palette.text.disabled }}>
               commit <code style={{ fontSize: 10 }}>{quality.lastScannedCommit}</code>
             </Typography>
             {onNavigateToQuality && (

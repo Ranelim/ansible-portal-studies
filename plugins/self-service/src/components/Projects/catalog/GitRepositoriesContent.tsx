@@ -24,6 +24,7 @@ import {
   InputAdornment,
   Link,
   Tooltip,
+  useTheme,
 } from '@material-ui/core';
 import HelpOutlineIcon from '@material-ui/icons/HelpOutline';
 import SearchIcon from '@material-ui/icons/Search';
@@ -225,6 +226,7 @@ const RESOURCE_LABEL_MAP: Record<string, string> = {
 
 const ResourceBadges = ({ resources, repoName }: { resources: DiscoveredResourceSummary[]; repoName: string }) => {
   const classes = useStyles();
+  const theme = useTheme();
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
 
   const handleClick = (event: React.MouseEvent<HTMLElement>) => {
@@ -284,7 +286,7 @@ const ResourceBadges = ({ resources, repoName }: { resources: DiscoveredResource
                         <Typography
                           key={item}
                           variant="body2"
-                          style={{ fontSize: 11, lineHeight: 1.6, fontFamily: 'monospace', color: '#555' }}
+                          style={{ fontSize: 11, lineHeight: 1.6, fontFamily: 'monospace', color: theme.palette.text.secondary }}
                         >
                           {item}
                         </Typography>
@@ -370,6 +372,8 @@ const saveStarredRepos = (names: Set<string>) => {
 
 export const GitRepositoriesContent = () => {
   const classes = useStyles();
+  const theme = useTheme();
+  const isDark = theme.palette.type === 'dark';
   const navigate = useNavigate();
   const { hasRole } = useUserRoleContext();
   const [repos, setRepos] = useState<GitRepository[]>(() => {
@@ -461,7 +465,7 @@ export const GitRepositoriesContent = () => {
         <Box display="flex" alignItems="center" style={{ gap: 4 }}>
           Violations
           <Tooltip title="Policy violations detected by automated quality scans. Fix violations to improve content reliability and compliance." arrow>
-            <HelpOutlineIcon style={{ fontSize: 14, color: '#999', cursor: 'help' }} />
+            <HelpOutlineIcon style={{ fontSize: 14, color: theme.palette.text.disabled, cursor: 'help' }} />
           </Tooltip>
         </Box>
       ) as unknown as string,
@@ -528,8 +532,8 @@ export const GitRepositoriesContent = () => {
         const remStatus = getProjectRemediationStatus(row.name);
         const REMEDIATION_LABELS: Partial<Record<RemediationStatus, { text: string; color: string }>> = {
           'in-progress': { text: 'Fixing…', color: statusColors.info },
-          'proposals-ready': { text: 'Review fixes', color: '#8a6d00' },
-          'pr-open': { text: 'PR open', color: '#8a6d00' },
+          'proposals-ready': { text: 'Review fixes', color: isDark ? '#f0d080' : '#8a6d00' },
+          'pr-open': { text: 'PR open', color: isDark ? '#f0d080' : '#8a6d00' },
           'pr-merged': { text: 'Merged', color: statusColors.success },
         };
         const remLabel = remStatus ? REMEDIATION_LABELS[remStatus] : undefined;
@@ -575,7 +579,7 @@ export const GitRepositoriesContent = () => {
         <Box display="flex" alignItems="center" style={{ gap: 4 }}>
           Content
           <Tooltip title="Automation content discovered in this repository: playbooks, roles, collection dependencies, and execution environments." arrow>
-            <HelpOutlineIcon style={{ fontSize: 14, color: '#999', cursor: 'help' }} />
+            <HelpOutlineIcon style={{ fontSize: 14, color: theme.palette.text.disabled, cursor: 'help' }} />
           </Tooltip>
         </Box>
       ) as unknown as string,

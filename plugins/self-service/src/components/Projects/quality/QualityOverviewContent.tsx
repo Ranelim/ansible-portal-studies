@@ -4,6 +4,7 @@ import {
   Typography,
   Chip,
   makeStyles,
+  useTheme,
   Collapse,
   IconButton,
   Tooltip,
@@ -63,11 +64,11 @@ const useStyles = makeStyles(theme => ({
     overflow: 'hidden',
   },
   categoryCardPrimary: {
-    border: '1px solid #0066CC30',
+    border: `1px solid ${theme.palette.type === 'dark' ? 'rgba(0,102,204,0.25)' : '#0066CC30'}`,
     borderRadius: 12,
     marginBottom: theme.spacing(2),
     overflow: 'hidden',
-    boxShadow: '0 1px 4px rgba(0, 102, 204, 0.08)',
+    boxShadow: theme.palette.type === 'dark' ? '0 1px 4px rgba(0, 102, 204, 0.15)' : '0 1px 4px rgba(0, 102, 204, 0.08)',
   },
   categoryHeader: {
     display: 'flex',
@@ -75,7 +76,7 @@ const useStyles = makeStyles(theme => ({
     padding: '14px 20px',
     cursor: 'pointer',
     gap: 12,
-    '&:hover': { backgroundColor: 'rgba(0,0,0,0.01)' },
+    '&:hover': { backgroundColor: theme.palette.action.hover },
   },
   categoryIcon: {
     width: 32,
@@ -101,22 +102,22 @@ const useStyles = makeStyles(theme => ({
     padding: '10px 20px 10px 64px',
     borderTop: `1px solid ${theme.palette.divider}`,
     gap: 12,
-    '&:hover': { backgroundColor: 'rgba(0,0,0,0.01)' },
+    '&:hover': { backgroundColor: theme.palette.action.hover },
   },
   ruleMessage: {
     fontSize: 13,
-    color: '#333',
+    color: theme.palette.text.primary,
     flex: 1,
   },
   repoChip: {
     fontSize: 11,
     height: 22,
     cursor: 'pointer',
-    color: '#0066CC',
-    borderColor: '#0066CC40',
+    color: theme.palette.primary.main,
+    borderColor: `${theme.palette.primary.main}40`,
     '&:hover': {
-      borderColor: '#0066CC',
-      backgroundColor: '#0066CC08',
+      borderColor: theme.palette.primary.main,
+      backgroundColor: `${theme.palette.primary.main}08`,
     },
   },
   repoList: {
@@ -173,7 +174,7 @@ const RuleRow = ({ rule }: { rule: FleetViolationRule }) => {
             size="small"
             label={
               <Box display="flex" alignItems="center" style={{ gap: 4 }}>
-                <GitHubIcon style={{ fontSize: 11, color: '#888' }} />
+                <GitHubIcon style={{ fontSize: 11, opacity: 0.6 }} />
                 {`${repo.name}${repo.count > 1 ? ` (${repo.count})` : ''}`}
               </Box>
             }
@@ -253,6 +254,7 @@ const CategorySection = ({
 
 export const QualityOverviewContent = () => {
   const classes = useStyles();
+  const theme = useTheme();
   const fleet = useMemo(() => getFleetViolationData(), []);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(() =>
     new Set(fleet.categories.map(c => c.category)),
@@ -316,7 +318,7 @@ export const QualityOverviewContent = () => {
               onClick={() => toggleSeverity(sev)}
             >
               <Box style={{ width: 10, height: 10, borderRadius: 2, backgroundColor: color }} />
-              <Typography style={{ fontSize: 12, textTransform: 'capitalize', color: isActive ? color : '#555', fontWeight: isActive ? 600 : 400 }}>
+              <Typography style={{ fontSize: 12, textTransform: 'capitalize', color: isActive ? color : theme.palette.text.secondary, fontWeight: isActive ? 600 : 400 }}>
                 {sev}
               </Typography>
               <Typography style={{ fontSize: 12, fontWeight: 700, color }}>{count}</Typography>
@@ -351,7 +353,7 @@ export const QualityOverviewContent = () => {
 
       {fleet.categories.filter(cat => !hasFilter || cat.rules.some(r => severityFilters.has(r.severity))).length === 0 && (
         <Box style={{ textAlign: 'center', padding: '48px 24px' }}>
-          <Typography style={{ fontSize: 14, color: '#888' }}>
+          <Typography style={{ fontSize: 14, color: theme.palette.text.secondary }}>
             No violations match the current filters.
           </Typography>
         </Box>

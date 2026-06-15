@@ -38,6 +38,7 @@ import {
   LinearProgress,
   CircularProgress,
   Tooltip,
+  useTheme,
 } from '@material-ui/core';
 import Breadcrumbs from '@material-ui/core/Breadcrumbs';
 import NavigateNextIcon from '@material-ui/icons/NavigateNext';
@@ -146,11 +147,12 @@ Apache-2.0`;
 const DESC_CHAR_LIMIT = 120;
 
 const DescriptionLine = ({ text }: { text: string }) => {
+  const theme = useTheme();
   const [expanded, setExpanded] = useState(false);
   const needsTruncation = text.length > DESC_CHAR_LIMIT;
 
   return (
-    <Typography style={{ fontSize: 14, color: '#888', marginTop: 4, lineHeight: 1.5 }}>
+    <Typography style={{ fontSize: 14, color: theme.palette.text.secondary, marginTop: 4, lineHeight: 1.5 }}>
       {needsTruncation && !expanded ? (
         <>
           {text.slice(0, DESC_CHAR_LIMIT).trimEnd()}…{' '}
@@ -517,6 +519,7 @@ const PushToAapModal = ({
 
 const AboutCard = ({ project }: { project: DemoProject }) => {
   const classes = useProjectDetailStyles();
+  const theme = useTheme();
   const collections = project.resources.filter(r => r.type === 'collection-dep');
   const ees = project.resources.filter(r => r.type === 'execution-environment');
 
@@ -549,7 +552,7 @@ const AboutCard = ({ project }: { project: DemoProject }) => {
                   {collections.length} collection{collections.length !== 1 ? 's' : ''}
                 </Typography>
                 {collections.map(c => (
-                  <Typography key={c.name} style={{ fontSize: 12, color: '#999', paddingLeft: 8 }}>
+                  <Typography key={c.name} style={{ fontSize: 12, color: theme.palette.text.disabled, paddingLeft: 8 }}>
                     {c.name}
                   </Typography>
                 ))}
@@ -561,7 +564,7 @@ const AboutCard = ({ project }: { project: DemoProject }) => {
                   {ees.length} EE definition{ees.length !== 1 ? 's' : ''}
                 </Typography>
                 {ees.map(e => (
-                  <Typography key={e.name} style={{ fontSize: 12, color: '#999', paddingLeft: 8 }}>
+                  <Typography key={e.name} style={{ fontSize: 12, color: theme.palette.text.disabled, paddingLeft: 8 }}>
                     {e.name}
                   </Typography>
                 ))}
@@ -668,6 +671,7 @@ const DEMO_CI_RUNS: Record<string, CIRun[]> = {
 };
 
 const CIActivityTab = ({ project }: { project: DemoProject }) => {
+  const theme = useTheme();
   const classes = useProjectDetailStyles();
   const runs = DEMO_CI_RUNS[project.name] || [];
 
@@ -701,7 +705,7 @@ const CIActivityTab = ({ project }: { project: DemoProject }) => {
             <Typography style={{ fontSize: 16, fontWeight: 500, marginBottom: 8 }}>
               No CI activity yet
             </Typography>
-            <Typography style={{ fontSize: 13, color: '#888', maxWidth: 400, margin: '0 auto' }}>
+            <Typography style={{ fontSize: 13, color: theme.palette.text.secondary, maxWidth: 400, margin: '0 auto' }}>
               CI activity from GitHub Actions or GitLab pipelines will appear here after workflow runs.
             </Typography>
           </CardContent>
@@ -976,6 +980,7 @@ export const ProjectDetailsPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const classes = useProjectDetailStyles();
+  const theme = useTheme();
   const { hasRole: pageHasRole } = useUserRoleContext();
 
   const urlTab = searchParams.get('tab');
@@ -1127,7 +1132,7 @@ export const ProjectDetailsPage = () => {
         {/* Status signal — single compact line */}
         {quality && quality.totalViolations > 0 && (
           <Typography
-            style={{ fontSize: 13, color: '#999', marginTop: 4, cursor: 'pointer' }}
+            style={{ fontSize: 13, color: theme.palette.text.disabled, marginTop: 4, cursor: 'pointer' }}
             onClick={() => handleTabChange(1, 'latest-scan')}
           >
             <span style={{ color: statusColors.error, fontWeight: 500 }}>
@@ -1140,7 +1145,7 @@ export const ProjectDetailsPage = () => {
           </Typography>
         )}
         {quality && quality.totalViolations === 0 && (
-          <Typography style={{ fontSize: 13, color: '#999', marginTop: 4 }}>
+          <Typography style={{ fontSize: 13, color: theme.palette.text.disabled, marginTop: 4 }}>
             <span style={{ color: statusColors.success, fontWeight: 500 }}>All checks passing</span>
             {' · '}
             Last checked {quality.lastScannedAt}

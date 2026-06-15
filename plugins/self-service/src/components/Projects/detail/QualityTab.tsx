@@ -24,6 +24,7 @@ import {
   makeStyles,
   withStyles,
   Theme,
+  useTheme,
 } from '@material-ui/core';
 import ArrowDropDownIcon from '@material-ui/icons/ArrowDropDown';
 import CheckCircleIcon from '@material-ui/icons/CheckCircle';
@@ -71,6 +72,7 @@ const SeverityBar = ({
   activeSeverity?: SeverityClass | null;
   onSeverityClick?: (sev: SeverityClass | null) => void;
 }) => {
+  const theme = useTheme();
   const total = Object.values(breakdown).reduce((a, b) => a + b, 0);
   if (total === 0) return null;
 
@@ -104,7 +106,7 @@ const SeverityBar = ({
             }} />
             <Typography style={{
               fontSize: 12, textTransform: 'capitalize',
-              color: activeSeverity === sev ? SEVERITY_COLORS[sev] : '#555',
+              color: activeSeverity === sev ? SEVERITY_COLORS[sev] : theme.palette.text.secondary,
               fontWeight: activeSeverity === sev ? 600 : 400,
             }}>
               {sev}
@@ -575,32 +577,37 @@ const DemoStateToolbar = ({
 }: {
   currentState: RemediationStatus;
   onStateChange: (state: RemediationStatus) => void;
-}) => (
-  <Box style={{
-    display: 'flex', alignItems: 'center', gap: 6,
-    padding: '6px 12px', marginBottom: 16, borderRadius: 8,
-    backgroundColor: '#FFF3CD', border: '1px solid #FFECB5',
-  }}>
-    <Typography style={{ fontSize: 11, fontWeight: 600, color: '#856404', marginRight: 4 }}>
-      DEMO
-    </Typography>
-    {DEMO_REMEDIATION_STATES.map(state => (
-      <Chip
-        key={state}
-        size="small"
-        label={DEMO_STATE_LABELS[state]}
-        onClick={() => onStateChange(state)}
-        style={{
-          fontSize: 10, height: 22, cursor: 'pointer',
-          backgroundColor: currentState === state ? '#856404' : 'transparent',
-          color: currentState === state ? '#fff' : '#856404',
-          border: `1px solid ${currentState === state ? '#856404' : '#FFECB5'}`,
-          fontWeight: currentState === state ? 600 : 400,
-        }}
-      />
-    ))}
-  </Box>
-);
+}) => {
+  const theme = useTheme();
+  const isDark = theme.palette.type === 'dark';
+  return (
+    <Box style={{
+      display: 'flex', alignItems: 'center', gap: 6,
+      padding: '6px 12px', marginBottom: 16, borderRadius: 8,
+      backgroundColor: isDark ? 'rgba(240,171,0,0.1)' : '#FFF3CD',
+      border: `1px solid ${isDark ? 'rgba(240,171,0,0.25)' : '#FFECB5'}`,
+    }}>
+      <Typography style={{ fontSize: 11, fontWeight: 600, color: isDark ? '#f0d080' : '#856404', marginRight: 4 }}>
+        DEMO
+      </Typography>
+      {DEMO_REMEDIATION_STATES.map(state => (
+        <Chip
+          key={state}
+          size="small"
+          label={DEMO_STATE_LABELS[state]}
+          onClick={() => onStateChange(state)}
+          style={{
+            fontSize: 10, height: 22, cursor: 'pointer',
+            backgroundColor: currentState === state ? (isDark ? '#b8860b' : '#856404') : 'transparent',
+            color: currentState === state ? '#fff' : (isDark ? '#f0d080' : '#856404'),
+            border: `1px solid ${currentState === state ? (isDark ? '#b8860b' : '#856404') : (isDark ? 'rgba(240,171,0,0.25)' : '#FFECB5')}`,
+            fontWeight: currentState === state ? 600 : 400,
+          }}
+        />
+      ))}
+    </Box>
+  );
+};
 
 export const QualityTab = ({
   quality,
@@ -1543,7 +1550,9 @@ function getRemediationStepStatus(stepIndex: number, pageState: QualityPageState
   return 'active';
 }
 
-const useQualityStyles = makeStyles(theme => ({
+const useQualityStyles = makeStyles(theme => {
+  const isDark = theme.palette.type === 'dark';
+  return ({
   '@keyframes spin': {
     from: { transform: 'rotate(0deg)' },
     to: { transform: 'rotate(360deg)' },
@@ -1579,7 +1588,7 @@ const useQualityStyles = makeStyles(theme => ({
   stepArrow: {
     fontSize: 14,
     margin: theme.spacing(0, 0.5),
-    color: '#d0d0d0',
+    color: theme.palette.divider,
   },
   stepArrowCompleted: {
     color: `${statusColors.success}80`,
@@ -1607,8 +1616,8 @@ const useQualityStyles = makeStyles(theme => ({
     marginLeft: theme.spacing(0.5),
     padding: theme.spacing(0.75, 1.5),
     borderRadius: 20,
-    backgroundColor: '#e7f5e7',
-    color: '#1e4620',
+    backgroundColor: isDark ? 'rgba(91, 163, 82, 0.15)' : '#e7f5e7',
+    color: isDark ? '#8bc986' : '#1e4620',
     fontSize: 13,
     fontWeight: 500,
     whiteSpace: 'nowrap' as const,
@@ -1619,28 +1628,28 @@ const useQualityStyles = makeStyles(theme => ({
     borderCollapse: 'collapse' as const,
     fontSize: 13,
     '& thead': {
-      backgroundColor: '#f5f5f5',
-      borderBottom: '1px solid #d2d2d2',
+      backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : '#f5f5f5',
+      borderBottom: `1px solid ${theme.palette.divider}`,
     },
     '& th': {
       textAlign: 'left' as const,
       padding: '10px 12px',
       fontWeight: 600,
       fontSize: 12,
-      color: '#6a6e73',
+      color: theme.palette.text.secondary,
       textTransform: 'uppercase' as const,
       letterSpacing: 0.3,
     },
     '& td': {
       padding: '10px 12px',
-      borderBottom: '1px solid #eee',
+      borderBottom: `1px solid ${theme.palette.divider}`,
       verticalAlign: 'middle' as const,
     },
     '& tbody tr:last-child td': {
       borderBottom: 'none',
     },
     '& tbody tr:hover': {
-      backgroundColor: '#f9f9f9',
+      backgroundColor: theme.palette.action.hover,
     },
   },
   colCheckbox: { width: 48, paddingLeft: 14 },
@@ -1653,21 +1662,21 @@ const useQualityStyles = makeStyles(theme => ({
   expandButton: {
     padding: 2,
     borderRadius: 4,
-    color: '#6a6e73',
+    color: theme.palette.text.secondary,
   },
   // Row states
-  rowSelected: { backgroundColor: '#e8f4ff !important' },
-  rowDone: { backgroundColor: '#f8fdf8 !important' },
-  rowDeclined: { backgroundColor: '#fafafa !important', opacity: 0.75 },
-  rowInPr: { backgroundColor: '#f5faff !important' },
+  rowSelected: { backgroundColor: `${isDark ? 'rgba(0,102,204,0.12)' : '#e8f4ff'} !important` },
+  rowDone: { backgroundColor: `${isDark ? 'rgba(91,163,82,0.08)' : '#f8fdf8'} !important` },
+  rowDeclined: { backgroundColor: `${isDark ? 'rgba(255,255,255,0.02)' : '#fafafa'} !important`, opacity: 0.75 },
+  rowInPr: { backgroundColor: `${isDark ? 'rgba(0,102,204,0.06)' : '#f5faff'} !important` },
   rowResolved: {
-    backgroundColor: '#f9f9f9 !important',
-    '& $description': { textDecoration: 'line-through', color: '#6a6e73', opacity: 0.7 },
+    backgroundColor: `${isDark ? 'rgba(255,255,255,0.02)' : '#f9f9f9'} !important`,
+    '& $description': { textDecoration: 'line-through', color: theme.palette.text.disabled, opacity: 0.7 },
   },
   rowClickable: { cursor: 'pointer' },
-  rowProcessing: { backgroundColor: '#f5f0ff !important', opacity: 0.7 },
+  rowProcessing: { backgroundColor: `${isDark ? 'rgba(103,83,172,0.1)' : '#f5f0ff'} !important`, opacity: 0.7 },
   rowExpanded: {
-    backgroundColor: '#faf9fc !important',
+    backgroundColor: `${isDark ? 'rgba(103,83,172,0.05)' : '#faf9fc'} !important`,
     '& td': { borderBottom: 'none' },
   },
   // Fix chips
@@ -1685,53 +1694,53 @@ const useQualityStyles = makeStyles(theme => ({
   },
   fixChipIcon: { fontSize: 11, lineHeight: 1 },
   fixChipCategory: { opacity: 0.75, fontWeight: 400 },
-  fixChipDeterministic: { backgroundColor: '#e7f5e7', color: '#1e4620', borderColor: '#5ba352' },
-  fixChipAi: { backgroundColor: '#f5f0ff', color: '#6753ac', borderColor: '#b2a3db' },
-  fixChipManual: { backgroundColor: '#f0f0f0', color: '#6a6e73', borderColor: '#d2d2d2' },
-  fixChipApplied: { backgroundColor: '#e7f5e7', color: '#1e4620', borderColor: '#5ba352' },
-  fixChipReview: { backgroundColor: '#f5f0ff', color: '#6753ac', borderColor: '#6753ac' },
-  fixChipApproved: { backgroundColor: '#e7f5e7', color: '#1e4620', borderColor: '#5ba352' },
-  fixChipDeclined: { backgroundColor: '#f0f0f0', color: '#6a6e73', borderColor: '#d2d2d2' },
-  fixChipInPr: { backgroundColor: '#e8f4ff', color: '#004d99', borderColor: '#73bcf7' },
+  fixChipDeterministic: { backgroundColor: isDark ? 'rgba(91,163,82,0.15)' : '#e7f5e7', color: isDark ? '#8bc986' : '#1e4620', borderColor: isDark ? 'rgba(91,163,82,0.4)' : '#5ba352' },
+  fixChipAi: { backgroundColor: isDark ? 'rgba(103,83,172,0.15)' : '#f5f0ff', color: isDark ? '#c4b5e3' : '#6753ac', borderColor: isDark ? 'rgba(178,163,219,0.4)' : '#b2a3db' },
+  fixChipManual: { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#f0f0f0', color: theme.palette.text.secondary, borderColor: theme.palette.divider },
+  fixChipApplied: { backgroundColor: isDark ? 'rgba(91,163,82,0.15)' : '#e7f5e7', color: isDark ? '#8bc986' : '#1e4620', borderColor: isDark ? 'rgba(91,163,82,0.4)' : '#5ba352' },
+  fixChipReview: { backgroundColor: isDark ? 'rgba(103,83,172,0.15)' : '#f5f0ff', color: isDark ? '#c4b5e3' : '#6753ac', borderColor: isDark ? 'rgba(103,83,172,0.5)' : '#6753ac' },
+  fixChipApproved: { backgroundColor: isDark ? 'rgba(91,163,82,0.15)' : '#e7f5e7', color: isDark ? '#8bc986' : '#1e4620', borderColor: isDark ? 'rgba(91,163,82,0.4)' : '#5ba352' },
+  fixChipDeclined: { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#f0f0f0', color: theme.palette.text.secondary, borderColor: theme.palette.divider },
+  fixChipInPr: { backgroundColor: isDark ? 'rgba(0,77,153,0.15)' : '#e8f4ff', color: isDark ? '#73bcf7' : '#004d99', borderColor: isDark ? 'rgba(115,188,247,0.4)' : '#73bcf7' },
   // Rule ID badge
   ruleId: {
     display: 'inline-block',
     fontSize: 11,
     fontFamily: "'SF Mono', 'Fira Code', monospace",
-    color: '#6a6e73',
-    backgroundColor: '#f0f0f0',
+    color: theme.palette.text.secondary,
+    backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#f0f0f0',
     padding: '1px 5px',
     borderRadius: 3,
     marginRight: 8,
     verticalAlign: 'middle',
   },
-  description: { fontSize: 13, color: '#151515' },
-  descriptionResolved: { textDecoration: 'line-through', color: '#6a6e73', opacity: 0.7 },
-  chevron: { fontSize: 16, color: '#999', transition: 'transform 0.15s ease' },
+  description: { fontSize: 13, color: theme.palette.text.primary },
+  descriptionResolved: { textDecoration: 'line-through', color: theme.palette.text.disabled, opacity: 0.7 },
+  chevron: { fontSize: 16, color: theme.palette.text.disabled, transition: 'transform 0.15s ease' },
   chevronOpen: { transform: 'rotate(90deg)' },
   codeContext: {
     margin: '8px 0',
     borderRadius: 4,
     overflow: 'hidden',
-    border: '1px solid #e0e0e0',
+    border: `1px solid ${theme.palette.divider}`,
     fontFamily: "'SF Mono', 'Fira Code', 'Consolas', monospace",
     fontSize: 12,
     lineHeight: 1.6,
   },
-  codeLine: { display: 'flex', padding: '0 12px', '&:hover': { backgroundColor: '#f0f0f0' } },
+  codeLine: { display: 'flex', padding: '0 12px', '&:hover': { backgroundColor: theme.palette.action.hover } },
   codeLineError: {
-    backgroundColor: '#ffeaea',
+    backgroundColor: isDark ? 'rgba(201,25,11,0.12)' : '#ffeaea',
     borderLeft: '3px solid #c9190b',
     paddingLeft: 9,
   },
-  codeLineNum: { width: 36, textAlign: 'right' as const, color: '#999', userSelect: 'none' as const, paddingRight: 12, flexShrink: 0 },
-  codeLineText: { whiteSpace: 'pre' as const, color: '#333' },
-  detailMeta: { display: 'flex', gap: 16, marginTop: 8, fontSize: 11, color: '#6a6e73' },
+  codeLineNum: { width: 36, textAlign: 'right' as const, color: theme.palette.text.disabled, userSelect: 'none' as const, paddingRight: 12, flexShrink: 0 },
+  codeLineText: { whiteSpace: 'pre' as const, color: theme.palette.text.primary },
+  detailMeta: { display: 'flex', gap: 16, marginTop: 8, fontSize: 11, color: theme.palette.text.secondary },
   detailMetaItem: { display: 'inline-flex', alignItems: 'center', gap: 4 },
   fileLink: {
     fontSize: 12,
     fontFamily: "'SF Mono', 'Fira Code', monospace",
-    color: '#06c',
+    color: theme.palette.primary.main,
     cursor: 'pointer',
     textDecoration: 'none',
     '&:hover': { textDecoration: 'underline' },
@@ -1756,12 +1765,12 @@ const useQualityStyles = makeStyles(theme => ({
     marginBottom: 12,
   },
   bannerRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
-  bannerIdle: { backgroundColor: '#e8f4ff', borderColor: '#73bcf7' },
-  bannerProgress: { backgroundColor: '#f5f0ff', borderColor: '#b2a3db' },
-  bannerReview: { backgroundColor: '#f5f0ff', borderColor: '#b2a3db' },
-  bannerSuccess: { backgroundColor: '#e7f5e7', borderColor: '#5ba352' },
-  bannerPrOpen: { backgroundColor: '#e7f5e7', borderColor: '#5ba352' },
-  bannerMerged: { backgroundColor: '#e7f5e7', borderColor: '#5ba352' },
+  bannerIdle: { backgroundColor: isDark ? 'rgba(0,102,204,0.1)' : '#e8f4ff', borderColor: isDark ? 'rgba(115,188,247,0.3)' : '#73bcf7' },
+  bannerProgress: { backgroundColor: isDark ? 'rgba(103,83,172,0.1)' : '#f5f0ff', borderColor: isDark ? 'rgba(178,163,219,0.3)' : '#b2a3db' },
+  bannerReview: { backgroundColor: isDark ? 'rgba(103,83,172,0.1)' : '#f5f0ff', borderColor: isDark ? 'rgba(178,163,219,0.3)' : '#b2a3db' },
+  bannerSuccess: { backgroundColor: isDark ? 'rgba(91,163,82,0.1)' : '#e7f5e7', borderColor: isDark ? 'rgba(91,163,82,0.3)' : '#5ba352' },
+  bannerPrOpen: { backgroundColor: isDark ? 'rgba(91,163,82,0.1)' : '#e7f5e7', borderColor: isDark ? 'rgba(91,163,82,0.3)' : '#5ba352' },
+  bannerMerged: { backgroundColor: isDark ? 'rgba(91,163,82,0.1)' : '#e7f5e7', borderColor: isDark ? 'rgba(91,163,82,0.3)' : '#5ba352' },
   // Confirm dialog overlay
   confirmOverlay: {
     position: 'fixed' as const,
@@ -1796,11 +1805,11 @@ const useQualityStyles = makeStyles(theme => ({
     alignItems: 'flex-start',
     gap: 10,
     fontSize: 13,
-    color: '#333',
+    color: theme.palette.text.primary,
   },
   confirmNote: {
     fontSize: 12,
-    color: '#6a6e73',
+    color: theme.palette.text.secondary,
     marginTop: 4,
     lineHeight: 1.5,
   },
@@ -1813,8 +1822,8 @@ const useQualityStyles = makeStyles(theme => ({
   // Proposal preview
   proposalPreview: {
     padding: '12px 16px 16px 48px',
-    backgroundColor: 'rgba(103,83,172,0.025)',
-    borderTop: '1px solid rgba(103,83,172,0.1)',
+    backgroundColor: isDark ? 'rgba(103,83,172,0.05)' : 'rgba(103,83,172,0.025)',
+    borderTop: `1px solid ${isDark ? 'rgba(103,83,172,0.2)' : 'rgba(103,83,172,0.1)'}`,
   },
   proposalTitle: { fontSize: 13, fontWeight: 600, color: theme.palette.text.primary },
   proposalDiff: {
@@ -1822,14 +1831,14 @@ const useQualityStyles = makeStyles(theme => ({
     gridTemplateColumns: '1fr 1fr',
     borderRadius: 6,
     overflow: 'hidden',
-    border: '1px solid rgba(0,0,0,0.12)',
+    border: `1px solid ${theme.palette.divider}`,
     marginBottom: 10,
     marginTop: 8,
   },
-  diffPanelHeaderRemoved: { padding: '4px 10px', fontSize: 10, fontWeight: 600, backgroundColor: 'rgba(248,81,73,0.12)', color: '#cf222e', textTransform: 'uppercase' as const },
-  diffPanelHeaderAdded: { padding: '4px 10px', fontSize: 10, fontWeight: 600, backgroundColor: 'rgba(46,160,67,0.12)', color: '#1a7f37', textTransform: 'uppercase' as const },
-  diffCodeRemoved: { fontFamily: 'monospace', fontSize: 11, lineHeight: 1.7, padding: '6px 10px', backgroundColor: 'rgba(248,81,73,0.04)', color: '#cf222e' },
-  diffCodeAdded: { fontFamily: 'monospace', fontSize: 11, lineHeight: 1.7, padding: '6px 10px', backgroundColor: 'rgba(46,160,67,0.04)', color: '#1a7f37' },
+  diffPanelHeaderRemoved: { padding: '4px 10px', fontSize: 10, fontWeight: 600, backgroundColor: 'rgba(248,81,73,0.12)', color: isDark ? '#f97583' : '#cf222e', textTransform: 'uppercase' as const },
+  diffPanelHeaderAdded: { padding: '4px 10px', fontSize: 10, fontWeight: 600, backgroundColor: 'rgba(46,160,67,0.12)', color: isDark ? '#85e89d' : '#1a7f37', textTransform: 'uppercase' as const },
+  diffCodeRemoved: { fontFamily: 'monospace', fontSize: 11, lineHeight: 1.7, padding: '6px 10px', backgroundColor: isDark ? 'rgba(248,81,73,0.08)' : 'rgba(248,81,73,0.04)', color: isDark ? '#f97583' : '#cf222e' },
+  diffCodeAdded: { fontFamily: 'monospace', fontSize: 11, lineHeight: 1.7, padding: '6px 10px', backgroundColor: isDark ? 'rgba(46,160,67,0.08)' : 'rgba(46,160,67,0.04)', color: isDark ? '#85e89d' : '#1a7f37' },
   proposalActions: { display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
   btnApprove: {
     textTransform: 'none' as const,
@@ -1839,12 +1848,14 @@ const useQualityStyles = makeStyles(theme => ({
     color: '#fff',
     '&:hover': { backgroundColor: '#3e8635' },
   },
-  prBadge: { fontSize: 11, fontWeight: 700, fontFamily: 'monospace', height: 22, backgroundColor: '#004d99', color: '#fff' },
-  branchCode: { fontSize: 11, fontFamily: "'SF Mono', 'Fira Code', monospace", background: '#f0f0f0', padding: '1px 5px', borderRadius: 3 },
-}));
+  prBadge: { fontSize: 11, fontWeight: 700, fontFamily: 'monospace', height: 22, backgroundColor: isDark ? '#1a5fb4' : '#004d99', color: '#fff' },
+  branchCode: { fontSize: 11, fontFamily: "'SF Mono', 'Fira Code', monospace", background: isDark ? 'rgba(255,255,255,0.08)' : '#f0f0f0', padding: '1px 5px', borderRadius: 3 },
+});
+});
 
 function QualityStepper({ pageState }: { pageState: QualityPageState }) {
   const classes = useQualityStyles();
+  const theme = useTheme();
   const showVerified = pageState === 'pr-merged';
 
   return (
@@ -1886,7 +1897,7 @@ function QualityStepper({ pageState }: { pageState: QualityPageState }) {
                   style={
                     stepStatus === 'active'
                       ? { backgroundColor: statusColors.info, color: '#fff' }
-                      : { border: '1.5px solid #c0c0c0', color: '#a0a0a0' }
+                      : { border: `1.5px solid ${theme.palette.text.disabled}`, color: theme.palette.text.disabled }
                   }
                 >
                   {step.num}
@@ -2075,6 +2086,8 @@ export const QualityTabUnified = ({
   branch?: string;
 }) => {
   const classes = useQualityStyles();
+  const theme = useTheme();
+  const isDark = theme.palette.type === 'dark';
   const { hasRole } = useUserRoleContext();
   const isDeveloper = hasRole('developer');
 
@@ -2306,9 +2319,9 @@ export const QualityTabUnified = ({
       <Box style={{ marginTop: 24 }}>
         <Card variant="outlined" style={{ borderRadius: 12 }}>
           <CardContent style={{ padding: '48px 24px', textAlign: 'center' }}>
-            <VerifiedUserOutlinedIcon style={{ fontSize: 40, color: '#ccc', marginBottom: 12 }} />
+            <VerifiedUserOutlinedIcon style={{ fontSize: 40, color: theme.palette.text.disabled, marginBottom: 12 }} />
             <Typography style={{ fontSize: 16, fontWeight: 500, marginBottom: 8 }}>No quality scans yet</Typography>
-            <Typography style={{ fontSize: 13, color: '#888', maxWidth: 400, margin: '0 auto' }}>
+            <Typography style={{ fontSize: 13, color: theme.palette.text.secondary, maxWidth: 400, margin: '0 auto' }}>
               Quality scans run automatically as GitHub Actions when you push to this repository.
               Configure the APME scan workflow to check for compatibility issues, security risks, and best practice violations.
             </Typography>
@@ -2334,8 +2347,8 @@ export const QualityTabUnified = ({
       return (
         <Box className={`${classes.banner} ${classes.bannerProgress}`}>
           <Box display="flex" alignItems="center" style={{ gap: 8 }}>
-            <AutorenewIcon className={classes.spinIcon} style={{ fontSize: 14, color: '#6753ac' }} />
-            <Typography style={{ fontSize: 13, color: '#6753ac', fontWeight: 500 }}>
+            <AutorenewIcon className={classes.spinIcon} style={{ fontSize: 14, color: isDark ? '#c4b5e3' : '#6753ac' }} />
+            <Typography style={{ fontSize: 13, color: isDark ? '#c4b5e3' : '#6753ac', fontWeight: 500 }}>
               Generating fixes for {remediatingCount} violation{remediatingCount !== 1 ? 's' : ''}…
             </Typography>
           </Box>
@@ -2347,7 +2360,7 @@ export const QualityTabUnified = ({
       if (proposedCount > 0) {
         return (
           <Box className={`${classes.banner} ${classes.bannerReview}`}>
-            <Typography style={{ fontSize: 13, color: '#6753ac' }}>
+            <Typography style={{ fontSize: 13, color: isDark ? '#c4b5e3' : '#6753ac' }}>
               <strong>{fixedCount} auto-fix{fixedCount !== 1 ? 'es' : ''} applied.</strong>
               {' '}{proposedCount} AI proposal{proposedCount !== 1 ? 's' : ''} need{proposedCount === 1 ? 's' : ''} your review before creating a pull request.
             </Typography>
@@ -2358,7 +2371,7 @@ export const QualityTabUnified = ({
         return (
           <Box className={`${classes.banner} ${classes.bannerSuccess}`}>
             <Box className={classes.bannerRow}>
-              <Typography style={{ fontSize: 13, color: '#1e4620' }}>
+              <Typography style={{ fontSize: 13, color: isDark ? '#8bc986' : '#1e4620' }}>
                 <strong>{prReadyCount} fix{prReadyCount !== 1 ? 'es' : ''} ready.</strong>
                 {declinedCount > 0 && ` ${declinedCount} declined.`}
                 {' '}Create a pull request to apply the changes.
@@ -2378,8 +2391,8 @@ export const QualityTabUnified = ({
       return (
         <Box className={`${classes.banner} ${classes.bannerProgress}`}>
           <Box display="flex" alignItems="center" style={{ gap: 8 }}>
-            <AutorenewIcon className={classes.spinIcon} style={{ fontSize: 14, color: '#06c' }} />
-            <Typography style={{ fontSize: 13, color: '#06c', fontWeight: 500 }}>Creating pull request…</Typography>
+            <AutorenewIcon className={classes.spinIcon} style={{ fontSize: 14, color: theme.palette.primary.main }} />
+            <Typography style={{ fontSize: 13, color: theme.palette.primary.main, fontWeight: 500 }}>Creating pull request…</Typography>
           </Box>
           <LinearProgress variant="determinate" value={progress} style={{ height: 4, borderRadius: 2, marginTop: 6 }} />
         </Box>
@@ -2396,7 +2409,7 @@ export const QualityTabUnified = ({
               </Typography>
             </Box>
             <Box display="flex" alignItems="center" style={{ gap: 6, flexShrink: 0 }}>
-              <span onClick={handleMergePr} style={{ fontSize: 11, color: '#999', cursor: 'pointer', textDecoration: 'underline' }}>
+              <span onClick={handleMergePr} style={{ fontSize: 11, color: theme.palette.text.disabled, cursor: 'pointer', textDecoration: 'underline' }}>
                 Simulate merge
               </span>
               <Button size="small" variant="contained" color="primary" startIcon={<OpenInNewIcon style={{ fontSize: 14 }} />}
@@ -2415,14 +2428,14 @@ export const QualityTabUnified = ({
           <Box className={classes.bannerRow}>
             <Box display="flex" alignItems="center" style={{ gap: 8 }}>
               <CheckCircleIcon style={{ fontSize: 16, color: '#5ba352' }} />
-              <Typography style={{ fontSize: 13, color: '#1e4620', fontWeight: 500 }}>
+              <Typography style={{ fontSize: 13, color: isDark ? '#8bc986' : '#1e4620', fontWeight: 500 }}>
                 Pull request merged — <strong>{resolvedCount}</strong> violation{resolvedCount !== 1 ? 's' : ''} resolved.
                 {remainingCount > 0 && ` ${remainingCount} remaining in this scan.`}
               </Typography>
             </Box>
             {remainingCount > 0 && isDeveloper && (
               <Button size="small" variant="outlined" onClick={handleReset}
-                style={{ textTransform: 'none', fontSize: 12, padding: '4px 12px', borderColor: '#5ba352', color: '#1e4620' }}>
+                style={{ textTransform: 'none', fontSize: 12, padding: '4px 12px', borderColor: isDark ? 'rgba(91,163,82,0.5)' : '#5ba352', color: isDark ? '#8bc986' : '#1e4620' }}>
                 Start new remediation cycle
               </Button>
             )}
@@ -2437,9 +2450,9 @@ export const QualityTabUnified = ({
     <Box style={{ marginTop: 24 }}>
       {/* Scan context */}
       <Box display="flex" alignItems="center" justifyContent="space-between" style={{ marginBottom: 16 }}>
-        <Typography style={{ fontSize: 13, color: '#6a6e73' }}>
+        <Typography style={{ fontSize: 13, color: theme.palette.text.secondary }}>
           {scanning ? <>Scanning repository…</> : (
-            <><strong style={{ color: '#151515', fontWeight: 600 }}>Scanning against: AAP 2.7</strong> <span style={{ opacity: 0.7 }}>(ansible-core 2.17)</span> · Last scan {quality.lastScannedAt} · commit <code style={{ fontSize: 11 }}>{quality.lastScannedCommit?.slice(0, 7)}</code>
+            <><strong style={{ color: theme.palette.text.primary, fontWeight: 600 }}>Scanning against: AAP 2.7</strong> <span style={{ opacity: 0.7 }}>(ansible-core 2.17)</span> · Last scan {quality.lastScannedAt} · commit <code style={{ fontSize: 11 }}>{quality.lastScannedCommit?.slice(0, 7)}</code>
             {scan.trigger && ` · ${TRIGGER_LABELS[scan.trigger] ?? scan.trigger}`}</>
           )}
         </Typography>
@@ -2454,14 +2467,14 @@ export const QualityTabUnified = ({
           )}
           {scan.ciRunUrl && !scanning && (
             <Button size="small" variant="text" startIcon={<OpenInNewIcon style={{ fontSize: 14 }} />}
-              onClick={() => window.open(scan.ciRunUrl, '_blank')} style={{ textTransform: 'none', fontSize: 12, color: '#6a6e73' }}>
+              onClick={() => window.open(scan.ciRunUrl, '_blank')} style={{ textTransform: 'none', fontSize: 12, color: theme.palette.text.secondary }}>
               View CI run
             </Button>
           )}
           {isDevSpacesConnected && isDeveloper && (
             <Button size="small" variant="text" startIcon={<CodeIcon style={{ fontSize: 14 }} />}
               onClick={() => window.open('/devspaces-mockup.html', '_blank')}
-              style={{ textTransform: 'none', fontSize: 12, color: '#6a6e73' }}>
+              style={{ textTransform: 'none', fontSize: 12, color: theme.palette.text.secondary }}>
               Edit in Dev Spaces
             </Button>
           )}
@@ -2486,7 +2499,7 @@ export const QualityTabUnified = ({
             <Box display="flex" alignItems="center" justifyContent="space-between" style={{ padding: '8px 0', marginBottom: 8 }}>
               <Box display="flex" alignItems="center" style={{ gap: 10 }}>
                 <Box display="inline-flex" alignItems="center"
-                  style={{ border: '1px solid #d2d2d2', borderRadius: 4, padding: '4px 6px 4px 10px', backgroundColor: '#fff', cursor: 'pointer' }}>
+                  style={{ border: `1px solid ${theme.palette.divider}`, borderRadius: 4, padding: '4px 6px 4px 10px', backgroundColor: theme.palette.background.paper, cursor: 'pointer' }}>
                   <Checkbox
                     size="small"
                     checked={
@@ -2502,7 +2515,7 @@ export const QualityTabUnified = ({
                     style={{ padding: 0 }}
                   />
                   <ArrowDropDownIcon
-                    style={{ fontSize: 18, color: '#6a6e73', cursor: 'pointer', marginLeft: 2 }}
+                    style={{ fontSize: 18, color: theme.palette.text.secondary, cursor: 'pointer', marginLeft: 2 }}
                     onClick={(e) => setSelectMenuAnchor((e.currentTarget.parentElement ?? e.currentTarget) as HTMLElement)}
                   />
                 </Box>
@@ -2515,8 +2528,8 @@ export const QualityTabUnified = ({
                   transformOrigin={{ vertical: 'top', horizontal: 'left' }}
                   PaperProps={{ style: { minWidth: 260, padding: '4px 0' } }}
                 >
-                  <Box style={{ padding: '4px 16px 8px', borderBottom: '1px solid #eee' }}>
-                    <Typography style={{ fontSize: 11, fontWeight: 600, color: '#6a6e73', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  <Box style={{ padding: '4px 16px 8px', borderBottom: `1px solid ${theme.palette.divider}` }}>
+                    <Typography style={{ fontSize: 11, fontWeight: 600, color: theme.palette.text.secondary, textTransform: 'uppercase', letterSpacing: 0.5 }}>
                       Select by fix type
                     </Typography>
                   </Box>
@@ -2538,8 +2551,8 @@ export const QualityTabUnified = ({
                       secondary={<span style={{ fontSize: 11 }}>Requires review before applying</span>}
                     />
                   </MenuItem>
-                  <Box style={{ padding: '8px 16px 4px', borderTop: '1px solid #eee', borderBottom: '1px solid #eee', marginTop: 4 }}>
-                    <Typography style={{ fontSize: 11, fontWeight: 600, color: '#6a6e73', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  <Box style={{ padding: '8px 16px 4px', borderTop: `1px solid ${theme.palette.divider}`, borderBottom: `1px solid ${theme.palette.divider}`, marginTop: 4 }}>
+                    <Typography style={{ fontSize: 11, fontWeight: 600, color: theme.palette.text.secondary, textTransform: 'uppercase', letterSpacing: 0.5 }}>
                       Select by severity
                     </Typography>
                   </Box>
@@ -2571,14 +2584,14 @@ export const QualityTabUnified = ({
                 </Button>
                 {selectedIds.size > 0 && (
                   <>
-                    <Typography style={{ fontSize: 12, color: '#6a6e73' }}>
+                    <Typography style={{ fontSize: 12, color: theme.palette.text.secondary }}>
                       {selectedAutoFixCount > 0 && `${selectedAutoFixCount} auto-fixable`}
                       {selectedAutoFixCount > 0 && selectedAiCount > 0 && ' · '}
                       {selectedAiCount > 0 && `${selectedAiCount} AI-fixable`}
                     </Typography>
                     <Button size="small" variant="text"
                       onClick={() => setSelectedIds(new Set())}
-                      style={{ textTransform: 'none', fontSize: 12, color: '#6a6e73', padding: '5px 10px', minWidth: 0 }}>
+                      style={{ textTransform: 'none', fontSize: 12, color: theme.palette.text.secondary, padding: '5px 10px', minWidth: 0 }}>
                       Clear
                     </Button>
                   </>
@@ -2608,7 +2621,7 @@ export const QualityTabUnified = ({
                   <Typography style={{ fontSize: 13 }}>
                     <strong>{scan.totalViolations}</strong> violations
                   </Typography>
-                  <span style={{ color: '#d2d2d2', fontSize: 13 }}>|</span>
+                  <span style={{ color: theme.palette.divider, fontSize: 13 }}>|</span>
                   {(['critical', 'high', 'medium', 'low', 'info'] as SeverityClass[]).map(sev => {
                     const count = scan.severityBreakdown[sev];
                     if (!count) return null;
@@ -2675,12 +2688,12 @@ export const QualityTabUnified = ({
               <SeverityProgressBar breakdown={scan.severityBreakdown} />
               {(severityFilters.size > 0 || fixFilters.size > 0) && (
                 <Box display="flex" alignItems="center" style={{ marginTop: 8, gap: 8 }}>
-                  <Typography style={{ fontSize: 12, color: '#6a6e73' }}>
+                  <Typography style={{ fontSize: 12, color: theme.palette.text.secondary }}>
                     Showing {filteredViolations.length} of {scan.totalViolations} violations
                   </Typography>
                   <span
                     onClick={() => { setSeverityFilters(new Set()); setFixFilters(new Set()); }}
-                    style={{ fontSize: 12, color: '#06c', cursor: 'pointer' }}
+                    style={{ fontSize: 12, color: theme.palette.primary.main, cursor: 'pointer' }}
                   >
                     Clear filters
                   </span>
@@ -2689,8 +2702,8 @@ export const QualityTabUnified = ({
             </Box>
           ) : (
             <Box display="flex" alignItems="center" justifyContent="space-between" style={{ marginBottom: 12 }}>
-              <Typography style={{ fontSize: 13, color: '#6a6e73' }}>
-                Reviewing <strong style={{ color: '#151515' }}>{remediatedTotal}</strong> of {scan.totalViolations} violations
+              <Typography style={{ fontSize: 13, color: theme.palette.text.secondary }}>
+                Reviewing <strong style={{ color: theme.palette.text.primary }}>{remediatedTotal}</strong> of {scan.totalViolations} violations
                 {remainingCount > 0 && <> · {remainingCount} remaining for future remediation</>}
               </Typography>
             </Box>
@@ -2698,7 +2711,7 @@ export const QualityTabUnified = ({
 
           {/* Violations table */}
           {pageState !== 'in-progress' && pageState !== 'creating-pr' && (
-            <Box style={{ border: '1px solid #d2d2d2', borderRadius: 6, overflow: 'hidden' }}>
+            <Box style={{ border: `1px solid ${theme.palette.divider}`, borderRadius: 6, overflow: 'hidden' }}>
               <table className={classes.violationsTable}>
                 <thead>
                   <tr>
@@ -2741,8 +2754,8 @@ export const QualityTabUnified = ({
                       <DarkTooltip title="Open project in Dev Spaces" arrow enterDelay={200}>
                         <IconButton size="small"
                           onClick={() => window.open('/devspaces-mockup.html', '_blank')}
-                          style={{ padding: 6, borderRadius: 4, border: '1px solid #d2d2d2', background: '#fafafa' }}>
-                          <CodeIcon style={{ fontSize: 16, color: '#6a6e73' }} />
+                          style={{ padding: 6, borderRadius: 4, border: `1px solid ${theme.palette.divider}`, background: isDark ? 'rgba(255,255,255,0.04)' : '#fafafa' }}>
+                          <CodeIcon style={{ fontSize: 16, color: theme.palette.text.secondary }} />
                         </IconButton>
                       </DarkTooltip>
                     </th>
@@ -2827,8 +2840,8 @@ export const QualityTabUnified = ({
                           <DarkTooltip title={`Open in Dev Spaces: ${v.file}:${v.lineStart}`} arrow enterDelay={200}>
                             <IconButton size="small"
                               onClick={(e) => { e.stopPropagation(); window.open(devSpacesUrl, '_blank'); }}
-                              style={{ padding: 6, borderRadius: 4, border: '1px solid #d2d2d2', background: '#fafafa' }}>
-                              <CodeIcon style={{ fontSize: 16, color: '#6a6e73' }} />
+                              style={{ padding: 6, borderRadius: 4, border: `1px solid ${theme.palette.divider}`, background: isDark ? 'rgba(255,255,255,0.04)' : '#fafafa' }}>
+                              <CodeIcon style={{ fontSize: 16, color: theme.palette.text.secondary }} />
                             </IconButton>
                           </DarkTooltip>
                         </td>
@@ -2844,8 +2857,12 @@ export const QualityTabUnified = ({
                                     {proposal.tier === 'ai' && isProposed && (
                                       <Chip size="small" label={`${Math.round((DEMO_PROPOSALS_CONFIDENCE[v.ruleId] ?? 0.85) * 100)}% confidence`}
                                         style={{ fontSize: 10, height: 18,
-                                          backgroundColor: (DEMO_PROPOSALS_CONFIDENCE[v.ruleId] ?? 0.85) >= 0.9 ? '#e7f5e7' : '#fdf2e5',
-                                          color: (DEMO_PROPOSALS_CONFIDENCE[v.ruleId] ?? 0.85) >= 0.9 ? '#1e4620' : '#6b3a00' }} />
+                                          backgroundColor: (DEMO_PROPOSALS_CONFIDENCE[v.ruleId] ?? 0.85) >= 0.9
+                                            ? (isDark ? 'rgba(91,163,82,0.15)' : '#e7f5e7')
+                                            : (isDark ? 'rgba(240,171,0,0.15)' : '#fdf2e5'),
+                                          color: (DEMO_PROPOSALS_CONFIDENCE[v.ruleId] ?? 0.85) >= 0.9
+                                            ? (isDark ? '#8bc986' : '#1e4620')
+                                            : (isDark ? '#f0d080' : '#6b3a00') }} />
                                     )}
                                   </Box>
                                   <Box className={classes.proposalDiff}>
@@ -2866,7 +2883,7 @@ export const QualityTabUnified = ({
                                   </Box>
                                   {isProposed && pageState === 'proposals-ready' && (
                                     <Box className={classes.proposalActions}>
-                                      <Typography style={{ fontSize: 11, color: '#6753ac', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                      <Typography style={{ fontSize: 11, color: isDark ? '#c4b5e3' : '#6753ac', display: 'flex', alignItems: 'center', gap: 4 }}>
                                         <span className={classes.fixChipIcon}>✦</span>
                                         AI-generated proposal
                                       </Typography>
@@ -2887,7 +2904,7 @@ export const QualityTabUnified = ({
                                 </Box>
                               ) : showCodeSnippet ? (
                                 <Box style={{ padding: '12px 16px 16px 48px' }}>
-                                  <Typography style={{ fontSize: 12, color: '#333', marginBottom: 8, lineHeight: 1.5 }}>
+                                  <Typography style={{ fontSize: 12, color: theme.palette.text.primary, marginBottom: 8, lineHeight: 1.5 }}>
                                     {codeCtx?.detail || v.ruleDescription}
                                   </Typography>
                                   {codeCtx && (
