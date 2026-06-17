@@ -1513,15 +1513,15 @@ const CATEGORY_LABELS: Record<ViolationCategory, string> = {
 };
 
 const TIER_TOOLTIPS = {
-  deterministic: 'Deterministic rule-based transform. Applied automatically with high confidence — like a linter auto-fix.',
-  ai: 'AI analyzes the context and generates a fix proposal. Requires your review before applying.',
-  manual: 'No automated fix available. Requires manual remediation in your IDE or Dev Spaces.',
+  deterministic: 'Deterministic rule-based transform. Ready immediately with high confidence — like a linter auto-fix.',
+  ai: 'AI analyzes the context and generates a suggestion. Requires your review before including in a pull request.',
+  manual: 'No automated fix available. Requires manual changes in your code editor.',
 };
 
 const REMEDIATION_STEPS = [
   { id: 'select', label: 'Select violations', num: 1 },
-  { id: 'review', label: 'Review fixes', num: 2 },
-  { id: 'pr', label: 'Pull request', num: 3 },
+  { id: 'review', label: 'Review suggestions', num: 2 },
+  { id: 'pr', label: 'Create pull request', num: 3 },
 ] as const;
 
 type StepStatus = 'completed' | 'active' | 'active-running' | 'upcoming';
@@ -1856,7 +1856,8 @@ const useQualityStyles = makeStyles(theme => {
 function QualityStepper({ pageState }: { pageState: QualityPageState }) {
   const classes = useQualityStyles();
   const theme = useTheme();
-  const showVerified = pageState === 'pr-merged';
+  const showMergeStep = pageState === 'pr-open' || pageState === 'pr-merged';
+  const isMerged = pageState === 'pr-merged';
 
   return (
     <Box className={classes.pipeline}>
@@ -1910,13 +1911,25 @@ function QualityStepper({ pageState }: { pageState: QualityPageState }) {
           </Box>
         );
       })}
-      {showVerified && (
+      {showMergeStep && (
         <>
-          <Typography component="span" className={`${classes.stepArrow} ${classes.stepArrowCompleted}`}>→</Typography>
-          <Box className={classes.verifiedBadge}>
-            <CheckCircleIcon style={{ fontSize: 16, color: statusColors.success }} />
-            PR created
-          </Box>
+          <Typography component="span" className={`${classes.stepArrow} ${isMerged ? classes.stepArrowCompleted : ''}`}>→</Typography>
+          {isMerged ? (
+            <Box className={classes.verifiedBadge}>
+              <CheckCircleIcon style={{ fontSize: 16, color: statusColors.success }} />
+              PR merged
+            </Box>
+          ) : (
+            <Box className={classes.stepButton} style={{ opacity: 0.55 }}>
+              <Box className={classes.numberBadge}
+                style={{ border: `1.5px solid ${theme.palette.text.disabled}`, color: theme.palette.text.disabled }}>
+                4
+              </Box>
+              <Typography className={classes.stepLabel} style={{ color: statusColors.pending }}>
+                PR merged
+              </Typography>
+            </Box>
+          )}
         </>
       )}
     </Box>
@@ -1969,23 +1982,23 @@ const FixChipStyled = ({
   let icon: string | null = null;
 
   if (status === 'fixed') {
-    label = 'Applied'; chipClass = classes.fixChipApplied; icon = '✓';
-    tooltip = 'Deterministic fix applied automatically with high confidence';
+    label = 'Ready'; chipClass = classes.fixChipApplied; icon = '✓';
+    tooltip = 'Auto-fix suggestion ready — will be included in the pull request';
   } else if (status === 'proposed') {
-    label = 'Review'; chipClass = classes.fixChipReview;
-    tooltip = 'AI-generated fix proposal — expand to review, then approve or decline';
+    label = 'Needs review'; chipClass = classes.fixChipReview;
+    tooltip = 'AI-generated suggestion — expand to review, then accept or decline';
   } else if (status === 'approved') {
-    label = 'Approved'; chipClass = classes.fixChipApproved; icon = '✓';
-    tooltip = 'Fix approved — will be included in the pull request';
+    label = 'Ready'; chipClass = classes.fixChipApproved; icon = '✓';
+    tooltip = 'Suggestion accepted — will be included in the pull request';
   } else if (status === 'declined') {
     label = 'Declined'; chipClass = classes.fixChipDeclined;
-    tooltip = 'Fix proposal declined — will not be included in the pull request';
+    tooltip = 'Suggestion declined — will not be included in the pull request';
   } else if (status === 'in-pr') {
     label = 'In PR'; chipClass = classes.fixChipInPr;
-    tooltip = 'Included in the open pull request — awaiting code review and merge';
+    tooltip = 'Included in the open pull request — awaiting review and merge';
   } else if (status === 'resolved') {
     label = 'Resolved'; chipClass = classes.fixChipApplied; icon = '✓';
-    tooltip = 'Resolved — fix was merged and the violation is addressed';
+    tooltip = 'Resolved — change was merged and the violation is addressed';
   } else if (method !== 'manual') {
     label = method === 'deterministic' ? 'Auto-fixable' : 'AI-fixable';
     chipClass = method === 'deterministic' ? classes.fixChipDeterministic : classes.fixChipAi;
@@ -2027,10 +2040,10 @@ const ConfirmRemediationDialog = ({
         <CardContent style={{ padding: '20px 24px' }}>
           <Box className={classes.confirmHeader}>
             <BuildIcon style={{ fontSize: 20, color: statusColors.warning }} />
-            <Typography style={{ fontSize: 16, fontWeight: 600 }}>Confirm remediation</Typography>
+            <Typography style={{ fontSize: 16, fontWeight: 600 }}>Suggest fixes</Typography>
           </Box>
           <Typography style={{ fontSize: 13 }}>
-            You are about to remediate <strong>{total} violation{total !== 1 ? 's' : ''}</strong>.
+            Generate fix suggestions for <strong>{total} violation{total !== 1 ? 's' : ''}</strong>.
           </Typography>
           <Box className={classes.confirmBreakdown}>
             {autoFixCount > 0 && (
@@ -2039,7 +2052,7 @@ const ConfirmRemediationDialog = ({
                   <span className={classes.fixChipIcon}>⚡</span>
                   Auto-fixable
                 </span>
-                <span>{autoFixCount} will be auto-fixed — deterministic syntax and naming transforms</span>
+                <span>{autoFixCount} auto-fix suggestions — ready immediately</span>
               </Box>
             )}
             {aiCount > 0 && (
@@ -2048,18 +2061,18 @@ const ConfirmRemediationDialog = ({
                   <span className={classes.fixChipIcon}>✦</span>
                   AI-fixable
                 </span>
-                <span>{aiCount} will generate AI proposals for your review</span>
+                <span>{aiCount} AI suggestions — need your review</span>
               </Box>
             )}
           </Box>
           <Typography className={classes.confirmNote}>
-            After reviewing the fixes, you can create a pull request with the approved changes.
-            To fix additional violations, start a new remediation cycle.
+            After reviewing the suggestions, you can create a pull request with the accepted changes.
+            To address additional violations, start a new cycle.
           </Typography>
           <Box className={classes.confirmActions}>
             <Button onClick={onCancel} style={{ textTransform: 'none' }}>Cancel</Button>
             <Button variant="contained" color="primary" onClick={onConfirm} style={{ textTransform: 'none' }}>
-              Remediate {total} violation{total !== 1 ? 's' : ''}
+              Suggest fixes for {total} violation{total !== 1 ? 's' : ''}
             </Button>
           </Box>
         </CardContent>
@@ -2336,9 +2349,9 @@ export const QualityTabUnified = ({
       return (
         <Box className={`${classes.banner} ${classes.bannerIdle}`}>
           <Typography style={{ fontSize: 13 }}>
-            <strong>{fixableCount} violation{fixableCount !== 1 ? 's' : ''}</strong> can be remediated
+            <strong>{fixableCount} violation{fixableCount !== 1 ? 's' : ''}</strong> have available fix suggestions
             {' — '}{autoFixableTotal} auto-fixable{aiFixableTotal > 0 ? `, ${aiFixableTotal} AI-fixable` : ''}.
-            {' '}Select the violations you want to fix, then click Remediate.
+            {' '}Select the violations you want to address, then click Suggest fixes.
           </Typography>
         </Box>
       );
@@ -2361,8 +2374,8 @@ export const QualityTabUnified = ({
         return (
           <Box className={`${classes.banner} ${classes.bannerReview}`}>
             <Typography style={{ fontSize: 13, color: isDark ? '#c4b5e3' : '#6753ac' }}>
-              <strong>{fixedCount} auto-fix{fixedCount !== 1 ? 'es' : ''} applied.</strong>
-              {' '}{proposedCount} AI proposal{proposedCount !== 1 ? 's' : ''} need{proposedCount === 1 ? 's' : ''} your review before creating a pull request.
+              <strong>{fixedCount} suggestion{fixedCount !== 1 ? 's' : ''} ready.</strong>
+              {' '}{proposedCount} AI suggestion{proposedCount !== 1 ? 's' : ''} need{proposedCount === 1 ? 's' : ''} your review before creating a pull request.
             </Typography>
           </Box>
         );
@@ -2372,14 +2385,13 @@ export const QualityTabUnified = ({
           <Box className={`${classes.banner} ${classes.bannerSuccess}`}>
             <Box className={classes.bannerRow}>
               <Typography style={{ fontSize: 13, color: isDark ? '#8bc986' : '#1e4620' }}>
-                <strong>{prReadyCount} fix{prReadyCount !== 1 ? 'es' : ''} ready.</strong>
+                <strong>{prReadyCount} suggestion{prReadyCount !== 1 ? 's' : ''} ready for pull request.</strong>
                 {declinedCount > 0 && ` ${declinedCount} declined.`}
-                {' '}Create a pull request to apply the changes.
               </Typography>
               {isDeveloper && (
                 <Button variant="contained" color="primary" size="small" onClick={handleCreatePr}
                   style={{ textTransform: 'none', fontSize: 13, fontWeight: 500, flexShrink: 0 }}>
-                  Create pull request with {prReadyCount} fix{prReadyCount !== 1 ? 'es' : ''}
+                  Create pull request with {prReadyCount} change{prReadyCount !== 1 ? 's' : ''}
                 </Button>
               )}
             </Box>
@@ -2405,17 +2417,26 @@ export const QualityTabUnified = ({
             <Box display="flex" alignItems="center" style={{ gap: 8 }}>
               <Chip size="small" label="PR #99" className={classes.prBadge} />
               <Typography style={{ fontSize: 13 }}>
-                Pull request created with {inPrCount} fix{inPrCount !== 1 ? 'es' : ''} on branch <code className={classes.branchCode}>{remBranch}</code>.
+                Pull request created with {inPrCount} change{inPrCount !== 1 ? 's' : ''} on branch <code className={classes.branchCode}>{remBranch}</code>.
               </Typography>
             </Box>
             <Box display="flex" alignItems="center" style={{ gap: 6, flexShrink: 0 }}>
-              <span onClick={handleMergePr} style={{ fontSize: 11, color: theme.palette.text.disabled, cursor: 'pointer', textDecoration: 'underline' }}>
-                Simulate merge
-              </span>
-              <Button size="small" variant="contained" color="primary" startIcon={<OpenInNewIcon style={{ fontSize: 14 }} />}
+              <Button size="small" variant="outlined" startIcon={<OpenInNewIcon style={{ fontSize: 14 }} />}
                 onClick={() => window.open(`${repoUrl}/pull/99`, '_blank')}
                 style={{ textTransform: 'none', fontSize: 13, fontWeight: 500 }}>
                 View pull request
+              </Button>
+              {isDevSpacesConnected && isDeveloper && (
+                <Button size="small" variant="contained" color="primary" startIcon={<CodeIcon style={{ fontSize: 14 }} />}
+                  onClick={() => window.open(`/devspaces-mockup.html?state=pr-review&branch=${encodeURIComponent(remBranch)}`, '_blank')}
+                  style={{ textTransform: 'none', fontSize: 13, fontWeight: 500 }}>
+                  Review in Dev Spaces
+                </Button>
+              )}
+              <Button size="small" variant="text"
+                onClick={handleMergePr}
+                style={{ textTransform: 'none', fontSize: 12, color: theme.palette.text.secondary, padding: '4px 10px', minWidth: 0 }}>
+                Mark as merged
               </Button>
             </Box>
           </Box>
@@ -2433,10 +2454,12 @@ export const QualityTabUnified = ({
                 {remainingCount > 0 && ` ${remainingCount} remaining in this scan.`}
               </Typography>
             </Box>
-            {remainingCount > 0 && isDeveloper && (
-              <Button size="small" variant="outlined" onClick={handleReset}
+            {isDeveloper && (
+              <Button size="small" variant="outlined"
+                startIcon={<AutorenewIcon style={{ fontSize: 14 }} />}
+                onClick={handleScanClick}
                 style={{ textTransform: 'none', fontSize: 12, padding: '4px 12px', borderColor: isDark ? 'rgba(91,163,82,0.5)' : '#5ba352', color: isDark ? '#8bc986' : '#1e4620' }}>
-                Start new remediation cycle
+                Scan again
               </Button>
             )}
           </Box>
@@ -2471,13 +2494,6 @@ export const QualityTabUnified = ({
               View CI run
             </Button>
           )}
-          {isDevSpacesConnected && isDeveloper && (
-            <Button size="small" variant="text" startIcon={<CodeIcon style={{ fontSize: 14 }} />}
-              onClick={() => window.open('/devspaces-mockup.html', '_blank')}
-              style={{ textTransform: 'none', fontSize: 12, color: theme.palette.text.secondary }}>
-              Edit in Dev Spaces
-            </Button>
-          )}
         </Box>
       </Box>
       {scanning && <LinearProgress variant="determinate" value={scanProgress} style={{ height: 4, borderRadius: 2, marginBottom: 8 }} />}
@@ -2494,7 +2510,7 @@ export const QualityTabUnified = ({
           <QualityStepper pageState={pageState} />
           {renderBanner()}
 
-          {/* Toolbar — selection + remediate (step 1 only) */}
+          {/* Toolbar — selection + suggest fixes (step 1 only) */}
           {isDeveloper && showCheckboxes && (
             <Box display="flex" alignItems="center" justifyContent="space-between" style={{ padding: '8px 0', marginBottom: 8 }}>
               <Box display="flex" alignItems="center" style={{ gap: 10 }}>
@@ -2580,7 +2596,7 @@ export const QualityTabUnified = ({
                   disabled={selectedIds.size === 0}
                   onClick={handleRemediateClick}
                   style={{ textTransform: 'none', fontSize: 13, fontWeight: 500, padding: '5px 16px' }}>
-                  Remediate {selectedIds.size > 0 ? `${selectedIds.size} violation${selectedIds.size !== 1 ? 's' : ''}` : 'violations'}
+                  Suggest fixes{selectedIds.size > 0 ? ` for ${selectedIds.size} violation${selectedIds.size !== 1 ? 's' : ''}` : ''}
                 </Button>
                 {selectedIds.size > 0 && (
                   <>
@@ -2704,7 +2720,7 @@ export const QualityTabUnified = ({
             <Box display="flex" alignItems="center" justifyContent="space-between" style={{ marginBottom: 12 }}>
               <Typography style={{ fontSize: 13, color: theme.palette.text.secondary }}>
                 Reviewing <strong style={{ color: theme.palette.text.primary }}>{remediatedTotal}</strong> of {scan.totalViolations} violations
-                {remainingCount > 0 && <> · {remainingCount} remaining for future remediation</>}
+                {remainingCount > 0 && <> · {remainingCount} remaining</>}
               </Typography>
             </Box>
           )}
@@ -2750,15 +2766,6 @@ export const QualityTabUnified = ({
                       File
                       {sortColumn === 'file' && <span style={{ marginLeft: 4, fontSize: 10, opacity: 0.6 }}>{sortAsc ? '▲' : '▼'}</span>}
                     </th>
-                    <th className={classes.colActions}>
-                      <DarkTooltip title="Open project in Dev Spaces" arrow enterDelay={200}>
-                        <IconButton size="small"
-                          onClick={() => window.open('/devspaces-mockup.html', '_blank')}
-                          style={{ padding: 6, borderRadius: 4, border: `1px solid ${theme.palette.divider}`, background: isDark ? 'rgba(255,255,255,0.04)' : '#fafafa' }}>
-                          <CodeIcon style={{ fontSize: 16, color: theme.palette.text.secondary }} />
-                        </IconButton>
-                      </DarkTooltip>
-                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -2784,8 +2791,6 @@ export const QualityTabUnified = ({
 
                     const sevStyle = FILLED_SEVERITY[v.severity] || FILLED_SEVERITY.info;
                     const codeCtx = DEMO_CODE_CONTEXT[v.ruleId];
-                    const devSpacesUrl = `/devspaces-mockup.html?file=${encodeURIComponent(v.file)}&line=${v.lineStart}&tier=${v.fixTier}&status=${status}`;
-
                     return [
                       <tr key={`${v.ruleId}-${v.lineStart}-${i}`} className={rowClasses}>
                         {showCheckboxes && (
@@ -2836,19 +2841,10 @@ export const QualityTabUnified = ({
                             <OpenInNewIcon style={{ fontSize: 11, marginLeft: 3, verticalAlign: 'middle', opacity: 0.6 }} />
                           </a>
                         </td>
-                        <td className={classes.colActions}>
-                          <DarkTooltip title={`Open in Dev Spaces: ${v.file}:${v.lineStart}`} arrow enterDelay={200}>
-                            <IconButton size="small"
-                              onClick={(e) => { e.stopPropagation(); window.open(devSpacesUrl, '_blank'); }}
-                              style={{ padding: 6, borderRadius: 4, border: `1px solid ${theme.palette.divider}`, background: isDark ? 'rgba(255,255,255,0.04)' : '#fafafa' }}>
-                              <CodeIcon style={{ fontSize: 16, color: theme.palette.text.secondary }} />
-                            </IconButton>
-                          </DarkTooltip>
-                        </td>
                       </tr>,
                       isExpanded ? (
                         <tr key={`${v.ruleId}-${v.lineStart}-${i}-detail`}>
-                          <td colSpan={showCheckboxes ? 7 : 6} style={{ padding: 0 }}>
+                          <td colSpan={showCheckboxes ? 6 : 5} style={{ padding: 0 }}>
                             <Collapse in={true}>
                               {showDiff ? (
                                 <Box className={classes.proposalPreview}>
@@ -2885,13 +2881,13 @@ export const QualityTabUnified = ({
                                     <Box className={classes.proposalActions}>
                                       <Typography style={{ fontSize: 11, color: isDark ? '#c4b5e3' : '#6753ac', display: 'flex', alignItems: 'center', gap: 4 }}>
                                         <span className={classes.fixChipIcon}>✦</span>
-                                        AI-generated proposal
+                                        AI-generated suggestion
                                       </Typography>
                                       <Box display="flex" alignItems="center" style={{ gap: 6 }}>
                                         <Button size="small" variant="outlined" onClick={() => handleDecline(key)}
                                           style={{ textTransform: 'none', fontSize: 12, padding: '4px 12px' }}>Decline</Button>
                                         <Button size="small" variant="contained" onClick={() => handleApprove(key)} className={classes.btnApprove}>
-                                          Approve fix
+                                          Accept
                                         </Button>
                                       </Box>
                                     </Box>

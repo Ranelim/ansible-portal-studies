@@ -464,7 +464,7 @@ export const GitRepositoriesContent = () => {
       title: (
         <Box display="flex" alignItems="center" style={{ gap: 4 }}>
           Violations
-          <Tooltip title="Policy violations detected by automated quality scans. Fix violations to improve content reliability and compliance." arrow>
+          <Tooltip title="Policy violations detected by automated quality scans. Address violations to improve content reliability and compliance." arrow>
             <HelpOutlineIcon style={{ fontSize: 14, color: theme.palette.text.disabled, cursor: 'help' }} />
           </Tooltip>
         </Box>
@@ -531,8 +531,8 @@ export const GitRepositoriesContent = () => {
 
         const remStatus = getProjectRemediationStatus(row.name);
         const REMEDIATION_LABELS: Partial<Record<RemediationStatus, { text: string; color: string }>> = {
-          'in-progress': { text: 'Fixing…', color: statusColors.info },
-          'proposals-ready': { text: 'Review fixes', color: isDark ? '#f0d080' : '#8a6d00' },
+          'in-progress': { text: 'Generating…', color: statusColors.info },
+          'proposals-ready': { text: 'Review suggestions', color: isDark ? '#f0d080' : '#8a6d00' },
           'pr-open': { text: 'PR open', color: isDark ? '#f0d080' : '#8a6d00' },
           'pr-merged': { text: 'Merged', color: statusColors.success },
         };

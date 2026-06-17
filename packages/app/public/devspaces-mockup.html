@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dev Spaces — rhel-patching — APME Violations</title>
+<title>Dev Spaces — PR Review</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; background: #1e1e1e; color: #d4d4d4; overflow: hidden; height: 100vh; }
@@ -17,100 +17,61 @@
 
   .main { display: flex; height: calc(100vh - 30px); }
 
-  /* Activity bar */
   .activity-bar { width: 48px; background: #333; display: flex; flex-direction: column; align-items: center; padding-top: 8px; gap: 16px; border-right: 1px solid #252526; flex-shrink: 0; }
   .activity-icon { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border-radius: 4px; color: #858585; cursor: pointer; position: relative; }
   .activity-icon:hover, .activity-icon.active { color: #fff; }
   .activity-icon.active::before { content: ''; position: absolute; left: -10px; width: 2px; height: 100%; background: #fff; border-radius: 1px; }
   .activity-icon svg { width: 22px; height: 22px; }
-  .activity-badge { position: absolute; top: -4px; right: -6px; background: #007acc; color: #fff; font-size: 9px; font-weight: 700; min-width: 16px; height: 16px; border-radius: 8px; display: flex; align-items: center; justify-content: center; padding: 0 4px; }
-  .activity-badge.scm { background: #c17e19; }
+  .activity-badge { position: absolute; top: -4px; right: -6px; background: #c17e19; color: #fff; font-size: 9px; font-weight: 700; min-width: 16px; height: 16px; border-radius: 8px; display: flex; align-items: center; justify-content: center; padding: 0 4px; }
 
-  /* Sidebar */
-  .sidebar { width: 240px; background: #252526; border-right: 1px solid #1e1e1e; display: flex; flex-direction: column; flex-shrink: 0; overflow-y: auto; }
-  .sidebar-header { padding: 10px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; color: #bbb; font-weight: 600; }
-  .tree-section-header { padding: 4px 12px; font-size: 11px; font-weight: 600; color: #ccc; cursor: pointer; display: flex; align-items: center; gap: 4px; }
-  .tree-section-header::before { content: '▾'; font-size: 8px; }
-  .tree-item { padding: 3px 12px 3px 24px; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 6px; }
-  .tree-item:hover { background: #2a2d2e; }
-  .tree-item.active { background: #094771; color: #fff; }
-  .file-icon { font-size: 12px; width: 16px; text-align: center; }
-  .file-icon.yaml { color: #e8a838; }
-  .file-icon.cfg { color: #888; }
-  .badge { margin-left: auto; color: #fff; font-size: 9px; font-weight: 700; min-width: 16px; height: 14px; border-radius: 7px; display: flex; align-items: center; justify-content: center; padding: 0 4px; }
-  .badge.err { background: #c24038; }
-  .badge.warn { background: #cca700; }
-  .badge.modified { background: none; color: #c17e19; font-size: 11px; font-weight: 600; min-width: auto; }
-
-  /* SCM sidebar items */
+  .sidebar { width: 260px; background: #252526; border-right: 1px solid #1e1e1e; display: flex; flex-direction: column; flex-shrink: 0; overflow-y: auto; }
   .scm-header { padding: 10px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; color: #bbb; font-weight: 600; display: flex; align-items: center; justify-content: space-between; }
   .scm-section { padding: 4px 0; }
   .scm-section-header { padding: 6px 12px; font-size: 11px; font-weight: 600; color: #ccc; display: flex; align-items: center; gap: 6px; }
   .scm-count { background: #c17e19; color: #fff; font-size: 9px; font-weight: 700; min-width: 16px; height: 14px; border-radius: 7px; display: flex; align-items: center; justify-content: center; padding: 0 4px; }
-  .scm-file { padding: 3px 12px 3px 28px; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+  .scm-file { padding: 3px 12px 3px 20px; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 6px; border-radius: 3px; margin: 0 4px; }
   .scm-file:hover { background: #2a2d2e; }
-  .scm-file .change-type { margin-left: auto; font-size: 11px; font-weight: 600; }
-  .scm-file .change-type.modified { color: #c17e19; }
-  .scm-actions { padding: 8px 12px; display: flex; gap: 6px; }
-  .scm-btn { padding: 4px 12px; font-size: 11px; border: none; border-radius: 3px; cursor: pointer; font-weight: 500; }
-  .scm-btn.primary { background: #007acc; color: #fff; }
-  .scm-btn.secondary { background: transparent; color: #ccc; border: 1px solid #555; }
-  .scm-commit-input { margin: 8px 12px; padding: 6px 8px; background: #3c3c3c; border: 1px solid #555; border-radius: 3px; color: #d4d4d4; font-size: 12px; width: calc(100% - 24px); }
+  .scm-file.active { background: #094771; }
+  .scm-file .change-type { margin-left: auto; font-size: 11px; font-weight: 600; color: #c17e19; }
+  .file-icon { font-size: 12px; width: 16px; text-align: center; }
+  .file-icon.yaml { color: #e8a838; }
+  .file-icon.cfg { color: #888; }
+  .scm-info { padding: 12px 12px 8px; font-size: 11px; color: #888; border-bottom: 1px solid #333; line-height: 1.5; }
+  .scm-info strong { color: #ccc; }
+  .scm-info .branch { color: #c17e19; font-family: 'Menlo', 'Consolas', monospace; font-size: 10px; }
 
-  /* Editor area */
   .editor-area { flex: 1; display: flex; flex-direction: column; min-width: 0; }
 
-  .tabs { display: flex; background: #252526; height: 35px; border-bottom: 1px solid #1e1e1e; flex-shrink: 0; }
+  .tabs { display: flex; background: #252526; height: 35px; border-bottom: 1px solid #1e1e1e; flex-shrink: 0; overflow-x: auto; }
   .tab { padding: 0 16px; height: 35px; display: flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer; border-right: 1px solid #1e1e1e; color: #999; white-space: nowrap; }
   .tab.active { background: #1e1e1e; color: #fff; border-top: 1px solid #007acc; margin-top: -1px; }
-  .tab-badge { width: 8px; height: 8px; border-radius: 50%; }
-  .tab-badge.err { background: #c24038; }
-  .tab-badge.mod { background: #c17e19; }
 
-  /* Notification banner */
-  .notification { display: flex; align-items: center; padding: 8px 16px; gap: 10px; font-size: 12px; border-bottom: 1px solid #1e1e1e; flex-shrink: 0; }
-  .notification.info { background: #063b49; }
-  .notification.success { background: #1b3a1b; }
-  .notification.warning { background: #3b3113; }
-  .notification .notif-icon { font-size: 16px; flex-shrink: 0; }
-  .notification .notif-text { flex: 1; }
-  .notification .notif-btn { padding: 3px 10px; font-size: 11px; border: none; border-radius: 3px; cursor: pointer; font-weight: 500; }
-  .notification .notif-btn.primary { background: #007acc; color: #fff; }
-  .notification .notif-btn.secondary { background: transparent; color: #3794ff; border: 1px solid #3794ff; }
-  .notification .notif-btn.ghost { background: transparent; color: #999; }
+  .diff-header { display: flex; align-items: center; padding: 6px 16px; background: #252526; border-bottom: 1px solid #333; font-size: 12px; color: #999; gap: 8px; flex-shrink: 0; }
+  .diff-header .arrow { color: #666; }
+  .diff-header .filename { color: #d4d4d4; }
+  .diff-header .branch-label { font-family: 'Menlo', 'Consolas', monospace; font-size: 11px; padding: 1px 6px; border-radius: 3px; }
+  .diff-header .branch-base { background: #1b3a1b; color: #3fb950; }
+  .diff-header .branch-pr { background: #063b49; color: #58a6ff; }
 
-  /* Editor */
-  .editor { flex: 1; overflow: auto; font-family: 'Menlo', 'Consolas', 'Courier New', monospace; font-size: 13px; line-height: 20px; padding: 8px 0; }
-  .editor-line { display: flex; padding: 0 16px 0 0; min-height: 20px; position: relative; }
-  .editor-line:hover { background: #2a2d2e; }
+  .editor { flex: 1; overflow: auto; font-family: 'Menlo', 'Consolas', 'Courier New', monospace; font-size: 13px; line-height: 20px; display: flex; }
+  .diff-pane { flex: 1; overflow: auto; }
+  .diff-pane-left { border-right: 1px solid #333; }
+  .diff-separator { width: 1px; background: #333; flex-shrink: 0; }
+
+  .editor-line { display: flex; padding: 0 16px 0 0; min-height: 20px; }
   .line-number { width: 48px; text-align: right; padding-right: 16px; color: #555; user-select: none; flex-shrink: 0; }
   .line-content { flex: 1; white-space: pre; }
-  .line-gutter-icon { position: absolute; left: 2px; top: 1px; width: 16px; height: 18px; display: flex; align-items: center; justify-content: center; font-size: 12px; cursor: pointer; z-index: 2; opacity: 0.9; filter: saturate(1.2); }
-  .line-gutter-icon:hover { opacity: 1; transform: scale(1.15); }
 
-  /* Violation line tints — subtle background so violations are visible even without squiggles */
-  .editor-line.has-error { background: rgba(244, 71, 71, 0.06); }
-  .editor-line.has-error .line-number { color: #f44747; }
-  .editor-line.has-warning { background: rgba(204, 167, 0, 0.06); }
-  .editor-line.has-warning .line-number { color: #cca700; }
-  .editor-line.has-info { background: rgba(55, 148, 255, 0.06); }
-  .editor-line.has-info .line-number { color: #3794ff; }
-
-  /* Diff lines */
   .diff-added { background: rgba(35, 134, 54, 0.2); }
   .diff-added .line-number { color: #3fb950; }
-  .diff-added .line-content::before { content: '+'; color: #3fb950; margin-right: 8px; }
-  .diff-removed { background: rgba(248, 81, 73, 0.2); }
+  .diff-removed { background: rgba(248, 81, 73, 0.15); }
   .diff-removed .line-number { color: #f85149; }
-  .diff-removed .line-content::before { content: '-'; color: #f85149; margin-right: 8px; }
   .diff-gutter-added { border-left: 3px solid #3fb950; }
   .diff-gutter-removed { border-left: 3px solid #f85149; }
+  .diff-empty { background: #1a1a1a; }
+  .diff-empty .line-number { visibility: hidden; }
+  .diff-empty .line-content { visibility: hidden; }
 
-  .squiggle-error { text-decoration: underline wavy #f44747; text-decoration-skip-ink: none; text-underline-offset: 3px; }
-  .squiggle-warning { text-decoration: underline wavy #cca700; text-decoration-skip-ink: none; text-underline-offset: 3px; }
-  .squiggle-info { text-decoration: underline wavy #3794ff; text-decoration-skip-ink: none; text-underline-offset: 3px; }
-
-  /* Syntax */
   .kw { color: #c586c0; }
   .str { color: #ce9178; }
   .key { color: #9cdcfe; }
@@ -118,117 +79,15 @@
   .module { color: #4ec9b0; }
   .bool { color: #569cd6; }
 
-  /* Hover tooltip — VS Code-style diagnostic popup */
-  .hover-tooltip { position: fixed; background: #252526; border: 1px solid #454545; border-radius: 3px; padding: 0; font-size: 12px; line-height: 1.5; max-width: 520px; min-width: 360px; z-index: 100; display: none; box-shadow: 0 2px 8px rgba(0,0,0,0.4); }
-  .hover-tooltip.visible { display: block; }
-  .hover-tooltip-header { padding: 6px 10px; display: flex; align-items: center; gap: 6px; border-bottom: 1px solid #333; }
-  .hover-tooltip-sev { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; padding: 1px 5px; border-radius: 3px; }
-  .hover-tooltip-sev.error { background: rgba(244, 71, 71, 0.2); color: #f44747; }
-  .hover-tooltip-sev.warning { background: rgba(204, 167, 0, 0.2); color: #cca700; }
-  .hover-tooltip-sev.info { background: rgba(55, 148, 255, 0.2); color: #3794ff; }
-  .hover-tooltip-rule { color: #3794ff; font-family: monospace; font-size: 11px; }
-  .hover-tooltip-source { color: #888; font-size: 11px; margin-left: auto; }
-  .hover-tooltip-body { padding: 8px 10px; color: #ccc; }
-  .hover-tooltip-body p { margin: 0 0 6px 0; }
-  .hover-tooltip-body p:last-child { margin-bottom: 0; }
-  .hover-tooltip-body .why { color: #999; font-size: 11px; margin-top: 4px; }
-  .hover-tooltip-body a { color: #3794ff; text-decoration: none; }
-  .hover-tooltip-body a:hover { text-decoration: underline; }
-  .hover-tooltip-actions { padding: 6px 10px; border-top: 1px solid #333; display: flex; gap: 12px; }
-  .hover-tooltip-actions a { color: #3794ff; font-size: 11px; text-decoration: none; cursor: pointer; }
-  .hover-tooltip-actions a:hover { text-decoration: underline; }
-  .hover-tooltip-fix-method { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 3px; }
-  .hover-tooltip-fix-method.auto { background: rgba(35, 134, 54, 0.2); color: #3fb950; }
-  .hover-tooltip-fix-method.ai { background: rgba(55, 148, 255, 0.2); color: #58a6ff; }
-  .hover-tooltip-fix-method.manual { background: rgba(204, 167, 0, 0.15); color: #cca700; }
-  .hover-tooltip-portal-sev { font-size: 10px; color: #888; margin-left: 4px; }
-  .squiggle-error, .squiggle-warning, .squiggle-info { cursor: default; }
-  .editor-line.target-violation { background: rgba(0, 122, 204, 0.12) !important; border-left: 3px solid #007acc !important; }
-
-  /* Panel */
-  .panel { height: 200px; border-top: 1px solid #007acc; background: #1e1e1e; display: flex; flex-direction: column; flex-shrink: 0; }
-  .panel-tabs { display: flex; height: 30px; background: #252526; align-items: center; padding: 0 8px; gap: 2px; flex-shrink: 0; }
-  .panel-tab { padding: 4px 12px; font-size: 11px; cursor: pointer; color: #999; border-bottom: 1px solid transparent; }
-  .panel-tab.active { color: #fff; border-bottom-color: #007acc; }
-  .panel-tab .count { color: #fff; font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 8px; margin-left: 4px; }
-  .panel-tab .count.err { background: #c24038; }
-  .panel-tab .count.reduced { background: #cca700; }
-  .panel-content { flex: 1; overflow: auto; font-size: 12px; }
-  .problem-file { padding: 4px 12px; font-weight: 600; color: #ccc; background: #252526; position: sticky; top: 0; display: flex; align-items: center; gap: 6px; cursor: pointer; }
-  .problem-file .file-count { color: #888; font-weight: 400; margin-left: auto; font-size: 11px; }
-  .problem-row { padding: 3px 12px 3px 32px; display: flex; align-items: flex-start; gap: 8px; cursor: pointer; }
-  .problem-row:hover { background: #2a2d2e; }
-  .problem-icon { flex-shrink: 0; width: 14px; margin-top: 2px; }
-  .problem-icon.error { color: #f44747; }
-  .problem-icon.warning { color: #cca700; }
-  .problem-icon.info { color: #3794ff; }
-  .problem-msg { flex: 1; color: #d4d4d4; }
-  .problem-rule { color: #888; font-family: monospace; font-size: 11px; white-space: nowrap; }
-  .problem-loc { color: #666; font-size: 11px; white-space: nowrap; }
-  .problem-row.fixed { opacity: 0.4; text-decoration: line-through; }
-
-  /* Status bar */
   .statusbar { height: 22px; background: #007acc; display: flex; align-items: center; padding: 0 12px; font-size: 11px; color: #fff; gap: 16px; flex-shrink: 0; }
+  .statusbar .pr-indicator { display: flex; align-items: center; gap: 4px; }
+  .statusbar .pr-indicator svg { width: 14px; height: 14px; }
   .statusbar-right { margin-left: auto; display: flex; gap: 16px; }
 
-  /* Transitions */
-  .fade-in { animation: fadeIn 0.3s ease; }
-  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-
-  /* Progress bar for remediation */
-  .progress-bar { height: 3px; background: #333; position: relative; overflow: hidden; flex-shrink: 0; }
-  .progress-fill { height: 100%; background: #007acc; width: 0%; transition: width 0.3s ease; }
-  .progress-bar.running .progress-fill { animation: progressAnim 2s ease forwards; }
-  @keyframes progressAnim { 0% { width: 0%; } 30% { width: 40%; } 60% { width: 70%; } 80% { width: 85%; } 100% { width: 100%; } }
-
-  /* Lightbulb gutter icon */
-  .line-lightbulb { position: absolute; left: 4px; top: 1px; font-size: 14px; cursor: pointer; z-index: 5; opacity: 0.85; filter: drop-shadow(0 0 2px rgba(0,0,0,0.5)); }
-  .line-lightbulb:hover { opacity: 1; transform: scale(1.15); }
-  .editor-line { position: relative; }
-
-  /* Inline suggestion widget */
-  .inline-suggestion { margin: 0 0 0 48px; border: 1px solid #454545; border-radius: 4px; background: #252526; overflow: hidden; animation: fadeIn 0.2s ease; }
-  .inline-suggestion-header { display: flex; align-items: center; justify-content: space-between; padding: 6px 12px; background: #2d2d2d; border-bottom: 1px solid #454545; font-size: 11px; }
-  .inline-suggestion-label { color: #ccc; display: flex; align-items: center; gap: 6px; }
-  .inline-suggestion-label .tier-tag { padding: 1px 6px; border-radius: 3px; font-size: 10px; font-weight: 600; }
-  .tier-tag.auto { background: #1b3a1b; color: #3fb950; }
-  .tier-tag.ai { background: #063b49; color: #58a6ff; }
-  .inline-suggestion-actions { display: flex; gap: 6px; }
-  .inline-suggestion-actions button { padding: 2px 10px; font-size: 11px; border: none; border-radius: 3px; cursor: pointer; font-weight: 500; }
-  .inline-suggestion-actions .btn-apply { background: #238636; color: #fff; }
-  .inline-suggestion-actions .btn-apply:hover { background: #2ea043; }
-  .inline-suggestion-actions .btn-dismiss { background: transparent; color: #999; border: 1px solid #555; }
-  .inline-suggestion-actions .btn-dismiss:hover { color: #ccc; }
-  .inline-suggestion.readonly .inline-suggestion-actions { display: none; }
-  .inline-suggestion-portal-hint { padding: 6px 12px; font-size: 11px; color: #888; background: #1e1e1e; border-top: 1px solid #333; display: flex; align-items: center; gap: 6px; }
-  .inline-suggestion-portal-hint a { color: #3794ff; text-decoration: none; }
-  .inline-suggestion-portal-hint a:hover { text-decoration: underline; }
-  .inline-suggestion-diff { font-family: 'Menlo', 'Consolas', 'Courier New', monospace; font-size: 12px; line-height: 20px; }
-  .inline-suggestion-diff .diff-line { padding: 0 12px; min-height: 20px; }
-  .inline-suggestion-diff .diff-line.removed { background: rgba(248, 81, 73, 0.15); color: #f85149; }
-  .inline-suggestion-diff .diff-line.added { background: rgba(46, 160, 67, 0.15); color: #3fb950; }
-  .inline-suggestion-diff .diff-line.removed::before { content: '−  '; }
-  .inline-suggestion-diff .diff-line.added::before { content: '+  '; }
-
-  /* Applied inline marker */
-  .inline-applied { margin: 0 0 0 48px; padding: 4px 12px; font-size: 11px; color: #3fb950; background: rgba(46,160,67,0.08); border-left: 3px solid #238636; display: flex; align-items: center; gap: 6px; }
-  .inline-applied button { padding: 1px 8px; font-size: 10px; border: 1px solid #555; border-radius: 3px; background: transparent; color: #999; cursor: pointer; }
-
-  /* Manual violation — info gutter icon */
-  .line-info-icon { position: absolute; left: 4px; top: 1px; font-size: 14px; cursor: pointer; z-index: 5; opacity: 0.85; filter: drop-shadow(0 0 2px rgba(0,0,0,0.5)); }
-  .line-info-icon:hover { opacity: 1; transform: scale(1.15); }
-
-  /* Manual violation — inline guidance panel */
-  .inline-guidance { margin: 0 0 0 48px; border: 1px solid #454545; border-radius: 4px; background: #252526; overflow: hidden; animation: fadeIn 0.2s ease; }
-  .inline-guidance-header { display: flex; align-items: center; justify-content: space-between; padding: 6px 12px; background: #2d2d2d; border-bottom: 1px solid #454545; font-size: 11px; }
-  .inline-guidance-label { color: #ccc; display: flex; align-items: center; gap: 6px; }
-  .tier-tag.manual { background: #3b3113; color: #cca700; }
-  .inline-guidance-body { padding: 8px 12px; font-size: 12px; line-height: 1.6; color: #bbb; }
-  .inline-guidance-body code { background: #333; padding: 1px 5px; border-radius: 3px; font-family: 'Menlo', 'Consolas', monospace; font-size: 11px; color: #d4d4d4; }
-  .inline-guidance-body a { color: #3794ff; text-decoration: none; }
-  .inline-guidance-body a:hover { text-decoration: underline; }
-
-  .hidden { display: none !important; }
+  .summary-bar { display: flex; align-items: center; padding: 8px 16px; gap: 10px; font-size: 12px; border-bottom: 1px solid #333; background: #1b3a1b; flex-shrink: 0; }
+  .summary-bar .icon { font-size: 14px; flex-shrink: 0; }
+  .summary-bar .text { flex: 1; color: #8bc986; }
+  .summary-bar strong { color: #3fb950; }
 </style>
 </head>
 <body>
@@ -237,180 +96,96 @@
   <span class="dot dot-red"></span>
   <span class="dot dot-yellow"></span>
   <span class="dot dot-green"></span>
-  <div class="titlebar-center">tasks/main.yml — rhel-patching — Dev Spaces</div>
+  <div class="titlebar-center" id="titlebar-text">rhel-patching — Dev Spaces</div>
 </div>
 
 <div class="main">
-  <!-- Activity bar -->
   <div class="activity-bar">
-    <div class="activity-icon active" id="act-explorer" title="Explorer" onclick="showExplorer()">
+    <div class="activity-icon" title="Explorer">
       <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.5 0h-9L7 1.5V6H2.5L1 7.5v15.07L2.5 24h12.07L16 22.57V18h4.7l1.3-1.43V4.5L17.5 0zm0 2.12l2.38 2.38H17.5V2.12zm-3 20.38h-12v-15H7v9.07L8.5 18h6v4.5zm6-6h-12v-15H16V6h4.5v10.5z"/></svg>
-      <span class="activity-badge" id="explorer-badge">7</span>
     </div>
     <div class="activity-icon" title="Search">
       <svg viewBox="0 0 24 24" fill="currentColor"><path d="M15.25 1a6.25 6.25 0 0 0-4.53 10.58L2 20.3l1.41 1.41 8.72-8.72A6.25 6.25 0 1 0 15.25 1zm0 10.5a4.25 4.25 0 1 1 0-8.5 4.25 4.25 0 0 1 0 8.5z"/></svg>
     </div>
-    <div class="activity-icon" id="act-scm" title="Source Control" onclick="showScm()">
+    <div class="activity-icon active" title="Source Control">
       <svg viewBox="0 0 24 24" fill="currentColor"><path d="M21.007 8.222A3.738 3.738 0 0 0 15.045 5.2a3.737 3.737 0 0 0 1.156 6.583 2.988 2.988 0 0 1-2.668 1.67h-2.99a4.456 4.456 0 0 0-2.989 1.165V7.559a3.738 3.738 0 1 0-1.494 0v8.882a3.738 3.738 0 1 0 1.494.001 2.988 2.988 0 0 1 2.989-2.99h2.99a4.484 4.484 0 0 0 4.223-3.065 3.738 3.738 0 0 0 3.25-2.165z"/></svg>
-      <span class="activity-badge scm hidden" id="scm-badge">6</span>
+      <span class="activity-badge">6</span>
     </div>
     <div class="activity-icon" title="Extensions">
       <svg viewBox="0 0 24 24" fill="currentColor"><path d="M13.5 1.5L15 0h7.5L24 1.5V9l-1.5 1.5H15L13.5 9V1.5zm3 0V9h6V1.5h-6zM0 15l1.5-1.5H9L10.5 15v7.5L9 24H1.5L0 22.5V15zm3 0v6h4.5v-6H3zm7.5-12v7.5h6V3h-6zM0 3l1.5-1.5H9L10.5 3v7.5L9 12H1.5L0 10.5V3zm3 0v6h4.5V3H3zm10.5 12l1.5-1.5h7.5L24 13.5V21l-1.5 1.5H15L13.5 21v-6zm3 0V19.5h6V15h-6z"/></svg>
     </div>
   </div>
 
-  <!-- Explorer sidebar (State 1) -->
-  <div class="sidebar" id="sidebar-explorer">
-    <div class="sidebar-header">Explorer: rhel-patching</div>
-    <div class="tree-section-header">rhel-patching</div>
-    <div class="tree-item" data-file="ansible.cfg"><span class="file-icon cfg">⚙</span> ansible.cfg <span class="badge err">1</span></div>
-    <div class="tree-item" data-file="collections/requirements.yml"><span class="file-icon yaml">📄</span> collections/requirements.yml <span class="badge warn">1</span></div>
-    <div class="tree-item" data-file="defaults/main.yml"><span class="file-icon yaml">📄</span> defaults/main.yml <span class="badge warn">1</span></div>
-    <div class="tree-item" data-file="meta/main.yml"><span class="file-icon yaml">📄</span> meta/main.yml <span class="badge" style="background:#3794ff;">1</span></div>
-    <div class="tree-item" data-file="tasks/main.yml"><span class="file-icon yaml">📄</span> tasks/main.yml <span class="badge err">2</span></div>
-    <div class="tree-item" data-file="tasks/patch-apply.yml"><span class="file-icon yaml">📄</span> tasks/patch-apply.yml <span class="badge err">2</span></div>
-    <div class="tree-item" data-file="tasks/pre-check.yml"><span class="file-icon yaml">📄</span> tasks/pre-check.yml <span class="badge warn">2</span></div>
-    <div class="tree-item" data-file="tasks/report.yml"><span class="file-icon yaml">📄</span> tasks/report.yml <span class="badge warn">1</span></div>
-    <div class="tree-item" data-file="tasks/rollback.yml"><span class="file-icon yaml">📄</span> tasks/rollback.yml <span class="badge warn">1</span></div>
-  </div>
-
-  <!-- SCM sidebar (State 2 — after remediation) -->
-  <div class="sidebar hidden" id="sidebar-scm">
-    <div class="scm-header">Source Control <span style="font-size:10px; color:#666;">Git</span></div>
-    <input class="scm-commit-input" placeholder="Message (⌘Enter to commit)" value="fix: apply APME remediation for 10 violations" />
-    <div class="scm-actions">
-      <button class="scm-btn primary" style="flex:1;">✓ Commit</button>
-      <button class="scm-btn secondary">⋯</button>
+  <div class="sidebar">
+    <div class="scm-info">
+      Reviewing pull request <strong>#99</strong><br>
+      <span class="branch">apme/remediate-rhel-patching</span> → <span class="branch">main</span><br>
+      6 files changed · 10 violations addressed
     </div>
     <div class="scm-section">
-      <div class="scm-section-header">Changes <span class="scm-count">6</span></div>
-      <div class="scm-file" onclick="showDiff('ansible-cfg')">
+      <div class="scm-section-header">Changed Files <span class="scm-count">6</span></div>
+      <div class="scm-file" onclick="showFile('ansible-cfg')" data-file="ansible-cfg">
         <span class="file-icon cfg">⚙</span> ansible.cfg
-        <span class="change-type modified">M</span>
+        <span class="change-type">M</span>
       </div>
-      <div class="scm-file" onclick="showDiff('collections')">
+      <div class="scm-file" onclick="showFile('collections')" data-file="collections">
         <span class="file-icon yaml">📄</span> collections/requirements.yml
-        <span class="change-type modified">M</span>
+        <span class="change-type">M</span>
       </div>
-      <div class="scm-file" onclick="showDiff('defaults')">
+      <div class="scm-file" onclick="showFile('defaults')" data-file="defaults">
         <span class="file-icon yaml">📄</span> defaults/main.yml
-        <span class="change-type modified">M</span>
+        <span class="change-type">M</span>
       </div>
-      <div class="scm-file active" onclick="showDiff('main')">
+      <div class="scm-file active" onclick="showFile('main')" data-file="main">
         <span class="file-icon yaml">📄</span> tasks/main.yml
-        <span class="change-type modified">M</span>
+        <span class="change-type">M</span>
       </div>
-      <div class="scm-file" onclick="showDiff('patch-apply')">
+      <div class="scm-file" onclick="showFile('patch-apply')" data-file="patch-apply">
         <span class="file-icon yaml">📄</span> tasks/patch-apply.yml
-        <span class="change-type modified">M</span>
+        <span class="change-type">M</span>
       </div>
-      <div class="scm-file" onclick="showDiff('pre-check')">
+      <div class="scm-file" onclick="showFile('pre-check')" data-file="pre-check">
         <span class="file-icon yaml">📄</span> tasks/pre-check.yml
-        <span class="change-type modified">M</span>
+        <span class="change-type">M</span>
       </div>
     </div>
-    <div style="padding: 16px 12px; border-top: 1px solid #333; margin-top: 8px;">
-      <div style="font-size: 11px; color: #888; margin-bottom: 8px;">Not changed (2 manual violations):</div>
-      <div style="padding: 2px 0; font-size: 11px; color: #666;">📄 tasks/report.yml — deprecated-module</div>
-      <div style="padding: 2px 0; font-size: 11px; color: #666;">📄 meta/main.yml — meta-no-info</div>
+    <div style="padding: 12px 12px; border-top: 1px solid #333; margin-top: 8px;">
+      <div style="font-size: 11px; color: #888; margin-bottom: 6px;">Unchanged (2 manual violations):</div>
+      <div style="padding: 2px 0; font-size: 11px; color: #666;">📄 tasks/report.yml</div>
+      <div style="padding: 2px 0; font-size: 11px; color: #666;">📄 meta/main.yml</div>
     </div>
   </div>
 
-  <!-- Editor area -->
   <div class="editor-area">
     <div class="tabs">
-      <div class="tab active" id="tab-main">
+      <div class="tab active" id="active-tab">
         <span style="color:#e8a838;">📄</span>
-        <span id="tab-main-label">tasks/main.yml</span>
-        <span class="tab-badge err" id="tab-main-badge"></span>
+        <span id="tab-label">tasks/main.yml</span>
       </div>
     </div>
 
-    <!-- Generic project-level banner (no file context) -->
-    <div class="notification info" id="notif-remediate">
-      <span class="notif-icon">🔍</span>
-      <span class="notif-text"><strong>APME:</strong> 12 violations found. 10 are auto-fixable (8 deterministic, 2 AI-proposed). 2 require manual review.</span>
-      <button class="notif-btn primary" onclick="startRemediation()">Remediate</button>
-      <button class="notif-btn ghost" onclick="this.parentElement.classList.add('hidden')">✕</button>
+    <div class="diff-header" id="diff-header">
+      <span class="branch-label branch-base">main</span>
+      <span class="arrow">→</span>
+      <span class="branch-label branch-pr" id="pr-branch-label">apme/remediate-rhel-patching</span>
+      <span style="margin-left: 8px;" class="filename" id="diff-filename">tasks/main.yml</span>
     </div>
 
-    <!-- Violation context banner — shows for open violations (scan results, no remediation yet) -->
-    <div class="notification info hidden" id="notif-violation">
-      <span class="notif-icon">🔍</span>
-      <span class="notif-text" id="notif-violation-text"><strong>APME:</strong> Violation found at this location.</span>
-      <button class="notif-btn ghost" onclick="this.parentElement.classList.add('hidden')">✕</button>
+    <div class="summary-bar">
+      <span class="icon">✓</span>
+      <span class="text"><strong>10 fix suggestions</strong> applied across 6 files. 2 remaining violations require manual changes.</span>
     </div>
 
-    <!-- AI proposal context banner — read-only, approve/decline happens in Portal -->
-    <div class="notification info hidden" id="notif-ai-review">
-      <span class="notif-icon">✦</span>
-      <span class="notif-text" id="notif-ai-review-text"><strong>APME AI proposal:</strong> Review the suggested fix below. Approve or decline in the Ansible Portal.</span>
-      <button class="notif-btn ghost" onclick="this.parentElement.classList.add('hidden')">✕</button>
-    </div>
-
-    <!-- TIER: manual — no fix available, guidance only -->
-    <div class="notification warning hidden" id="notif-manual">
-      <span class="notif-icon">⚠</span>
-      <span class="notif-text" id="notif-manual-text"><strong>APME:</strong> No auto-fix available for this violation. Manual remediation required.</span>
-      <button class="notif-btn secondary" onclick="window.open('https://docs.ansible.com', '_blank')">View documentation</button>
-      <button class="notif-btn ghost" onclick="this.parentElement.classList.add('hidden')">Dismiss</button>
-    </div>
-
-    <!-- Fixed/approved context — file was modified by remediation -->
-    <div class="notification success hidden" id="notif-fixed">
-      <span class="notif-icon">✓</span>
-      <span class="notif-text" id="notif-fixed-text"><strong>APME:</strong> This violation was resolved by remediation.</span>
-      <button class="notif-btn ghost" onclick="this.parentElement.classList.add('hidden')">✕</button>
-    </div>
-
-    <!-- Progress bar (during remediation) -->
-    <div class="progress-bar hidden" id="progress-bar">
-      <div class="progress-fill" id="progress-fill"></div>
-    </div>
-
-    <!-- Running notification -->
-    <div class="notification info hidden" id="notif-running">
-      <span class="notif-icon" style="animation: spin 1s linear infinite;">⟳</span>
-      <span class="notif-text"><strong>APME:</strong> Remediating... applying deterministic fixes and AI analysis.</span>
-    </div>
-
-    <!-- Success notification (State 2) -->
-    <div class="notification success hidden" id="notif-success">
-      <span class="notif-icon">✓</span>
-      <span class="notif-text"><strong>APME:</strong> Remediated 10 of 12 violations across 6 files. 2 remaining require manual review. Review changes below.</span>
-      <button class="notif-btn secondary" onclick="showScm()">View Changes</button>
-      <button class="notif-btn ghost" onclick="this.classList.add('hidden')">✕</button>
-    </div>
-
-    <!-- Editor content rendered dynamically by JS -->
-    <div class="editor" id="editor-violations"></div>
-    <div class="editor hidden" id="editor-diff"></div>
-
-    <!-- Problems panel -->
-    <div class="panel">
-      <div class="panel-tabs">
-        <div class="panel-tab active">PROBLEMS <span class="count err" id="problems-count">12</span></div>
-        <div class="panel-tab">OUTPUT</div>
-        <div class="panel-tab">TERMINAL</div>
-        <div class="panel-tab">DEBUG CONSOLE</div>
-        <div style="flex:1;"></div>
-        <div style="font-size:11px; color:#888;" id="problems-summary">
-          <span style="color:#f44747;">⊘ 4</span> &nbsp;
-          <span style="color:#cca700;">⚠ 7</span> &nbsp;
-          <span style="color:#3794ff;">ⓘ 1</span>
-        </div>
-      </div>
-      <div class="panel-content" id="problems-list">
-        <!-- Populated by JS -->
-      </div>
-    </div>
+    <div class="editor" id="editor"></div>
 
     <div class="statusbar">
-      <span>◉ main</span>
-      <span id="status-errors" style="display:flex; align-items:center; gap:8px;"><span style="color:#fff;">⊘ 4</span> <span style="color:#fff;">⚠ 7</span> <span style="color:#fff;">ⓘ 1</span></span>
+      <span class="pr-indicator">
+        <svg viewBox="0 0 16 16" fill="currentColor"><path d="M7.177 3.073L9.573.677A.25.25 0 0 1 10 .854v4.792a.25.25 0 0 1-.427.177L7.177 3.427a.25.25 0 0 1 0-.354zM3.75 2.5a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5zm-2.25.75a2.25 2.25 0 1 1 3 2.122v5.256a2.251 2.251 0 1 1-1.5 0V5.372A2.25 2.25 0 0 1 1.5 3.25zM11 2.5h-1V4h1a1 1 0 0 1 1 1v5.628a2.251 2.251 0 1 1-1.5 0V5a2.5 2.5 0 0 0-2.5-2.5H7V4h1a1 1 0 0 0 1-1V2.5zm1 10.25a.75.75 0 1 0-1.5 0 .75.75 0 0 0 1.5 0zM3.75 12a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5z"/></svg>
+        PR #99
+      </span>
+      <span id="branch-name">apme/remediate-rhel-patching</span>
       <div class="statusbar-right">
         <span>Ansible</span>
-        <span>Ln 13, Col 7</span>
         <span>UTF-8</span>
         <span>YAML</span>
         <span>redhat.ansible</span>
@@ -419,1060 +194,161 @@
   </div>
 </div>
 
-<style>@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }</style>
-
-<!-- VS Code-style hover tooltip for violations -->
-<div class="hover-tooltip" id="violation-tooltip"></div>
-
 <script>
-
-// APME rule knowledge base — richer detail than SARIF messages alone
-const RULE_DETAILS = {
-  'yaml[truthy]': {
-    severity: 'warning', portalSeverity: 'Low', fixTier: 'auto', fixCategory: 'Syntax',
-    summary: 'Truthy value should be one of [false, true]',
-    why: 'YAML accepts "yes", "no", "on", "off" as booleans, but they are ambiguous and can cause unexpected behavior. Ansible best practice requires explicit true/false.',
-    docs: 'https://ansible.readthedocs.io/projects/lint/rules/yaml/',
-    fix: 'Replace "yes" with true, "no" with false.',
+const DIFFS = {
+  'main': {
+    filename: 'tasks/main.yml',
+    lines: [
+      { left: { num: 1, html: '<span class="comment"># tasks/main.yml — RHEL Patching</span>' }, right: { num: 1, html: '<span class="comment"># tasks/main.yml — RHEL Patching</span>' } },
+      { left: { num: 2, html: '<span class="key">---</span>' }, right: { num: 2, html: '<span class="key">---</span>' } },
+      { left: { num: 3, html: '<span class="kw">- name</span>: <span class="str">Ensure system is up to date</span>' }, right: { num: 3, html: '<span class="kw">- name</span>: <span class="str">Ensure system is up to date</span>' } },
+      { left: { num: 4, html: '  <span class="key">hosts</span>: <span class="str">all</span>' }, right: { num: 4, html: '  <span class="key">hosts</span>: <span class="str">all</span>' } },
+      { left: { num: 5, html: '  <span class="key">become</span>: <span class="bool">true</span>' }, right: { num: 5, html: '  <span class="key">become</span>: <span class="bool">true</span>' } },
+      { left: { num: 6, html: '' }, right: { num: 6, html: '' } },
+      { left: { num: 7, html: '  <span class="key">tasks</span>:' }, right: { num: 7, html: '  <span class="key">tasks</span>:' } },
+      { left: { num: 8, html: '    <span class="kw">- name</span>: <span class="str">Run pre-flight checks</span>' }, right: { num: 8, html: '    <span class="kw">- name</span>: <span class="str">Run pre-flight checks</span>' } },
+      { left: { num: 9, html: '      <span class="module">ansible.builtin.include_tasks</span>: <span class="str">pre-check.yml</span>' }, right: { num: 9, html: '      <span class="module">ansible.builtin.include_tasks</span>: <span class="str">pre-check.yml</span>' } },
+      { left: { num: 10, html: '' }, right: { num: 10, html: '' } },
+      { left: { num: 11, html: '    <span class="kw">- name</span>: <span class="str">Copy patching script to target</span>' }, right: { num: 11, html: '    <span class="kw">- name</span>: <span class="str">Copy patching script to target</span>' } },
+      { left: { num: 12, html: '      <span class="module">copy</span>:', removed: true }, right: { num: 12, html: '      <span class="module">ansible.builtin.copy</span>:', added: true } },
+      { left: { num: 13, html: '        <span class="key">src</span>: <span class="str">files/patch.sh</span>' }, right: { num: 13, html: '        <span class="key">src</span>: <span class="str">files/patch.sh</span>' } },
+      { left: { num: 14, html: '        <span class="key">dest</span>: <span class="str">/tmp/patch.sh</span>' }, right: { num: 14, html: '        <span class="key">dest</span>: <span class="str">/tmp/patch.sh</span>' } },
+      { left: { num: 15, html: '        <span class="key">mode</span>: <span class="str">"0755"</span>' }, right: { num: 15, html: '        <span class="key">mode</span>: <span class="str">"0755"</span>' } },
+      { left: { num: 16, html: '' }, right: { num: 16, html: '' } },
+      { left: { num: 17, html: '    <span class="kw">- name</span>: <span class="str">Apply patches to all packages</span>' }, right: { num: 17, html: '    <span class="kw">- name</span>: <span class="str">Apply patches to all packages</span>' } },
+      { left: { num: 18, html: '      <span class="module">ansible.builtin.include_tasks</span>: <span class="str">patch-apply.yml</span>' }, right: { num: 18, html: '      <span class="module">ansible.builtin.include_tasks</span>: <span class="str">patch-apply.yml</span>' } },
+      { left: { num: 19, html: '' }, right: { num: 19, html: '' } },
+      { left: { num: 20, html: '    <span class="kw">- name</span>: <span class="str">Restart affected services</span>' }, right: { num: 20, html: '    <span class="kw">- name</span>: <span class="str">Restart affected services</span>' } },
+      { left: { num: 21, html: '      <span class="module">ansible.builtin.service</span>:' }, right: { num: 21, html: '      <span class="module">ansible.builtin.service</span>:' } },
+      { left: { num: 22, html: '        <span class="key">name</span>: <span class="str">"{{ item }}"</span>' }, right: { num: 22, html: '        <span class="key">name</span>: <span class="str">"{{ item }}"</span>' } },
+      { left: { num: 23, html: '        <span class="key">state</span>: <span class="str">restarted</span>' }, right: { num: 23, html: '        <span class="key">state</span>: <span class="str">restarted</span>' } },
+      { left: { num: 24, html: '      <span class="kw">with_items</span>:', removed: true }, right: { num: 24, html: '      <span class="kw">loop</span>:', added: true } },
+      { left: { num: 25, html: '        <span class="str">- httpd</span>' }, right: { num: 25, html: '        <span class="str">- httpd</span>' } },
+      { left: { num: 26, html: '        <span class="str">- sshd</span>' }, right: { num: 26, html: '        <span class="str">- sshd</span>' } },
+      { left: { num: 27, html: '        <span class="str">- crond</span>' }, right: { num: 27, html: '        <span class="str">- crond</span>' } },
+    ]
   },
-  'fqcn[action-core]': {
-    severity: 'warning', portalSeverity: 'Medium', fixTier: 'auto', fixCategory: 'Syntax',
-    summary: 'Use Fully Qualified Collection Name for builtin module actions',
-    why: 'Short module names (e.g., "copy") are deprecated. FQCN (e.g., "ansible.builtin.copy") ensures the correct module is resolved and is required for AAP 2.5+ compatibility.',
-    docs: 'https://ansible.readthedocs.io/projects/lint/rules/fqcn/',
-    fix: 'Prefix with ansible.builtin. (e.g., copy → ansible.builtin.copy).',
+  'ansible-cfg': {
+    filename: 'ansible.cfg',
+    lines: [
+      { left: { num: 1, html: '<span class="comment"># ansible.cfg — Project configuration</span>' }, right: { num: 1, html: '<span class="comment"># ansible.cfg — Project configuration</span>' } },
+      { left: { num: 2, html: '<span class="key">[defaults]</span>' }, right: { num: 2, html: '<span class="key">[defaults]</span>' } },
+      { left: { num: 3, html: '<span class="key">callback_whitelist</span> = <span class="str">profile_tasks, timer</span>', removed: true }, right: { num: 3, html: '<span class="key">callbacks_enabled</span> = <span class="str">profile_tasks, timer</span>', added: true } },
+      { left: { num: 4, html: '<span class="key">stdout_callback</span> = <span class="str">yaml</span>' }, right: { num: 4, html: '<span class="key">stdout_callback</span> = <span class="str">yaml</span>' } },
+      { left: { num: 5, html: '<span class="key">retry_files_enabled</span> = <span class="bool">False</span>' }, right: { num: 5, html: '<span class="key">retry_files_enabled</span> = <span class="bool">False</span>' } },
+    ]
   },
-  'aap-deprecated-syntax': {
-    severity: 'error', portalSeverity: 'High', fixTier: 'auto', fixCategory: 'Migration',
-    summary: 'with_items is deprecated — use loop',
-    why: 'with_* constructs are deprecated in ansible-core 2.18+ and removed in future versions. The loop keyword is the modern replacement with identical behavior.',
-    docs: 'https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_loops.html',
-    fix: 'Replace with_items with loop.',
+  'collections': {
+    filename: 'collections/requirements.yml',
+    lines: [
+      { left: { num: 1, html: '<span class="comment"># collections/requirements.yml</span>' }, right: { num: 1, html: '<span class="comment"># collections/requirements.yml</span>' } },
+      { left: { num: 2, html: '<span class="key">---</span>' }, right: { num: 2, html: '<span class="key">---</span>' } },
+      { left: { num: 3, html: '<span class="key">collections</span>:' }, right: { num: 3, html: '<span class="key">collections</span>:' } },
+      { left: { num: 4, html: '  <span class="kw">- name</span>: <span class="str">ansible.posix</span>' }, right: { num: 4, html: '  <span class="kw">- name</span>: <span class="str">ansible.posix</span>' } },
+      { left: { num: 5, html: '    <span class="key">version</span>: <span class="str">">=1.5.0"</span>' }, right: { num: 5, html: '    <span class="key">version</span>: <span class="str">">=1.5.0"</span>' } },
+      { left: { num: 6, html: '  <span class="kw">- name</span>: <span class="str">community.general</span>' }, right: { num: 6, html: '  <span class="kw">- name</span>: <span class="str">community.general</span>' } },
+      { left: { num: 7, html: '    <span class="key">version</span>: <span class="str">"7.5.0"</span>', removed: true }, right: { num: 7, html: '    <span class="key">version</span>: <span class="str">">=8.0.0"</span>', added: true } },
+      { left: { num: 8, html: '  <span class="kw">- name</span>: <span class="str">ansible.utils</span>' }, right: { num: 8, html: '  <span class="kw">- name</span>: <span class="str">ansible.utils</span>' } },
+    ]
   },
-  'aap-deprecated-module': {
-    severity: 'error', portalSeverity: 'High', fixTier: 'auto', fixCategory: 'Migration',
-    summary: 'Module is deprecated in target ansible-core version',
-    why: 'ansible.builtin.yum is deprecated in AAP 2.5+ as RHEL 9+ uses dnf. Continuing to use yum will cause failures on newer systems.',
-    docs: 'https://docs.ansible.com/ansible/latest/collections/ansible/builtin/dnf_module.html',
-    fix: 'Replace ansible.builtin.yum with ansible.builtin.dnf (compatible API).',
+  'defaults': {
+    filename: 'defaults/main.yml',
+    lines: [
+      { left: { num: 1, html: '<span class="comment"># defaults/main.yml</span>' }, right: { num: 1, html: '<span class="comment"># defaults/main.yml</span>' } },
+      { left: { num: 2, html: '<span class="key">---</span>' }, right: { num: 2, html: '<span class="key">---</span>' } },
+      { left: { num: 3, html: '<span class="key">patching_enabled</span>: <span class="bool">true</span>' }, right: { num: 3, html: '<span class="key">patching_enabled</span>: <span class="bool">true</span>' } },
+      { left: { num: 4, html: '<span class="key">patching_reboot</span>: <span class="bool">true</span>' }, right: { num: 4, html: '<span class="key">patching_reboot</span>: <span class="bool">true</span>' } },
+      { left: { num: 5, html: '<span class="key">patching_timeout</span>: <span class="str">600</span>' }, right: { num: 5, html: '<span class="key">patching_timeout</span>: <span class="str">600</span>' } },
+      { left: { num: 6, html: '<span class="key">patching_exclude</span>: <span class="str">[]</span>' }, right: { num: 6, html: '<span class="key">patching_exclude</span>: <span class="str">[]</span>' } },
+      { left: { num: 7, html: '<span class="key">patching_pre_check</span>: <span class="bool">true</span>' }, right: { num: 7, html: '<span class="key">patching_pre_check</span>: <span class="bool">true</span>' } },
+      { left: { num: 8, html: '<span class="key">patching_notify_email</span>: <span class="str">yes</span>', removed: true }, right: { num: 8, html: '<span class="key">patching_notify_email</span>: <span class="bool">true</span>', added: true } },
+      { left: { num: 9, html: '<span class="key">patching_log_dir</span>: <span class="str">/var/log/patching</span>' }, right: { num: 9, html: '<span class="key">patching_log_dir</span>: <span class="str">/var/log/patching</span>' } },
+    ]
   },
-  'aap-removed-config': {
-    severity: 'error', portalSeverity: 'High', fixTier: 'auto', fixCategory: 'Migration',
-    summary: 'Configuration option removed in target ansible-core',
-    why: 'callback_whitelist was renamed to callbacks_enabled in ansible-core 2.15 and the old name was removed in 2.17. Using the old name causes a startup error.',
-    docs: 'https://docs.ansible.com/ansible/latest/reference_appendices/config.html',
-    fix: 'Rename callback_whitelist to callbacks_enabled.',
+  'patch-apply': {
+    filename: 'tasks/patch-apply.yml',
+    lines: [
+      { left: { num: 1, html: '<span class="comment"># tasks/patch-apply.yml</span>' }, right: { num: 1, html: '<span class="comment"># tasks/patch-apply.yml</span>' } },
+      { left: { num: 2, html: '<span class="key">---</span>' }, right: { num: 2, html: '<span class="key">---</span>' } },
+      { left: { num: 3, html: '<span class="kw">- name</span>: <span class="str">Update all packages</span>' }, right: { num: 3, html: '<span class="kw">- name</span>: <span class="str">Update all packages</span>' } },
+      { left: { num: 4, html: '  <span class="module">ansible.builtin.yum</span>:', removed: true }, right: { num: 4, html: '  <span class="module">ansible.builtin.dnf</span>:', added: true } },
+      { left: { num: 5, html: '    <span class="key">name</span>: <span class="str">"*"</span>' }, right: { num: 5, html: '    <span class="key">name</span>: <span class="str">"*"</span>' } },
+      { left: { num: 6, html: '    <span class="key">state</span>: <span class="str">latest</span>' }, right: { num: 6, html: '    <span class="key">state</span>: <span class="str">latest</span>' } },
+      { left: { num: 7, html: '    <span class="key">security</span>: <span class="bool">true</span>' }, right: { num: 7, html: '    <span class="key">security</span>: <span class="bool">true</span>' } },
+      { left: { num: 8, html: '  <span class="key">register</span>: <span class="str">patch_result</span>' }, right: { num: 8, html: '  <span class="key">register</span>: <span class="str">patch_result</span>' } },
+      { left: { num: 9, html: '' }, right: { num: 9, html: '' } },
+      { left: { num: 10, html: '<span class="kw">- name</span>: <span class="str">Save patch report</span>' }, right: { num: 10, html: '<span class="kw">- name</span>: <span class="str">Save patch report</span>' } },
+      { left: { num: 11, html: '  <span class="module">ansible.builtin.template</span>:' }, right: { num: 11, html: '  <span class="module">ansible.builtin.template</span>:' } },
+      { left: { num: 12, html: '    <span class="key">src</span>: <span class="str">templates/patch-report.j2</span>' }, right: { num: 12, html: '    <span class="key">src</span>: <span class="str">templates/patch-report.j2</span>' } },
+      { left: { num: 13, html: '    <span class="key">dest</span>: <span class="str">/var/log/patch-report-{{ ansible_date_time.date }}.txt</span>' }, right: { num: 13, html: '    <span class="key">dest</span>: <span class="str">/var/log/patch-report-{{ ansible_date_time.date }}.txt</span>' } },
+      { left: { num: '', html: '', empty: true }, right: { num: 14, html: '    <span class="key">mode</span>: <span class="str">"0644"</span>', added: true } },
+    ]
   },
-  'aap-removed-param': {
-    severity: 'warning', portalSeverity: 'Medium', fixTier: 'auto', fixCategory: 'Migration',
-    summary: 'Module parameter removed in target ansible-core',
-    why: 'The warn parameter on command/shell modules was removed in ansible-core 2.17 (AAP 2.7). Using it causes a module argument validation error.',
-    docs: 'https://docs.ansible.com/ansible/latest/collections/ansible/builtin/command_module.html',
-    fix: 'Remove the warn parameter.',
-  },
-  'aap-collection-update': {
-    severity: 'warning', portalSeverity: 'Medium', fixTier: 'auto', fixCategory: 'Migration',
-    summary: 'Collection version unsupported in target AAP',
-    why: 'community.general 7.x is not supported in AAP 2.7. Version 8.0.0+ is required for compatibility with the included ansible-core version.',
-    docs: 'https://access.redhat.com/articles/ansible-automation-platform-certified-content',
-    fix: 'Update version constraint to >= 8.0.0.',
-  },
-  'no-changed-when': {
-    severity: 'warning', portalSeverity: 'Medium', fixTier: 'ai', fixCategory: 'Best practice',
-    summary: 'Commands should not change things if nothing needs doing',
-    why: 'command/shell tasks always report "changed" unless changed_when is set. This makes playbook runs non-idempotent and masks real changes in check mode.',
-    docs: 'https://ansible.readthedocs.io/projects/lint/rules/no-changed-when/',
-    fix: 'Add a changed_when condition or use creates/removes.',
-  },
-  'risky-file-permissions': {
-    severity: 'error', portalSeverity: 'High', fixTier: 'ai', fixCategory: 'Security',
-    summary: 'File permissions unset or incorrect',
-    why: 'Files created without explicit mode inherit the umask default, which may be world-readable. This is a security risk for sensitive files like scripts and configs.',
-    docs: 'https://ansible.readthedocs.io/projects/lint/rules/risky-file-permissions/',
-    fix: 'Add mode: "0644" (or appropriate permissions) to the task.',
-  },
-  'deprecated-module': {
-    severity: 'warning', portalSeverity: 'Low', fixTier: 'manual', fixCategory: 'Syntax',
-    summary: 'Module is deprecated, use the replacement',
-    why: 'The mail module is deprecated in favor of community.general.mail. Using deprecated modules risks breakage in future Ansible releases.',
-    docs: 'https://docs.ansible.com/ansible/latest/collections/community/general/mail_module.html',
-    fix: 'Replace with community.general.mail.',
-  },
-  'name[missing]': {
-    severity: 'warning', portalSeverity: 'Medium', fixTier: 'auto', fixCategory: 'Best practice',
-    summary: 'All tasks should be named',
-    why: 'Unnamed tasks display as "TASK [module_name]" in output, making it hard to understand what a playbook is doing and where failures occur.',
-    docs: 'https://ansible.readthedocs.io/projects/lint/rules/name/',
-    fix: 'Add a descriptive name: field to the task.',
-  },
-  'meta-no-info': {
-    severity: 'info', portalSeverity: 'Info', fixTier: 'manual', fixCategory: 'Metadata',
-    summary: 'Role metadata should contain relevant info',
-    why: 'galaxy_info metadata helps with role discovery, documentation, and dependency resolution. Incomplete metadata reduces reusability.',
-    docs: 'https://ansible.readthedocs.io/projects/lint/rules/meta-no-info/',
-    fix: 'Fill in author, description, platforms, and min_ansible_version.',
+  'pre-check': {
+    filename: 'tasks/pre-check.yml',
+    lines: [
+      { left: { num: 1, html: '<span class="comment"># tasks/pre-check.yml</span>' }, right: { num: 1, html: '<span class="comment"># tasks/pre-check.yml</span>' } },
+      { left: { num: 2, html: '<span class="key">---</span>' }, right: { num: 2, html: '<span class="key">---</span>' } },
+      { left: { num: 3, html: '<span class="kw">- name</span>: <span class="str">Check current patch level</span>' }, right: { num: 3, html: '<span class="kw">- name</span>: <span class="str">Check current patch level</span>' } },
+      { left: { num: 4, html: '  <span class="module">ansible.builtin.command</span>:' }, right: { num: 4, html: '  <span class="module">ansible.builtin.command</span>:' } },
+      { left: { num: 5, html: '    <span class="key">cmd</span>: <span class="str">rpm -qa --last</span>' }, right: { num: 5, html: '    <span class="key">cmd</span>: <span class="str">rpm -qa --last</span>' } },
+      { left: { num: 6, html: '  <span class="key">register</span>: <span class="str">patch_level</span>' }, right: { num: 6, html: '  <span class="key">register</span>: <span class="str">patch_level</span>' } },
+      { left: { num: 7, html: '  <span class="key">warn</span>: <span class="bool">false</span>', removed: true }, right: { num: '', html: '', empty: true } },
+      { left: { num: 8, html: '' }, right: { num: 7, html: '' } },
+      { left: { num: 9, html: '<span class="kw">- name</span>: <span class="str">Verify network connectivity</span>' }, right: { num: 8, html: '<span class="kw">- name</span>: <span class="str">Verify network connectivity</span>' } },
+      { left: { num: 10, html: '  <span class="module">ansible.builtin.command</span>:' }, right: { num: 9, html: '  <span class="module">ansible.builtin.command</span>:' } },
+      { left: { num: 11, html: '    <span class="key">cmd</span>: <span class="str">ping -c 1 satellite.example.com</span>' }, right: { num: 10, html: '    <span class="key">cmd</span>: <span class="str">ping -c 1 satellite.example.com</span>' } },
+      { left: { num: 12, html: '  <span class="key">register</span>: <span class="str">network_check</span>' }, right: { num: 11, html: '  <span class="key">register</span>: <span class="str">network_check</span>' } },
+      { left: { num: '', html: '', empty: true }, right: { num: 12, html: '  <span class="key">changed_when</span>: <span class="bool">false</span>', added: true } },
+    ]
   },
 };
 
-const ALL_PROBLEMS = [
-  { file: 'ansible.cfg', icon: '⚙', issues: [
-    { sev: 'error', msg: 'callback_whitelist renamed to callbacks_enabled (removed in ansible-core 2.17)', rule: 'aap-removed-config', loc: 'Ln 3', fixable: true },
-  ]},
-  { file: 'collections/requirements.yml', icon: '📄', issues: [
-    { sev: 'warning', msg: 'community.general 7.5.0 unsupported in AAP 2.7 — update to >= 8.0.0', rule: 'aap-collection-update', loc: 'Ln 6', fixable: true },
-  ]},
-  { file: 'defaults/main.yml', icon: '📄', issues: [
-    { sev: 'warning', msg: 'Truthy value should be one of [false, true]', rule: 'yaml[truthy]', loc: 'Ln 8', fixable: true },
-  ]},
-  { file: 'tasks/main.yml', icon: '📄', issues: [
-    { sev: 'warning', msg: 'Use FQCN for builtin module actions', rule: 'fqcn[action-core]', loc: 'Ln 13', fixable: true },
-    { sev: 'error', msg: 'with_items is deprecated — use loop for AAP 2.5+ compatibility', rule: 'aap-deprecated-syntax', loc: 'Ln 25', fixable: true },
-  ]},
-  { file: 'tasks/patch-apply.yml', icon: '📄', issues: [
-    { sev: 'error', msg: 'ansible.builtin.yum is deprecated in AAP 2.5+ — use ansible.builtin.dnf', rule: 'aap-deprecated-module', loc: 'Ln 3', fixable: true },
-    { sev: 'error', msg: 'File permissions unset or incorrect', rule: 'risky-file-permissions', loc: 'Ln 13', fixable: true },
-  ]},
-  { file: 'tasks/pre-check.yml', icon: '📄', issues: [
-    { sev: 'warning', msg: 'warn parameter removed in ansible-core 2.17 (AAP 2.7)', rule: 'aap-removed-param', loc: 'Ln 8', fixable: true },
-    { sev: 'warning', msg: 'Commands should not change things if nothing needs doing', rule: 'no-changed-when', loc: 'Ln 22', fixable: true },
-  ]},
-  { file: 'tasks/report.yml', icon: '📄', issues: [
-    { sev: 'warning', msg: 'Module is deprecated, use the replacement', rule: 'deprecated-module', loc: 'Ln 18', fixable: false },
-  ]},
-  { file: 'tasks/rollback.yml', icon: '📄', issues: [
-    { sev: 'warning', msg: 'All tasks should be named', rule: 'name[missing]', loc: 'Ln 5', fixable: true },
-  ]},
-  { file: 'meta/main.yml', icon: '📄', issues: [
-    { sev: 'info', msg: 'Role metadata should contain relevant info', rule: 'meta-no-info', loc: 'Ln 3', fixable: false },
-  ]},
-];
+function renderDiff(fileKey) {
+  const diff = DIFFS[fileKey];
+  if (!diff) return;
 
-// Per-file editor content: each line is { num, html, warn?, err?, warnTag?, errTag? }
-// warn/err lines get squiggle background; warnTag/errTag show inline annotation
-const FILE_CONTENT = {
-  'tasks/main.yml': {
-    lines: [
-      { num: 1, html: '<span class="comment"># tasks/main.yml — RHEL Patching</span>' },
-      { num: 2, html: '<span class="key">---</span>' },
-      { num: 3, html: '<span class="kw">- name</span>: <span class="str">Ensure system is up to date</span>' },
-      { num: 4, html: '  <span class="key">hosts</span>: <span class="str">all</span>' },
-      { num: 5, html: '  <span class="key">become</span>: <span class="bool">true</span>' },
-      { num: 6, html: '  <span class="key">gather_facts</span>: <span class="bool">true</span>' },
-      { num: 7, html: '' },
-      { num: 8, html: '  <span class="key">tasks</span>:' },
-      { num: 9, html: '    <span class="kw">- name</span>: <span class="str">Run pre-flight checks</span>' },
-      { num: 10, html: '      <span class="module">ansible.builtin.include_tasks</span>: <span class="str">pre-check.yml</span>' },
-      { num: 11, html: '' },
-      { num: 12, html: '    <span class="kw">- name</span>: <span class="str">Copy patching script to target</span>', warn: true },
-      { num: 13, html: '      <span class="squiggle-warning"><span class="module">copy</span></span>:', warn: true, warnTag: 'fqcn[action-core]' },
-      { num: 14, html: '        <span class="key">src</span>: <span class="str">files/patch.sh</span>' },
-      { num: 15, html: '        <span class="key">dest</span>: <span class="str">/tmp/patch.sh</span>' },
-      { num: 16, html: '        <span class="key">mode</span>: <span class="str">"0755"</span>' },
-      { num: 17, html: '' },
-      { num: 18, html: '    <span class="kw">- name</span>: <span class="str">Apply patches to all packages</span>' },
-      { num: 19, html: '      <span class="module">ansible.builtin.include_tasks</span>: <span class="str">patch-apply.yml</span>' },
-      { num: 20, html: '' },
-      { num: 21, html: '    <span class="kw">- name</span>: <span class="str">Restart affected services</span>' },
-      { num: 22, html: '      <span class="module">ansible.builtin.service</span>:', err: true },
-      { num: 23, html: '        <span class="key">name</span>: <span class="str">"{{ item }}"</span>', err: true },
-      { num: 24, html: '        <span class="key">state</span>: <span class="str">restarted</span>', err: true },
-      { num: 25, html: '      <span class="squiggle-error"><span class="kw">with_items</span></span>:', err: true, errTag: 'aap-deprecated-syntax' },
-      { num: 26, html: '        <span class="str">- httpd</span>' },
-      { num: 27, html: '        <span class="str">- sshd</span>' },
-      { num: 28, html: '        <span class="str">- crond</span>' },
-    ],
-    diff: [
-      { num: 1, html: '<span class="comment"># tasks/main.yml — RHEL Patching</span>' },
-      { num: 2, html: '<span class="key">---</span>' },
-      { num: 3, html: '<span class="kw">- name</span>: <span class="str">Ensure system is up to date</span>' },
-      { num: 4, html: '  <span class="key">hosts</span>: <span class="str">all</span>' },
-      { num: 5, html: '  <span class="key">become</span>: <span class="bool">true</span>' },
-      { num: 6, html: '  <span class="key">gather_facts</span>: <span class="bool">true</span>' },
-      { num: 7, html: '' },
-      { num: 8, html: '  <span class="key">tasks</span>:' },
-      { num: 9, html: '    <span class="kw">- name</span>: <span class="str">Run pre-flight checks</span>' },
-      { num: 10, html: '      <span class="module">ansible.builtin.include_tasks</span>: <span class="str">pre-check.yml</span>' },
-      { num: 11, html: '' },
-      { num: 12, html: '    <span class="kw">- name</span>: <span class="str">Copy patching script to target</span>' },
-      { num: 13, html: '<span class="module">copy</span>:', removed: true },
-      { num: 13, html: '<span class="module">ansible.builtin.copy</span>:', added: true },
-      { num: 14, html: '        <span class="key">src</span>: <span class="str">files/patch.sh</span>' },
-      { num: 15, html: '        <span class="key">dest</span>: <span class="str">/tmp/patch.sh</span>' },
-      { num: 16, html: '        <span class="key">mode</span>: <span class="str">"0755"</span>' },
-      { num: 17, html: '' },
-      { num: 18, html: '    <span class="kw">- name</span>: <span class="str">Apply patches to all packages</span>' },
-      { num: 19, html: '      <span class="module">ansible.builtin.include_tasks</span>: <span class="str">patch-apply.yml</span>' },
-      { num: 20, html: '' },
-      { num: 21, html: '    <span class="kw">- name</span>: <span class="str">Restart affected services</span>' },
-      { num: 22, html: '      <span class="module">ansible.builtin.service</span>:' },
-      { num: 23, html: '        <span class="key">name</span>: <span class="str">"{{ item }}"</span>' },
-      { num: 24, html: '        <span class="key">state</span>: <span class="str">restarted</span>' },
-      { num: 25, html: '<span class="kw">with_items</span>:', removed: true },
-      { num: 25, html: '<span class="kw">loop</span>:', added: true },
-      { num: 26, html: '        <span class="str">- httpd</span>' },
-      { num: 27, html: '        <span class="str">- sshd</span>' },
-      { num: 28, html: '        <span class="str">- crond</span>' },
-    ],
-  },
-  'tasks/pre-check.yml': {
-    lines: [
-      { num: 1, html: '<span class="comment"># tasks/pre-check.yml — Pre-flight validation</span>' },
-      { num: 2, html: '<span class="key">---</span>' },
-      { num: 3, html: '<span class="kw">- name</span>: <span class="str">Check current patch level</span>' },
-      { num: 4, html: '  <span class="module">ansible.builtin.command</span>:' },
-      { num: 5, html: '    <span class="key">cmd</span>: <span class="str">rpm -qa --last</span>' },
-      { num: 6, html: '  <span class="key">register</span>: <span class="str">patch_level</span>' },
-      { num: 7, html: '' },
-      { num: 8, html: '  <span class="squiggle-warning"><span class="key">warn</span>: <span class="bool">false</span></span>', warn: true, warnTag: 'aap-removed-param' },
-      { num: 9, html: '' },
-      { num: 10, html: '<span class="kw">- name</span>: <span class="str">Verify disk space</span>' },
-      { num: 11, html: '  <span class="module">ansible.builtin.command</span>:' },
-      { num: 12, html: '    <span class="key">cmd</span>: <span class="str">df -h /</span>' },
-      { num: 13, html: '  <span class="key">register</span>: <span class="str">disk_space</span>' },
-      { num: 14, html: '  <span class="key">changed_when</span>: <span class="bool">false</span>' },
-      { num: 15, html: '' },
-      { num: 16, html: '<span class="kw">- name</span>: <span class="str">Check running services</span>' },
-      { num: 17, html: '  <span class="module">ansible.builtin.command</span>:' },
-      { num: 18, html: '    <span class="key">cmd</span>: <span class="str">systemctl list-units --type=service --state=running</span>' },
-      { num: 19, html: '  <span class="key">register</span>: <span class="str">running_services</span>' },
-      { num: 20, html: '' },
-      { num: 21, html: '<span class="kw">- name</span>: <span class="str">Verify network connectivity</span>' },
-      { num: 22, html: '  <span class="squiggle-warning"><span class="module">ansible.builtin.command</span></span>:', warn: true, warnTag: 'no-changed-when' },
-      { num: 23, html: '    <span class="key">cmd</span>: <span class="str">ping -c 1 satellite.example.com</span>' },
-      { num: 24, html: '  <span class="key">register</span>: <span class="str">network_check</span>' },
-      { num: 25, html: '' },
-      { num: 26, html: '<span class="kw">- name</span>: <span class="str">Fail if prerequisites not met</span>' },
-      { num: 27, html: '  <span class="module">ansible.builtin.fail</span>:' },
-      { num: 28, html: '    <span class="key">msg</span>: <span class="str">"Pre-flight check failed"</span>' },
-      { num: 29, html: '  <span class="key">when</span>: <span class="str">network_check.rc != 0</span>' },
-    ],
-    diff: [
-      { num: 1, html: '<span class="comment"># tasks/pre-check.yml — Pre-flight validation</span>' },
-      { num: 2, html: '<span class="key">---</span>' },
-      { num: 3, html: '<span class="kw">- name</span>: <span class="str">Check current patch level</span>' },
-      { num: 4, html: '  <span class="module">ansible.builtin.command</span>:' },
-      { num: 5, html: '    <span class="key">cmd</span>: <span class="str">rpm -qa --last</span>' },
-      { num: 6, html: '  <span class="key">register</span>: <span class="str">patch_level</span>' },
-      { num: 7, html: '' },
-      { num: 8, html: '  <span class="key">warn</span>: <span class="bool">false</span>', removed: true },
-      { num: 9, html: '' },
-      { num: 10, html: '<span class="kw">- name</span>: <span class="str">Verify disk space</span>' },
-      { num: 11, html: '  <span class="module">ansible.builtin.command</span>:' },
-      { num: 12, html: '    <span class="key">cmd</span>: <span class="str">df -h /</span>' },
-      { num: 13, html: '  <span class="key">register</span>: <span class="str">disk_space</span>' },
-      { num: 14, html: '  <span class="key">changed_when</span>: <span class="bool">false</span>' },
-      { num: 15, html: '' },
-      { num: 16, html: '<span class="kw">- name</span>: <span class="str">Check running services</span>' },
-      { num: 17, html: '  <span class="module">ansible.builtin.command</span>:' },
-      { num: 18, html: '    <span class="key">cmd</span>: <span class="str">systemctl list-units --type=service --state=running</span>' },
-      { num: 19, html: '  <span class="key">register</span>: <span class="str">running_services</span>' },
-      { num: 20, html: '' },
-      { num: 21, html: '<span class="kw">- name</span>: <span class="str">Verify network connectivity</span>' },
-      { num: 22, html: '  <span class="module">ansible.builtin.command</span>:' },
-      { num: 23, html: '    <span class="key">cmd</span>: <span class="str">ping -c 1 satellite.example.com</span>' },
-      { num: 24, html: '  <span class="key">register</span>: <span class="str">network_check</span>' },
-      { num: 25, html: '  <span class="key">changed_when</span>: <span class="bool">false</span>', added: true },
-      { num: 26, html: '' },
-      { num: 27, html: '<span class="kw">- name</span>: <span class="str">Fail if prerequisites not met</span>' },
-      { num: 28, html: '  <span class="module">ansible.builtin.fail</span>:' },
-      { num: 29, html: '    <span class="key">msg</span>: <span class="str">"Pre-flight check failed"</span>' },
-      { num: 30, html: '  <span class="key">when</span>: <span class="str">network_check.rc != 0</span>' },
-    ],
-  },
-  'tasks/patch-apply.yml': {
-    lines: [
-      { num: 1, html: '<span class="comment"># tasks/patch-apply.yml — Apply system patches</span>' },
-      { num: 2, html: '<span class="key">---</span>' },
-      { num: 3, html: '<span class="kw">- name</span>: <span class="str">Update all packages</span>', err: true },
-      { num: 4, html: '  <span class="squiggle-error"><span class="module">ansible.builtin.yum</span></span>:', err: true, errTag: 'aap-deprecated-module' },
-      { num: 5, html: '    <span class="key">name</span>: <span class="str">"*"</span>' },
-      { num: 6, html: '    <span class="key">state</span>: <span class="str">latest</span>' },
-      { num: 7, html: '    <span class="key">security</span>: <span class="bool">true</span>' },
-      { num: 8, html: '  <span class="key">register</span>: <span class="str">patch_result</span>' },
-      { num: 9, html: '' },
-      { num: 10, html: '<span class="kw">- name</span>: <span class="str">Save patch report</span>' },
-      { num: 11, html: '  <span class="module">ansible.builtin.template</span>:' },
-      { num: 12, html: '    <span class="key">src</span>: <span class="str">templates/patch-report.j2</span>' },
-      { num: 13, html: '    <span class="key">dest</span>: <span class="str">/var/log/patch-report-{{ ansible_date_time.date }}.txt</span>', err: true },
-      { num: 14, html: '  <span class="squiggle-error" style="text-decoration:none;"><span class="comment">  </span></span><span style="color:#555; font-size:11px;">← risky-file-permissions (no mode set)</span>', err: true },
-      { num: 15, html: '' },
-      { num: 16, html: '<span class="kw">- name</span>: <span class="str">Check if reboot is required</span>' },
-      { num: 17, html: '  <span class="module">ansible.builtin.stat</span>:' },
-      { num: 18, html: '    <span class="key">path</span>: <span class="str">/var/run/reboot-required</span>' },
-      { num: 19, html: '  <span class="key">register</span>: <span class="str">reboot_required</span>' },
-      { num: 20, html: '' },
-      { num: 21, html: '<span class="kw">- name</span>: <span class="str">Reboot if needed</span>' },
-      { num: 22, html: '  <span class="module">ansible.builtin.reboot</span>:' },
-      { num: 23, html: '    <span class="key">reboot_timeout</span>: <span class="str">600</span>' },
-      { num: 24, html: '  <span class="key">when</span>: <span class="str">reboot_required.stat.exists</span>' },
-    ],
-    diff: [
-      { num: 1, html: '<span class="comment"># tasks/patch-apply.yml — Apply system patches</span>' },
-      { num: 2, html: '<span class="key">---</span>' },
-      { num: 3, html: '<span class="kw">- name</span>: <span class="str">Update all packages</span>' },
-      { num: 4, html: '  <span class="module">ansible.builtin.yum</span>:', removed: true },
-      { num: 4, html: '  <span class="module">ansible.builtin.dnf</span>:', added: true },
-      { num: 5, html: '    <span class="key">name</span>: <span class="str">"*"</span>' },
-      { num: 6, html: '    <span class="key">state</span>: <span class="str">latest</span>' },
-      { num: 7, html: '    <span class="key">security</span>: <span class="bool">true</span>' },
-      { num: 8, html: '  <span class="key">register</span>: <span class="str">patch_result</span>' },
-      { num: 9, html: '' },
-      { num: 10, html: '<span class="kw">- name</span>: <span class="str">Save patch report</span>' },
-      { num: 11, html: '  <span class="module">ansible.builtin.template</span>:' },
-      { num: 12, html: '    <span class="key">src</span>: <span class="str">templates/patch-report.j2</span>' },
-      { num: 13, html: '    <span class="key">dest</span>: <span class="str">/var/log/patch-report-{{ ansible_date_time.date }}.txt</span>' },
-      { num: 14, html: '    <span class="key">mode</span>: <span class="str">"0644"</span>', added: true },
-      { num: 15, html: '' },
-      { num: 16, html: '<span class="kw">- name</span>: <span class="str">Check if reboot is required</span>' },
-      { num: 17, html: '  <span class="module">ansible.builtin.stat</span>:' },
-      { num: 18, html: '    <span class="key">path</span>: <span class="str">/var/run/reboot-required</span>' },
-      { num: 19, html: '  <span class="key">register</span>: <span class="str">reboot_required</span>' },
-      { num: 20, html: '' },
-      { num: 21, html: '<span class="kw">- name</span>: <span class="str">Reboot if needed</span>' },
-      { num: 22, html: '  <span class="module">ansible.builtin.reboot</span>:' },
-      { num: 23, html: '    <span class="key">reboot_timeout</span>: <span class="str">600</span>' },
-      { num: 24, html: '  <span class="key">when</span>: <span class="str">reboot_required.stat.exists</span>' },
-    ],
-  },
-  'tasks/report.yml': {
-    lines: [
-      { num: 1, html: '<span class="comment"># tasks/report.yml — Generate patch report</span>' },
-      { num: 2, html: '<span class="key">---</span>' },
-      { num: 3, html: '<span class="kw">- name</span>: <span class="str">Gather package facts</span>' },
-      { num: 4, html: '  <span class="module">ansible.builtin.package_facts</span>:' },
-      { num: 5, html: '    <span class="key">manager</span>: <span class="str">auto</span>' },
-      { num: 6, html: '' },
-      { num: 7, html: '<span class="kw">- name</span>: <span class="str">Get update history</span>' },
-      { num: 8, html: '  <span class="module">ansible.builtin.command</span>:' },
-      { num: 9, html: '    <span class="key">cmd</span>: <span class="str">yum history list</span>' },
-      { num: 10, html: '  <span class="key">register</span>: <span class="str">update_history</span>' },
-      { num: 11, html: '  <span class="key">changed_when</span>: <span class="bool">false</span>' },
-      { num: 12, html: '' },
-      { num: 13, html: '<span class="kw">- name</span>: <span class="str">Count installed packages</span>' },
-      { num: 14, html: '  <span class="module">ansible.builtin.set_fact</span>:' },
-      { num: 15, html: '    <span class="key">pkg_count</span>: <span class="str">"{{ ansible_facts.packages | length }}"</span>' },
-      { num: 16, html: '' },
-      { num: 17, html: '<span class="kw">- name</span>: <span class="str">Send report via email</span>', warn: true },
-      { num: 18, html: '  <span class="squiggle-warning"><span class="module">mail</span></span>:', warn: true, warnTag: 'deprecated-module' },
-      { num: 19, html: '    <span class="key">host</span>: <span class="str">smtp.example.com</span>' },
-      { num: 20, html: '    <span class="key">to</span>: <span class="str">ops-team@example.com</span>' },
-      { num: 21, html: '    <span class="key">subject</span>: <span class="str">"Patch report for {{ inventory_hostname }}"</span>' },
-      { num: 22, html: '    <span class="key">body</span>: <span class="str">"{{ update_history.stdout }}"</span>' },
-    ],
-  },
-  'tasks/rollback.yml': {
-    lines: [
-      { num: 1, html: '<span class="comment"># tasks/rollback.yml — Rollback patches</span>' },
-      { num: 2, html: '<span class="key">---</span>' },
-      { num: 3, html: '<span class="kw">- name</span>: <span class="str">Get last transaction ID</span>' },
-      { num: 4, html: '  <span class="module">ansible.builtin.command</span>:' },
-      { num: 5, html: '    <span class="key">cmd</span>: <span class="str">yum history list | head -3 | tail -1 | awk \'{ print $1 }\'</span>', warn: true, warnTag: 'name[missing]' },
-      { num: 6, html: '  <span class="key">register</span>: <span class="str">last_txn</span>' },
-      { num: 7, html: '  <span class="key">changed_when</span>: <span class="bool">false</span>' },
-      { num: 8, html: '' },
-      { num: 9, html: '<span class="kw">- name</span>: <span class="str">Rollback to previous state</span>' },
-      { num: 10, html: '  <span class="module">ansible.builtin.command</span>:' },
-      { num: 11, html: '    <span class="key">cmd</span>: <span class="str">"yum history undo {{ last_txn.stdout }} -y"</span>' },
-      { num: 12, html: '  <span class="key">when</span>: <span class="str">last_txn.stdout | length > 0</span>' },
-      { num: 13, html: '' },
-      { num: 14, html: '<span class="kw">- name</span>: <span class="str">Verify rollback success</span>' },
-      { num: 15, html: '  <span class="module">ansible.builtin.command</span>:' },
-      { num: 16, html: '    <span class="key">cmd</span>: <span class="str">rpm -qa --last | head -5</span>' },
-      { num: 17, html: '  <span class="key">register</span>: <span class="str">verify</span>' },
-      { num: 18, html: '  <span class="key">changed_when</span>: <span class="bool">false</span>' },
-    ],
-    diff: [
-      { num: 1, html: '<span class="comment"># tasks/rollback.yml — Rollback patches</span>' },
-      { num: 2, html: '<span class="key">---</span>' },
-      { num: 3, html: '<span class="kw">- name</span>: <span class="str">Get last transaction ID</span>' },
-      { num: 4, html: '  <span class="module">ansible.builtin.command</span>:' },
-      { num: 5, html: '    <span class="key">cmd</span>: <span class="str">yum history list | head -3 | tail -1 | awk \'{ print $1 }\'</span>' },
-      { num: 6, html: '  <span class="key">register</span>: <span class="str">last_txn</span>' },
-      { num: 7, html: '  <span class="key">changed_when</span>: <span class="bool">false</span>' },
-    ],
-  },
-  'ansible.cfg': {
-    lines: [
-      { num: 1, html: '<span class="comment"># ansible.cfg — Project configuration</span>' },
-      { num: 2, html: '<span class="key">[defaults]</span>' },
-      { num: 3, html: '<span class="squiggle-error"><span class="key">callback_whitelist</span></span> = <span class="str">profile_tasks, timer</span>', err: true, errTag: 'aap-removed-config' },
-      { num: 4, html: '<span class="key">stdout_callback</span> = <span class="str">yaml</span>' },
-      { num: 5, html: '<span class="key">retry_files_enabled</span> = <span class="bool">False</span>' },
-      { num: 6, html: '<span class="key">host_key_checking</span> = <span class="bool">False</span>' },
-      { num: 7, html: '' },
-      { num: 8, html: '<span class="key">[privilege_escalation]</span>' },
-      { num: 9, html: '<span class="key">become</span> = <span class="bool">True</span>' },
-      { num: 10, html: '<span class="key">become_method</span> = <span class="str">sudo</span>' },
-      { num: 11, html: '<span class="key">become_ask_pass</span> = <span class="bool">False</span>' },
-    ],
-    diff: [
-      { num: 1, html: '<span class="comment"># ansible.cfg — Project configuration</span>' },
-      { num: 2, html: '<span class="key">[defaults]</span>' },
-      { num: 3, html: '<span class="key">callback_whitelist</span> = <span class="str">profile_tasks, timer</span>', removed: true },
-      { num: 3, html: '<span class="key">callbacks_enabled</span> = <span class="str">profile_tasks, timer</span>', added: true },
-      { num: 4, html: '<span class="key">stdout_callback</span> = <span class="str">yaml</span>' },
-      { num: 5, html: '<span class="key">retry_files_enabled</span> = <span class="bool">False</span>' },
-      { num: 6, html: '<span class="key">host_key_checking</span> = <span class="bool">False</span>' },
-      { num: 7, html: '' },
-      { num: 8, html: '<span class="key">[privilege_escalation]</span>' },
-      { num: 9, html: '<span class="key">become</span> = <span class="bool">True</span>' },
-      { num: 10, html: '<span class="key">become_method</span> = <span class="str">sudo</span>' },
-      { num: 11, html: '<span class="key">become_ask_pass</span> = <span class="bool">False</span>' },
-    ],
-  },
-  'collections/requirements.yml': {
-    lines: [
-      { num: 1, html: '<span class="comment"># collections/requirements.yml</span>' },
-      { num: 2, html: '<span class="key">---</span>' },
-      { num: 3, html: '<span class="key">collections</span>:' },
-      { num: 4, html: '  <span class="kw">- name</span>: <span class="str">ansible.posix</span>' },
-      { num: 5, html: '    <span class="key">version</span>: <span class="str">">=1.5.0"</span>' },
-      { num: 6, html: '  <span class="kw">- name</span>: <span class="str">community.general</span>', warn: true },
-      { num: 7, html: '    <span class="squiggle-warning"><span class="key">version</span>: <span class="str">"7.5.0"</span></span>', warn: true, warnTag: 'aap-collection-update' },
-      { num: 8, html: '  <span class="kw">- name</span>: <span class="str">ansible.utils</span>' },
-      { num: 9, html: '    <span class="key">version</span>: <span class="str">">=2.0.0"</span>' },
-    ],
-    diff: [
-      { num: 1, html: '<span class="comment"># collections/requirements.yml</span>' },
-      { num: 2, html: '<span class="key">---</span>' },
-      { num: 3, html: '<span class="key">collections</span>:' },
-      { num: 4, html: '  <span class="kw">- name</span>: <span class="str">ansible.posix</span>' },
-      { num: 5, html: '    <span class="key">version</span>: <span class="str">">=1.5.0"</span>' },
-      { num: 6, html: '  <span class="kw">- name</span>: <span class="str">community.general</span>' },
-      { num: 7, html: '    <span class="key">version</span>: <span class="str">"7.5.0"</span>', removed: true },
-      { num: 7, html: '    <span class="key">version</span>: <span class="str">">=8.0.0"</span>', added: true },
-      { num: 8, html: '  <span class="kw">- name</span>: <span class="str">ansible.utils</span>' },
-      { num: 9, html: '    <span class="key">version</span>: <span class="str">">=2.0.0"</span>' },
-    ],
-  },
-  'defaults/main.yml': {
-    lines: [
-      { num: 1, html: '<span class="comment"># defaults/main.yml — Default variables</span>' },
-      { num: 2, html: '<span class="key">---</span>' },
-      { num: 3, html: '<span class="key">patching_enabled</span>: <span class="bool">true</span>' },
-      { num: 4, html: '<span class="key">patching_reboot</span>: <span class="bool">true</span>' },
-      { num: 5, html: '<span class="key">patching_timeout</span>: <span class="str">600</span>' },
-      { num: 6, html: '<span class="key">patching_exclude</span>: <span class="str">[]</span>' },
-      { num: 7, html: '<span class="key">patching_pre_check</span>: <span class="bool">true</span>' },
-      { num: 8, html: '<span class="key">patching_notify_email</span>: <span class="squiggle-warning"><span class="str">yes</span></span>', warn: true, warnTag: 'yaml[truthy]' },
-      { num: 9, html: '<span class="key">patching_log_dir</span>: <span class="str">/var/log/patching</span>' },
-      { num: 10, html: '<span class="key">patching_max_retries</span>: <span class="str">3</span>' },
-    ],
-    diff: [
-      { num: 1, html: '<span class="comment"># defaults/main.yml — Default variables</span>' },
-      { num: 2, html: '<span class="key">---</span>' },
-      { num: 3, html: '<span class="key">patching_enabled</span>: <span class="bool">true</span>' },
-      { num: 4, html: '<span class="key">patching_reboot</span>: <span class="bool">true</span>' },
-      { num: 5, html: '<span class="key">patching_timeout</span>: <span class="str">600</span>' },
-      { num: 6, html: '<span class="key">patching_exclude</span>: <span class="str">[]</span>' },
-      { num: 7, html: '<span class="key">patching_pre_check</span>: <span class="bool">true</span>' },
-      { num: 8, html: '<span class="key">patching_notify_email</span>: <span class="str">yes</span>', removed: true },
-      { num: 8, html: '<span class="key">patching_notify_email</span>: <span class="bool">true</span>', added: true },
-      { num: 9, html: '<span class="key">patching_log_dir</span>: <span class="str">/var/log/patching</span>' },
-      { num: 10, html: '<span class="key">patching_max_retries</span>: <span class="str">3</span>' },
-    ],
-  },
-  'meta/main.yml': {
-    lines: [
-      { num: 1, html: '<span class="comment"># meta/main.yml</span>' },
-      { num: 2, html: '<span class="key">---</span>' },
-      { num: 3, html: '<span class="squiggle-info"><span class="key">galaxy_info</span></span>:', info: true, infoTag: 'meta-no-info' },
-      { num: 4, html: '  <span class="key">author</span>: <span class="str">ops-team</span>' },
-      { num: 5, html: '  <span class="key">description</span>: <span class="str">""</span>' },
-      { num: 6, html: '  <span class="key">license</span>: <span class="str">Apache-2.0</span>' },
-      { num: 7, html: '  <span class="key">min_ansible_version</span>: <span class="str">"2.14"</span>' },
-      { num: 8, html: '  <span class="key">platforms</span>: <span class="str">[]</span>' },
-      { num: 9, html: '<span class="key">dependencies</span>: <span class="str">[]</span>' },
-    ],
-  },
-};
+  const editor = document.getElementById('editor');
+  let leftHtml = '';
+  let rightHtml = '';
 
-// Per-violation inline fix suggestions (keyed by "file:line")
-const INLINE_FIXES = {
-  'tasks/main.yml:13': {
-    tier: 'auto', rule: 'fqcn[action-core]',
-    removed: ['      copy:'],
-    added:   ['      ansible.builtin.copy:'],
-  },
-  'tasks/main.yml:25': {
-    tier: 'auto', rule: 'aap-deprecated-syntax',
-    removed: ['      with_items:'],
-    added:   ['      loop:'],
-  },
-  'tasks/pre-check.yml:8': {
-    tier: 'auto', rule: 'aap-removed-param',
-    removed: ['    warn: false'],
-    added:   [],
-  },
-  'tasks/pre-check.yml:22': {
-    tier: 'ai', rule: 'no-changed-when', confidence: 91,
-    removed: ['  ansible.builtin.command:'],
-    added:   ['  ansible.builtin.command:', '  changed_when: false'],
-  },
-  'tasks/patch-apply.yml:3': {
-    tier: 'auto', rule: 'aap-deprecated-module',
-    removed: ['  ansible.builtin.yum:'],
-    added:   ['  ansible.builtin.dnf:'],
-  },
-  'tasks/patch-apply.yml:13': {
-    tier: 'auto', rule: 'risky-file-permissions',
-    removed: [],
-    added:   ['    mode: "0644"'],
-  },
-  'ansible.cfg:3': {
-    tier: 'auto', rule: 'aap-removed-config',
-    removed: ['callback_whitelist = profile_tasks, timer'],
-    added:   ['callbacks_enabled = profile_tasks, timer'],
-  },
-  'collections/requirements.yml:7': {
-    tier: 'auto', rule: 'aap-collection-update',
-    removed: ['    version: "7.5.0"'],
-    added:   ['    version: ">=8.0.0"'],
-  },
-  'defaults/main.yml:8': {
-    tier: 'auto', rule: 'yaml[truthy]',
-    removed: ['patching_notify_email: yes'],
-    added:   ['patching_notify_email: true'],
-  },
-  'tasks/rollback.yml:5': {
-    tier: 'auto', rule: 'name[missing]',
-    removed: ['  ansible.builtin.command:'],
-    added:   ['- name: Get last transaction ID', '  ansible.builtin.command:'],
-  },
-};
+  diff.lines.forEach(row => {
+    const l = row.left;
+    const r = row.right;
 
-const MANUAL_GUIDANCE = {
-  'tasks/report.yml:18': {
-    rule: 'deprecated-module',
-    description: 'The <code>mail</code> module is deprecated. Replace with <code>community.general.mail</code> or use <code>ansible.builtin.uri</code> for webhook-based notifications.',
-    docUrl: 'https://docs.ansible.com/ansible/latest/collections/community/general/mail_module.html',
-  },
-  'meta/main.yml:3': {
-    rule: 'meta-no-info',
-    description: 'Role metadata should include author, description, license, and supported platforms to help users discover and evaluate this role. Populate the empty fields in <code>galaxy_info</code>.',
-    docUrl: 'https://docs.ansible.com/ansible/latest/dev_guide/developing_roles.html#role-metadata',
-  },
-};
+    let lCls = 'editor-line';
+    let rCls = 'editor-line';
+    if (l.removed) { lCls += ' diff-removed diff-gutter-removed'; }
+    if (l.empty) { lCls += ' diff-empty'; }
+    if (r.added) { rCls += ' diff-added diff-gutter-added'; }
+    if (r.empty) { rCls += ' diff-empty'; }
 
-// Resolve which file to show
-const DEFAULT_FILE = 'tasks/main.yml';
-
-function resolveFile(param) {
-  if (!param) return DEFAULT_FILE;
-  if (FILE_CONTENT[param]) return param;
-  for (const key of Object.keys(FILE_CONTENT)) {
-    if (key.endsWith(param) || param.endsWith(key) || key.includes(param.split('/').pop())) return key;
-  }
-  return DEFAULT_FILE;
-}
-
-function renderEditorLines(container, lines, opts) {
-  const isDiff = opts && opts.isDiff;
-  let html = '';
-  lines.forEach(l => {
-    let cls = 'editor-line';
-    let tag = '';
-    let gutterIcon = '';
-    if (l.removed) cls += ' diff-removed diff-gutter-removed';
-    if (l.added) cls += ' diff-added diff-gutter-added';
-    if (l.err && !l.removed) cls += ' has-error';
-    if (l.warn && !l.removed) cls += ' has-warning';
-    if (l.info && !l.removed) cls += ' has-info';
-    if (l.errTag) tag = '  <span style="color:#555; font-size:11px;">← ' + l.errTag + '</span>';
-    if (l.warnTag) tag = '  <span style="color:#555; font-size:11px;">← ' + l.warnTag + '</span>';
-    if (l.infoTag) tag = '  <span style="color:#555; font-size:11px;">← ' + l.infoTag + '</span>';
-
-    const hasTag = l.errTag || l.warnTag || l.infoTag;
-    const hasViolation = l.err || l.warn || l.info;
-    const showInlineWidgets = opts && opts.showInlineWidgets;
-
-    // Lightbulb appears on ALL violation lines — standard VS Code affordance
-    if (!isDiff && hasViolation) {
-      gutterIcon = '<span class="line-gutter-icon" data-line="' + l.num + '" onclick="showTooltipForLine(' + l.num + ', this)" title="View violation details">💡</span>';
-    }
-
-    html += '<div class="' + cls + '" data-line="' + l.num + '">' + gutterIcon + '<span class="line-number">' + l.num + '</span><span class="line-content">' + l.html + tag + '</span></div>';
-
-    if (!isDiff && hasTag && showInlineWidgets) {
-      const fixKey = activeFile + ':' + l.num;
-      const fix = INLINE_FIXES[fixKey];
-      const guidance = MANUAL_GUIDANCE[fixKey];
-      if (fix) {
-        html += '<div class="inline-suggestion hidden" id="suggestion-' + fixKey.replace(/[\/:.]/g, '-') + '">';
-        html += '<div class="inline-suggestion-header">';
-        html += '<span class="inline-suggestion-label"><span class="tier-tag ' + (fix.tier === 'ai' ? 'ai' : 'auto') + '">' +
-          (fix.tier === 'ai' ? 'AI proposal' + (fix.confidence ? ' · ' + fix.confidence + '%' : '') : 'Auto-fix') +
-          '</span> ' + fix.rule + '</span>';
-        html += '</div>';
-        html += '<div class="inline-suggestion-diff">';
-        fix.removed.forEach(r => { html += '<div class="diff-line removed">' + escapeHtml(r) + '</div>'; });
-        fix.added.forEach(a => { html += '<div class="diff-line added">' + escapeHtml(a) + '</div>'; });
-        html += '</div></div>';
-      } else if (guidance) {
-        html += '<div class="inline-guidance hidden" id="guidance-' + fixKey.replace(/[\/:.]/g, '-') + '">';
-        html += '<div class="inline-guidance-header">';
-        html += '<span class="inline-guidance-label"><span class="tier-tag manual">Manual</span> ' + guidance.rule + '</span>';
-        html += '<span class="inline-suggestion-actions"><button class="btn-dismiss" onclick="dismissGuidance(\'' + fixKey + '\')">Dismiss</button></span>';
-        html += '</div>';
-        html += '<div class="inline-guidance-body">' + guidance.description;
-        if (guidance.docUrl) html += '<br><br><a href="' + guidance.docUrl + '" target="_blank">📄 View documentation →</a>';
-        html += '</div></div>';
-      }
-    }
+    leftHtml += '<div class="' + lCls + '"><span class="line-number">' + l.num + '</span><span class="line-content">' + l.html + '</span></div>';
+    rightHtml += '<div class="' + rCls + '"><span class="line-number">' + r.num + '</span><span class="line-content">' + r.html + '</span></div>';
   });
-  container.innerHTML = html;
+
+  editor.innerHTML =
+    '<div class="diff-pane diff-pane-left">' + leftHtml + '</div>' +
+    '<div class="diff-separator"></div>' +
+    '<div class="diff-pane">' + rightHtml + '</div>';
+
+  document.getElementById('tab-label').textContent = diff.filename;
+  document.getElementById('diff-filename').textContent = diff.filename;
+
+  document.querySelectorAll('.scm-file').forEach(el => {
+    el.classList.toggle('active', el.dataset.file === fileKey);
+  });
 }
 
-function escapeHtml(str) {
-  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
-
-let remediated = false;
+function showFile(fileKey) { renderDiff(fileKey); }
 
 const params = new URLSearchParams(window.location.search);
-const paramFile = params.get('file');
-const paramLine = params.get('line');
-const paramState = params.get('state');
-const paramTier = params.get('tier');
-const paramStatus = params.get('status');
-const hasFileContext = paramFile && paramLine;
+const branch = params.get('branch') || 'apme/remediate-rhel-patching';
+document.getElementById('pr-branch-label').textContent = branch;
+document.getElementById('branch-name').textContent = branch;
+document.getElementById('titlebar-text').textContent = 'PR #99 · ' + branch + ' — Dev Spaces';
 
-const activeFile = resolveFile(paramFile);
-document.querySelector('.titlebar-center').textContent = activeFile + ' — rhel-patching — Dev Spaces';
-document.getElementById('tab-main-label').textContent = activeFile;
-
-// Determine if inline widgets (lightbulbs, suggestions) should be rendered
-// Only for proposed and manual states — open state shows squiggly annotations only
-const showWidgets = paramStatus === 'proposed' || paramTier === 'manual';
-
-const fileData = FILE_CONTENT[activeFile];
-renderEditorLines(document.getElementById('editor-violations'), fileData.lines, { isDiff: false, showInlineWidgets: showWidgets });
-if (fileData.diff) {
-  renderEditorLines(document.getElementById('editor-diff'), fileData.diff, { isDiff: true });
-}
-
-// Global tooltip function — called by gutter lightbulb click and squiggle hover
-function showTooltipForLine(lineNum, anchorEl) {
-  const issues = ALL_PROBLEMS.flatMap(f => f.file === activeFile ? f.issues : []);
-  const issue = issues.find(i => i.loc === 'Ln ' + lineNum);
-  if (issue) {
-    window._showViolationTooltip(anchorEl, issue.rule);
-  }
-}
-
-// Wire VS Code-style hover tooltips to squiggle-annotated code
-(function initHoverTooltips() {
-  const tooltip = document.getElementById('violation-tooltip');
-  let hideTimer = null;
-
-  function showTooltip(el, ruleId) {
-    clearTimeout(hideTimer);
-    const detail = RULE_DETAILS[ruleId];
-    if (!detail) return;
-
-    const tierLabels = { auto: 'Auto-fixable', ai: 'AI-fixable', manual: 'Manual only' };
-    const tierClass = detail.fixTier || 'manual';
-    const tierLabel = tierLabels[tierClass] || 'Manual only';
-
-    let html = '<div class="hover-tooltip-header">';
-    html += '<span style="color:#e0e0e0; font-weight:600; font-size:11px;">APME violation</span>';
-    html += '<span class="hover-tooltip-sev ' + detail.severity + '">' + (detail.portalSeverity || detail.severity) + '</span>';
-    html += '<span class="hover-tooltip-fix-method ' + tierClass + '">' + tierLabel + '</span>';
-    if (detail.fixCategory) {
-      html += '<span style="color:#888; font-size:10px;">' + detail.fixCategory + '</span>';
-    }
-    html += '</div>';
-    html += '<div class="hover-tooltip-body">';
-    html += '<p><code style="color:#e8912d; background:#2d2a22; padding:1px 4px; border-radius:2px; font-size:11px;">' + ruleId + '</code></p>';
-    html += '<p>' + detail.summary + '</p>';
-    html += '<p class="why">' + detail.why + '</p>';
-    if (detail.fix) {
-      html += '<p style="color:#4ec9b0; font-size: 11px; margin-top: 6px;">💡 ' + detail.fix + '</p>';
-    }
-    html += '</div>';
-    html += '<div class="hover-tooltip-actions">';
-    if (detail.docs) {
-      html += '<a href="' + detail.docs + '" target="_blank">View rule documentation ↗</a>';
-    }
-    html += '<a href="javascript:void(0)" onclick="document.getElementById(\'violation-tooltip\').classList.remove(\'visible\')">Dismiss</a>';
-    html += '</div>';
-
-    tooltip.innerHTML = html;
-    const rect = el.getBoundingClientRect();
-    tooltip.style.left = Math.min(rect.left, window.innerWidth - 380) + 'px';
-    tooltip.style.top = (rect.bottom + 4) + 'px';
-    tooltip.classList.add('visible');
-  }
-
-  // Expose globally for lightbulb onclick
-  window._showViolationTooltip = showTooltip;
-
-  function scheduleHide() {
-    hideTimer = setTimeout(() => tooltip.classList.remove('visible'), 300);
-  }
-
-  tooltip.addEventListener('mouseenter', () => clearTimeout(hideTimer));
-  tooltip.addEventListener('mouseleave', () => tooltip.classList.remove('visible'));
-
-  document.addEventListener('mouseover', function(e) {
-    const squiggle = e.target.closest('.squiggle-error, .squiggle-warning, .squiggle-info');
-    if (!squiggle) return;
-    const line = squiggle.closest('.editor-line');
-    if (!line) return;
-    const lineNum = line.dataset.line;
-    const issues = ALL_PROBLEMS.flatMap(f => f.file === activeFile ? f.issues : []);
-    const issue = issues.find(i => i.loc === 'Ln ' + lineNum);
-    if (issue) showTooltip(squiggle, issue.rule);
-  });
-
-  document.addEventListener('mouseout', function(e) {
-    const squiggle = e.target.closest('.squiggle-error, .squiggle-warning, .squiggle-info');
-    if (squiggle) scheduleHide();
-  });
-})();
-
-function highlightLine(lineNum) {
-  if (!lineNum) return;
-  setTimeout(() => {
-    const activeEditor = remediated
-      ? document.getElementById('editor-diff')
-      : document.getElementById('editor-violations');
-    const lines = activeEditor.querySelectorAll('.editor-line');
-    const violationLines = new Set(
-      ALL_PROBLEMS.flatMap(f => f.file === activeFile ? f.issues : []).map(i => i.loc.replace('Ln ', ''))
-    );
-    lines.forEach(l => {
-      const numEl = l.querySelector('.line-number');
-      if (!numEl) return;
-      const num = numEl.textContent.trim();
-      if (num === String(lineNum)) {
-        l.classList.add('target-violation');
-        l.scrollIntoView({ block: 'center' });
-      }
-    });
-  }, 100);
-}
-
-function renderProblems() {
-  const list = document.getElementById('problems-list');
-  let html = '';
-  ALL_PROBLEMS.forEach(f => {
-    const issues = remediated ? f.issues.filter(i => !i.fixable) : f.issues;
-    if (issues.length === 0) return;
-    const errs = issues.filter(i => i.sev === 'error').length;
-    const warns = issues.filter(i => i.sev === 'warning').length;
-    const infos = issues.filter(i => i.sev === 'info').length;
-    const parts = [];
-    if (errs) parts.push(errs + ' error' + (errs > 1 ? 's' : ''));
-    if (warns) parts.push(warns + ' warning' + (warns > 1 ? 's' : ''));
-    if (infos) parts.push(infos + ' info');
-    html += '<div class="problem-file"><span style="color:#e8a838;">' + f.icon + '</span> ' + f.file + '<span class="file-count">' + parts.join(', ') + '</span></div>';
-    issues.forEach(i => {
-      const iconClass = i.sev === 'error' ? 'error' : i.sev === 'warning' ? 'warning' : 'info';
-      const iconChar = i.sev === 'error' ? '⊘' : i.sev === 'warning' ? '⚠' : 'ⓘ';
-      html += '<div class="problem-row"><span class="problem-icon ' + iconClass + '">' + iconChar + '</span><span class="problem-msg">' + i.msg + '</span><span class="problem-rule">' + i.rule + '</span><span class="problem-loc">[' + i.loc + ']</span></div>';
-    });
-  });
-  list.innerHTML = html;
-
-  const remaining = ALL_PROBLEMS.flatMap(f => remediated ? f.issues.filter(i => !i.fixable) : f.issues);
-  const total = remaining.length;
-  const errCount = remaining.filter(i => i.sev === 'error').length;
-  const warnCount = remaining.filter(i => i.sev === 'warning').length;
-  const infoCount = remaining.filter(i => i.sev === 'info').length;
-  document.getElementById('problems-count').textContent = total;
-  document.getElementById('problems-count').className = remediated ? 'count reduced' : 'count err';
-  document.getElementById('problems-summary').innerHTML =
-    '<span style="color:#f44747;">⊘ ' + errCount + '</span> &nbsp;<span style="color:#cca700;">⚠ ' + warnCount + '</span> &nbsp;<span style="color:#3794ff;">ⓘ ' + infoCount + '</span>';
-  document.getElementById('status-errors').innerHTML =
-    '<span>⊘ ' + errCount + '</span> <span>⚠ ' + warnCount + '</span> <span>ⓘ ' + infoCount + '</span>';
-}
-
-function startRemediation() {
-  document.getElementById('notif-remediate').classList.add('hidden');
-  document.getElementById('notif-review').classList.add('hidden');
-  document.getElementById('notif-running').classList.remove('hidden');
-  document.getElementById('progress-bar').classList.remove('hidden');
-  document.getElementById('progress-bar').classList.add('running');
-
-  setTimeout(() => {
-    remediated = true;
-    document.getElementById('notif-running').classList.add('hidden');
-    document.getElementById('progress-bar').classList.add('hidden');
-    document.getElementById('notif-success').classList.remove('hidden');
-
-    if (fileData.diff) {
-      document.getElementById('editor-violations').classList.add('hidden');
-      document.getElementById('editor-diff').classList.remove('hidden');
-      document.getElementById('editor-diff').classList.add('fade-in');
-    }
-
-    document.getElementById('tab-main-label').textContent = activeFile + ' (Working Tree)';
-    document.getElementById('tab-main-badge').className = 'tab-badge mod';
-    document.getElementById('scm-badge').classList.remove('hidden');
-    renderProblems();
-  }, 2200);
-}
-
-function toggleSuggestion(fixKey, el) {
-  const id = 'suggestion-' + fixKey.replace(/[\/:.]/g, '-');
-  const widget = document.getElementById(id);
-  if (widget) widget.classList.toggle('hidden');
-}
-
-function dismissSuggestion(fixKey) {
-  const id = 'suggestion-' + fixKey.replace(/[\/:.]/g, '-');
-  const widget = document.getElementById(id);
-  if (widget) widget.classList.add('hidden');
-}
-
-function toggleGuidance(fixKey) {
-  const id = 'guidance-' + fixKey.replace(/[\/:.]/g, '-');
-  const widget = document.getElementById(id);
-  if (widget) widget.classList.toggle('hidden');
-}
-
-function dismissGuidance(fixKey) {
-  const id = 'guidance-' + fixKey.replace(/[\/:.]/g, '-');
-  const widget = document.getElementById(id);
-  if (widget) widget.classList.add('hidden');
-}
-
-function applyInlineFix(fixKey) {
-  // Legacy — inline apply is no longer supported; approval happens in the Portal
-}
-
-function switchToDiff() {
-  if (fileData.diff) {
-    document.getElementById('editor-violations').classList.add('hidden');
-    document.getElementById('editor-diff').classList.remove('hidden');
-    document.getElementById('editor-diff').classList.add('fade-in');
-  }
-  document.getElementById('tab-main-label').textContent = activeFile + ' (Working Tree)';
-  document.getElementById('tab-main-badge').className = 'tab-badge mod';
-  document.getElementById('scm-badge').classList.remove('hidden');
-}
-
-function switchToViolations() {
-  document.getElementById('editor-diff').classList.add('hidden');
-  document.getElementById('editor-violations').classList.remove('hidden');
-  document.getElementById('tab-main-label').textContent = activeFile;
-  document.getElementById('tab-main-badge').className = 'tab-badge err';
-  document.getElementById('scm-badge').classList.add('hidden');
-}
-
-// Legacy functions removed — fix approval and undo happen in the Portal, not Dev Spaces
-
-function restoreExplorerBadges() {
-  ALL_PROBLEMS.forEach(f => {
-    const el = document.querySelector('#sidebar-explorer .tree-item[data-file="' + f.file + '"]');
-    if (!el) return;
-    const existing = el.querySelector('.badge');
-    if (existing) existing.remove();
-    const errs = f.issues.filter(i => i.sev === 'error').length;
-    const warns = f.issues.filter(i => i.sev === 'warning' || i.sev === 'info').length;
-    if (errs) el.insertAdjacentHTML('beforeend', '<span class="badge err">' + errs + '</span>');
-    else if (warns) el.insertAdjacentHTML('beforeend', '<span class="badge warn">' + warns + '</span>');
-  });
-}
-
-// fixAllFromReview removed — remediation is initiated from the Portal only
-
-function showScmFromReview() {
-  document.getElementById('sidebar-scm').classList.remove('hidden');
-  document.getElementById('sidebar-explorer').classList.add('hidden');
-  document.getElementById('act-scm').classList.add('active');
-  document.getElementById('act-explorer').classList.remove('active');
-}
-
-function showExplorer() {
-  document.getElementById('sidebar-explorer').classList.remove('hidden');
-  document.getElementById('sidebar-scm').classList.add('hidden');
-  document.getElementById('act-explorer').classList.add('active');
-  document.getElementById('act-scm').classList.remove('active');
-}
-
-function showScm() {
-  if (!remediated) return;
-  document.getElementById('sidebar-scm').classList.remove('hidden');
-  document.getElementById('sidebar-explorer').classList.add('hidden');
-  document.getElementById('act-scm').classList.add('active');
-  document.getElementById('act-explorer').classList.remove('active');
-}
-
-// Update status bar line indicator
-if (paramLine) {
-  document.querySelector('.statusbar-right').innerHTML =
-    '<span>Ansible</span><span>Ln ' + paramLine + ', Col 1</span><span>UTF-8</span><span>YAML</span><span>redhat.ansible</span>';
-}
-
-// Highlight active file in explorer sidebar
-document.querySelectorAll('#sidebar-explorer .tree-item').forEach(el => {
-  el.classList.remove('active');
-  if (el.dataset.file === activeFile) {
-    el.classList.add('active');
-  }
-});
-
-// Initial render
-renderProblems();
-
-// paramTier, paramStatus, hasFileContext declared with other params above
-
-function findRule() {
-  const issues = ALL_PROBLEMS.flatMap(f => f.file === activeFile ? f.issues : []);
-  return issues.find(i => i.loc === 'Ln ' + paramLine) || issues[0];
-}
-
-function findActualLine() {
-  const issues = ALL_PROBLEMS.flatMap(f => f.file === activeFile ? f.issues : []);
-  const exact = issues.find(i => i.loc === 'Ln ' + paramLine);
-  if (exact) return paramLine;
-  if (issues[0]) return issues[0].loc.replace('Ln ', '');
-  return paramLine;
-}
-
-function updateExplorerBadge(file, type) {
-  document.querySelectorAll('#sidebar-explorer .tree-item').forEach(el => {
-    if (el.dataset.file === file) {
-      const badge = el.querySelector('.badge');
-      if (type === 'modified') {
-        if (badge) { badge.className = 'badge modified'; badge.textContent = 'M'; }
-        else { el.insertAdjacentHTML('beforeend', '<span class="badge modified">M</span>'); }
-      } else if (type === 'clear' && badge) {
-        badge.remove();
-      }
-    }
-  });
-}
-
-// Open: violation found, no remediation yet — squiggly + tooltip only, no suggestion
-function enterOpenMode() {
-  document.getElementById('notif-remediate').classList.add('hidden');
-  const rule = findRule();
-  const actualLine = findActualLine();
-  const fixKey = activeFile + ':' + actualLine;
-  const manualGuidance = MANUAL_GUIDANCE[fixKey];
-  const detail = rule ? RULE_DETAILS[rule.rule] : null;
-
-  const tierLabels = { auto: 'Auto-fixable', ai: 'AI-fixable', manual: 'Manual only' };
-  const tierLabel = detail ? (tierLabels[detail.fixTier] || 'Manual only') : '';
-  const sevLabel = detail ? detail.portalSeverity : '';
-  const catLabel = detail ? detail.fixCategory : '';
-
-  const fileIssueCount = ALL_PROBLEMS
-    .flatMap(f => f.file === activeFile ? f.issues : []).length;
-  const otherCount = fileIssueCount - 1;
-  const othersNote = otherCount > 0
-    ? ' <span style="color:#888; font-size:12px;">(' + otherCount + ' other violation' + (otherCount > 1 ? 's' : '') + ' in this file)</span>'
-    : '';
-
-  if (rule && (paramTier === 'manual' || manualGuidance)) {
-    document.getElementById('notif-manual-text').innerHTML =
-      '<strong>APME</strong> · Severity: <strong>' + sevLabel + '</strong> · ' + tierLabel + ' · ' + catLabel +
-      '<br><strong>' + rule.rule + '</strong> — ' + rule.msg + '. Manual remediation required.' + othersNote;
-    document.getElementById('notif-manual').classList.remove('hidden');
-    if (manualGuidance) {
-      setTimeout(() => {
-        const id = 'guidance-' + fixKey.replace(/[\/:.]/g, '-');
-        const widget = document.getElementById(id);
-        if (widget) widget.classList.remove('hidden');
-      }, 300);
-    }
-  } else if (rule) {
-    document.getElementById('notif-violation-text').innerHTML =
-      '<strong>APME</strong> · Severity: <strong>' + sevLabel + '</strong> · ' + tierLabel + ' · ' + catLabel +
-      '<br><strong>' + rule.rule + '</strong> — ' + rule.msg + '. Hover the highlighted code or click 💡 to see details.' + othersNote;
-    document.getElementById('notif-violation').classList.remove('hidden');
-  }
-  highlightLine(actualLine);
-}
-
-// Fixed/Approved: deterministic or approved fix already applied — show diff silently
-function enterFixedMode() {
-  document.getElementById('notif-remediate').classList.add('hidden');
-  const rule = findRule();
-  const actualLine = findActualLine();
-  const ruleName = rule ? rule.rule : 'violation';
-  const ruleMsg = rule ? rule.msg : '';
-
-  document.getElementById('notif-fixed-text').innerHTML =
-    '<strong>APME:</strong> <strong>' + ruleName + '</strong> — ' + ruleMsg + '. This violation was resolved by remediation.';
-  document.getElementById('notif-fixed').classList.remove('hidden');
-
-  remediated = true;
-  switchToDiff();
-  renderProblems();
-  updateExplorerBadge(activeFile, 'modified');
-  setTimeout(() => highlightLine(actualLine), 150);
-}
-
-// Proposed: AI suggestion pending — show read-only inline suggestion, approve in Portal
-function enterProposedMode() {
-  document.getElementById('notif-remediate').classList.add('hidden');
-  const rule = findRule();
-  const actualLine = findActualLine();
-  const fixKey = activeFile + ':' + actualLine;
-  const fix = INLINE_FIXES[fixKey];
-
-  if (rule) {
-    document.getElementById('notif-ai-review-text').innerHTML =
-      '<strong>APME AI proposal</strong> for <strong>' + rule.rule + '</strong> — ' + rule.msg +
-      '. Review the suggested change below. Approve or decline in the Ansible Portal.';
-  }
-  document.getElementById('notif-ai-review').classList.remove('hidden');
-  highlightLine(actualLine);
-
-  if (fix) {
-    setTimeout(() => {
-      const id = 'suggestion-' + fixKey.replace(/[\/:.]/g, '-');
-      const widget = document.getElementById(id);
-      if (widget) {
-        widget.classList.remove('hidden');
-        widget.classList.add('readonly');
-        // Add portal hint below the diff
-        if (!widget.querySelector('.inline-suggestion-portal-hint')) {
-          const hint = document.createElement('div');
-          hint.className = 'inline-suggestion-portal-hint';
-          hint.innerHTML = '↩ <a href="javascript:window.close()">Return to Portal</a> to approve or decline this proposal';
-          widget.appendChild(hint);
-        }
-      }
-    }, 300);
-  }
-}
-
-// In-PR / Resolved: clean file, fix is committed — show diff
-function enterInPrMode() {
-  document.getElementById('notif-remediate').classList.add('hidden');
-  remediated = true;
-  switchToDiff();
-  renderProblems();
-  updateExplorerBadge(activeFile, 'modified');
-  const actualLine = findActualLine();
-  setTimeout(() => highlightLine(actualLine), 150);
-}
-
-// Routing: status determines what Dev Spaces shows
-if (paramState === 'remediated') {
-  startRemediation();
-  if (paramLine) setTimeout(() => highlightLine(paramLine), 2500);
-} else if (paramState === 'scm') {
-  startRemediation();
-  setTimeout(() => showScm(), 2500);
-} else if (hasFileContext && (paramStatus === 'fixed' || paramStatus === 'approved')) {
-  enterFixedMode();
-} else if (hasFileContext && paramStatus === 'proposed') {
-  enterProposedMode();
-} else if (hasFileContext && (paramStatus === 'in-pr' || paramStatus === 'resolved')) {
-  enterInPrMode();
-} else if (hasFileContext && paramTier === 'manual') {
-  enterOpenMode();
-} else if (hasFileContext) {
-  enterOpenMode();
-} else {
-  highlightLine(paramLine);
-}
+renderDiff('main');
 </script>
 
 </body>

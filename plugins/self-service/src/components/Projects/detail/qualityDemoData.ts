@@ -617,7 +617,7 @@ export function getFleetQualityData(): FleetQualityRow[] {
         { label: 'Scanned', status: 'done', detail: '2 hours ago · push · commit a3f1b2c' },
         { label: '12 violations found', status: 'done', detail: '1 critical · 3 high · 5 medium' },
         { label: '10 addressed (8 auto + 2 AI)', status: 'done', detail: 'PR #42 open for review' },
-        { label: 'Review in Dev Spaces', status: 'active', detail: '2 remaining need manual fix' },
+        { label: 'Review PR', status: 'active', detail: '2 remaining need manual fix' },
       ],
     },
     'network-firewall-rules': {
@@ -627,8 +627,8 @@ export function getFleetQualityData(): FleetQualityRow[] {
       pipeline: [
         { label: 'Scanned', status: 'done', detail: '1 day ago · push · commit e7d2f1a' },
         { label: '14 violations found', status: 'active', detail: '1 critical · 3 high · 5 medium' },
-        { label: 'Remediation', status: 'pending', detail: '9 auto-fixable · 5 manual' },
-        { label: 'Review in IDE', status: 'pending' },
+        { label: 'Suggest fixes', status: 'pending', detail: '9 auto-fixable · 5 manual' },
+        { label: 'Review PR', status: 'pending' },
       ],
     },
     'cloud-provisioner': {
@@ -638,7 +638,7 @@ export function getFleetQualityData(): FleetQualityRow[] {
       pipeline: [
         { label: 'Scanned', status: 'done', detail: '4 hours ago · push · commit b4f9c2d' },
         { label: '3 violations found', status: 'active', detail: '1 medium · 1 low · 1 info' },
-        { label: 'Fix in IDE', status: 'pending', detail: '2 auto-fixable · 1 manual' },
+        { label: 'Suggest fixes', status: 'pending', detail: '2 auto-fixable · 1 manual' },
       ],
     },
     'backup-automation': {
@@ -648,8 +648,8 @@ export function getFleetQualityData(): FleetQualityRow[] {
       pipeline: [
         { label: 'Scanned', status: 'done', detail: '3 days ago · scheduled · commit c1d8e3f' },
         { label: '21 violations found', status: 'active', detail: '2 critical · 5 high · 8 medium' },
-        { label: 'Remediation', status: 'pending', detail: '12 auto-fixable · 9 manual' },
-        { label: 'Review in IDE', status: 'pending' },
+        { label: 'Suggest fixes', status: 'pending', detail: '12 auto-fixable · 9 manual' },
+        { label: 'Review PR', status: 'pending' },
       ],
     },
   };
