@@ -498,6 +498,16 @@ export function getProjectRemediationStatus(repoName: string): RemediationStatus
   return QUALITY_DATA[repoName]?.remediationStatus;
 }
 
+export function getProjectCompatibilityCount(repoName: string): number {
+  const data = QUALITY_DATA[repoName];
+  if (!data) return 0;
+  return data.violations.filter(v => v.category === 'aap-compatibility').length;
+}
+
+export function getProjectTargetVersion(repoName: string): string | undefined {
+  return QUALITY_DATA[repoName]?.ansibleCoreVersion;
+}
+
 export type FleetViolationRule = {
   ruleId: string;
   message: string;

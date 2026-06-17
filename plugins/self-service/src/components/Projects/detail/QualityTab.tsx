@@ -2292,6 +2292,7 @@ export const QualityTabUnified = ({
   projectName,
   initialSeverity,
   initialRuleFilter,
+  initialCategoryFilter,
   repoUrl,
   branch,
 }: {
@@ -2301,6 +2302,7 @@ export const QualityTabUnified = ({
   initialScanId?: string | null;
   initialSeverity?: SeverityClass | null;
   initialRuleFilter?: string | null;
+  initialCategoryFilter?: ViolationCategory | null;
   repoUrl?: string;
   branch?: string;
 }) => {
@@ -2310,7 +2312,7 @@ export const QualityTabUnified = ({
   const { hasRole } = useUserRoleContext();
   const isDeveloper = hasRole('developer');
 
-  const [categoryFilter] = useState<ViolationCategory | 'all'>('all');
+  const [categoryFilter, setCategoryFilter] = useState<ViolationCategory | 'all'>(initialCategoryFilter ?? 'all');
   const [severityFilters, setSeverityFilters] = useState<Set<SeverityClass>>(initialSeverity ? new Set([initialSeverity]) : new Set());
   const [ruleFilter, setRuleFilter] = useState<string | null>(initialRuleFilter ?? null);
   type FixTierFilter = 'deterministic' | 'ai' | 'manual';
@@ -2918,13 +2920,18 @@ export const QualityTabUnified = ({
                 </Box>
               </Box>
               <SeverityProgressBar breakdown={scan.severityBreakdown} />
-              {(severityFilters.size > 0 || fixFilters.size > 0) && (
+              {(severityFilters.size > 0 || fixFilters.size > 0 || categoryFilter !== 'all') && (
                 <Box display="flex" alignItems="center" style={{ marginTop: 8, gap: 8 }}>
                   <Typography style={{ fontSize: 12, color: theme.palette.text.secondary }}>
                     Showing {filteredViolations.length} of {scan.totalViolations} violations
+                    {categoryFilter !== 'all' && (
+                      <Chip size="small" label={categoryFilter === 'aap-compatibility' ? 'AAP compatibility' : categoryFilter}
+                        onDelete={() => setCategoryFilter('all')}
+                        style={{ marginLeft: 6, height: 18, fontSize: 10, fontWeight: 600 }} />
+                    )}
                   </Typography>
                   <span
-                    onClick={() => { setSeverityFilters(new Set()); setFixFilters(new Set()); }}
+                    onClick={() => { setSeverityFilters(new Set()); setFixFilters(new Set()); setCategoryFilter('all'); }}
                     style={{ fontSize: 12, color: theme.palette.primary.main, cursor: 'pointer' }}
                   >
                     Clear filters

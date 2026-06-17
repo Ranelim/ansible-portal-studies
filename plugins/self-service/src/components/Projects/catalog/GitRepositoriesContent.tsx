@@ -45,6 +45,7 @@ import MemoryIcon from '@material-ui/icons/Memory';
 import Popover from '@material-ui/core/Popover';
 import CloseIcon from '@material-ui/icons/Close';
 import SyncIcon from '@material-ui/icons/Sync';
+import WarningIcon from '@material-ui/icons/Warning';
 import { useNavigate } from 'react-router-dom';
 import { CatalogFilterLayout } from '@backstage/plugin-catalog-react';
 import { DismissibleBanner } from '../../common/DismissibleBanner';
@@ -56,7 +57,7 @@ import {
   type GitRepository,
   type DiscoveredResourceSummary,
 } from './unifiedDemoData';
-import { getProjectViolationCount, getProjectSeverityBreakdown, getProjectRemediationStatus, getProjectAapVersion, SEVERITY_COLORS } from '../../Projects/detail/qualityDemoData';
+import { getProjectViolationCount, getProjectSeverityBreakdown, getProjectRemediationStatus, getProjectCompatibilityCount, getProjectAapVersion, SEVERITY_COLORS } from '../../Projects/detail/qualityDemoData';
 import type { SeverityClass, RemediationStatus } from '../../Projects/detail/qualityDemoData';
 
 type ProviderFilter = 'all' | 'github' | 'gitlab';
@@ -530,6 +531,7 @@ export const GitRepositoriesContent = () => {
         const color = SEVERITY_COLORS[highest];
 
         const remStatus = getProjectRemediationStatus(row.name);
+        const compatCount = getProjectCompatibilityCount(row.name);
         const REMEDIATION_LABELS: Partial<Record<RemediationStatus, { text: string; color: string }>> = {
           'in-progress': { text: 'Generating…', color: statusColors.info },
           'proposals-ready': { text: 'Review suggestions', color: isDark ? '#f0d080' : '#8a6d00' },
@@ -557,6 +559,22 @@ export const GitRepositoriesContent = () => {
               <Typography variant="body2" color="textSecondary" style={{ fontSize: 11 }}>
                 +{total - highestCount}
               </Typography>
+            )}
+            {compatCount > 0 && (
+              <Chip size="small"
+                label="Version update"
+                icon={<WarningIcon style={{ fontSize: 11, color: isDark ? '#fbbf24' : '#92400e' }} />}
+                onClick={(e: React.MouseEvent) => {
+                  e.stopPropagation();
+                  navigate(`/self-service/repositories/${row.name}?tab=quality&category=aap-compatibility`);
+                }}
+                style={{
+                  fontSize: 10, height: 18, fontWeight: 600,
+                  backgroundColor: isDark ? 'rgba(234,179,8,0.12)' : '#fef9c3',
+                  color: isDark ? '#fbbf24' : '#92400e',
+                  cursor: 'pointer',
+                }}
+              />
             )}
             {remLabel && (
               <Box display="flex" alignItems="center" style={{ gap: 3 }}>

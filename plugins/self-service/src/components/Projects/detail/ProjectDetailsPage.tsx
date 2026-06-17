@@ -54,6 +54,7 @@ import ErrorIcon from '@material-ui/icons/Error';
 import AutorenewIcon from '@material-ui/icons/Autorenew';
 import RadioButtonUncheckedIcon from '@material-ui/icons/RadioButtonUnchecked';
 import CloseIcon from '@material-ui/icons/Close';
+import WarningIcon from '@material-ui/icons/Warning';
 import {
   DEMO_PROJECTS,
   DemoProject,
@@ -988,6 +989,7 @@ export const ProjectDetailsPage = () => {
   const urlScan = searchParams.get('scan');
   const urlSeverity = searchParams.get('severity') as import('./qualityDemoData').SeverityClass | null;
   const urlRule = searchParams.get('rule');
+  const urlCategory = searchParams.get('category') as import('./qualityDemoData').ViolationCategory | null;
   const [selectedTab, setSelectedTab] = useState(() => urlTab === 'quality' ? 1 : 0);
   const [qualityInitialView, setQualityInitialView] = useState<'latest-scan' | undefined>(undefined);
   const [initialScanId] = useState<string | null>(urlScan);
@@ -1053,6 +1055,7 @@ export const ProjectDetailsPage = () => {
   }
 
   const quality = getProjectQuality(project.name);
+  const compatCount = quality?.violations.filter(v => v.category === 'aap-compatibility').length ?? 0;
 
   return (
     <Page themeId="app">
@@ -1173,6 +1176,43 @@ export const ProjectDetailsPage = () => {
           </Typography>
         )}
 
+        {/* Version update banner */}
+        {compatCount > 0 && (
+          <Box
+            display="flex" alignItems="center" justifyContent="space-between"
+            style={{
+              marginTop: 12,
+              padding: '8px 14px',
+              borderRadius: 6,
+              border: `1px solid ${isDark ? 'rgba(251,191,36,0.25)' : '#fde68a'}`,
+              background: isDark ? 'rgba(251,191,36,0.06)' : '#fffbeb',
+              cursor: 'pointer',
+            }}
+            onClick={() => navigate(`/self-service/repositories/${project.name}?tab=quality&category=aap-compatibility`)}
+          >
+            <Box display="flex" alignItems="center" style={{ gap: 8 }}>
+              <WarningIcon style={{ fontSize: 18, color: isDark ? '#fbbf24' : '#b45309' }} />
+              <Typography style={{ fontSize: 13, color: isDark ? '#fde68a' : '#78350f', fontWeight: 500 }}>
+                Version update pending — AAP 2.7 · {compatCount} issue{compatCount !== 1 ? 's' : ''}
+              </Typography>
+            </Box>
+            <Button
+              size="small" variant="text"
+              onClick={(e: React.MouseEvent) => {
+                e.stopPropagation();
+                navigate(`/self-service/repositories/${project.name}?tab=quality&category=aap-compatibility`);
+              }}
+              style={{
+                textTransform: 'none', fontSize: 12, fontWeight: 500,
+                color: isDark ? '#fbbf24' : '#92400e',
+                padding: '2px 8px', minWidth: 0,
+              }}
+            >
+              Review in Quality tab →
+            </Button>
+          </Box>
+        )}
+
         {/* Tabs */}
         <HeaderTabs
           selectedIndex={selectedTab}
@@ -1192,6 +1232,7 @@ export const ProjectDetailsPage = () => {
               initialScanId={initialScanId}
               initialSeverity={urlSeverity}
               initialRuleFilter={urlRule}
+              initialCategoryFilter={urlCategory}
               repoUrl={project.repo.url}
               branch={project.repo.branch}
             />
