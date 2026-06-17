@@ -981,6 +981,7 @@ export const ProjectDetailsPage = () => {
   const [searchParams] = useSearchParams();
   const classes = useProjectDetailStyles();
   const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
   const { hasRole: pageHasRole } = useUserRoleContext();
 
   const urlTab = searchParams.get('tab');
@@ -1142,6 +1143,26 @@ export const ProjectDetailsPage = () => {
             {quality.latestScan.fixable} auto-fixable
             {' · '}
             Last checked {quality.lastScannedAt}
+            {quality.remediationStatus === 'in-progress' && (
+              <span style={{ marginLeft: 8, color: statusColors.info, fontWeight: 500 }}>
+                ⟳ Generating fix suggestions…
+              </span>
+            )}
+            {quality.remediationStatus === 'proposals-ready' && (
+              <span style={{ marginLeft: 8, color: isDark ? '#c4b5e3' : '#6753ac', fontWeight: 500 }}>
+                ✦ Suggestions ready for review
+              </span>
+            )}
+            {quality.remediationStatus === 'pr-open' && quality.remediationSummary && (
+              <span style={{ marginLeft: 8, color: isDark ? '#58a6ff' : '#0969da', fontWeight: 500 }}>
+                ↗ PR open — {quality.remediationSummary.addressed} changes ready
+              </span>
+            )}
+            {quality.remediationStatus === 'pr-merged' && quality.remediationSummary && (
+              <span style={{ marginLeft: 8, color: statusColors.success, fontWeight: 500 }}>
+                ✓ PR merged — {quality.remediationSummary.addressed} resolved
+              </span>
+            )}
           </Typography>
         )}
         {quality && quality.totalViolations === 0 && (

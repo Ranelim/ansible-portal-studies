@@ -36,8 +36,12 @@ import VerifiedUserOutlinedIcon from '@material-ui/icons/VerifiedUserOutlined';
 import CloseIcon from '@material-ui/icons/Close';
 import ChevronRightIcon from '@material-ui/icons/ChevronRight';
 import { statusColors } from '../../common/statusColors';
+import HistoryIcon from '@material-ui/icons/History';
+import RadioButtonUncheckedIcon from '@material-ui/icons/RadioButtonUnchecked';
 import {
   type ProjectQualityData,
+  type ScanResult,
+  type ScanRemediationOutcome,
   type SeverityClass,
   type QualityViolation,
   type ViolationCategory,
@@ -876,14 +880,14 @@ export const QualityTab = ({
               {scanning ? 'Scanning…' : 'Scan'}
             </Button>
           )}
-          {scan.ciRunUrl && !scanning && (
+          {!scanning && (quality?.scanHistory?.length ?? 0) > 0 && (
             <Button
               size="small" variant="text"
-              startIcon={<OpenInNewIcon style={{ fontSize: 14 }} />}
-              onClick={() => window.open(scan.ciRunUrl, '_blank')}
+              startIcon={<HistoryIcon style={{ fontSize: 14 }} />}
+              onClick={() => {/* scan history not available in legacy tab */}}
               style={{ textTransform: 'none', fontSize: 12, color: '#666' }}
             >
-              View CI run
+              Scan history
             </Button>
           )}
         </Box>
@@ -2081,6 +2085,208 @@ const ConfirmRemediationDialog = ({
   );
 };
 
+/* ─── Scan History Drawer ─── */
+
+const HISTORY_TRIGGER_LABELS: Record<string, { label: string; icon: string }> = {
+  push: { label: 'Push', icon: '↑' },
+  pull_request: { label: 'Pull request', icon: '⑂' },
+  schedule: { label: 'Scheduled', icon: '⏱' },
+  manual: { label: 'Manual', icon: '▶' },
+};
+
+const HISTORY_FLOW_STEPS = [
+  { key: 'scan', label: 'Scanned' },
+  { key: 'suggest', label: 'Suggestions generated' },
+  { key: 'pr', label: 'Pull request created' },
+  { key: 'merge', label: 'Pull request merged' },
+] as const;
+
+const OUTCOME_STEP_REACH: Record<ScanRemediationOutcome, number> = {
+  'none': 0,
+  'in-progress': 0,
+  'suggestions-ready': 1,
+  'pr-open': 2,
+  'pr-merged': 3,
+};
+
+const SCAN_ACTION_CONFIG: Record<ScanRemediationOutcome, { label: string; variant: 'text' | 'outlined' } | null> = {
+  'none': null,
+  'in-progress': { label: 'Generating…', variant: 'text' },
+  'suggestions-ready': { label: 'Review suggestions', variant: 'outlined' },
+  'pr-open': { label: 'View pull request', variant: 'outlined' },
+  'pr-merged': { label: 'View pull request', variant: 'text' },
+};
+
+const ScanHistoryView = ({
+  scanHistory, isDark, theme, classes, onBack,
+}: {
+  scanHistory: ScanResult[];
+  isDark: boolean;
+  theme: Theme;
+  classes: Record<string, string>;
+  onBack: () => void;
+}) => {
+  const subtleText = isDark ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.45)';
+  const sevOrder: SeverityClass[] = ['critical', 'high', 'medium', 'low', 'info'];
+  const inactiveIcon = isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)';
+
+  return (
+    <Box>
+      <Box display="flex" alignItems="center" style={{ marginBottom: 16 }}>
+        <Button size="small" variant="text"
+          startIcon={<ChevronRightIcon style={{ fontSize: 16, transform: 'rotate(180deg)' }} />}
+          onClick={onBack}
+          style={{ textTransform: 'none', fontSize: 13, fontWeight: 500, color: theme.palette.text.secondary, padding: '4px 8px', minWidth: 0 }}>
+          Back to latest scan
+        </Button>
+      </Box>
+
+      <Card variant="outlined" style={{ borderRadius: 8, overflow: 'hidden' }}>
+        <Box style={{ overflow: 'auto' }}>
+          <table className={classes.violationsTable}>
+            <thead>
+              <tr>
+                <th style={{ width: 170 }}>DATE</th>
+                <th style={{ width: 90 }}>TRIGGER</th>
+                <th style={{ width: 80 }}>COMMIT</th>
+                <th style={{ width: 130 }}>VIOLATIONS</th>
+                <th>SEVERITY</th>
+                <th style={{ width: 120 }}>REMEDIATION</th>
+                <th style={{ width: 140, textAlign: 'right' as const }}></th>
+              </tr>
+            </thead>
+            <tbody>
+              {scanHistory.map((scan, idx) => {
+                const trigger = HISTORY_TRIGGER_LABELS[scan.trigger ?? 'push'];
+                const outcome = scan.remediationOutcome ?? 'none';
+                const remaining = scan.remainingViolations ?? scan.totalViolations;
+                const fixed = scan.totalViolations - remaining;
+                const allResolved = remaining === 0 && scan.totalViolations > 0;
+                const stepsReached = OUTCOME_STEP_REACH[outcome];
+                const actionCfg = SCAN_ACTION_CONFIG[outcome];
+                const isLatest = idx === 0;
+
+                return (
+                  <tr key={scan.scanId}>
+                    {/* Date */}
+                    <td>
+                      <Box display="flex" alignItems="center" style={{ gap: 6 }}>
+                        <span style={{ fontWeight: isLatest ? 600 : 400 }}>{scan.createdAt}</span>
+                        {isLatest && (
+                          <Chip label="Latest" size="small" style={{
+                            height: 16, fontSize: 9, fontWeight: 600,
+                            background: isDark ? 'rgba(56,139,253,0.15)' : '#dbeafe',
+                            color: isDark ? '#58a6ff' : '#1d4ed8',
+                          }} />
+                        )}
+                      </Box>
+                    </td>
+                    {/* Trigger */}
+                    <td style={{ color: theme.palette.text.secondary, fontSize: 12 }}>
+                      {trigger.icon} {trigger.label}
+                    </td>
+                    {/* Commit */}
+                    <td>
+                      <code style={{ fontSize: 11, color: subtleText }}>{scan.commitHash}</code>
+                    </td>
+                    {/* Violations — merged column */}
+                    <td>
+                      {allResolved ? (
+                        <Box display="flex" alignItems="center" style={{ gap: 4 }}>
+                          <CheckCircleIcon style={{ fontSize: 13, color: statusColors.success }} />
+                          <span style={{ color: statusColors.success, fontWeight: 500, fontSize: 12 }}>
+                            All resolved
+                          </span>
+                        </Box>
+                      ) : fixed > 0 ? (
+                        <Box>
+                          <span style={{ fontWeight: 500 }}>{remaining} unresolved</span>
+                          <span style={{ color: subtleText, fontSize: 11, marginLeft: 4 }}>/ {scan.totalViolations}</span>
+                        </Box>
+                      ) : (
+                        <span style={{ fontWeight: 500 }}>{scan.totalViolations} found</span>
+                      )}
+                    </td>
+                    {/* Severity mini-chips */}
+                    <td>
+                      <Box display="flex" alignItems="center" style={{ gap: 3, flexWrap: 'wrap' }}>
+                        {sevOrder.map(sev => {
+                          const found = scan.severityBreakdown[sev] ?? 0;
+                          const remain = scan.remainingSeverity?.[sev] ?? found;
+                          const resolved = found - remain;
+                          if (found === 0) return null;
+                          return (
+                            <DarkTooltip key={sev} title={`${sev}: ${remain} remaining${resolved > 0 ? `, ${resolved} resolved` : ''}`} arrow>
+                              <Box display="inline-flex" alignItems="center" style={{ gap: 2 }}>
+                                {remain > 0 && (
+                                  <Box style={{
+                                    padding: '0 5px', borderRadius: 3, fontSize: 10, fontWeight: 600, lineHeight: '18px',
+                                    background: SEVERITY_COLORS[sev].bg, color: SEVERITY_COLORS[sev].text,
+                                  }}>
+                                    {sev.charAt(0).toUpperCase()}{remain}
+                                  </Box>
+                                )}
+                                {resolved > 0 && (
+                                  <Box style={{
+                                    padding: '0 5px', borderRadius: 3, fontSize: 10, fontWeight: 500, lineHeight: '18px',
+                                    background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)',
+                                    color: isDark ? 'rgba(255,255,255,0.22)' : 'rgba(0,0,0,0.22)',
+                                    textDecoration: 'line-through',
+                                  }}>
+                                    {sev.charAt(0).toUpperCase()}{resolved}
+                                  </Box>
+                                )}
+                              </Box>
+                            </DarkTooltip>
+                          );
+                        })}
+                      </Box>
+                    </td>
+                    {/* Remediation — pipeline-style status circles */}
+                    <td>
+                      <Box display="flex" alignItems="center" style={{ gap: 4 }}>
+                        {HISTORY_FLOW_STEPS.map((step, i) => {
+                          const reached = i === 0 || i <= stepsReached;
+                          return (
+                            <DarkTooltip key={step.key} title={reached ? step.label : step.label} arrow>
+                              {reached ? (
+                                <CheckCircleIcon style={{ fontSize: 16, color: isDark ? '#3fb950' : '#1a7f37' }} />
+                              ) : (
+                                <RadioButtonUncheckedIcon style={{ fontSize: 16, color: inactiveIcon }} />
+                              )}
+                            </DarkTooltip>
+                          );
+                        })}
+                      </Box>
+                    </td>
+                    {/* Action */}
+                    <td style={{ textAlign: 'right' }}>
+                      {actionCfg ? (
+                        <Button size="small" variant={actionCfg.variant}
+                          disabled={outcome === 'in-progress'}
+                          onClick={() => {
+                            if (scan.prUrl && (outcome === 'pr-open' || outcome === 'pr-merged')) {
+                              window.open(scan.prUrl, '_blank');
+                            } else if (outcome === 'suggestions-ready') {
+                              onBack();
+                            }
+                          }}
+                          style={{ textTransform: 'none', fontSize: 12, padding: '2px 10px', minWidth: 0 }}>
+                          {actionCfg.label}
+                        </Button>
+                      ) : null}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </Box>
+      </Card>
+    </Box>
+  );
+};
+
 export const QualityTabUnified = ({
   quality,
   projectName,
@@ -2119,6 +2325,7 @@ export const QualityTabUnified = ({
   const [showConfirm, setShowConfirm] = useState(false);
   const [remediatingCount, setRemediatingCount] = useState(0);
   const [selectMenuAnchor, setSelectMenuAnchor] = useState<null | HTMLElement>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   type SortColumn = 'severity' | 'fix' | 'rule' | 'file';
   const [sortColumn, setSortColumn] = useState<SortColumn>('severity');
@@ -2488,17 +2695,26 @@ export const QualityTabUnified = ({
               {scanning ? 'Scanning…' : 'Scan'}
             </Button>
           )}
-          {scan.ciRunUrl && !scanning && (
-            <Button size="small" variant="text" startIcon={<OpenInNewIcon style={{ fontSize: 14 }} />}
-              onClick={() => window.open(scan.ciRunUrl, '_blank')} style={{ textTransform: 'none', fontSize: 12, color: theme.palette.text.secondary }}>
-              View CI run
+          {!scanning && (quality?.scanHistory?.length ?? 0) > 0 && (
+            <Button size="small" variant="text" startIcon={<HistoryIcon style={{ fontSize: 14 }} />}
+              onClick={() => setHistoryOpen(true)} style={{ textTransform: 'none', fontSize: 12, color: theme.palette.text.secondary }}>
+              Scan history
             </Button>
           )}
         </Box>
       </Box>
       {scanning && <LinearProgress variant="determinate" value={scanProgress} style={{ height: 4, borderRadius: 2, marginBottom: 8 }} />}
 
-      {scan.totalViolations === 0 ? (
+      {/* Scan history drilldown */}
+      {historyOpen ? (
+        <ScanHistoryView
+          scanHistory={quality?.scanHistory ?? []}
+          isDark={isDark}
+          theme={theme}
+          classes={classes}
+          onBack={() => setHistoryOpen(false)}
+        />
+      ) : scan.totalViolations === 0 ? (
         <Card variant="outlined" style={{ borderRadius: 12 }}>
           <CardContent style={{ padding: '32px 24px', textAlign: 'center' }}>
             <CheckCircleIcon style={{ fontSize: 40, color: statusColors.success, marginBottom: 8 }} />

@@ -38,6 +38,13 @@ export type TrendPoint = {
   fixable: number;
 };
 
+export type ScanRemediationOutcome =
+  | 'none'
+  | 'in-progress'
+  | 'suggestions-ready'
+  | 'pr-open'
+  | 'pr-merged';
+
 export type ScanResult = {
   scanId: string;
   scanType: 'check' | 'remediate';
@@ -55,6 +62,10 @@ export type ScanResult = {
   trigger?: 'push' | 'pull_request' | 'schedule' | 'manual';
   ciRunUrl?: string;
   ciRunId?: string;
+  remainingViolations?: number;
+  remainingSeverity?: Record<SeverityClass, number>;
+  remediationOutcome?: ScanRemediationOutcome;
+  prUrl?: string;
 };
 
 export type CollectionDependency = {
@@ -148,22 +159,33 @@ const QUALITY_DATA: Record<string, ProjectQualityData> = {
         commitHash: 'a3f1b2c', scanSource: 'github-action', trigger: 'push',
         ciRunUrl: 'https://github.com/acme-corp/rhel-patching/actions/runs/9841',
         ciRunId: 'Quality Scan #287',
+        remainingViolations: 12,
+        remainingSeverity: { critical: 1, high: 3, medium: 5, low: 2, info: 1 },
+        remediationOutcome: 'none',
       },
       {
         scanId: 'scan-rhel-013', scanType: 'check', createdAt: 'May 23, 2026 14:05',
         totalViolations: 10, fixable: 7, aiCandidates: 4, aiAccepted: 0, aiDeclined: 0,
-        manualReview: 3, remediatedCount: 0,
+        manualReview: 3, remediatedCount: 5,
         severityBreakdown: { critical: 0, high: 2, medium: 4, low: 3, info: 1 },
         commitHash: 'f8e2d1a', scanSource: 'github-action', trigger: 'pull_request',
         ciRunId: 'Quality Scan #285',
+        remainingViolations: 5,
+        remainingSeverity: { critical: 0, high: 1, medium: 2, low: 1, info: 1 },
+        remediationOutcome: 'pr-merged',
+        prUrl: 'https://github.com/acme-corp/rhel-patching/pull/42',
       },
       {
         scanId: 'scan-rhel-012', scanType: 'check', createdAt: 'May 21, 2026 09:15',
         totalViolations: 12, fixable: 8, aiCandidates: 5, aiAccepted: 0, aiDeclined: 0,
-        manualReview: 3, remediatedCount: 0,
+        manualReview: 3, remediatedCount: 8,
         severityBreakdown: { critical: 1, high: 2, medium: 5, low: 3, info: 1 },
         commitHash: 'c4b3a9f', scanSource: 'github-action', trigger: 'push',
         ciRunId: 'Quality Scan #280',
+        remainingViolations: 4,
+        remainingSeverity: { critical: 0, high: 0, medium: 2, low: 1, info: 1 },
+        remediationOutcome: 'pr-merged',
+        prUrl: 'https://github.com/acme-corp/rhel-patching/pull/38',
       },
       {
         scanId: 'scan-rhel-011', scanType: 'check', createdAt: 'May 19, 2026 16:30',
@@ -172,14 +194,21 @@ const QUALITY_DATA: Record<string, ProjectQualityData> = {
         severityBreakdown: { critical: 1, high: 3, medium: 6, low: 4, info: 1 },
         commitHash: 'b2a7e3d', scanSource: 'github-action', trigger: 'schedule',
         ciRunId: 'Quality Scan #275',
+        remainingViolations: 15,
+        remainingSeverity: { critical: 1, high: 3, medium: 6, low: 4, info: 1 },
+        remediationOutcome: 'none',
       },
       {
         scanId: 'scan-rhel-010', scanType: 'check', createdAt: 'May 16, 2026 11:00',
         totalViolations: 18, fixable: 12, aiCandidates: 7, aiAccepted: 0, aiDeclined: 0,
-        manualReview: 5, remediatedCount: 0,
+        manualReview: 5, remediatedCount: 12,
         severityBreakdown: { critical: 2, high: 4, medium: 6, low: 4, info: 2 },
         commitHash: 'e1d5c8b', scanSource: 'github-action', trigger: 'push',
         ciRunId: 'Quality Scan #268',
+        remainingViolations: 0,
+        remainingSeverity: { critical: 0, high: 0, medium: 0, low: 0, info: 0 },
+        remediationOutcome: 'pr-merged',
+        prUrl: 'https://github.com/acme-corp/rhel-patching/pull/31',
       },
     ],
     violations: [
@@ -286,18 +315,26 @@ const QUALITY_DATA: Record<string, ProjectQualityData> = {
       {
         scanId: 'scan-net-008', scanType: 'check', createdAt: 'May 24, 2026 08:15',
         totalViolations: 14, fixable: 9, aiCandidates: 5, aiAccepted: 0, aiDeclined: 0,
-        manualReview: 5, remediatedCount: 0,
+        manualReview: 5, remediatedCount: 9,
         severityBreakdown: { critical: 1, high: 3, medium: 5, low: 4, info: 1 },
         commitHash: 'e7d2f1a', scanSource: 'github-action', trigger: 'push',
         ciRunId: 'Quality Scan #54',
+        remainingViolations: 5,
+        remainingSeverity: { critical: 0, high: 1, medium: 2, low: 1, info: 1 },
+        remediationOutcome: 'pr-open',
+        prUrl: 'https://github.com/acme-corp/network-firewall-rules/pull/15',
       },
       {
         scanId: 'scan-net-007', scanType: 'check', createdAt: 'May 22, 2026 16:40',
         totalViolations: 18, fixable: 11, aiCandidates: 6, aiAccepted: 0, aiDeclined: 0,
-        manualReview: 7, remediatedCount: 0,
+        manualReview: 7, remediatedCount: 11,
         severityBreakdown: { critical: 1, high: 4, medium: 6, low: 5, info: 2 },
         commitHash: 'd3b8e1c', scanSource: 'github-action', trigger: 'schedule',
         ciRunId: 'Quality Scan #51',
+        remainingViolations: 0,
+        remainingSeverity: { critical: 0, high: 0, medium: 0, low: 0, info: 0 },
+        remediationOutcome: 'pr-merged',
+        prUrl: 'https://github.com/acme-corp/network-firewall-rules/pull/12',
       },
     ],
     violations: [
