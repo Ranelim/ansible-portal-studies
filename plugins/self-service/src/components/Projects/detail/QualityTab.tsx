@@ -2924,12 +2924,12 @@ export const QualityTabUnified = ({
                 <Box display="flex" alignItems="center" style={{ marginTop: 8, gap: 8 }}>
                   <Typography style={{ fontSize: 12, color: theme.palette.text.secondary }}>
                     Showing {filteredViolations.length} of {scan.totalViolations} violations
-                    {categoryFilter !== 'all' && (
-                      <Chip size="small" label={categoryFilter === 'aap-compatibility' ? 'AAP compatibility' : categoryFilter}
-                        onDelete={() => setCategoryFilter('all')}
-                        style={{ marginLeft: 6, height: 18, fontSize: 10, fontWeight: 600 }} />
-                    )}
                   </Typography>
+                  {categoryFilter !== 'all' && (
+                    <Chip size="small" label={categoryFilter === 'aap-compatibility' ? 'AAP compatibility' : categoryFilter}
+                      onDelete={() => setCategoryFilter('all')}
+                      style={{ height: 20, fontSize: 11, fontWeight: 600 }} />
+                  )}
                   <span
                     onClick={() => { setSeverityFilters(new Set()); setFixFilters(new Set()); setCategoryFilter('all'); }}
                     style={{ fontSize: 12, color: theme.palette.primary.main, cursor: 'pointer' }}

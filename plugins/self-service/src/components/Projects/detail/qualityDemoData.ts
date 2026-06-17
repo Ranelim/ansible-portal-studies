@@ -513,7 +513,7 @@ export type FleetViolationRule = {
   message: string;
   severity: SeverityClass;
   category: ViolationCategory;
-  repos: { name: string; count: number; fixTier: QualityViolation['fixTier'] }[];
+  repos: { name: string; count: number; fixTier: QualityViolation['fixTier']; lastScannedAt?: string }[];
   totalCount: number;
 };
 
@@ -551,7 +551,7 @@ export function getFleetViolationData(): {
         if (repoEntry) {
           repoEntry.count++;
         } else {
-          existing.repos.push({ name: repoName, count: 1, fixTier: v.fixTier });
+          existing.repos.push({ name: repoName, count: 1, fixTier: v.fixTier, lastScannedAt: data.lastScannedAt });
         }
         existing.totalCount++;
       } else {
@@ -560,7 +560,7 @@ export function getFleetViolationData(): {
           message: v.message,
           severity: v.severity,
           category: v.category,
-          repos: [{ name: repoName, count: 1, fixTier: v.fixTier }],
+          repos: [{ name: repoName, count: 1, fixTier: v.fixTier, lastScannedAt: data.lastScannedAt }],
           totalCount: 1,
         });
       }
