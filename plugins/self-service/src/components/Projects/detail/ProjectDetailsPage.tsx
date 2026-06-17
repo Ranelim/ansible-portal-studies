@@ -1188,7 +1188,7 @@ export const ProjectDetailsPage = () => {
               background: isDark ? 'rgba(251,191,36,0.06)' : '#fffbeb',
               cursor: 'pointer',
             }}
-            onClick={() => navigate(`/self-service/repositories/${project.name}?tab=quality&category=aap-compatibility`)}
+            onClick={() => { window.location.href = `/self-service/repositories/${project.name}?tab=quality&category=aap-compatibility`; }}
           >
             <Box display="flex" alignItems="center" style={{ gap: 8 }}>
               <WarningIcon style={{ fontSize: 18, color: isDark ? '#fbbf24' : '#b45309' }} />
@@ -1200,7 +1200,7 @@ export const ProjectDetailsPage = () => {
               size="small" variant="text"
               onClick={(e: React.MouseEvent) => {
                 e.stopPropagation();
-                navigate(`/self-service/repositories/${project.name}?tab=quality&category=aap-compatibility`);
+                window.location.href = `/self-service/repositories/${project.name}?tab=quality&category=aap-compatibility`;
               }}
               style={{
                 textTransform: 'none', fontSize: 12, fontWeight: 500,
