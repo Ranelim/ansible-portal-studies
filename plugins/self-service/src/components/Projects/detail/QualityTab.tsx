@@ -1860,8 +1860,6 @@ const useQualityStyles = makeStyles(theme => {
 function QualityStepper({ pageState }: { pageState: QualityPageState }) {
   const classes = useQualityStyles();
   const theme = useTheme();
-  const showMergeStep = pageState === 'pr-open' || pageState === 'pr-merged';
-  const isMerged = pageState === 'pr-merged';
 
   return (
     <Box className={classes.pipeline}>
@@ -1915,27 +1913,6 @@ function QualityStepper({ pageState }: { pageState: QualityPageState }) {
           </Box>
         );
       })}
-      {showMergeStep && (
-        <>
-          <Typography component="span" className={`${classes.stepArrow} ${isMerged ? classes.stepArrowCompleted : ''}`}>→</Typography>
-          {isMerged ? (
-            <Box className={classes.verifiedBadge}>
-              <CheckCircleIcon style={{ fontSize: 16, color: statusColors.success }} />
-              PR merged
-            </Box>
-          ) : (
-            <Box className={classes.stepButton} style={{ opacity: 0.55 }}>
-              <Box className={classes.numberBadge}
-                style={{ border: `1.5px solid ${theme.palette.text.disabled}`, color: theme.palette.text.disabled }}>
-                4
-              </Box>
-              <Typography className={classes.stepLabel} style={{ color: statusColors.pending }}>
-                PR merged
-              </Typography>
-            </Box>
-          )}
-        </>
-      )}
     </Box>
   );
 }
