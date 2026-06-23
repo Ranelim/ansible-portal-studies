@@ -2619,11 +2619,6 @@ export const QualityTabUnified = ({
                   Review in Dev Spaces
                 </Button>
               )}
-              <Button size="small" variant="text"
-                onClick={handleMergePr}
-                style={{ textTransform: 'none', fontSize: 12, color: theme.palette.text.secondary, padding: '4px 10px', minWidth: 0 }}>
-                Mark as merged
-              </Button>
             </Box>
           </Box>
         </Box>
