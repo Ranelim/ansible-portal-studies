@@ -1,0 +1,2 @@
+"use strict";(self.webpackChunkapp=self.webpackChunkapp||[]).push([["997"],{41172(e,t,n){n.d(t,{HasComponentsCard:()=>m});var s=n(31085),p=n(97214),a=n(59084),i=n(15669),o=n(58045),r=n(47250);function m(e){let{t}=(0,r.i)(o.W),{variant:n="gridItem",title:m=t("hasComponentsCard.title"),columns:C=i.mz,tableOptions:d={}}=e;return(0,s.jsx)(a.p,{variant:n,title:m,entityKind:"Component",relationType:p.sA,columns:C,emptyMessage:t("hasComponentsCard.emptyMessage"),emptyHelpLink:i.e2,asRenderableEntities:i.xJ,tableOptions:d})}}}]);
+//# sourceMappingURL=997.d146b528.chunk.js.map

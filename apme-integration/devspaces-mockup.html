@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dev Spaces — PR Review</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; background: #1e1e1e; color: #d4d4d4; overflow: hidden; height: 100vh; }
+
+  .titlebar { height: 30px; background: #323233; display: flex; align-items: center; padding: 0 12px; font-size: 12px; color: #999; border-bottom: 1px solid #252526; }
+  .titlebar-center { flex: 1; text-align: center; }
+  .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+  .dot-red { background: #ff5f57; }
+  .dot-yellow { background: #febc2e; }
+  .dot-green { background: #28c840; }
+
+  .main { display: flex; height: calc(100vh - 30px); }
+
+  .activity-bar { width: 48px; background: #333; display: flex; flex-direction: column; align-items: center; padding-top: 8px; gap: 16px; border-right: 1px solid #252526; flex-shrink: 0; }
+  .activity-icon { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border-radius: 4px; color: #858585; cursor: pointer; position: relative; }
+  .activity-icon:hover, .activity-icon.active { color: #fff; }
+  .activity-icon.active::before { content: ''; position: absolute; left: -10px; width: 2px; height: 100%; background: #fff; border-radius: 1px; }
+  .activity-icon svg { width: 22px; height: 22px; }
+  .activity-badge { position: absolute; top: -4px; right: -6px; background: #c17e19; color: #fff; font-size: 9px; font-weight: 700; min-width: 16px; height: 16px; border-radius: 8px; display: flex; align-items: center; justify-content: center; padding: 0 4px; }
+
+  .sidebar { width: 260px; background: #252526; border-right: 1px solid #1e1e1e; display: flex; flex-direction: column; flex-shrink: 0; overflow-y: auto; }
+  .scm-header { padding: 10px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; color: #bbb; font-weight: 600; display: flex; align-items: center; justify-content: space-between; }
+  .scm-section { padding: 4px 0; }
+  .scm-section-header { padding: 6px 12px; font-size: 11px; font-weight: 600; color: #ccc; display: flex; align-items: center; gap: 6px; }
+  .scm-count { background: #c17e19; color: #fff; font-size: 9px; font-weight: 700; min-width: 16px; height: 14px; border-radius: 7px; display: flex; align-items: center; justify-content: center; padding: 0 4px; }
+  .scm-file { padding: 3px 12px 3px 20px; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 6px; border-radius: 3px; margin: 0 4px; }
+  .scm-file:hover { background: #2a2d2e; }
+  .scm-file.active { background: #094771; }
+  .scm-file .change-type { margin-left: auto; font-size: 11px; font-weight: 600; color: #c17e19; }
+  .file-icon { font-size: 12px; width: 16px; text-align: center; }
+  .file-icon.yaml { color: #e8a838; }
+  .file-icon.cfg { color: #888; }
+  .scm-info { padding: 12px 12px 8px; font-size: 11px; color: #888; border-bottom: 1px solid #333; line-height: 1.5; }
+  .scm-info strong { color: #ccc; }
+  .scm-info .branch { color: #c17e19; font-family: 'Menlo', 'Consolas', monospace; font-size: 10px; }
+
+  .editor-area { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+
+  .tabs { display: flex; background: #252526; height: 35px; border-bottom: 1px solid #1e1e1e; flex-shrink: 0; overflow-x: auto; }
+  .tab { padding: 0 16px; height: 35px; display: flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer; border-right: 1px solid #1e1e1e; color: #999; white-space: nowrap; }
+  .tab.active { background: #1e1e1e; color: #fff; border-top: 1px solid #007acc; margin-top: -1px; }
+
+  .diff-header { display: flex; align-items: center; padding: 6px 16px; background: #252526; border-bottom: 1px solid #333; font-size: 12px; color: #999; gap: 8px; flex-shrink: 0; }
+  .diff-header .arrow { color: #666; }
+  .diff-header .filename { color: #d4d4d4; }
+  .diff-header .branch-label { font-family: 'Menlo', 'Consolas', monospace; font-size: 11px; padding: 1px 6px; border-radius: 3px; }
+  .diff-header .branch-base { background: #1b3a1b; color: #3fb950; }
+  .diff-header .branch-pr { background: #063b49; color: #58a6ff; }
+
+  .editor { flex: 1; overflow: auto; font-family: 'Menlo', 'Consolas', 'Courier New', monospace; font-size: 13px; line-height: 20px; display: flex; }
+  .diff-pane { flex: 1; overflow: auto; }
+  .diff-pane-left { border-right: 1px solid #333; }
+  .diff-separator { width: 1px; background: #333; flex-shrink: 0; }
+
+  .editor-line { display: flex; padding: 0 16px 0 0; min-height: 20px; }
+  .line-number { width: 48px; text-align: right; padding-right: 16px; color: #555; user-select: none; flex-shrink: 0; }
+  .line-content { flex: 1; white-space: pre; }
+
+  .diff-added { background: rgba(35, 134, 54, 0.2); }
+  .diff-added .line-number { color: #3fb950; }
+  .diff-removed { background: rgba(248, 81, 73, 0.15); }
+  .diff-removed .line-number { color: #f85149; }
+  .diff-gutter-added { border-left: 3px solid #3fb950; }
+  .diff-gutter-removed { border-left: 3px solid #f85149; }
+  .diff-empty { background: #1a1a1a; }
+  .diff-empty .line-number { visibility: hidden; }
+  .diff-empty .line-content { visibility: hidden; }
+
+  .kw { color: #c586c0; }
+  .str { color: #ce9178; }
+  .key { color: #9cdcfe; }
+  .comment { color: #6a9955; }
+  .module { color: #4ec9b0; }
+  .bool { color: #569cd6; }
+
+  .statusbar { height: 22px; background: #007acc; display: flex; align-items: center; padding: 0 12px; font-size: 11px; color: #fff; gap: 16px; flex-shrink: 0; }
+  .statusbar .pr-indicator { display: flex; align-items: center; gap: 4px; }
+  .statusbar .pr-indicator svg { width: 14px; height: 14px; }
+  .statusbar-right { margin-left: auto; display: flex; gap: 16px; }
+
+  .summary-bar { display: flex; align-items: center; padding: 8px 16px; gap: 10px; font-size: 12px; border-bottom: 1px solid #333; background: #1b3a1b; flex-shrink: 0; }
+  .summary-bar .icon { font-size: 14px; flex-shrink: 0; }
+  .summary-bar .text { flex: 1; color: #8bc986; }
+  .summary-bar strong { color: #3fb950; }
+</style>
+</head>
+<body>
+
+<div class="titlebar">
+  <span class="dot dot-red"></span>
+  <span class="dot dot-yellow"></span>
+  <span class="dot dot-green"></span>
+  <div class="titlebar-center" id="titlebar-text">rhel-patching — Dev Spaces</div>
+</div>
+
+<div class="main">
+  <div class="activity-bar">
+    <div class="activity-icon" title="Explorer">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.5 0h-9L7 1.5V6H2.5L1 7.5v15.07L2.5 24h12.07L16 22.57V18h4.7l1.3-1.43V4.5L17.5 0zm0 2.12l2.38 2.38H17.5V2.12zm-3 20.38h-12v-15H7v9.07L8.5 18h6v4.5zm6-6h-12v-15H16V6h4.5v10.5z"/></svg>
+    </div>
+    <div class="activity-icon" title="Search">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M15.25 1a6.25 6.25 0 0 0-4.53 10.58L2 20.3l1.41 1.41 8.72-8.72A6.25 6.25 0 1 0 15.25 1zm0 10.5a4.25 4.25 0 1 1 0-8.5 4.25 4.25 0 0 1 0 8.5z"/></svg>
+    </div>
+    <div class="activity-icon active" title="Source Control">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M21.007 8.222A3.738 3.738 0 0 0 15.045 5.2a3.737 3.737 0 0 0 1.156 6.583 2.988 2.988 0 0 1-2.668 1.67h-2.99a4.456 4.456 0 0 0-2.989 1.165V7.559a3.738 3.738 0 1 0-1.494 0v8.882a3.738 3.738 0 1 0 1.494.001 2.988 2.988 0 0 1 2.989-2.99h2.99a4.484 4.484 0 0 0 4.223-3.065 3.738 3.738 0 0 0 3.25-2.165z"/></svg>
+      <span class="activity-badge">6</span>
+    </div>
+    <div class="activity-icon" title="Extensions">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M13.5 1.5L15 0h7.5L24 1.5V9l-1.5 1.5H15L13.5 9V1.5zm3 0V9h6V1.5h-6zM0 15l1.5-1.5H9L10.5 15v7.5L9 24H1.5L0 22.5V15zm3 0v6h4.5v-6H3zm7.5-12v7.5h6V3h-6zM0 3l1.5-1.5H9L10.5 3v7.5L9 12H1.5L0 10.5V3zm3 0v6h4.5V3H3zm10.5 12l1.5-1.5h7.5L24 13.5V21l-1.5 1.5H15L13.5 21v-6zm3 0V19.5h6V15h-6z"/></svg>
+    </div>
+  </div>
+
+  <div class="sidebar">
+    <div class="scm-info">
+      Reviewing pull request <strong>#99</strong><br>
+      <span class="branch">apme/remediate-rhel-patching</span> → <span class="branch">main</span><br>
+      6 files changed · 10 violations addressed
+    </div>
+    <div class="scm-section">
+      <div class="scm-section-header">Changed Files <span class="scm-count">6</span></div>
+      <div class="scm-file" onclick="showFile('ansible-cfg')" data-file="ansible-cfg">
+        <span class="file-icon cfg">⚙</span> ansible.cfg
+        <span class="change-type">M</span>
+      </div>
+      <div class="scm-file" onclick="showFile('collections')" data-file="collections">
+        <span class="file-icon yaml">📄</span> collections/requirements.yml
+        <span class="change-type">M</span>
+      </div>
+      <div class="scm-file" onclick="showFile('defaults')" data-file="defaults">
+        <span class="file-icon yaml">📄</span> defaults/main.yml
+        <span class="change-type">M</span>
+      </div>
+      <div class="scm-file active" onclick="showFile('main')" data-file="main">
+        <span class="file-icon yaml">📄</span> tasks/main.yml
+        <span class="change-type">M</span>
+      </div>
+      <div class="scm-file" onclick="showFile('patch-apply')" data-file="patch-apply">
+        <span class="file-icon yaml">📄</span> tasks/patch-apply.yml
+        <span class="change-type">M</span>
+      </div>
+      <div class="scm-file" onclick="showFile('pre-check')" data-file="pre-check">
+        <span class="file-icon yaml">📄</span> tasks/pre-check.yml
+        <span class="change-type">M</span>
+      </div>
+    </div>
+    <div style="padding: 12px 12px; border-top: 1px solid #333; margin-top: 8px;">
+      <div style="font-size: 11px; color: #888; margin-bottom: 6px;">Unchanged (2 manual violations):</div>
+      <div style="padding: 2px 0; font-size: 11px; color: #666;">📄 tasks/report.yml</div>
+      <div style="padding: 2px 0; font-size: 11px; color: #666;">📄 meta/main.yml</div>
+    </div>
+  </div>
+
+  <div class="editor-area">
+    <div class="tabs">
+      <div class="tab active" id="active-tab">
+        <span style="color:#e8a838;">📄</span>
+        <span id="tab-label">tasks/main.yml</span>
+      </div>
+    </div>
+
+    <div class="diff-header" id="diff-header">
+      <span class="branch-label branch-base">main</span>
+      <span class="arrow">→</span>
+      <span class="branch-label branch-pr" id="pr-branch-label">apme/remediate-rhel-patching</span>
+      <span style="margin-left: 8px;" class="filename" id="diff-filename">tasks/main.yml</span>
+    </div>
+
+    <div class="summary-bar">
+      <span class="icon">✓</span>
+      <span class="text"><strong>10 fix suggestions</strong> applied across 6 files. 2 remaining violations require manual changes.</span>
+    </div>
+
+    <div class="editor" id="editor"></div>
+
+    <div class="statusbar">
+      <span class="pr-indicator">
+        <svg viewBox="0 0 16 16" fill="currentColor"><path d="M7.177 3.073L9.573.677A.25.25 0 0 1 10 .854v4.792a.25.25 0 0 1-.427.177L7.177 3.427a.25.25 0 0 1 0-.354zM3.75 2.5a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5zm-2.25.75a2.25 2.25 0 1 1 3 2.122v5.256a2.251 2.251 0 1 1-1.5 0V5.372A2.25 2.25 0 0 1 1.5 3.25zM11 2.5h-1V4h1a1 1 0 0 1 1 1v5.628a2.251 2.251 0 1 1-1.5 0V5a2.5 2.5 0 0 0-2.5-2.5H7V4h1a1 1 0 0 0 1-1V2.5zm1 10.25a.75.75 0 1 0-1.5 0 .75.75 0 0 0 1.5 0zM3.75 12a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5z"/></svg>
+        PR #99
+      </span>
+      <span id="branch-name">apme/remediate-rhel-patching</span>
+      <div class="statusbar-right">
+        <span>Ansible</span>
+        <span>UTF-8</span>
+        <span>YAML</span>
+        <span>redhat.ansible</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const DIFFS = {
+  'main': {
+    filename: 'tasks/main.yml',
+    lines: [
+      { left: { num: 1, html: '<span class="comment"># tasks/main.yml — RHEL Patching</span>' }, right: { num: 1, html: '<span class="comment"># tasks/main.yml — RHEL Patching</span>' } },
+      { left: { num: 2, html: '<span class="key">---</span>' }, right: { num: 2, html: '<span class="key">---</span>' } },
+      { left: { num: 3, html: '<span class="kw">- name</span>: <span class="str">Ensure system is up to date</span>' }, right: { num: 3, html: '<span class="kw">- name</span>: <span class="str">Ensure system is up to date</span>' } },
+      { left: { num: 4, html: '  <span class="key">hosts</span>: <span class="str">all</span>' }, right: { num: 4, html: '  <span class="key">hosts</span>: <span class="str">all</span>' } },
+      { left: { num: 5, html: '  <span class="key">become</span>: <span class="bool">true</span>' }, right: { num: 5, html: '  <span class="key">become</span>: <span class="bool">true</span>' } },
+      { left: { num: 6, html: '' }, right: { num: 6, html: '' } },
+      { left: { num: 7, html: '  <span class="key">tasks</span>:' }, right: { num: 7, html: '  <span class="key">tasks</span>:' } },
+      { left: { num: 8, html: '    <span class="kw">- name</span>: <span class="str">Run pre-flight checks</span>' }, right: { num: 8, html: '    <span class="kw">- name</span>: <span class="str">Run pre-flight checks</span>' } },
+      { left: { num: 9, html: '      <span class="module">ansible.builtin.include_tasks</span>: <span class="str">pre-check.yml</span>' }, right: { num: 9, html: '      <span class="module">ansible.builtin.include_tasks</span>: <span class="str">pre-check.yml</span>' } },
+      { left: { num: 10, html: '' }, right: { num: 10, html: '' } },
+      { left: { num: 11, html: '    <span class="kw">- name</span>: <span class="str">Copy patching script to target</span>' }, right: { num: 11, html: '    <span class="kw">- name</span>: <span class="str">Copy patching script to target</span>' } },
+      { left: { num: 12, html: '      <span class="module">copy</span>:', removed: true }, right: { num: 12, html: '      <span class="module">ansible.builtin.copy</span>:', added: true } },
+      { left: { num: 13, html: '        <span class="key">src</span>: <span class="str">files/patch.sh</span>' }, right: { num: 13, html: '        <span class="key">src</span>: <span class="str">files/patch.sh</span>' } },
+      { left: { num: 14, html: '        <span class="key">dest</span>: <span class="str">/tmp/patch.sh</span>' }, right: { num: 14, html: '        <span class="key">dest</span>: <span class="str">/tmp/patch.sh</span>' } },
+      { left: { num: 15, html: '        <span class="key">mode</span>: <span class="str">"0755"</span>' }, right: { num: 15, html: '        <span class="key">mode</span>: <span class="str">"0755"</span>' } },
+      { left: { num: 16, html: '' }, right: { num: 16, html: '' } },
+      { left: { num: 17, html: '    <span class="kw">- name</span>: <span class="str">Apply patches to all packages</span>' }, right: { num: 17, html: '    <span class="kw">- name</span>: <span class="str">Apply patches to all packages</span>' } },
+      { left: { num: 18, html: '      <span class="module">ansible.builtin.include_tasks</span>: <span class="str">patch-apply.yml</span>' }, right: { num: 18, html: '      <span class="module">ansible.builtin.include_tasks</span>: <span class="str">patch-apply.yml</span>' } },
+      { left: { num: 19, html: '' }, right: { num: 19, html: '' } },
+      { left: { num: 20, html: '    <span class="kw">- name</span>: <span class="str">Restart affected services</span>' }, right: { num: 20, html: '    <span class="kw">- name</span>: <span class="str">Restart affected services</span>' } },
+      { left: { num: 21, html: '      <span class="module">ansible.builtin.service</span>:' }, right: { num: 21, html: '      <span class="module">ansible.builtin.service</span>:' } },
+      { left: { num: 22, html: '        <span class="key">name</span>: <span class="str">"{{ item }}"</span>' }, right: { num: 22, html: '        <span class="key">name</span>: <span class="str">"{{ item }}"</span>' } },
+      { left: { num: 23, html: '        <span class="key">state</span>: <span class="str">restarted</span>' }, right: { num: 23, html: '        <span class="key">state</span>: <span class="str">restarted</span>' } },
+      { left: { num: 24, html: '      <span class="kw">with_items</span>:', removed: true }, right: { num: 24, html: '      <span class="kw">loop</span>:', added: true } },
+      { left: { num: 25, html: '        <span class="str">- httpd</span>' }, right: { num: 25, html: '        <span class="str">- httpd</span>' } },
+      { left: { num: 26, html: '        <span class="str">- sshd</span>' }, right: { num: 26, html: '        <span class="str">- sshd</span>' } },
+      { left: { num: 27, html: '        <span class="str">- crond</span>' }, right: { num: 27, html: '        <span class="str">- crond</span>' } },
+    ]
+  },
+  'ansible-cfg': {
+    filename: 'ansible.cfg',
+    lines: [
+      { left: { num: 1, html: '<span class="comment"># ansible.cfg — Project configuration</span>' }, right: { num: 1, html: '<span class="comment"># ansible.cfg — Project configuration</span>' } },
+      { left: { num: 2, html: '<span class="key">[defaults]</span>' }, right: { num: 2, html: '<span class="key">[defaults]</span>' } },
+      { left: { num: 3, html: '<span class="key">callback_whitelist</span> = <span class="str">profile_tasks, timer</span>', removed: true }, right: { num: 3, html: '<span class="key">callbacks_enabled</span> = <span class="str">profile_tasks, timer</span>', added: true } },
+      { left: { num: 4, html: '<span class="key">stdout_callback</span> = <span class="str">yaml</span>' }, right: { num: 4, html: '<span class="key">stdout_callback</span> = <span class="str">yaml</span>' } },
+      { left: { num: 5, html: '<span class="key">retry_files_enabled</span> = <span class="bool">False</span>' }, right: { num: 5, html: '<span class="key">retry_files_enabled</span> = <span class="bool">False</span>' } },
+    ]
+  },
+  'collections': {
+    filename: 'collections/requirements.yml',
+    lines: [
+      { left: { num: 1, html: '<span class="comment"># collections/requirements.yml</span>' }, right: { num: 1, html: '<span class="comment"># collections/requirements.yml</span>' } },
+      { left: { num: 2, html: '<span class="key">---</span>' }, right: { num: 2, html: '<span class="key">---</span>' } },
+      { left: { num: 3, html: '<span class="key">collections</span>:' }, right: { num: 3, html: '<span class="key">collections</span>:' } },
+      { left: { num: 4, html: '  <span class="kw">- name</span>: <span class="str">ansible.posix</span>' }, right: { num: 4, html: '  <span class="kw">- name</span>: <span class="str">ansible.posix</span>' } },
+      { left: { num: 5, html: '    <span class="key">version</span>: <span class="str">">=1.5.0"</span>' }, right: { num: 5, html: '    <span class="key">version</span>: <span class="str">">=1.5.0"</span>' } },
+      { left: { num: 6, html: '  <span class="kw">- name</span>: <span class="str">community.general</span>' }, right: { num: 6, html: '  <span class="kw">- name</span>: <span class="str">community.general</span>' } },
+      { left: { num: 7, html: '    <span class="key">version</span>: <span class="str">"7.5.0"</span>', removed: true }, right: { num: 7, html: '    <span class="key">version</span>: <span class="str">">=8.0.0"</span>', added: true } },
+      { left: { num: 8, html: '  <span class="kw">- name</span>: <span class="str">ansible.utils</span>' }, right: { num: 8, html: '  <span class="kw">- name</span>: <span class="str">ansible.utils</span>' } },
+    ]
+  },
+  'defaults': {
+    filename: 'defaults/main.yml',
+    lines: [
+      { left: { num: 1, html: '<span class="comment"># defaults/main.yml</span>' }, right: { num: 1, html: '<span class="comment"># defaults/main.yml</span>' } },
+      { left: { num: 2, html: '<span class="key">---</span>' }, right: { num: 2, html: '<span class="key">---</span>' } },
+      { left: { num: 3, html: '<span class="key">patching_enabled</span>: <span class="bool">true</span>' }, right: { num: 3, html: '<span class="key">patching_enabled</span>: <span class="bool">true</span>' } },
+      { left: { num: 4, html: '<span class="key">patching_reboot</span>: <span class="bool">true</span>' }, right: { num: 4, html: '<span class="key">patching_reboot</span>: <span class="bool">true</span>' } },
+      { left: { num: 5, html: '<span class="key">patching_timeout</span>: <span class="str">600</span>' }, right: { num: 5, html: '<span class="key">patching_timeout</span>: <span class="str">600</span>' } },
+      { left: { num: 6, html: '<span class="key">patching_exclude</span>: <span class="str">[]</span>' }, right: { num: 6, html: '<span class="key">patching_exclude</span>: <span class="str">[]</span>' } },
+      { left: { num: 7, html: '<span class="key">patching_pre_check</span>: <span class="bool">true</span>' }, right: { num: 7, html: '<span class="key">patching_pre_check</span>: <span class="bool">true</span>' } },
+      { left: { num: 8, html: '<span class="key">patching_notify_email</span>: <span class="str">yes</span>', removed: true }, right: { num: 8, html: '<span class="key">patching_notify_email</span>: <span class="bool">true</span>', added: true } },
+      { left: { num: 9, html: '<span class="key">patching_log_dir</span>: <span class="str">/var/log/patching</span>' }, right: { num: 9, html: '<span class="key">patching_log_dir</span>: <span class="str">/var/log/patching</span>' } },
+    ]
+  },
+  'patch-apply': {
+    filename: 'tasks/patch-apply.yml',
+    lines: [
+      { left: { num: 1, html: '<span class="comment"># tasks/patch-apply.yml</span>' }, right: { num: 1, html: '<span class="comment"># tasks/patch-apply.yml</span>' } },
+      { left: { num: 2, html: '<span class="key">---</span>' }, right: { num: 2, html: '<span class="key">---</span>' } },
+      { left: { num: 3, html: '<span class="kw">- name</span>: <span class="str">Update all packages</span>' }, right: { num: 3, html: '<span class="kw">- name</span>: <span class="str">Update all packages</span>' } },
+      { left: { num: 4, html: '  <span class="module">ansible.builtin.yum</span>:', removed: true }, right: { num: 4, html: '  <span class="module">ansible.builtin.dnf</span>:', added: true } },
+      { left: { num: 5, html: '    <span class="key">name</span>: <span class="str">"*"</span>' }, right: { num: 5, html: '    <span class="key">name</span>: <span class="str">"*"</span>' } },
+      { left: { num: 6, html: '    <span class="key">state</span>: <span class="str">latest</span>' }, right: { num: 6, html: '    <span class="key">state</span>: <span class="str">latest</span>' } },
+      { left: { num: 7, html: '    <span class="key">security</span>: <span class="bool">true</span>' }, right: { num: 7, html: '    <span class="key">security</span>: <span class="bool">true</span>' } },
+      { left: { num: 8, html: '  <span class="key">register</span>: <span class="str">patch_result</span>' }, right: { num: 8, html: '  <span class="key">register</span>: <span class="str">patch_result</span>' } },
+      { left: { num: 9, html: '' }, right: { num: 9, html: '' } },
+      { left: { num: 10, html: '<span class="kw">- name</span>: <span class="str">Save patch report</span>' }, right: { num: 10, html: '<span class="kw">- name</span>: <span class="str">Save patch report</span>' } },
+      { left: { num: 11, html: '  <span class="module">ansible.builtin.template</span>:' }, right: { num: 11, html: '  <span class="module">ansible.builtin.template</span>:' } },
+      { left: { num: 12, html: '    <span class="key">src</span>: <span class="str">templates/patch-report.j2</span>' }, right: { num: 12, html: '    <span class="key">src</span>: <span class="str">templates/patch-report.j2</span>' } },
+      { left: { num: 13, html: '    <span class="key">dest</span>: <span class="str">/var/log/patch-report-{{ ansible_date_time.date }}.txt</span>' }, right: { num: 13, html: '    <span class="key">dest</span>: <span class="str">/var/log/patch-report-{{ ansible_date_time.date }}.txt</span>' } },
+      { left: { num: '', html: '', empty: true }, right: { num: 14, html: '    <span class="key">mode</span>: <span class="str">"0644"</span>', added: true } },
+    ]
+  },
+  'pre-check': {
+    filename: 'tasks/pre-check.yml',
+    lines: [
+      { left: { num: 1, html: '<span class="comment"># tasks/pre-check.yml</span>' }, right: { num: 1, html: '<span class="comment"># tasks/pre-check.yml</span>' } },
+      { left: { num: 2, html: '<span class="key">---</span>' }, right: { num: 2, html: '<span class="key">---</span>' } },
+      { left: { num: 3, html: '<span class="kw">- name</span>: <span class="str">Check current patch level</span>' }, right: { num: 3, html: '<span class="kw">- name</span>: <span class="str">Check current patch level</span>' } },
+      { left: { num: 4, html: '  <span class="module">ansible.builtin.command</span>:' }, right: { num: 4, html: '  <span class="module">ansible.builtin.command</span>:' } },
+      { left: { num: 5, html: '    <span class="key">cmd</span>: <span class="str">rpm -qa --last</span>' }, right: { num: 5, html: '    <span class="key">cmd</span>: <span class="str">rpm -qa --last</span>' } },
+      { left: { num: 6, html: '  <span class="key">register</span>: <span class="str">patch_level</span>' }, right: { num: 6, html: '  <span class="key">register</span>: <span class="str">patch_level</span>' } },
+      { left: { num: 7, html: '  <span class="key">warn</span>: <span class="bool">false</span>', removed: true }, right: { num: '', html: '', empty: true } },
+      { left: { num: 8, html: '' }, right: { num: 7, html: '' } },
+      { left: { num: 9, html: '<span class="kw">- name</span>: <span class="str">Verify network connectivity</span>' }, right: { num: 8, html: '<span class="kw">- name</span>: <span class="str">Verify network connectivity</span>' } },
+      { left: { num: 10, html: '  <span class="module">ansible.builtin.command</span>:' }, right: { num: 9, html: '  <span class="module">ansible.builtin.command</span>:' } },
+      { left: { num: 11, html: '    <span class="key">cmd</span>: <span class="str">ping -c 1 satellite.example.com</span>' }, right: { num: 10, html: '    <span class="key">cmd</span>: <span class="str">ping -c 1 satellite.example.com</span>' } },
+      { left: { num: 12, html: '  <span class="key">register</span>: <span class="str">network_check</span>' }, right: { num: 11, html: '  <span class="key">register</span>: <span class="str">network_check</span>' } },
+      { left: { num: '', html: '', empty: true }, right: { num: 12, html: '  <span class="key">changed_when</span>: <span class="bool">false</span>', added: true } },
+    ]
+  },
+};
+
+function renderDiff(fileKey) {
+  const diff = DIFFS[fileKey];
+  if (!diff) return;
+
+  const editor = document.getElementById('editor');
+  let leftHtml = '';
+  let rightHtml = '';
+
+  diff.lines.forEach(row => {
+    const l = row.left;
+    const r = row.right;
+
+    let lCls = 'editor-line';
+    let rCls = 'editor-line';
+    if (l.removed) { lCls += ' diff-removed diff-gutter-removed'; }
+    if (l.empty) { lCls += ' diff-empty'; }
+    if (r.added) { rCls += ' diff-added diff-gutter-added'; }
+    if (r.empty) { rCls += ' diff-empty'; }
+
+    leftHtml += '<div class="' + lCls + '"><span class="line-number">' + l.num + '</span><span class="line-content">' + l.html + '</span></div>';
+    rightHtml += '<div class="' + rCls + '"><span class="line-number">' + r.num + '</span><span class="line-content">' + r.html + '</span></div>';
+  });
+
+  editor.innerHTML =
+    '<div class="diff-pane diff-pane-left">' + leftHtml + '</div>' +
+    '<div class="diff-separator"></div>' +
+    '<div class="diff-pane">' + rightHtml + '</div>';
+
+  document.getElementById('tab-label').textContent = diff.filename;
+  document.getElementById('diff-filename').textContent = diff.filename;
+
+  document.querySelectorAll('.scm-file').forEach(el => {
+    el.classList.toggle('active', el.dataset.file === fileKey);
+  });
+}
+
+function showFile(fileKey) { renderDiff(fileKey); }
+
+const params = new URLSearchParams(window.location.search);
+const branch = params.get('branch') || 'apme/remediate-rhel-patching';
+document.getElementById('pr-branch-label').textContent = branch;
+document.getElementById('branch-name').textContent = branch;
+document.getElementById('titlebar-text').textContent = 'PR #99 · ' + branch + ' — Dev Spaces';
+
+renderDiff('main');
+</script>
+
+</body>
+</html>

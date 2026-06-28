@@ -1,0 +1,2 @@
+"use strict";(self.webpackChunkapp=self.webpackChunkapp||[]).push([["9527"],{65626(e,a,s){s.d(a,{HasSubdomainsCard:()=>u});var t=s(31085),i=s(97214),n=s(59084),p=s(15669),r=s(58045),d=s(47250);function u(e){let{t:a}=(0,d.i)(r.W),{variant:s="gridItem",title:u=a("hasSubdomainsCard.title"),columns:m=p.xO,tableOptions:l={}}=e;return(0,t.jsx)(n.p,{variant:s,title:u,entityKind:"Domain",relationType:i.sA,columns:m,asRenderableEntities:p.QS,emptyMessage:a("hasSubdomainsCard.emptyMessage"),emptyHelpLink:p.Xr,tableOptions:l})}}}]);
+//# sourceMappingURL=9527.c406b4a4.chunk.js.map

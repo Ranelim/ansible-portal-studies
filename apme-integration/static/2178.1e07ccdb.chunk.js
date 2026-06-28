@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunkapp=self.webpackChunkapp||[]).push([["2178"],{26169(e,p,a){a.d(p,{RelatedEntitiesCard:()=>s.p});var s=a(59084)}}]);
