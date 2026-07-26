@@ -1,5 +1,6 @@
 export { IaPlaceholderPage } from './IaPlaceholderPage';
 export { UnifiedCatalogPage } from './UnifiedCatalogPage';
+export { ExperiencesHomePage } from './ExperiencesHomePage';
 export {
   homeIaPage,
   inventoriesIaPage,

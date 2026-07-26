@@ -8,6 +8,7 @@ export type NavIaModel = 'curated' | 'sections' | 'experiences' | 'flat';
  * Templates/Activity are duplicated inside each experience's rail.
  */
 export type NavExperience =
+  | 'all'
   | 'automate'
   | 'develop'
   | 'compliance'
@@ -18,7 +19,7 @@ const MODEL_KEY = 'portal-nav-ia-model';
 const EXPERIENCE_KEY = 'portal-nav-experience';
 
 const DEFAULT_MODEL: NavIaModel = 'curated';
-const DEFAULT_EXPERIENCE: NavExperience = 'automate';
+const DEFAULT_EXPERIENCE: NavExperience = 'all';
 
 const listeners = new Set<() => void>();
 
@@ -48,6 +49,7 @@ function readExperience(): NavExperience {
   try {
     const raw = localStorage.getItem(EXPERIENCE_KEY);
     if (
+      raw === 'all' ||
       raw === 'automate' ||
       raw === 'develop' ||
       raw === 'compliance' ||
@@ -78,7 +80,7 @@ export function availableExperiences(args: {
   compliance: boolean;
   rhem: boolean;
 }): NavExperience[] {
-  const list: NavExperience[] = ['automate'];
+  const list: NavExperience[] = ['all', 'automate'];
   if (args.role === 'developer' || args.isAdmin) list.push('develop');
   if ((args.role === 'operator' || args.isAdmin) && args.compliance) {
     list.push('compliance');
@@ -91,6 +93,7 @@ export function availableExperiences(args: {
 }
 
 export const EXPERIENCE_LABELS: Record<NavExperience, string> = {
+  all: 'All (Home)',
   automate: 'Automate',
   develop: 'Develop',
   compliance: 'Compliance',

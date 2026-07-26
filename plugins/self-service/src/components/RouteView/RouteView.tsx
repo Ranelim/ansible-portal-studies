@@ -39,6 +39,7 @@ import { CompliancePage } from '../Compliance/CompliancePage';
 import {
   IaPlaceholderPage,
   UnifiedCatalogPage,
+  ExperiencesHomePage,
   homeIaPage,
   inventoriesIaPage,
   edgeFleetsIaPage,
@@ -159,9 +160,11 @@ const RouteViewContent = () => {
             </RequirePermission>
           }
         />
-        {/* IA — Option 3 Home + Option 1 Catalog hub */}
+        {/* IA — Option 3 Home + Option 2 All experiences + Option 1 Catalog hub */}
         <Route path="home" element={<IaPlaceholderPage config={homeIaPage} />} />
         <Route path="home/*" element={<IaPlaceholderPage config={homeIaPage} />} />
+        <Route path="experiences" element={<ExperiencesHomePage />} />
+        <Route path="experiences/*" element={<ExperiencesHomePage />} />
         <Route path="resources" element={<UnifiedCatalogPage />} />
         <Route path="resources/*" element={<UnifiedCatalogPage />} />
         {/* IA placeholders — Inventories / Edge fleets (AAP-84131) */}

@@ -9,11 +9,8 @@ import {
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   useNavIaModel,
-  useNavPlugins,
-  useUserRoleContext,
   writeNavIaModel,
   writeNavExperience,
-  availableExperiences,
   type NavIaModel,
 } from '@ansible/plugin-backstage-self-service';
 import { IA_BANNER_HEIGHT } from './chromeHeights';
@@ -25,13 +22,14 @@ const IA_MODEL_OPTIONS: Array<{
 }> = [
   {
     id: 'sections',
-    label: 'Option 1 — Section drawers + Catalog',
+    label: 'Option 1 — Section drawers + Catalog (curated)',
     blurb: 'Collapsible job sections, one rail item per entity, Catalog hub.',
   },
   {
     id: 'experiences',
-    label: 'Option 2 — Experiences',
-    blurb: 'Switch experience in the left rail; each mode owns its menu.',
+    label: 'Option 2 — Experiences (toggle)',
+    blurb:
+      'Experience toggle in the rail; All (Home) catalogs experiences + dashboard.',
   },
   {
     id: 'flat',
@@ -112,9 +110,6 @@ export const IaPrototypeBanner = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { model, setModel, setExperience } = useNavIaModel();
-  const { plugins } = useNavPlugins();
-  const { role, hasRole } = useUserRoleContext();
-  const isAdmin = hasRole('admin');
 
   if (location.pathname.includes('/setup')) {
     return null;
@@ -126,16 +121,9 @@ export const IaPrototypeBanner = () => {
     setModel(next);
     writeNavIaModel(next);
     if (next === 'experiences') {
-      const choices = availableExperiences({
-        role,
-        isAdmin,
-        compliance: plugins.compliance,
-        rhem: plugins.rhem,
-      });
-      if (choices[0]) {
-        setExperience(choices[0]);
-        writeNavExperience(choices[0]);
-      }
+      setExperience('all');
+      writeNavExperience('all');
+      navigate('/self-service/experiences');
     }
     if (next === 'sections') {
       navigate('/self-service/resources');

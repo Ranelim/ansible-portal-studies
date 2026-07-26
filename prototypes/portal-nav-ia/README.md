@@ -21,8 +21,8 @@ Purple **Nav IA prototype** banner (above the dark masthead) — short explanati
 
 | Model | What it demonstrates |
 |---|---|
-| **Option 1 — Section drawers + Catalog** | Default band: **Catalog** hub + Templates + Activity; drawers for Develop / Operate / … |
-| **Option 2 — Experiences** | **Experience** select at top of left rail; items below (no repeat of experience name); Templates + Activity in every experience |
+| **Option 1 — Section drawers + Catalog (curated)** | Default band: **Catalog** hub + Templates + Activity; drawers for Develop / Operate / … |
+| **Option 2 — Experiences (toggle)** | Rail **Experience** select incl. **All (Home)** — dashboard + catalog of experiences/plugins; other modes own their menus |
 | **Option 3 — Flat list (RHDH)** | Pins + flat entities; **Administration** collapsible drawer sticky at bottom of the rail |
 | **Option 4 — Curated sections** | Role-adaptive Automate / Develop / Operate with curated entity items (incl. seat + sprawl demos) |
 

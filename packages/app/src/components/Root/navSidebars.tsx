@@ -381,7 +381,7 @@ export const SectionsCatalogSidebar = () => {
 
   return (
     <SearchAndMenu>
-      <ModelHint text="Option 1 — Catalog hub · section drawers · 1 item/entity" />
+      <ModelHint text="Option 1 (curated) — Catalog hub · section drawers · 1 item/entity" />
 
       {/* Default band (no section label): Portal Catalog hub + run */}
       <SidebarItem
@@ -550,6 +550,7 @@ export const FlatNavSidebar = () => {
 };
 
 const EXPERIENCE_LANDING: Record<NavExperience, string> = {
+  all: '/self-service/experiences',
   automate: '/create',
   develop: '/self-service/repositories',
   compliance: '/self-service/inventories',
@@ -559,17 +560,39 @@ const EXPERIENCE_LANDING: Record<NavExperience, string> = {
 
 const useExperienceSwitchStyles = makeStyles(theme => ({
   wrap: {
-    padding: theme.spacing(1, 1.5, 1.5),
+    display: 'block',
+    boxSizing: 'border-box',
+    // Full width of the nav content area, inset from panel edges
+    width: '100%',
+    paddingLeft: theme.spacing(1.5),
+    paddingRight: theme.spacing(1.5),
+    paddingTop: theme.spacing(0.5),
+    paddingBottom: theme.spacing(1.5),
   },
   select: {
     width: '100%',
-    '& .MuiOutlinedInput-root': {
+    display: 'block',
+    '& .MuiInputBase-root, & .MuiOutlinedInput-root': {
+      width: '100%',
       borderRadius: 4,
       fontSize: 13,
       fontWeight: 600,
+      backgroundColor: theme.palette.background.paper,
     },
   },
 }));
+
+/** Run pair — Templates + History (Activity). */
+const RunItems = () => (
+  <>
+    <SidebarItem icon={AddCircleOutlineIcon} to="/create" text="Templates" />
+    <SidebarItem
+      icon={HistoryIcon}
+      to="/self-service/create/tasks"
+      text="History"
+    />
+  </>
+);
 
 /** Option 2 — Experience toggle in the rail; experience name is the chrome, not a section label. */
 export const ExperiencesSidebar = () => {
@@ -588,7 +611,7 @@ export const ExperiencesSidebar = () => {
 
   const active: NavExperience = available.includes(experience)
     ? experience
-    : available[0] ?? 'automate';
+    : available[0] ?? 'all';
 
   useEffect(() => {
     if (active !== experience) {
@@ -604,15 +627,21 @@ export const ExperiencesSidebar = () => {
 
   return (
     <SearchAndMenu>
-      <ModelHint text="Option 2 — experience switcher in rail; no repeat of experience name" />
+      <ModelHint text="Option 2 (toggle) — experience switcher in rail; no repeat of experience name" />
 
       <Box className={classes.wrap}>
-        <FormControl variant="outlined" size="small" className={classes.select}>
+        <FormControl
+          variant="outlined"
+          size="small"
+          fullWidth
+          className={classes.select}
+        >
           <InputLabel id="portal-experience-label">Experience</InputLabel>
           <Select
             labelId="portal-experience-label"
             label="Experience"
             value={active}
+            fullWidth
             onChange={e => onExperienceChange(e.target.value as NavExperience)}
           >
             {available.map(id => (
@@ -624,24 +653,39 @@ export const ExperiencesSidebar = () => {
         </FormControl>
       </Box>
 
-      {/* Shared run pair — every experience */}
-      <AutomateItems />
-      <SidebarDivider />
-
-      {active === 'automate' && (
+      {active === 'all' && (
         <>
           <SidebarItem
-            icon={ViewListIcon}
-            to="/create"
-            text="Browse templates"
+            icon={DashboardIcon}
+            to="/self-service/experiences"
+            text="Dashboard"
           />
-          <LearnItems />
+          <SidebarItem
+            icon={ViewListIcon}
+            to="/self-service/experiences?tab=catalog"
+            text="Experiences catalog"
+          />
+          <SidebarDivider />
+          <RunItems />
+        </>
+      )}
+
+      {/* SME / Automate — Templates, History, Catalog only */}
+      {active === 'automate' && (
+        <>
+          <RunItems />
+          <SidebarItem
+            icon={ViewListIcon}
+            to="/self-service/resources"
+            text="Catalog"
+          />
         </>
       )}
 
       {active === 'develop' && (
         <>
-          {/* Same entity rail as today — Quality / CI stay tabs on Git Repositories */}
+          <RunItems />
+          <SidebarDivider />
           <SidebarItem
             icon={CodeIcon}
             to="/self-service/repositories"
@@ -673,6 +717,8 @@ export const ExperiencesSidebar = () => {
 
       {active === 'compliance' && (
         <>
+          <RunItems />
+          <SidebarDivider />
           <SidebarItem
             icon={StorageIcon}
             to="/self-service/inventories"
@@ -705,6 +751,8 @@ export const ExperiencesSidebar = () => {
 
       {active === 'edge' && (
         <>
+          <RunItems />
+          <SidebarDivider />
           <SidebarItem
             icon={RouterIcon}
             to="/self-service/edge-fleets"
@@ -735,13 +783,8 @@ export const ExperiencesSidebar = () => {
         </>
       )}
 
-      {active === 'admin' && (
-        <>
-          <AdminItems />
-          <SidebarDivider />
-          <LearnItems />
-        </>
-      )}
+      {/* Admin — settings only; no Templates / History */}
+      {active === 'admin' && <AdminItems />}
     </SearchAndMenu>
   );
 };
