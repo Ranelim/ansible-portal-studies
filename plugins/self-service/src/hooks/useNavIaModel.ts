@@ -18,7 +18,7 @@ export type NavExperience =
 const MODEL_KEY = 'portal-nav-ia-model';
 const EXPERIENCE_KEY = 'portal-nav-experience';
 
-const DEFAULT_MODEL: NavIaModel = 'curated';
+const DEFAULT_MODEL: NavIaModel = 'flat';
 const DEFAULT_EXPERIENCE: NavExperience = 'all';
 
 const listeners = new Set<() => void>();

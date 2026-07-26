@@ -84,7 +84,7 @@ const RoleAdaptiveSidebar = () => {
   const { model } = useNavIaModel();
   if (model === 'experiences') return <ExperiencesSidebar />;
   if (model === 'flat') return <FlatNavSidebar />;
-  return <BaselineSidebar />; // Option 1 — curated sections
+  return <BaselineSidebar />; // Option 2 — curated sections
 };
 
 export const Root = ({ children }: PropsWithChildren<{}>) => {

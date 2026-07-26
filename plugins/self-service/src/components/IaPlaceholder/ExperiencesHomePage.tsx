@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { Link as RouterLink, useNavigate, useLocation } from 'react-router-dom';
-import { Page, Header, HeaderTabs, Content } from '@backstage/core-components';
+import { Page, Header, Content } from '@backstage/core-components';
 import {
   Box,
   Button,
@@ -43,6 +43,8 @@ type PluginCatalogRow = {
   status: 'Enabled' | 'Seat-gated' | 'Always on';
   landing: string;
 };
+
+type BridgeView = 'dashboard' | 'catalog' | 'plugins';
 
 const EXPERIENCE_META: Record<
   Exclude<NavExperience, 'all'>,
@@ -120,36 +122,51 @@ const useStyles = makeStyles(theme => ({
   },
 }));
 
-function tabIndexFromSearch(search: string): number {
+function viewFromLocation(pathname: string, search: string): BridgeView {
+  if (pathname.endsWith('/plugins')) return 'plugins';
+  if (pathname.endsWith('/catalog')) return 'catalog';
+  // Legacy query tabs from earlier prototype builds
   const tab = new URLSearchParams(search).get('tab');
-  if (tab === 'catalog') return 1;
-  if (tab === 'plugins') return 2;
-  return 0;
+  if (tab === 'plugins') return 'plugins';
+  if (tab === 'catalog') return 'catalog';
+  return 'dashboard';
 }
 
-function pathForTab(index: number): string {
-  if (index === 1) return '/self-service/experiences?tab=catalog';
-  if (index === 2) return '/self-service/experiences?tab=plugins';
-  return '/self-service/experiences';
-}
+const VIEW_META: Record<
+  BridgeView,
+  { title: string; subtitle: string }
+> = {
+  dashboard: {
+    title: 'Dashboard',
+    subtitle:
+      'Bridge-style home — overview of experiences on this seat. Open a mode to work; no Templates or History here.',
+  },
+  catalog: {
+    title: 'Experiences',
+    subtitle:
+      'Experiences available on this seat — what they contain and which plugins feed them.',
+  },
+  plugins: {
+    title: 'Plugins',
+    subtitle:
+      'Installed / seat-visible plugins and which experience they open into.',
+  },
+};
 
 /**
- * Option 3 — All (Home): Bridge-style hub to browse experiences and plugins,
- * then open into a mode. No Templates / History here.
+ * Option 3 — All (Home): Bridge-style hub. View is chosen from the left rail
+ * (Dashboard / Experiences / Plugins) — not page tabs.
  */
 export const ExperiencesHomePage = () => {
   const classes = useStyles();
   const navigate = useNavigate();
   const location = useLocation();
-  const [tab, setTab] = useState(0);
+  const view = viewFromLocation(location.pathname, location.search);
+  const meta = VIEW_META[view];
   const { role, hasRole } = useUserRoleContext();
   const { plugins } = useNavPlugins();
   const { setExperience } = useNavIaModel();
   const isAdmin = hasRole('admin');
-
-  useEffect(() => {
-    setTab(tabIndexFromSearch(location.search));
-  }, [location.search]);
 
   const available = useMemo(
     () =>
@@ -234,18 +251,12 @@ export const ExperiencesHomePage = () => {
     navigate(landing);
   };
 
-  const headerTabs = [
-    { id: 'dashboard', label: 'Dashboard' },
-    { id: 'catalog', label: 'Experiences' },
-    { id: 'plugins', label: 'Plugins' },
-  ];
-
   return (
     <Page themeId="app">
       <Header
         title={
           <Box display="flex" alignItems="center" style={{ gap: 8 }}>
-            <span>All experiences</span>
+            <span>{meta.title}</span>
             <Chip
               label="Option 3"
               size="small"
@@ -254,19 +265,11 @@ export const ExperiencesHomePage = () => {
             />
           </Box>
         }
-        pageTitleOverride="All experiences"
-        subtitle="Bridge-style home — browse experiences and plugins, then open into a mode. No Templates or History here."
-      />
-      <HeaderTabs
-        selectedIndex={tab}
-        onChange={index => {
-          setTab(index);
-          navigate(pathForTab(index), { replace: true });
-        }}
-        tabs={headerTabs}
+        pageTitleOverride={meta.title}
+        subtitle={meta.subtitle}
       />
       <Content>
-        {tab === 0 && (
+        {view === 'dashboard' && (
           <>
             <Typography
               variant="body2"
@@ -316,134 +319,114 @@ export const ExperiencesHomePage = () => {
           </>
         )}
 
-        {tab === 1 && (
-          <>
-            <Typography
-              variant="body2"
-              color="textSecondary"
-              style={{ marginBottom: 16, maxWidth: 720, lineHeight: 1.6 }}
-            >
-              Experiences available on this seat — what they contain and which
-              plugins feed them.
-            </Typography>
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>Experience</TableCell>
-                  <TableCell>Plugins</TableCell>
-                  <TableCell>Rail items</TableCell>
-                  <TableCell />
+        {view === 'catalog' && (
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>Experience</TableCell>
+                <TableCell>Plugins</TableCell>
+                <TableCell>Rail items</TableCell>
+                <TableCell />
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {rows.map(row => (
+                <TableRow key={row.id} hover>
+                  <TableCell>
+                    <Typography variant="body2" style={{ fontWeight: 600 }}>
+                      {row.label}
+                    </Typography>
+                    <Typography variant="caption" color="textSecondary">
+                      {row.summary}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Box className={classes.chipRow}>
+                      {row.plugins.map(p => (
+                        <Chip
+                          key={p}
+                          size="small"
+                          label={p}
+                          variant="outlined"
+                          style={{ borderRadius: 12, fontSize: 11 }}
+                        />
+                      ))}
+                    </Box>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2" color="textSecondary">
+                      {row.railItems.join(' · ')}
+                    </Typography>
+                  </TableCell>
+                  <TableCell align="right">
+                    <Link
+                      component={RouterLink}
+                      to={row.landing}
+                      color="primary"
+                      onClick={e => {
+                        e.preventDefault();
+                        openExperience(row.id, row.landing);
+                      }}
+                    >
+                      Open
+                    </Link>
+                  </TableCell>
                 </TableRow>
-              </TableHead>
-              <TableBody>
-                {rows.map(row => (
-                  <TableRow key={row.id} hover>
-                    <TableCell>
-                      <Typography variant="body2" style={{ fontWeight: 600 }}>
-                        {row.label}
-                      </Typography>
-                      <Typography variant="caption" color="textSecondary">
-                        {row.summary}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Box className={classes.chipRow}>
-                        {row.plugins.map(p => (
-                          <Chip
-                            key={p}
-                            size="small"
-                            label={p}
-                            variant="outlined"
-                            style={{ borderRadius: 12, fontSize: 11 }}
-                          />
-                        ))}
-                      </Box>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2" color="textSecondary">
-                        {row.railItems.join(' · ')}
-                      </Typography>
-                    </TableCell>
-                    <TableCell align="right">
-                      <Link
-                        component={RouterLink}
-                        to={row.landing}
-                        color="primary"
-                        onClick={e => {
-                          e.preventDefault();
-                          openExperience(row.id, row.landing);
-                        }}
-                      >
-                        Open
-                      </Link>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </>
+              ))}
+            </TableBody>
+          </Table>
         )}
 
-        {tab === 2 && (
-          <>
-            <Typography
-              variant="body2"
-              color="textSecondary"
-              style={{ marginBottom: 16, maxWidth: 720, lineHeight: 1.6 }}
-            >
-              Plugins area — installed / seat-visible plugins and which experience
-              they open into. Browse here; work happens inside the experience.
-            </Typography>
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>Plugin</TableCell>
-                  <TableCell>Experience</TableCell>
-                  <TableCell>Contributes</TableCell>
-                  <TableCell>Status</TableCell>
-                  <TableCell />
+        {view === 'plugins' && (
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>Plugin</TableCell>
+                <TableCell>Experience</TableCell>
+                <TableCell>Contributes</TableCell>
+                <TableCell>Status</TableCell>
+                <TableCell />
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {pluginRows.map(row => (
+                <TableRow key={`${row.name}-${row.experienceId}`} hover>
+                  <TableCell>
+                    <Typography variant="body2" style={{ fontWeight: 600 }}>
+                      {row.name}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>{row.experienceLabel}</TableCell>
+                  <TableCell>
+                    <Typography variant="body2" color="textSecondary">
+                      {row.contributes}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Chip
+                      size="small"
+                      label={row.status}
+                      variant="outlined"
+                      style={{ borderRadius: 12, fontSize: 11 }}
+                    />
+                  </TableCell>
+                  <TableCell align="right">
+                    <Link
+                      component={RouterLink}
+                      to={row.landing}
+                      color="primary"
+                      onClick={e => {
+                        e.preventDefault();
+                        openExperience(row.experienceId, row.landing);
+                      }}
+                    >
+                      Open in {row.experienceLabel}
+                    </Link>
+                  </TableCell>
                 </TableRow>
-              </TableHead>
-              <TableBody>
-                {pluginRows.map(row => (
-                  <TableRow key={`${row.name}-${row.experienceId}`} hover>
-                    <TableCell>
-                      <Typography variant="body2" style={{ fontWeight: 600 }}>
-                        {row.name}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>{row.experienceLabel}</TableCell>
-                    <TableCell>
-                      <Typography variant="body2" color="textSecondary">
-                        {row.contributes}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        size="small"
-                        label={row.status}
-                        variant="outlined"
-                        style={{ borderRadius: 12, fontSize: 11 }}
-                      />
-                    </TableCell>
-                    <TableCell align="right">
-                      <Link
-                        component={RouterLink}
-                        to={row.landing}
-                        color="primary"
-                        onClick={e => {
-                          e.preventDefault();
-                          openExperience(row.experienceId, row.landing);
-                        }}
-                      >
-                        Open in {row.experienceLabel}
-                      </Link>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </>
+              ))}
+            </TableBody>
+          </Table>
         )}
       </Content>
     </Page>

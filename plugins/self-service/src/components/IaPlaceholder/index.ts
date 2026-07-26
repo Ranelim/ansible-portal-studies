@@ -1,8 +1,8 @@
 export { IaPlaceholderPage } from './IaPlaceholderPage';
 export { UnifiedCatalogPage } from './UnifiedCatalogPage';
 export { ExperiencesHomePage } from './ExperiencesHomePage';
+export { FlatHomeDashboardPage } from './FlatHomeDashboardPage';
 export {
-  homeIaPage,
   inventoriesIaPage,
   edgeFleetsIaPage,
   edgeDevicesIaPage,

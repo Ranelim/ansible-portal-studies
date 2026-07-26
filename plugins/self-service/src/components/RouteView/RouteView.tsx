@@ -40,7 +40,7 @@ import {
   IaPlaceholderPage,
   UnifiedCatalogPage,
   ExperiencesHomePage,
-  homeIaPage,
+  FlatHomeDashboardPage,
   inventoriesIaPage,
   edgeFleetsIaPage,
   edgeDevicesIaPage,
@@ -160,9 +160,9 @@ const RouteViewContent = () => {
             </RequirePermission>
           }
         />
-        {/* IA — Flat Home + Experiences All + Catalog hub */}
-        <Route path="home" element={<IaPlaceholderPage config={homeIaPage} />} />
-        <Route path="home/*" element={<IaPlaceholderPage config={homeIaPage} />} />
+        {/* IA — Flat Home dashboard + Experiences All + Catalog hub */}
+        <Route path="home" element={<FlatHomeDashboardPage />} />
+        <Route path="home/*" element={<FlatHomeDashboardPage />} />
         <Route path="experiences" element={<ExperiencesHomePage />} />
         <Route path="experiences/*" element={<ExperiencesHomePage />} />
         <Route path="resources" element={<UnifiedCatalogPage />} />

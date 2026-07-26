@@ -21,17 +21,17 @@ Purple **Nav IA prototype** banner (above the dark masthead) — short explanati
 
 | Model | What it demonstrates |
 |---|---|
-| **Option 1 — Curated sections** | Role-adaptive Automate / Develop / Operate with curated entity items (incl. seat + sprawl demos) |
-| **Option 2 — Flat list (RHDH)** | Pins + flat entities; **Administration** collapsible drawer sticky at bottom of the rail |
-| **Option 3 — Experiences (toggle)** | Rail **Experience** select incl. **All (Home)** — Bridge-style dashboard + experiences + plugins; other modes own their menus |
+| **Option 1 — Flat list (RHDH)** | **One menu item per primary entity**; each entity holds its ecosystem (plugins/tabs/actions). Pins + flat phonebook; Home = seat dashboard; Admin drawer at bottom |
+| **Option 2 — Curated sections** | **Same entity + ecosystem rule**, grouped under role-adaptive Automate / Develop / Operate |
+| **Option 3 — Experiences (toggle)** | One experience at a time; All (Home) = Bridge hub for experiences/plugins (no run items until a mode) |
 
 Also: Profile → **Switch seat** (SME / Developer / ops seats / sprawl / Admin).
 
 ### Suggested walkthrough
 
-1. Seat **Ops (both)** → **Option 1** → Inventories + Edge fleets under Operate.  
-2. Same seat → **Option 2** → flat list vs curated.  
-3. Seat **Admin** → **Option 3** → All (Home) dashboard / Experiences / Plugins, then open Develop or Administration.
+1. Seat **Ops (both)** → **Option 1** → flat Inventories + Edge fleets; open Home dashboard.  
+2. Same seat → **Option 2** → same entities under Operate sections.  
+3. Seat **Admin** → **Option 3** → All (Home) / Experiences / Plugins, then open Develop or Administration.
 
 ## Key files
 
@@ -39,4 +39,4 @@ Also: Profile → **Switch seat** (SME / Developer / ops seats / sprawl / Admin)
 - `packages/app/src/components/GlobalHeader/GlobalHeader.tsx` — seat switcher
 - `packages/app/src/components/IaPrototype/` — purple banner + chrome heights
 - `plugins/self-service/src/hooks/useNavIaModel.ts` — model / experience state
-- `plugins/self-service/src/components/IaPlaceholder/` — placeholder + experiences home + catalog hub
+- `plugins/self-service/src/components/IaPlaceholder/` — Flat Home dashboard, experiences home, catalog hub

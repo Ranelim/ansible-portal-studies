@@ -15,25 +15,6 @@ export type IaPageConfig = {
   antiPattern?: boolean;
 };
 
-export const homeIaPage: IaPageConfig = {
-  title: 'Home',
-  subtitle: 'Automation Portal overview',
-  purpose:
-    'Option 2 (RHDH) pin: landing dashboard for the seat — recent activity, shortcuts into Catalog and entity areas. Distinct from Catalog (find a resource) and Templates (run something).',
-  tabs: [
-    {
-      id: 'overview',
-      label: 'Overview',
-      expect: 'Seat-aware summary cards and shortcuts.',
-    },
-    {
-      id: 'recent',
-      label: 'Recent',
-      expect: 'Recently opened entities and job runs.',
-    },
-  ],
-};
-
 export const inventoriesIaPage: IaPageConfig = {
   title: 'Inventories',
   subtitle: 'Compliance on host inventories',

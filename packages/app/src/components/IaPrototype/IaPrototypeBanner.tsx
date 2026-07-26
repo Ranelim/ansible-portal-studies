@@ -21,21 +21,22 @@ const IA_MODEL_OPTIONS: Array<{
   blurb: string;
 }> = [
   {
-    id: 'curated',
-    label: 'Option 1 — Curated sections',
-    blurb: 'Role-adaptive Automate / Develop / Operate with curated entity items.',
+    id: 'flat',
+    label: 'Option 1 — Flat list (RHDH)',
+    blurb:
+      'One menu item per primary entity (Git Repositories, Inventories, Edge fleets, …). Each entity holds its ecosystem — related plugins, tabs, and actions — instead of new sibling rail rows. Pinned Home / Catalog / run / learn, then a flat phonebook; Admin in a bottom drawer.',
   },
   {
-    id: 'flat',
-    label: 'Option 2 — Flat list (RHDH)',
+    id: 'curated',
+    label: 'Option 2 — Curated sections',
     blurb:
-      'Pinned Home / Catalog / Templates / History / Docs / Learning, then flat entities (manual order).',
+      'Same entity rule as Option 1 — one rail item per primary entity, with the full ecosystem on that surface — grouped under role-adaptive Automate / Develop / Operate so the list is organized by job.',
   },
   {
     id: 'experiences',
     label: 'Option 3 — Experiences (toggle)',
     blurb:
-      'Experience toggle; All (Bridge) browses experiences/plugins — no run items.',
+      'Show one experience at a time via a rail toggle. All (Home) is a Bridge-style hub for experiences and plugins — no Templates/History until you enter a mode.',
   },
 ];
 
@@ -75,7 +76,8 @@ const useStyles = makeStyles(theme => ({
     },
   },
   select: {
-    minWidth: 280,
+    minWidth: 320,
+    maxWidth: 420,
     flexShrink: 0,
     '& .MuiOutlinedInput-root': {
       height: 32,
@@ -143,12 +145,20 @@ export const IaPrototypeBanner = () => {
           inputProps={{ 'aria-label': 'Navigation IA model' }}
         >
           {IA_MODEL_OPTIONS.map(opt => (
-            <MenuItem key={opt.id} value={opt.id}>
-              <Box>
+            <MenuItem
+              key={opt.id}
+              value={opt.id}
+              style={{ whiteSpace: 'normal', maxWidth: 420, alignItems: 'flex-start' }}
+            >
+              <Box py={0.5}>
                 <Typography variant="body2" style={{ fontWeight: 600 }}>
                   {opt.label}
                 </Typography>
-                <Typography variant="caption" color="textSecondary">
+                <Typography
+                  variant="caption"
+                  color="textSecondary"
+                  style={{ display: 'block', lineHeight: 1.4, marginTop: 2 }}
+                >
                   {opt.blurb}
                 </Typography>
               </Box>

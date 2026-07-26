@@ -258,7 +258,7 @@ const AdminItems = () => (
   </>
 );
 
-/** Option 1 — curated role-adaptive rail (job sections + entity items). */
+/** Option 2 — curated role-adaptive rail (job sections + entity items). */
 export const BaselineSidebar = () => {
   const { role, hasRole } = useUserRoleContext();
   const { plugins } = useNavPlugins();
@@ -279,7 +279,7 @@ export const BaselineSidebar = () => {
 
   return (
     <SearchAndMenu>
-      <ModelHint text="Option 1 — curated objects under job sections" />
+      <ModelHint text="Option 2 — curated · 1 item/entity · ecosystem on the page" />
       <SidebarSectionLabel text="Automate" />
       <AutomateItems />
       {showDevelop && (
@@ -366,7 +366,8 @@ export const BaselineSidebar = () => {
 };
 
 /**
- * Option 2 — Pinned default band + flat entity list (no section labels).
+ * Option 1 — Pinned default band + flat entity list (no section labels).
+ * One rail item per primary entity; ecosystem lives on the entity surface.
  * Develop bundle order: Git Repositories → EEs → Collections; Operate follows with no divider.
  */
 export const FlatNavSidebar = () => {
@@ -396,7 +397,7 @@ export const FlatNavSidebar = () => {
         ) : undefined
       }
     >
-      <ModelHint text="Option 2 (RHDH) — pins · flat entities · Admin drawer at bottom" />
+      <ModelHint text="Option 1 (RHDH) — 1 item/entity · ecosystem on the page · Admin drawer" />
 
       <SidebarItem icon={HomeIcon} to="/self-service/home" text="Home" />
       <SidebarItem
@@ -566,22 +567,23 @@ export const ExperiencesSidebar = () => {
         </FormControl>
       </Box>
 
-      {/* All (Home) — Bridge-style hub: browse experiences/plugins; no Templates/History */}
+      {/* All (Home) — Bridge-style hub; distinct paths so only one item looks selected */}
       {active === 'all' && (
         <>
           <SidebarItem
             icon={DashboardIcon}
             to="/self-service/experiences"
             text="Dashboard"
+            end
           />
           <SidebarItem
             icon={ViewListIcon}
-            to="/self-service/experiences?tab=catalog"
+            to="/self-service/experiences/catalog"
             text="Experiences"
           />
           <SidebarItem
             icon={CategoryIcon}
-            to="/self-service/experiences?tab=plugins"
+            to="/self-service/experiences/plugins"
             text="Plugins"
           />
         </>
