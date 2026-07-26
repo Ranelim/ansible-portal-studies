@@ -36,19 +36,144 @@ import { makeStyles, alpha } from '@material-ui/core/styles';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useApi, identityApiRef } from '@backstage/core-plugin-api';
 import { useStarredEntities } from '@backstage/plugin-catalog-react';
-import { useState, useMemo } from 'react';
-import { useUserRoleContext, type UserRole } from '@ansible/plugin-backstage-self-service';
+import { useState, useMemo, type ReactNode } from 'react';
+import {
+  useUserRoleContext,
+  writeNavPlugins,
+  type UserRole,
+  type NavPluginsState,
+} from '@ansible/plugin-backstage-self-service';
 import { useLightspeed } from '../Lightspeed';
 import { useQuickstart } from '../Quickstart';
 import { OmniSearch } from '../search/OmniSearch';
 import ComputerIcon from '@material-ui/icons/Computer';
+import RouterIcon from '@material-ui/icons/Router';
+import StorageIcon from '@material-ui/icons/Storage';
 import redHatLogo from '../../assets/redhat-logo.png';
+import { IA_BANNER_HEIGHT } from '../IaPrototype';
+
+const SEAT_STORAGE_KEY = 'portal-nav-seat';
+
+/** Prototype seats: role + which optional plugins appear in the rail */
+const SEAT_OPTIONS: Array<{
+  id: string;
+  role: UserRole;
+  label: string;
+  icon: ReactNode;
+  plugins: NavPluginsState;
+}> = [
+  {
+    id: 'sme',
+    role: 'sme',
+    label: 'SME',
+    icon: <PersonOutlineIcon fontSize="small" />,
+    plugins: {
+      apme: false,
+      compliance: false,
+      rhem: false,
+      rhemDevices: false,
+      navSprawl: false,
+    },
+  },
+  {
+    id: 'developer',
+    role: 'developer',
+    label: 'Developer',
+    icon: <BuildIcon fontSize="small" />,
+    plugins: {
+      apme: true,
+      compliance: false,
+      rhem: false,
+      rhemDevices: false,
+      navSprawl: false,
+    },
+  },
+  {
+    id: 'compliance-ops',
+    role: 'operator',
+    label: 'Compliance ops',
+    icon: <StorageIcon fontSize="small" />,
+    plugins: {
+      apme: false,
+      compliance: true,
+      rhem: false,
+      rhemDevices: false,
+      navSprawl: false,
+    },
+  },
+  {
+    id: 'edge-ops',
+    role: 'operator',
+    label: 'Edge ops (1 item)',
+    icon: <RouterIcon fontSize="small" />,
+    plugins: {
+      apme: false,
+      compliance: false,
+      rhem: true,
+      rhemDevices: false,
+      navSprawl: false,
+    },
+  },
+  {
+    id: 'edge-ops-2',
+    role: 'operator',
+    label: 'Edge ops (2 items)',
+    icon: <RouterIcon fontSize="small" />,
+    plugins: {
+      apme: false,
+      compliance: false,
+      rhem: true,
+      rhemDevices: true,
+      navSprawl: false,
+    },
+  },
+  {
+    id: 'ops-both',
+    role: 'operator',
+    label: 'Ops (both plugins)',
+    icon: <SecurityIcon fontSize="small" />,
+    plugins: {
+      apme: false,
+      compliance: true,
+      rhem: true,
+      rhemDevices: false,
+      navSprawl: false,
+    },
+  },
+  {
+    id: 'ops-sprawl',
+    role: 'operator',
+    label: 'Anti-pattern: sprawl (6)',
+    icon: <SecurityIcon fontSize="small" />,
+    plugins: {
+      apme: false,
+      compliance: true,
+      rhem: true,
+      rhemDevices: true,
+      navSprawl: true,
+    },
+  },
+  {
+    id: 'admin',
+    role: 'admin',
+    label: 'Admin',
+    icon: <SupervisorAccountIcon fontSize="small" />,
+    plugins: {
+      apme: true,
+      compliance: true,
+      rhem: true,
+      rhemDevices: true,
+      navSprawl: false,
+    },
+  },
+];
 
 const DEVSPACES_DASHBOARD_URL = '/devspaces-mockup.html?state=scm';
 const IS_DEVSPACES_CONNECTED = true;
 
 const useStyles = makeStyles(theme => ({
   appBar: {
+    top: IA_BANNER_HEIGHT,
     zIndex: theme.zIndex.drawer + 1,
     backgroundColor: '#151515',
     color: theme.palette.common.white,
@@ -370,7 +495,7 @@ export const GlobalHeader = () => {
           <RedHatLogo />
           <Box className={classes.brandTextGroup}>
             <Typography className={classes.brandTop}>Red Hat</Typography>
-            <Typography className={classes.brandBottom}>Ansible Portal</Typography>
+            <Typography className={classes.brandBottom}>Automation Portal</Typography>
           </Box>
         </Link>
 
@@ -617,25 +742,22 @@ export const GlobalHeader = () => {
           onClose={() => setProfileAnchor(null)}
           className={classes.menu}
         >
-          {/* Role switcher — prototype only */}
+          {/* Seat switcher — prototype only (role + plugin visibility) */}
           <MenuItem disabled style={{ opacity: 0.6 }}>
             <ListItemText
-              primary="Switch role"
+              primary="Switch seat"
               primaryTypographyProps={{ variant: 'caption', style: { fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 } }}
             />
           </MenuItem>
-          {([
-            { role: 'sme' as UserRole, label: 'SME', icon: <PersonOutlineIcon fontSize="small" /> },
-            { role: 'developer' as UserRole, label: 'Developer', icon: <BuildIcon fontSize="small" /> },
-            { role: 'operator' as UserRole, label: 'Operator', icon: <SecurityIcon fontSize="small" /> },
-            { role: 'admin' as UserRole, label: 'Admin', icon: <SupervisorAccountIcon fontSize="small" /> },
-          ]).map(({ role: r, label, icon }) => (
+          {SEAT_OPTIONS.map(({ id, role: r, label, icon, plugins }) => (
             <MenuItem
-              key={r}
+              key={id}
               className={classes.menuItem}
-              selected={currentRole === r}
+              selected={localStorage.getItem(SEAT_STORAGE_KEY) === id}
               onClick={() => {
                 localStorage.setItem('portal-user-role', r);
+                localStorage.setItem(SEAT_STORAGE_KEY, id);
+                writeNavPlugins(plugins);
                 setProfileAnchor(null);
                 window.location.reload();
               }}

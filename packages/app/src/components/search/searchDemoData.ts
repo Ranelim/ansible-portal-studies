@@ -219,7 +219,7 @@ export const SEARCH_CATALOG: SearchResultItem[] = [
   // Documentation
   {
     id: 'd1',
-    title: 'Getting Started with Ansible Portal',
+    title: 'Getting Started with Automation Portal',
     kind: 'documentation',
     description: 'Quick start guide covering project creation, templates, and pipeline setup',
     tags: ['getting-started', 'guide'],

@@ -1,0 +1,133 @@
+import { useCallback, useEffect, useMemo, useState } from 'react';
+
+/** Prototype IA models — switch to compare side by side. */
+export type NavIaModel = 'curated' | 'sections' | 'experiences' | 'flat';
+
+/**
+ * Experiences for Option 2. Availability depends on seat + plugins.
+ * Templates/Activity are duplicated inside each experience's rail.
+ */
+export type NavExperience =
+  | 'automate'
+  | 'develop'
+  | 'compliance'
+  | 'edge'
+  | 'admin';
+
+const MODEL_KEY = 'portal-nav-ia-model';
+const EXPERIENCE_KEY = 'portal-nav-experience';
+
+const DEFAULT_MODEL: NavIaModel = 'curated';
+const DEFAULT_EXPERIENCE: NavExperience = 'automate';
+
+const listeners = new Set<() => void>();
+
+function notify() {
+  listeners.forEach(fn => fn());
+}
+
+function readModel(): NavIaModel {
+  try {
+    const raw = localStorage.getItem(MODEL_KEY);
+    if (raw === 'baseline') return 'curated'; // legacy id
+    if (
+      raw === 'sections' ||
+      raw === 'experiences' ||
+      raw === 'curated' ||
+      raw === 'flat'
+    ) {
+      return raw;
+    }
+  } catch {
+    /* ignore */
+  }
+  return DEFAULT_MODEL;
+}
+
+function readExperience(): NavExperience {
+  try {
+    const raw = localStorage.getItem(EXPERIENCE_KEY);
+    if (
+      raw === 'automate' ||
+      raw === 'develop' ||
+      raw === 'compliance' ||
+      raw === 'edge' ||
+      raw === 'admin'
+    ) {
+      return raw;
+    }
+  } catch {
+    /* ignore */
+  }
+  return DEFAULT_EXPERIENCE;
+}
+
+export function writeNavIaModel(model: NavIaModel) {
+  localStorage.setItem(MODEL_KEY, model);
+  notify();
+}
+
+export function writeNavExperience(experience: NavExperience) {
+  localStorage.setItem(EXPERIENCE_KEY, experience);
+  notify();
+}
+
+export function availableExperiences(args: {
+  role: string;
+  isAdmin: boolean;
+  compliance: boolean;
+  rhem: boolean;
+}): NavExperience[] {
+  const list: NavExperience[] = ['automate'];
+  if (args.role === 'developer' || args.isAdmin) list.push('develop');
+  if ((args.role === 'operator' || args.isAdmin) && args.compliance) {
+    list.push('compliance');
+  }
+  if ((args.role === 'operator' || args.isAdmin) && args.rhem) {
+    list.push('edge');
+  }
+  if (args.isAdmin) list.push('admin');
+  return list;
+}
+
+export const EXPERIENCE_LABELS: Record<NavExperience, string> = {
+  automate: 'Automate',
+  develop: 'Develop',
+  compliance: 'Compliance',
+  edge: 'Edge',
+  admin: 'Admin',
+};
+
+/** Shared across header + sidebar so IA model / experience stay in sync. */
+export function useNavIaModel() {
+  const [model, setModelState] = useState<NavIaModel>(readModel);
+  const [experience, setExperienceState] = useState<NavExperience>(readExperience);
+
+  useEffect(() => {
+    const sync = () => {
+      setModelState(readModel());
+      setExperienceState(readExperience());
+    };
+    listeners.add(sync);
+    return () => {
+      listeners.delete(sync);
+    };
+  }, []);
+
+  const setModel = useCallback((next: NavIaModel) => {
+    localStorage.setItem(MODEL_KEY, next);
+    setModelState(next);
+    notify();
+  }, []);
+
+  const setExperience = useCallback((next: NavExperience) => {
+    localStorage.setItem(EXPERIENCE_KEY, next);
+    setExperienceState(next);
+    notify();
+  }, []);
+
+  return useMemo(
+    () => ({ model, setModel, experience, setExperience }),
+    [model, setModel, experience, setExperience],
+  );
+}

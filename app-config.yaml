@@ -17,10 +17,10 @@
 #
 
 app:
-  title: Ansible RHDH / Self-Service
+  title: Automation Portal
   baseUrl: http://localhost:3000
 organization:
-  name: Ansible RHDH
+  name: Automation Portal
 backend:
   auth:
     keys:

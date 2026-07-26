@@ -79,7 +79,7 @@ export const TechDocsWrapper = () => {
     <Page themeId="documentation">
       <Header
         title="Documentation"
-        subtitle="Documentation available in Ansible RHDH"
+        subtitle="Documentation available in Automation Portal"
       />
       <Content>
         <Box className={classes.emptyRoot}>

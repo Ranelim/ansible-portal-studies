@@ -14,14 +14,14 @@ import DeleteOutlineIcon from '@material-ui/icons/DeleteOutline';
 import FullscreenIcon from '@material-ui/icons/Fullscreen';
 import FullscreenExitIcon from '@material-ui/icons/FullscreenExit';
 import { useLightspeed, ChatMessage } from './LightspeedContext';
+import { CHROME_TOP } from '../IaPrototype';
 
 const PANEL_WIDTH = 400;
-const HEADER_HEIGHT = 64;
 
 const useStyles = makeStyles(theme => ({
   panel: {
     position: 'fixed',
-    top: HEADER_HEIGHT,
+    top: CHROME_TOP,
     right: 0,
     bottom: 0,
     zIndex: theme.zIndex.drawer + 2,

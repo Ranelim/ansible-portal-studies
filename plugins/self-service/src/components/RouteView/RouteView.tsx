@@ -36,6 +36,17 @@ import { SyncJobDetailPage } from '../Admin/SyncJobDetailPage';
 import { ContentSourcesPage } from '../Admin/ContentSourcesPage';
 import { LearningPage } from '../Learning/LearningPage';
 import { CompliancePage } from '../Compliance/CompliancePage';
+import {
+  IaPlaceholderPage,
+  UnifiedCatalogPage,
+  homeIaPage,
+  inventoriesIaPage,
+  edgeFleetsIaPage,
+  edgeDevicesIaPage,
+  complianceDashboardIaPage,
+  edgeImagesIaPage,
+  edgeRepositoriesIaPage,
+} from '../IaPlaceholder';
 import { SetupWizardPage } from '../Setup/SetupWizardPage';
 import { GeneralPage } from '../Admin/GeneralPage';
 import { DevSpacesDetailPage } from '../Admin/DevSpacesDetailPage';
@@ -148,6 +159,61 @@ const RouteViewContent = () => {
             </RequirePermission>
           }
         />
+        {/* IA — Option 3 Home + Option 1 Catalog hub */}
+        <Route path="home" element={<IaPlaceholderPage config={homeIaPage} />} />
+        <Route path="home/*" element={<IaPlaceholderPage config={homeIaPage} />} />
+        <Route path="resources" element={<UnifiedCatalogPage />} />
+        <Route path="resources/*" element={<UnifiedCatalogPage />} />
+        {/* IA placeholders — Inventories / Edge fleets (AAP-84131) */}
+        <Route
+          path="inventories"
+          element={<IaPlaceholderPage config={inventoriesIaPage} />}
+        />
+        <Route
+          path="inventories/*"
+          element={<IaPlaceholderPage config={inventoriesIaPage} />}
+        />
+        <Route
+          path="edge-fleets"
+          element={<IaPlaceholderPage config={edgeFleetsIaPage} />}
+        />
+        <Route
+          path="edge-fleets/*"
+          element={<IaPlaceholderPage config={edgeFleetsIaPage} />}
+        />
+        <Route
+          path="edge-devices"
+          element={<IaPlaceholderPage config={edgeDevicesIaPage} />}
+        />
+        <Route
+          path="edge-devices/*"
+          element={<IaPlaceholderPage config={edgeDevicesIaPage} />}
+        />
+        <Route
+          path="compliance-dashboard"
+          element={<IaPlaceholderPage config={complianceDashboardIaPage} />}
+        />
+        <Route
+          path="compliance-dashboard/*"
+          element={<IaPlaceholderPage config={complianceDashboardIaPage} />}
+        />
+        <Route
+          path="edge-images"
+          element={<IaPlaceholderPage config={edgeImagesIaPage} />}
+        />
+        <Route
+          path="edge-images/*"
+          element={<IaPlaceholderPage config={edgeImagesIaPage} />}
+        />
+        <Route
+          path="edge-repositories"
+          element={<IaPlaceholderPage config={edgeRepositoriesIaPage} />}
+        />
+        <Route
+          path="edge-repositories/*"
+          element={<IaPlaceholderPage config={edgeRepositoriesIaPage} />}
+        />
+        {/* Legacy compliance routes kept for deep links */}
         <Route path="compliance" element={<CompliancePage />} />
         <Route path="compliance/scans" element={<CompliancePage />} />
         <Route path="compliance/scan/:scanId" element={<CompliancePage />} />

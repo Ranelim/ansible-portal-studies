@@ -25,14 +25,14 @@ import SecurityIcon from '@material-ui/icons/Security';
 import SyncIcon from '@material-ui/icons/Sync';
 import { useNavigate } from 'react-router-dom';
 import { useQuickstart, QuickstartItem } from './QuickstartContext';
+import { CHROME_TOP } from '../IaPrototype';
 
 const PANEL_WIDTH = 380;
-const HEADER_HEIGHT = 64;
 
 const useStyles = makeStyles(theme => ({
   panel: {
     position: 'fixed',
-    top: HEADER_HEIGHT,
+    top: CHROME_TOP,
     right: 0,
     bottom: 0,
     width: PANEL_WIDTH,
@@ -304,7 +304,7 @@ export const QuickstartPanel = () => {
               Set up your portal
             </Typography>
             <Typography className={classes.headerSubtitle}>
-              Complete these steps to get the most out of Ansible Portal
+              Complete these steps to get the most out of Automation Portal
             </Typography>
           </Box>
           <Tooltip title="Close" arrow>

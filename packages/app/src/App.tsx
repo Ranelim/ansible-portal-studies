@@ -28,6 +28,7 @@ import { entityPage } from './components/catalog/EntityPage';
 import { SearchPage } from './components/search/SearchPage';
 import { Root } from './components/Root';
 import { GlobalHeader } from './components/GlobalHeader';
+import { IaPrototypeBanner } from './components/IaPrototype';
 import { LightspeedProvider, LightspeedPanel } from './components/Lightspeed';
 import { QuickstartProvider, QuickstartPanel, WelcomeModal } from './components/Quickstart';
 import { getThemes } from '@red-hat-developer-hub/backstage-plugin-theme';
@@ -151,7 +152,7 @@ const StaticScaffolderFallback = () => {
             </Box>
           </Box>
           <Box className={classes.sidebarSection}>
-            <Typography className={classes.sidebarLabel}>Ansible RHDH</Typography>
+            <Typography className={classes.sidebarLabel}>Automation Portal</Typography>
             <Box className={`${classes.sidebarItem} ${classes.sidebarItemActive}`}>
               <span>All</span><span>{filteredTemplates.length}</span>
             </Box>
@@ -245,7 +246,16 @@ const RoleLandingRedirect = () => {
   const { role, hasRole } = useUserRoleContext();
   let target = '/create';
   if (role === 'operator') {
-    target = '/self-service/compliance';
+    // Prefer Inventories or Edge fleets based on which plugin is enabled
+    let plugins = { compliance: true, rhem: false };
+    try {
+      plugins = { ...plugins, ...JSON.parse(localStorage.getItem('portal-nav-plugins') || '{}') };
+    } catch {
+      /* keep defaults */
+    }
+    if (plugins.compliance) target = '/self-service/inventories';
+    else if (plugins.rhem) target = '/self-service/edge-fleets';
+    else target = '/create';
   } else if (hasRole('developer')) {
     target = '/self-service/repositories';
   }
@@ -346,6 +356,7 @@ export default app.createRoot(
       <RoleProvider>
         <LightspeedProvider>
           <QuickstartProvider>
+            <IaPrototypeBanner />
             <GlobalHeader />
             <Root>{routes}</Root>
             <LightspeedPanel />

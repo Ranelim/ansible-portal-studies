@@ -25,4 +25,19 @@ export * from './apis';
 export { RestartProvider, useRestartRequired } from './components/Admin/RestartContext';
 
 export { useUserRole, useUserRoleContext, UserRoleContext } from './hooks/useUserRole';
+export {
+  useNavPlugins,
+  writeNavPlugins,
+  type NavPluginId,
+  type NavPluginsState,
+} from './hooks/useNavPlugins';
+export {
+  useNavIaModel,
+  writeNavIaModel,
+  writeNavExperience,
+  availableExperiences,
+  EXPERIENCE_LABELS,
+  type NavIaModel,
+  type NavExperience,
+} from './hooks/useNavIaModel';
 export type { UserRole, UseUserRoleResult } from './hooks/useUserRole';

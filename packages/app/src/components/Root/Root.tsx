@@ -5,56 +5,26 @@ import { useLocation } from 'react-router-dom';
 import {
   RestartProvider,
   useRestartRequired,
-  useUserRoleContext,
+  useNavIaModel,
 } from '@ansible/plugin-backstage-self-service';
-import LibraryBooks from '@material-ui/icons/LibraryBooks';
-import CategoryIcon from '@material-ui/icons/Category';
-import CodeIcon from '@material-ui/icons/Code';
-import { SidebarSectionLabel } from '@ansible/plugin-backstage-rhaap';
-import { SidebarSearchModal } from '@backstage/plugin-search';
 import {
-  Sidebar,
-  sidebarConfig,
-  SidebarDivider,
-  SidebarGroup,
-  SidebarItem,
   SidebarPage,
-  SidebarSpace,
 } from '@backstage/core-components';
-import MenuIcon from '@material-ui/icons/Menu';
-import SearchIcon from '@material-ui/icons/Search';
-import AddCircleOutlineIcon from '@material-ui/icons/AddCircleOutline';
-import MemoryIcon from '@material-ui/icons/Memory';
-import SchoolIcon from '@material-ui/icons/School';
-import AssignmentTurnedInIcon from '@material-ui/icons/AssignmentTurnedIn';
-import SyncIcon from '@material-ui/icons/Sync';
-import LinkIcon from '@material-ui/icons/Link';
-import VpnKeyIcon from '@material-ui/icons/VpnKey';
-import SettingsIcon from '@material-ui/icons/Settings';
-import HistoryIcon from '@material-ui/icons/History';
-
-const useSidebarLogoStyles = makeStyles({
-  root: {
-    width: sidebarConfig.drawerWidthClosed,
-    height: 16,
-    flexShrink: 0,
-  },
-});
-
-const SidebarSpacer = () => {
-  const classes = useSidebarLogoStyles();
-  return <div className={classes.root} />;
-};
-
-const HEADER_HEIGHT = 64;
+import {
+  BaselineSidebar,
+  SectionsCatalogSidebar,
+  ExperiencesSidebar,
+  FlatNavSidebar,
+} from './navSidebars';
+import { CHROME_TOP } from '../IaPrototype';
 
 const useRootStyles = makeStyles(theme => ({
   '@global': {
     '.BackstageSidebar-root': {
-      top: `${HEADER_HEIGHT}px !important`,
+      top: `${CHROME_TOP}px !important`,
     },
     '.BackstageSidebar-drawer': {
-      top: `${HEADER_HEIGHT}px !important`,
+      top: `${CHROME_TOP}px !important`,
       overflowY: 'auto !important' as any,
     },
     'body, html': {
@@ -69,7 +39,7 @@ const useRootStyles = makeStyles(theme => ({
     },
   },
   fixedHeaderOffset: {
-    paddingTop: HEADER_HEIGHT,
+    paddingTop: CHROME_TOP,
     minHeight: '100vh',
     backgroundColor: theme.palette.background.default,
   },
@@ -112,103 +82,11 @@ const GlobalRestartBanner = () => {
 };
 
 const RoleAdaptiveSidebar = () => {
-  const { role, hasRole } = useUserRoleContext();
-  const isAdmin = hasRole('admin');
-  const showDevelop = role === 'developer' || isAdmin;
-  const showOperate = role === 'operator' || isAdmin;
-
-  return (
-    <Sidebar>
-      <SidebarSpacer />
-      <SidebarGroup label="Search" icon={<SearchIcon />} to="/search">
-        <SidebarSearchModal />
-      </SidebarGroup>
-      <SidebarGroup label="Menu" icon={<MenuIcon />}>
-        {/* Automate — visible to all roles */}
-        <SidebarSectionLabel text="Automate" />
-        <SidebarItem
-          icon={AddCircleOutlineIcon}
-          to="/create"
-          text="Templates"
-        />
-        <SidebarItem
-          icon={HistoryIcon}
-          to="/self-service/create/tasks"
-          text="Activity"
-        />
-
-        {/* Develop — developer and admin only */}
-        {showDevelop && (
-          <>
-            <SidebarDivider />
-            <SidebarSectionLabel text="Develop" />
-            <SidebarItem
-              icon={CodeIcon}
-              to="/self-service/repositories"
-              text="Git Repositories"
-            />
-            <SidebarItem
-              icon={CategoryIcon}
-              to="/self-service/collections"
-              text="Collections"
-            />
-            <SidebarItem
-              icon={MemoryIcon}
-              to="/self-service/ee"
-              text="Execution Environments"
-            />
-          </>
-        )}
-
-        {/* Operate — operator and admin only */}
-        {showOperate && (
-          <>
-            <SidebarDivider />
-            <SidebarSectionLabel text="Operate" />
-            <SidebarItem
-              icon={AssignmentTurnedInIcon}
-              to="/self-service/compliance"
-              text="Compliance"
-            />
-          </>
-        )}
-
-        <SidebarDivider />
-        <SidebarSectionLabel text="Learn" />
-        <SidebarItem icon={LibraryBooks} to="docs" text="Documentation" />
-        <SidebarItem icon={SchoolIcon} to="/self-service/learning" text="Learning Paths" />
-
-        {/* Administration — admin only */}
-        {isAdmin && (
-          <>
-            <SidebarDivider />
-            <SidebarSectionLabel text="Administration" />
-            <SidebarItem
-              icon={SettingsIcon}
-              to="/self-service/admin/general"
-              text="Settings"
-            />
-            <SidebarItem
-              icon={LinkIcon}
-              to="/self-service/admin/integrations"
-              text="Integrations"
-            />
-            <SidebarItem
-              icon={VpnKeyIcon}
-              to="rbac"
-              text="Access Control"
-            />
-            <SidebarItem
-              icon={SyncIcon}
-              to="/self-service/admin/sync-activity"
-              text="Sync Status"
-            />
-          </>
-        )}
-      </SidebarGroup>
-      <SidebarSpace />
-    </Sidebar>
-  );
+  const { model } = useNavIaModel();
+  if (model === 'sections') return <SectionsCatalogSidebar />;
+  if (model === 'experiences') return <ExperiencesSidebar />;
+  if (model === 'flat') return <FlatNavSidebar />;
+  return <BaselineSidebar />; // Option 4 — curated
 };
 
 export const Root = ({ children }: PropsWithChildren<{}>) => {
