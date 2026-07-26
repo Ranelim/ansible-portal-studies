@@ -160,7 +160,7 @@ const RouteViewContent = () => {
             </RequirePermission>
           }
         />
-        {/* IA — Option 3 Home + Option 2 All experiences + Option 1 Catalog hub */}
+        {/* IA — Flat Home + Experiences All + Catalog hub */}
         <Route path="home" element={<IaPlaceholderPage config={homeIaPage} />} />
         <Route path="home/*" element={<IaPlaceholderPage config={homeIaPage} />} />
         <Route path="experiences" element={<ExperiencesHomePage />} />

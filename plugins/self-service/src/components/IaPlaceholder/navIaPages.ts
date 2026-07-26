@@ -19,7 +19,7 @@ export const homeIaPage: IaPageConfig = {
   title: 'Home',
   subtitle: 'Automation Portal overview',
   purpose:
-    'Option 3 pin: landing dashboard for the seat — recent activity, shortcuts into Catalog and entity areas. Distinct from Catalog (find a resource) and Templates (run something).',
+    'Option 2 (RHDH) pin: landing dashboard for the seat — recent activity, shortcuts into Catalog and entity areas. Distinct from Catalog (find a resource) and Templates (run something).',
   tabs: [
     {
       id: 'overview',

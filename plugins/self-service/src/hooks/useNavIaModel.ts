@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 /** Prototype IA models — switch to compare side by side. */
-export type NavIaModel = 'curated' | 'sections' | 'experiences' | 'flat';
+export type NavIaModel = 'curated' | 'experiences' | 'flat';
 
 /**
- * Experiences for Option 2. Availability depends on seat + plugins.
+ * Experiences for Option 3 (toggle). Availability depends on seat + plugins.
  * Templates/Activity are duplicated inside each experience's rail.
  */
 export type NavExperience =
@@ -30,13 +30,8 @@ function notify() {
 function readModel(): NavIaModel {
   try {
     const raw = localStorage.getItem(MODEL_KEY);
-    if (raw === 'baseline') return 'curated'; // legacy id
-    if (
-      raw === 'sections' ||
-      raw === 'experiences' ||
-      raw === 'curated' ||
-      raw === 'flat'
-    ) {
+    if (raw === 'baseline' || raw === 'sections') return 'curated'; // legacy ids
+    if (raw === 'experiences' || raw === 'curated' || raw === 'flat') {
       return raw;
     }
   } catch {
@@ -98,7 +93,7 @@ export const EXPERIENCE_LABELS: Record<NavExperience, string> = {
   develop: 'Develop',
   compliance: 'Compliance',
   edge: 'Edge',
-  admin: 'Admin',
+  admin: 'Administration',
 };
 
 /** Shared across header + sidebar so IA model / experience stay in sync. */

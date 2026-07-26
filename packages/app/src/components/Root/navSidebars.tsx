@@ -117,7 +117,7 @@ const useDrawerStyles = makeStyles(theme => ({
   },
 }));
 
-/** Option 1 — collapsible section drawer (job/theme band). */
+/** Collapsible section drawer (job/theme band) — used by flat Admin + experiences Admin. */
 const SectionDrawer = ({
   id,
   label,
@@ -258,7 +258,7 @@ const AdminItems = () => (
   </>
 );
 
-/** Option 4 — curated role-adaptive rail (job sections + entity items). */
+/** Option 1 — curated role-adaptive rail (job sections + entity items). */
 export const BaselineSidebar = () => {
   const { role, hasRole } = useUserRoleContext();
   const { plugins } = useNavPlugins();
@@ -279,7 +279,7 @@ export const BaselineSidebar = () => {
 
   return (
     <SearchAndMenu>
-      <ModelHint text="Option 4 — curated objects under job sections" />
+      <ModelHint text="Option 1 — curated objects under job sections" />
       <SidebarSectionLabel text="Automate" />
       <AutomateItems />
       {showDevelop && (
@@ -366,95 +366,7 @@ export const BaselineSidebar = () => {
 };
 
 /**
- * Option 1 — Section drawers: job/theme bands (collapsible), one rail item per
- * primary entity (+ static Catalog). Plugins extend entities; they do not own sections.
- */
-export const SectionsCatalogSidebar = () => {
-  const { role, hasRole } = useUserRoleContext();
-  const { plugins } = useNavPlugins();
-  const isAdmin = hasRole('admin');
-  const showDevelop = role === 'developer' || isAdmin;
-  const canSeeOps = role === 'operator' || isAdmin;
-  const showInventories = canSeeOps && plugins.compliance;
-  const showEdgeFleets = canSeeOps && plugins.rhem;
-  const showOperate = showInventories || showEdgeFleets;
-
-  return (
-    <SearchAndMenu>
-      <ModelHint text="Option 1 (curated) — Catalog hub · section drawers · 1 item/entity" />
-
-      {/* Default band (no section label): Portal Catalog hub + run */}
-      <SidebarItem
-        icon={ViewListIcon}
-        to="/self-service/resources"
-        text="Catalog"
-      />
-      <AutomateItems />
-
-      {showDevelop && (
-        <>
-          <SidebarDivider />
-          <SectionDrawer id="develop" label="Develop">
-            <SidebarItem
-              icon={CodeIcon}
-              to="/self-service/repositories"
-              text="Git Repositories"
-            />
-            <SidebarItem
-              icon={CategoryIcon}
-              to="/self-service/collections"
-              text="Collections"
-            />
-            <SidebarItem
-              icon={MemoryIcon}
-              to="/self-service/ee"
-              text="Execution Environments"
-            />
-          </SectionDrawer>
-        </>
-      )}
-
-      {showOperate && (
-        <>
-          <SidebarDivider />
-          <SectionDrawer id="operate" label="Operate">
-            {showInventories && (
-              <SidebarItem
-                icon={StorageIcon}
-                to="/self-service/inventories"
-                text="Inventories"
-              />
-            )}
-            {showEdgeFleets && (
-              <SidebarItem
-                icon={RouterIcon}
-                to="/self-service/edge-fleets"
-                text="Edge fleets"
-              />
-            )}
-          </SectionDrawer>
-        </>
-      )}
-
-      <SidebarDivider />
-      <SectionDrawer id="learn" label="Learn" defaultOpen={false}>
-        <LearnItems />
-      </SectionDrawer>
-
-      {isAdmin && (
-        <>
-          <SidebarDivider />
-          <SectionDrawer id="admin" label="Administration" defaultOpen={false}>
-            <AdminItems />
-          </SectionDrawer>
-        </>
-      )}
-    </SearchAndMenu>
-  );
-};
-
-/**
- * Option 3 — Pinned default band + flat entity list (no section labels).
+ * Option 2 — Pinned default band + flat entity list (no section labels).
  * Develop bundle order: Git Repositories → EEs → Collections; Operate follows with no divider.
  */
 export const FlatNavSidebar = () => {
@@ -484,7 +396,7 @@ export const FlatNavSidebar = () => {
         ) : undefined
       }
     >
-      <ModelHint text="Option 3 (RHDH) — pins · flat entities · Admin drawer at bottom" />
+      <ModelHint text="Option 2 (RHDH) — pins · flat entities · Admin drawer at bottom" />
 
       <SidebarItem icon={HomeIcon} to="/self-service/home" text="Home" />
       <SidebarItem
@@ -562,12 +474,13 @@ const useExperienceSwitchStyles = makeStyles(theme => ({
   wrap: {
     display: 'block',
     boxSizing: 'border-box',
-    // Full width of the nav content area, inset from panel edges
-    width: '100%',
-    paddingLeft: theme.spacing(1.5),
-    paddingRight: theme.spacing(1.5),
-    paddingTop: theme.spacing(0.5),
-    paddingBottom: theme.spacing(1.5),
+    // Full width between side margins (do not touch panel borders)
+    width: `calc(100% - ${theme.spacing(3)}px)`,
+    marginLeft: theme.spacing(1.5),
+    marginRight: theme.spacing(1.5),
+    marginTop: theme.spacing(0.5),
+    marginBottom: theme.spacing(1.5),
+    padding: 0,
   },
   select: {
     width: '100%',
@@ -594,7 +507,7 @@ const RunItems = () => (
   </>
 );
 
-/** Option 2 — Experience toggle in the rail; experience name is the chrome, not a section label. */
+/** Option 3 — Experience toggle in the rail; experience name is the chrome, not a section label. */
 export const ExperiencesSidebar = () => {
   const classes = useExperienceSwitchStyles();
   const navigate = useNavigate();
@@ -627,7 +540,7 @@ export const ExperiencesSidebar = () => {
 
   return (
     <SearchAndMenu>
-      <ModelHint text="Option 2 (toggle) — experience switcher in rail; no repeat of experience name" />
+      <ModelHint text="Option 3 (toggle) — experience switcher in rail; no repeat of experience name" />
 
       <Box className={classes.wrap}>
         <FormControl
@@ -653,6 +566,7 @@ export const ExperiencesSidebar = () => {
         </FormControl>
       </Box>
 
+      {/* All (Home) — Bridge-style hub: browse experiences/plugins; no Templates/History */}
       {active === 'all' && (
         <>
           <SidebarItem
@@ -663,10 +577,13 @@ export const ExperiencesSidebar = () => {
           <SidebarItem
             icon={ViewListIcon}
             to="/self-service/experiences?tab=catalog"
-            text="Experiences catalog"
+            text="Experiences"
           />
-          <SidebarDivider />
-          <RunItems />
+          <SidebarItem
+            icon={CategoryIcon}
+            to="/self-service/experiences?tab=plugins"
+            text="Plugins"
+          />
         </>
       )}
 

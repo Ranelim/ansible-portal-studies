@@ -35,6 +35,15 @@ type ExperienceCatalogRow = {
   metricLabel: string;
 };
 
+type PluginCatalogRow = {
+  name: string;
+  experienceId: NavExperience;
+  experienceLabel: string;
+  contributes: string;
+  status: 'Enabled' | 'Seat-gated' | 'Always on';
+  landing: string;
+};
+
 const EXPERIENCE_META: Record<
   Exclude<NavExperience, 'all'>,
   Omit<ExperienceCatalogRow, 'id' | 'label'>
@@ -111,9 +120,22 @@ const useStyles = makeStyles(theme => ({
   },
 }));
 
+function tabIndexFromSearch(search: string): number {
+  const tab = new URLSearchParams(search).get('tab');
+  if (tab === 'catalog') return 1;
+  if (tab === 'plugins') return 2;
+  return 0;
+}
+
+function pathForTab(index: number): string {
+  if (index === 1) return '/self-service/experiences?tab=catalog';
+  if (index === 2) return '/self-service/experiences?tab=plugins';
+  return '/self-service/experiences';
+}
+
 /**
- * Option 2 — All / Home experience: cross-experience dashboard + catalog of
- * experiences and the plugins that contribute to each.
+ * Option 3 — All (Home): Bridge-style hub to browse experiences and plugins,
+ * then open into a mode. No Templates / History here.
  */
 export const ExperiencesHomePage = () => {
   const classes = useStyles();
@@ -126,8 +148,7 @@ export const ExperiencesHomePage = () => {
   const isAdmin = hasRole('admin');
 
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    setTab(params.get('tab') === 'catalog' ? 1 : 0);
+    setTab(tabIndexFromSearch(location.search));
   }, [location.search]);
 
   const available = useMemo(
@@ -151,6 +172,62 @@ export const ExperiencesHomePage = () => {
     [available],
   );
 
+  const pluginRows: PluginCatalogRow[] = useMemo(() => {
+    const list: PluginCatalogRow[] = [
+      {
+        name: 'Scaffolder / self-service',
+        experienceId: 'automate',
+        experienceLabel: EXPERIENCE_LABELS.automate,
+        contributes: 'Templates, History, Catalog',
+        status: 'Always on',
+        landing: '/create',
+      },
+      {
+        name: 'Self-service content',
+        experienceId: 'develop',
+        experienceLabel: EXPERIENCE_LABELS.develop,
+        contributes: 'Git Repositories, Collections, EEs',
+        status: available.includes('develop') ? 'Enabled' : 'Seat-gated',
+        landing: '/self-service/repositories',
+      },
+      {
+        name: 'APME',
+        experienceId: 'develop',
+        experienceLabel: EXPERIENCE_LABELS.develop,
+        contributes: 'Quality tabs on Git Repositories (0 rail items)',
+        status: plugins.apme && available.includes('develop') ? 'Enabled' : 'Seat-gated',
+        landing: '/self-service/repositories/quality',
+      },
+      {
+        name: 'Compliance',
+        experienceId: 'compliance',
+        experienceLabel: EXPERIENCE_LABELS.compliance,
+        contributes: 'Inventories and compliance surfaces',
+        status: plugins.compliance && available.includes('compliance')
+          ? 'Enabled'
+          : 'Seat-gated',
+        landing: '/self-service/inventories',
+      },
+      {
+        name: 'RHEM / Flight Control',
+        experienceId: 'edge',
+        experienceLabel: EXPERIENCE_LABELS.edge,
+        contributes: 'Edge fleets / devices (object labels)',
+        status: plugins.rhem && available.includes('edge') ? 'Enabled' : 'Seat-gated',
+        landing: '/self-service/edge-fleets',
+      },
+      {
+        name: 'Portal admin',
+        experienceId: 'admin',
+        experienceLabel: EXPERIENCE_LABELS.admin,
+        contributes: 'Settings, Integrations, RBAC, Sync',
+        status: available.includes('admin') ? 'Enabled' : 'Seat-gated',
+        landing: '/self-service/admin/general',
+      },
+    ];
+    return list.filter(p => available.includes(p.experienceId) || p.status === 'Always on');
+  }, [available, plugins.apme, plugins.compliance, plugins.rhem]);
+
   const openExperience = (id: NavExperience, landing: string) => {
     setExperience(id);
     writeNavExperience(id);
@@ -159,7 +236,8 @@ export const ExperiencesHomePage = () => {
 
   const headerTabs = [
     { id: 'dashboard', label: 'Dashboard' },
-    { id: 'catalog', label: 'Experiences catalog' },
+    { id: 'catalog', label: 'Experiences' },
+    { id: 'plugins', label: 'Plugins' },
   ];
 
   return (
@@ -169,7 +247,7 @@ export const ExperiencesHomePage = () => {
           <Box display="flex" alignItems="center" style={{ gap: 8 }}>
             <span>All experiences</span>
             <Chip
-              label="Option 2"
+              label="Option 3"
               size="small"
               color="primary"
               style={{ borderRadius: 16, fontSize: 11 }}
@@ -177,18 +255,13 @@ export const ExperiencesHomePage = () => {
           </Box>
         }
         pageTitleOverride="All experiences"
-        subtitle="Home for the experience toggle — dashboard across modes and a catalog of experiences plus their plugins"
+        subtitle="Bridge-style home — browse experiences and plugins, then open into a mode. No Templates or History here."
       />
       <HeaderTabs
         selectedIndex={tab}
         onChange={index => {
           setTab(index);
-          navigate(
-            index === 1
-              ? '/self-service/experiences?tab=catalog'
-              : '/self-service/experiences',
-            { replace: true },
-          );
+          navigate(pathForTab(index), { replace: true });
         }}
         tabs={headerTabs}
       />
@@ -200,8 +273,8 @@ export const ExperiencesHomePage = () => {
               color="textSecondary"
               style={{ marginBottom: 16, maxWidth: 720, lineHeight: 1.6 }}
             >
-              Cross-experience dashboard (demo metrics). Open an experience to
-              switch the left rail into that mode.
+              Cross-experience overview (demo metrics). Opening an experience
+              switches the left rail into that mode — like launching from a hub.
             </Typography>
             <Box className={classes.grid}>
               {rows.map(row => (
@@ -250,8 +323,8 @@ export const ExperiencesHomePage = () => {
               color="textSecondary"
               style={{ marginBottom: 16, maxWidth: 720, lineHeight: 1.6 }}
             >
-              Catalog of experiences available on this seat, the plugins that
-              contribute to each, and their primary rail items.
+              Experiences available on this seat — what they contain and which
+              plugins feed them.
             </Typography>
             <Table size="small">
               <TableHead>
@@ -302,6 +375,68 @@ export const ExperiencesHomePage = () => {
                         }}
                       >
                         Open
+                      </Link>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </>
+        )}
+
+        {tab === 2 && (
+          <>
+            <Typography
+              variant="body2"
+              color="textSecondary"
+              style={{ marginBottom: 16, maxWidth: 720, lineHeight: 1.6 }}
+            >
+              Plugins area — installed / seat-visible plugins and which experience
+              they open into. Browse here; work happens inside the experience.
+            </Typography>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Plugin</TableCell>
+                  <TableCell>Experience</TableCell>
+                  <TableCell>Contributes</TableCell>
+                  <TableCell>Status</TableCell>
+                  <TableCell />
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {pluginRows.map(row => (
+                  <TableRow key={`${row.name}-${row.experienceId}`} hover>
+                    <TableCell>
+                      <Typography variant="body2" style={{ fontWeight: 600 }}>
+                        {row.name}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>{row.experienceLabel}</TableCell>
+                    <TableCell>
+                      <Typography variant="body2" color="textSecondary">
+                        {row.contributes}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        size="small"
+                        label={row.status}
+                        variant="outlined"
+                        style={{ borderRadius: 12, fontSize: 11 }}
+                      />
+                    </TableCell>
+                    <TableCell align="right">
+                      <Link
+                        component={RouterLink}
+                        to={row.landing}
+                        color="primary"
+                        onClick={e => {
+                          e.preventDefault();
+                          openExperience(row.experienceId, row.landing);
+                        }}
+                      >
+                        Open in {row.experienceLabel}
                       </Link>
                     </TableCell>
                   </TableRow>

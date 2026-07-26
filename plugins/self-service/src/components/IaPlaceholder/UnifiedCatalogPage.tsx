@@ -137,8 +137,8 @@ const TYPE_AREAS: Array<{
 ];
 
 /**
- * Option 1 — Portal Catalog hub: one table chrome; rows and type chips link to
- * real Portal entity areas (not the broken software-catalog API in this prototype).
+ * Portal Catalog hub (shared surface for Flat / Experiences rails): one table
+ * chrome; rows and type chips link to real Portal entity areas.
  */
 export const UnifiedCatalogPage = () => {
   const [type, setType] = useState<CatalogType>('all');
@@ -155,17 +155,7 @@ export const UnifiedCatalogPage = () => {
   return (
     <Page themeId="app">
       <Header
-        title={
-          <Box display="flex" alignItems="center" style={{ gap: 8 }}>
-            <span>Catalog</span>
-            <Chip
-              label="Option 1"
-              size="small"
-              color="primary"
-              style={{ borderRadius: 16, fontSize: 11 }}
-            />
-          </Box>
-        }
+        title="Catalog"
         pageTitleOverride="Catalog"
         subtitle="Find Portal resources in one place — open a row or jump to an entity area"
       />

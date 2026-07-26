@@ -21,26 +21,21 @@ const IA_MODEL_OPTIONS: Array<{
   blurb: string;
 }> = [
   {
-    id: 'sections',
-    label: 'Option 1 — Section drawers + Catalog (curated)',
-    blurb: 'Collapsible job sections, one rail item per entity, Catalog hub.',
-  },
-  {
-    id: 'experiences',
-    label: 'Option 2 — Experiences (toggle)',
-    blurb:
-      'Experience toggle in the rail; All (Home) catalogs experiences + dashboard.',
+    id: 'curated',
+    label: 'Option 1 — Curated sections',
+    blurb: 'Role-adaptive Automate / Develop / Operate with curated entity items.',
   },
   {
     id: 'flat',
-    label: 'Option 3 — Flat list (RHDH)',
+    label: 'Option 2 — Flat list (RHDH)',
     blurb:
       'Pinned Home / Catalog / Templates / History / Docs / Learning, then flat entities (manual order).',
   },
   {
-    id: 'curated',
-    label: 'Option 4 — Curated sections',
-    blurb: 'Role-adaptive Automate / Develop / Operate with curated entity items.',
+    id: 'experiences',
+    label: 'Option 3 — Experiences (toggle)',
+    blurb:
+      'Experience toggle; All (Bridge) browses experiences/plugins — no run items.',
   },
 ];
 
@@ -124,9 +119,6 @@ export const IaPrototypeBanner = () => {
       setExperience('all');
       writeNavExperience('all');
       navigate('/self-service/experiences');
-    }
-    if (next === 'sections') {
-      navigate('/self-service/resources');
     }
     if (next === 'flat') {
       navigate('/self-service/home');

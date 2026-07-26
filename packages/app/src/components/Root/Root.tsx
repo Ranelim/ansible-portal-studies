@@ -12,7 +12,6 @@ import {
 } from '@backstage/core-components';
 import {
   BaselineSidebar,
-  SectionsCatalogSidebar,
   ExperiencesSidebar,
   FlatNavSidebar,
 } from './navSidebars';
@@ -83,10 +82,9 @@ const GlobalRestartBanner = () => {
 
 const RoleAdaptiveSidebar = () => {
   const { model } = useNavIaModel();
-  if (model === 'sections') return <SectionsCatalogSidebar />;
   if (model === 'experiences') return <ExperiencesSidebar />;
   if (model === 'flat') return <FlatNavSidebar />;
-  return <BaselineSidebar />; // Option 4 — curated
+  return <BaselineSidebar />; // Option 1 — curated sections
 };
 
 export const Root = ({ children }: PropsWithChildren<{}>) => {

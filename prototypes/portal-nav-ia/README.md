@@ -21,24 +21,22 @@ Purple **Nav IA prototype** banner (above the dark masthead) — short explanati
 
 | Model | What it demonstrates |
 |---|---|
-| **Option 1 — Section drawers + Catalog (curated)** | Default band: **Catalog** hub + Templates + Activity; drawers for Develop / Operate / … |
-| **Option 2 — Experiences (toggle)** | Rail **Experience** select incl. **All (Home)** — dashboard + catalog of experiences/plugins; other modes own their menus |
-| **Option 3 — Flat list (RHDH)** | Pins + flat entities; **Administration** collapsible drawer sticky at bottom of the rail |
-| **Option 4 — Curated sections** | Role-adaptive Automate / Develop / Operate with curated entity items (incl. seat + sprawl demos) |
+| **Option 1 — Curated sections** | Role-adaptive Automate / Develop / Operate with curated entity items (incl. seat + sprawl demos) |
+| **Option 2 — Flat list (RHDH)** | Pins + flat entities; **Administration** collapsible drawer sticky at bottom of the rail |
+| **Option 3 — Experiences (toggle)** | Rail **Experience** select incl. **All (Home)** — Bridge-style dashboard + experiences + plugins; other modes own their menus |
 
 Also: Profile → **Switch seat** (SME / Developer / ops seats / sprawl / Admin).
 
 ### Suggested walkthrough
 
-1. Seat **Ops (both plugins)** → chip **Option 1** → open **Catalog**, filter Inventories vs Edge fleets.  
-2. Same seat → chip **Option 2** → toggle **Compliance** vs **Edge** in the header; note Templates/Activity duplicated and tabs expanded.  
-3. Seat **Compliance ops** alone under Option 2 → only Automate + Compliance experiences (land and stay).  
-4. Seat **Admin** → chip **Option 3** → compare phonebook flat list vs Option 1 drawers.  
-5. Compare with **Option 4** (curated sections).
+1. Seat **Ops (both)** → **Option 1** → Inventories + Edge fleets under Operate.  
+2. Same seat → **Option 2** → flat list vs curated.  
+3. Seat **Admin** → **Option 3** → All (Home) dashboard / Experiences / Plugins, then open Develop or Administration.
 
 ## Key files
 
-- `packages/app/src/components/Root/navSidebars.tsx` — three rail models
-- `packages/app/src/components/GlobalHeader/GlobalHeader.tsx` — IA chip + experience select
+- `packages/app/src/components/Root/navSidebars.tsx` — rail models
+- `packages/app/src/components/GlobalHeader/GlobalHeader.tsx` — seat switcher
+- `packages/app/src/components/IaPrototype/` — purple banner + chrome heights
 - `plugins/self-service/src/hooks/useNavIaModel.ts` — model / experience state
-- `plugins/self-service/src/components/IaPlaceholder/UnifiedCatalogPage.tsx` — Option 1 Catalog
+- `plugins/self-service/src/components/IaPlaceholder/` — placeholder + experiences home + catalog hub
