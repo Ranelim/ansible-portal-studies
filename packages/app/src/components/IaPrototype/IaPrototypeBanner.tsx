@@ -37,7 +37,7 @@ const IA_MODEL_OPTIONS: Array<{
     id: 'experiences',
     label: 'Option 3 — Experiences (toggle)',
     blurb:
-      'Show one experience at a time via a rail toggle. All (Home) is a Bridge-style hub for experiences and plugins — no Templates/Activity until you enter a mode.',
+      'One experience at a time. Continuous rail: Templates + Activity + entities (no Manage). Ecosystem tabs on the entity page. Platform config only in Administration.',
   },
 ];
 

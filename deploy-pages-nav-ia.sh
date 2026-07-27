@@ -38,7 +38,9 @@ permission:
 EOF
 
 # 2. Build the frontend
-echo "[2/5] Building frontend (this takes 2-3 minutes)..."
+echo "[2/5] Generating types + building frontend (this takes several minutes)..."
+# Prototype branches often have pre-existing tsc errors; still emit dist-types for packaging.
+yarn tsc --pretty false --noEmitOnError false || true
 yarn build:all
 
 # 3. Restore original config

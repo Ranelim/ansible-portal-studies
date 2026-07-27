@@ -529,7 +529,7 @@ export const ExperiencesSidebar = () => {
 
   return (
     <SearchAndMenu>
-      <ModelHint text="Option 3 (toggle) — experience switcher in rail; no repeat of experience name" />
+      <ModelHint text="Option 3 — one experience · run + entities · tabs on the page · Admin config in Administration" />
 
       <Box className={classes.wrap}>
         <FormControl
@@ -555,7 +555,7 @@ export const ExperiencesSidebar = () => {
         </FormControl>
       </Box>
 
-      {/* All (Home) — Bridge-style hub; distinct paths so only one item looks selected */}
+      {/* All (Home) — Bridge hub; no run items */}
       {active === 'all' && (
         <>
           <SidebarItem
@@ -577,7 +577,7 @@ export const ExperiencesSidebar = () => {
         </>
       )}
 
-      {/* SME / Automate — Templates, Activity, Catalog only */}
+      {/* Continuous list: Templates + Activity + entities — no divider, no Manage */}
       {active === 'automate' && (
         <>
           <RunItems />
@@ -592,7 +592,6 @@ export const ExperiencesSidebar = () => {
       {active === 'develop' && (
         <>
           <RunItems />
-          <SidebarDivider />
           <SidebarItem
             icon={CodeIcon}
             to="/self-service/repositories"
@@ -608,36 +607,16 @@ export const ExperiencesSidebar = () => {
             to="/self-service/ee"
             text="Execution Environments"
           />
-          {isAdmin && (
-            <>
-              <SidebarDivider />
-              <SidebarSectionLabel text="Manage" />
-              <SidebarItem
-                icon={LinkIcon}
-                to="/self-service/admin/integrations"
-                text="Content sources"
-              />
-            </>
-          )}
         </>
       )}
 
       {active === 'compliance' && (
         <>
           <RunItems />
-          <SidebarDivider />
-          {/* One primary entity — Dashboard / Profiles / Scan history as page tabs */}
           <SidebarItem
             icon={StorageIcon}
             to="/self-service/inventories"
             text="Inventories"
-          />
-          <SidebarDivider />
-          <SidebarSectionLabel text="Manage" />
-          <SidebarItem
-            icon={SettingsIcon}
-            to="/self-service/admin/integrations"
-            text="Compliance settings"
           />
         </>
       )}
@@ -645,24 +624,15 @@ export const ExperiencesSidebar = () => {
       {active === 'edge' && (
         <>
           <RunItems />
-          <SidebarDivider />
-          {/* One primary entity — Devices / Images live as tabs on Edge fleets */}
           <SidebarItem
             icon={RouterIcon}
             to="/self-service/edge-fleets"
             text="Edge fleets"
           />
-          <SidebarDivider />
-          <SidebarSectionLabel text="Manage" />
-          <SidebarItem
-            icon={SettingsIcon}
-            to="/self-service/admin/integrations"
-            text="Edge settings"
-          />
         </>
       )}
 
-      {/* Admin — settings only; no Templates / Activity */}
+      {/* Administration experience — platform config only (not Manage inside other modes) */}
       {active === 'admin' && <AdminItems />}
     </SearchAndMenu>
   );

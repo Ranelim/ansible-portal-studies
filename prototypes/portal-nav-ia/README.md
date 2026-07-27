@@ -5,6 +5,14 @@ Epic: [AAP-84130](https://redhat.atlassian.net/browse/AAP-84130) · Story: [AAP-
 
 Uses the **same Portal shell** as APME integration: RHDH `getThemes()`, Backstage `Sidebar` / `Page` / `HeaderTabs`, role-adaptive rail in `packages/app`.
 
+## Share (GitLab Pages)
+
+- Prototype: https://ansible-portal-prototypes-c8c2a0.pages.redhat.com/portal-nav-ia/
+- Shortcut: https://ansible-portal-prototypes-c8c2a0.pages.redhat.com/nav-ia.html
+- Source branch: `design/portal-nav-ia` (does **not** replace the root APME Pages deploy)
+
+VPN required. Prefer landing on the URLs above, then switch models in the purple banner (GitLab Pages deep-link refresh can fall through to the root 404).
+
 ## Run
 
 From this worktree (`ansible-backstage-plugins-nav-ia`):
@@ -23,7 +31,7 @@ Purple **Nav IA prototype** banner (above the dark masthead) — short explanati
 |---|---|
 | **Option 1 — Flat list (RHDH)** | **One menu item per primary entity**; each entity holds its ecosystem (plugins/tabs/actions). Pins + flat phonebook; Home = seat dashboard; Admin drawer at bottom |
 | **Option 2 — Curated sections** | **Run** (Templates + Activity) on top as global run band, then **Develop / Operate** entity sections by seat |
-| **Option 3 — Experiences (toggle)** | One experience at a time; All (Home) = Bridge hub for experiences/plugins (no run items until a mode) |
+| **Option 3 — Experiences (toggle)** | One experience at a time; continuous rail = Templates + Activity + entity items (**no** dividers / Manage). Ecosystem stays on page tabs. Admin integrations only in **Administration** experience |
 
 Switching models always lands on that model’s home. A route guard also redirects if you bookmark a model-specific URL (e.g. Bridge Dashboard under curated).
 
