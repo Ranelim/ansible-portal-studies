@@ -46,7 +46,7 @@ export function mismatchedModelRedirect(
   if (model === 'flat' && onBridge) {
     return '/self-service/home';
   }
-  if (model === 'experiences' && (onFlatHome || onFlatCatalog)) {
+  if (model === 'experiences' && onFlatHome) {
     return '/self-service/experiences';
   }
   return null;

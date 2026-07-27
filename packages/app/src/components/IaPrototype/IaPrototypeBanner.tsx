@@ -37,7 +37,7 @@ const IA_MODEL_OPTIONS: Array<{
     id: 'experiences',
     label: 'Option 3 — Experiences (toggle)',
     blurb:
-      'One experience at a time. Continuous rail: Templates + Activity + entities (no Manage). Ecosystem tabs on the entity page. Platform config only in Administration.',
+      'One experience at a time. Rail: Dashboard (overview) · Templates · Activity · entities (list-first) · Settings. Entity pages omit Dashboard tabs under Option 3. Platform config only in Administration.',
   },
 ];
 

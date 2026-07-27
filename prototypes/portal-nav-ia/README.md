@@ -31,7 +31,8 @@ Purple **Nav IA prototype** banner (above the dark masthead) — short explanati
 |---|---|
 | **Option 1 — Flat list (RHDH)** | **One menu item per primary entity**; each entity holds its ecosystem (plugins/tabs/actions). Pins + flat phonebook; Home = seat dashboard; Admin drawer at bottom |
 | **Option 2 — Curated sections** | **Run** (Templates + Activity) on top as global run band, then **Develop / Operate** entity sections by seat |
-| **Option 3 — Experiences (toggle)** | One experience at a time; continuous rail = Templates + Activity + entity items (**no** dividers / Manage). Ecosystem stays on page tabs. Admin integrations only in **Administration** experience |
+| **Option 3 — Experiences (toggle)** | One experience at a time. **All (Home)** = Dashboard (insight widgets) · Experiences (Bridge tiles) · Plugins (admin only) · Settings. Domain modes: Dashboard · run · entities (list-first) · Settings. Platform Admin only in **Administration** |
+
 
 Switching models always lands on that model’s home. A route guard also redirects if you bookmark a model-specific URL (e.g. Bridge Dashboard under curated).
 
@@ -51,8 +52,9 @@ Also: Profile → **Switch seat** (SME / Developer / Compliance ops / Edge ops /
 
 1. Seat **Ops (both)** → **Option 1** → flat Inventories + Edge fleets; open Home dashboard.  
 2. Same seat → **Option 2** → Templates/Activity on top, then Operate entities.  
-3. Seat **Developer** → **Option 2** → same run pins on top, then Develop; repo tabs use Scaffold / Pipeline activity.  
-4. Seat **Admin** → **Option 3** → All (Home) / Experiences / Plugins, then open Develop or Administration.
+3. Seat **Ops (both)** → **Option 3** → Edge → **Dashboard** (overview) → **Edge fleets** (list-first, no Dashboard tab).  
+4. Seat **Developer** → **Option 3** → Develop Dashboard → repos/collections/EEs as lists.  
+5. Seat **Admin** → **Option 3** → Develop → **Settings** → deep-link to Integrations (Administration).
 
 ## Key files
 

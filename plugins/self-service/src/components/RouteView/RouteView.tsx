@@ -41,6 +41,8 @@ import {
   UnifiedCatalogPage,
   ExperiencesHomePage,
   FlatHomeDashboardPage,
+  ExperienceSettingsPage,
+  ExperienceDashboardPage,
   inventoriesIaPage,
   edgeFleetsIaPage,
 } from '../IaPlaceholder';
@@ -161,6 +163,14 @@ const RouteViewContent = () => {
         <Route path="home/*" element={<FlatHomeDashboardPage />} />
         <Route path="experiences" element={<ExperiencesHomePage />} />
         <Route path="experiences/*" element={<ExperiencesHomePage />} />
+        <Route
+          path="experience-settings"
+          element={<ExperienceSettingsPage />}
+        />
+        <Route
+          path="experience-dashboard"
+          element={<ExperienceDashboardPage />}
+        />
         <Route path="resources" element={<UnifiedCatalogPage />} />
         <Route path="resources/*" element={<UnifiedCatalogPage />} />
         {/* IA placeholders — Inventories / Edge fleets (AAP-84131) */}

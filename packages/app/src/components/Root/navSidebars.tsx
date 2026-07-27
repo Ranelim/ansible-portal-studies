@@ -453,11 +453,13 @@ export const FlatNavSidebar = () => {
 const EXPERIENCE_LANDING: Record<NavExperience, string> = {
   all: '/self-service/experiences',
   automate: '/create',
-  develop: '/self-service/repositories',
-  compliance: '/self-service/inventories',
-  edge: '/self-service/edge-fleets',
+  develop: '/self-service/experience-dashboard',
+  compliance: '/self-service/experience-dashboard',
+  edge: '/self-service/experience-dashboard',
   admin: '/self-service/admin/general',
 };
+
+const EXPERIENCE_DASHBOARD = '/self-service/experience-dashboard';
 
 const useExperienceSwitchStyles = makeStyles(theme => ({
   wrap: {
@@ -527,9 +529,28 @@ export const ExperiencesSidebar = () => {
     navigate(EXPERIENCE_LANDING[next]);
   };
 
+  /** Trailing Settings — experience prefs; platform Admin stays in Administration. */
+  const ExperienceSettingsItem = (
+    <SidebarItem
+      icon={SettingsIcon}
+      to="/self-service/experience-settings"
+      text="Settings"
+    />
+  );
+
+  /** Experience Dashboard — overview; entity items stay list-first. */
+  const ExperienceDashboardItem = (
+    <SidebarItem
+      icon={DashboardIcon}
+      to={EXPERIENCE_DASHBOARD}
+      text="Dashboard"
+      end
+    />
+  );
+
   return (
     <SearchAndMenu>
-      <ModelHint text="Option 3 — one experience · run + entities · tabs on the page · Admin config in Administration" />
+      <ModelHint text="Option 3 — Dashboard · run · entities (list-first) · Settings · Admin in Administration" />
 
       <Box className={classes.wrap}>
         <FormControl
@@ -555,7 +576,7 @@ export const ExperiencesSidebar = () => {
         </FormControl>
       </Box>
 
-      {/* All (Home) — Bridge hub; no run items */}
+      {/* All (Home) — Bridge: Dashboard + Experiences; Plugins = admin only */}
       {active === 'all' && (
         <>
           <SidebarItem
@@ -569,15 +590,18 @@ export const ExperiencesSidebar = () => {
             to="/self-service/experiences/catalog"
             text="Experiences"
           />
-          <SidebarItem
-            icon={CategoryIcon}
-            to="/self-service/experiences/plugins"
-            text="Plugins"
-          />
+          {isAdmin && (
+            <SidebarItem
+              icon={CategoryIcon}
+              to="/self-service/experiences/plugins"
+              text="Plugins"
+            />
+          )}
+          {ExperienceSettingsItem}
         </>
       )}
 
-      {/* Continuous list: Templates + Activity + entities — no divider, no Manage */}
+      {/* Continuous list: Dashboard + Templates + Activity + entities + Settings */}
       {active === 'automate' && (
         <>
           <RunItems />
@@ -586,11 +610,13 @@ export const ExperiencesSidebar = () => {
             to="/self-service/resources"
             text="Catalog"
           />
+          {ExperienceSettingsItem}
         </>
       )}
 
       {active === 'develop' && (
         <>
+          {ExperienceDashboardItem}
           <RunItems />
           <SidebarItem
             icon={CodeIcon}
@@ -607,32 +633,37 @@ export const ExperiencesSidebar = () => {
             to="/self-service/ee"
             text="Execution Environments"
           />
+          {ExperienceSettingsItem}
         </>
       )}
 
       {active === 'compliance' && (
         <>
+          {ExperienceDashboardItem}
           <RunItems />
           <SidebarItem
             icon={StorageIcon}
             to="/self-service/inventories"
             text="Inventories"
           />
+          {ExperienceSettingsItem}
         </>
       )}
 
       {active === 'edge' && (
         <>
+          {ExperienceDashboardItem}
           <RunItems />
           <SidebarItem
             icon={RouterIcon}
             to="/self-service/edge-fleets"
             text="Edge fleets"
           />
+          {ExperienceSettingsItem}
         </>
       )}
 
-      {/* Administration experience — platform config only (not Manage inside other modes) */}
+      {/* Administration experience — platform config only */}
       {active === 'admin' && <AdminItems />}
     </SearchAndMenu>
   );

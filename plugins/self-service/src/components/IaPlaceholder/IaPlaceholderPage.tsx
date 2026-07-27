@@ -1,26 +1,57 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Page, Header, HeaderTabs, Content } from '@backstage/core-components';
 import { Box, Chip, Typography } from '@material-ui/core';
-import { IaPageConfig, landingTabIndex } from './navIaPages';
+import { useNavIaModel } from '../../hooks/useNavIaModel';
+import { IaPageConfig, IaTab, landingTabIndex } from './navIaPages';
 
 type Props = {
   config: IaPageConfig;
 };
 
+function tabsForModel(
+  tabs: IaTab[],
+  experiencesModel: boolean,
+): IaTab[] {
+  // Option 3: overview lives on the experience Dashboard rail item —
+  // entity pages stay list-first (no Dashboard tab).
+  if (!experiencesModel) return tabs;
+  return tabs.filter(t => t.slot !== 'dashboard' && t.id !== 'dashboard');
+}
+
 /**
  * Lightweight IA exploration page — purpose + tabs + one-line expectations.
  * Lands on Dashboard when present, else the entity list tab.
+ * Under Option 3, Dashboard tabs are omitted (experience Dashboard owns overview).
  */
 export const IaPlaceholderPage = ({ config }: Props) => {
-  const [selectedTab, setSelectedTab] = useState(() =>
-    landingTabIndex(config.tabs),
+  const { model } = useNavIaModel();
+  const experiencesModel = model === 'experiences';
+  const tabs = useMemo(
+    () => tabsForModel(config.tabs, experiencesModel),
+    [config.tabs, experiencesModel],
   );
-  const tab = config.tabs[selectedTab] ?? config.tabs[0];
+
+  const [selectedTab, setSelectedTab] = useState(() =>
+    landingTabIndex(tabsForModel(config.tabs, experiencesModel)),
+  );
+
+  useEffect(() => {
+    setSelectedTab(landingTabIndex(tabs));
+  }, [tabs]);
+
+  const tab = tabs[selectedTab] ?? tabs[0];
 
   const headerTabs = useMemo(
-    () => config.tabs.map(t => ({ id: t.id, label: t.label })),
-    [config.tabs],
+    () => tabs.map(t => ({ id: t.id, label: t.label })),
+    [tabs],
   );
+
+  const purpose = experiencesModel
+    ? `${config.purpose.replace(
+        /Dashboard \(landing\)\s*→\s*/i,
+        '',
+      )} Under Option 3, experience Dashboard owns overview — this page lands on the list.`
+    : config.purpose;
 
   return (
     <Page themeId="app">
@@ -70,15 +101,16 @@ export const IaPlaceholderPage = ({ config }: Props) => {
             color="textSecondary"
             style={{ marginBottom: 16, lineHeight: 1.6 }}
           >
-            {config.purpose}
+            {purpose}
           </Typography>
           <Typography
             variant="caption"
             color="textSecondary"
             style={{ display: 'block', marginBottom: 12 }}
           >
-            Tab pattern: Dashboard? → entity list → domain tabs → Templates or
-            Settings (trailing). Landing = Dashboard if present, else list.
+            {experiencesModel
+              ? 'Option 3 entity page: list → domain tabs → Templates (trailing). Overview = experience Dashboard in the rail.'
+              : 'Tab pattern: Dashboard? → entity list → domain tabs → Templates or Settings (trailing). Landing = Dashboard if present, else list.'}
           </Typography>
           {tab && (
             <Box
@@ -104,7 +136,7 @@ export const IaPlaceholderPage = ({ config }: Props) => {
                     ({tab.slot}
                     {(tab.slot === 'dashboard' ||
                       (tab.slot === 'list' &&
-                        !config.tabs.some(t => t.slot === 'dashboard'))) &&
+                        !tabs.some(t => t.slot === 'dashboard'))) &&
                       ' · landing'}
                     )
                   </Typography>

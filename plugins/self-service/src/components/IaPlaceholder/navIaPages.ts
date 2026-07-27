@@ -11,6 +11,10 @@
  *                        Settings  — user-scoped prefs for this whole surface
  *                      Never Admin/integration config (that stays Administration).
  *
+ * Option 3 experience rail: Dashboard (overview) → run → entities (list-first) → Settings.
+ * Under Option 3, omit entity Dashboard tabs — overview lives on the experience Dashboard.
+ * Deep-link to Administration for platform config — do not embed Manage.
+ *
  * Rules:
  * - Never land on domain or trailing tabs.
  * - Never name the list tab "Catalog" (Catalog = Portal-wide discovery only).
