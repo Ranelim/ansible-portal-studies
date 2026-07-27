@@ -22,16 +22,17 @@ Purple **Nav IA prototype** banner (above the dark masthead) — short explanati
 | Model | What it demonstrates |
 |---|---|
 | **Option 1 — Flat list (RHDH)** | **One menu item per primary entity**; each entity holds its ecosystem (plugins/tabs/actions). Pins + flat phonebook; Home = seat dashboard; Admin drawer at bottom |
-| **Option 2 — Curated sections** | **Same entity + ecosystem rule**, grouped under role-adaptive Automate / Develop / Operate |
+| **Option 2 — Curated sections** | **Run** (Templates + Activity) on top as global run band, then **Develop / Operate** entity sections by seat |
 | **Option 3 — Experiences (toggle)** | One experience at a time; All (Home) = Bridge hub for experiences/plugins (no run items until a mode) |
 
-Also: Profile → **Switch seat** (SME / Developer / ops seats / sprawl / Admin).
+Also: Profile → **Switch seat** (SME / Developer / Compliance ops / Edge ops / Ops both / Admin).
 
 ### Suggested walkthrough
 
 1. Seat **Ops (both)** → **Option 1** → flat Inventories + Edge fleets; open Home dashboard.  
-2. Same seat → **Option 2** → same entities under Operate sections.  
-3. Seat **Admin** → **Option 3** → All (Home) / Experiences / Plugins, then open Develop or Administration.
+2. Same seat → **Option 2** → Templates/Activity on top, then Operate entities.  
+3. Seat **Developer** → **Option 2** → same run pins on top, then Develop; repo tabs use Scaffold / Pipeline activity.  
+4. Seat **Admin** → **Option 3** → All (Home) / Experiences / Plugins, then open Develop or Administration.
 
 ## Key files
 

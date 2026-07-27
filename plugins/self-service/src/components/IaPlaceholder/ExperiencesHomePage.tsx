@@ -68,7 +68,7 @@ const EXPERIENCE_META: Record<
   },
   compliance: {
     plugins: ['Compliance'],
-    railItems: ['Inventories', 'Dashboard', 'Profiles', 'Scan history'],
+    railItems: ['Inventories'],
     landing: '/self-service/inventories',
     summary: 'Scan and remediate host inventories.',
     metric: '3',
@@ -76,7 +76,7 @@ const EXPERIENCE_META: Record<
   },
   edge: {
     plugins: ['RHEM / Flight Control'],
-    railItems: ['Fleets', 'Devices', 'Images', 'Repositories'],
+    railItems: ['Edge fleets'],
     landing: '/self-service/edge-fleets',
     summary: 'Edge fleet lifecycle and device health.',
     metric: '2',

@@ -1,12 +1,6 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
-export type NavPluginId =
-  | 'apme'
-  | 'compliance'
-  | 'rhem'
-  | 'rhemDevices'
-  /** Anti-pattern seat: Compliance + RHEM dump secondary surfaces onto the Operate rail. */
-  | 'navSprawl';
+export type NavPluginId = 'apme' | 'compliance' | 'rhem';
 
 export type NavPluginsState = Record<NavPluginId, boolean>;
 
@@ -16,36 +10,50 @@ const DEFAULT_PLUGINS: NavPluginsState = {
   apme: true,
   compliance: true,
   rhem: false,
-  /** Prototype: second RHEM rail item (Devices). Rare — only when object needs top-level entry. */
-  rhemDevices: false,
-  navSprawl: false,
 };
+
+/** Drop legacy anti-pattern flags from stored JSON. */
+function sanitize(raw: Partial<NavPluginsState> & Record<string, unknown>): NavPluginsState {
+  return {
+    apme: Boolean(raw.apme ?? DEFAULT_PLUGINS.apme),
+    compliance: Boolean(raw.compliance ?? DEFAULT_PLUGINS.compliance),
+    rhem: Boolean(raw.rhem ?? DEFAULT_PLUGINS.rhem),
+  };
+}
 
 function readPlugins(): NavPluginsState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return { ...DEFAULT_PLUGINS };
-    return { ...DEFAULT_PLUGINS, ...JSON.parse(raw) };
+    return sanitize(JSON.parse(raw));
   } catch {
     return { ...DEFAULT_PLUGINS };
   }
 }
 
-/** Prototype-only: which optional experiences appear in nav (seat / plugin factory sim). */
+/** Prototype-only: which optional plugins appear in nav (seat sim). */
 export function useNavPlugins() {
   const [plugins, setPluginsState] = useState<NavPluginsState>(readPlugins);
 
+  // Re-read after seat switch reloads / other tabs; always strip legacy flags
+  useEffect(() => {
+    const next = readPlugins();
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    setPluginsState(next);
+  }, []);
+
   const setPlugins = useCallback((next: Partial<NavPluginsState>) => {
     setPluginsState(prev => {
-      const merged = { ...prev, ...next };
+      const merged = sanitize({ ...prev, ...next });
       localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
       return merged;
     });
   }, []);
 
   const replacePlugins = useCallback((next: NavPluginsState) => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-    setPluginsState(next);
+    const clean = sanitize(next);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(clean));
+    setPluginsState(clean);
   }, []);
 
   return useMemo(
@@ -55,5 +63,5 @@ export function useNavPlugins() {
 }
 
 export function writeNavPlugins(next: NavPluginsState) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(sanitize(next)));
 }

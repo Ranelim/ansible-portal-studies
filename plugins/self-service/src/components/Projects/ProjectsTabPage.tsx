@@ -14,8 +14,10 @@ import { QualityOverviewContent } from './quality/QualityOverviewContent';
 const tabs = [
   { id: 'repositories', label: 'Repositories', path: 'list' },
   { id: 'quality', label: 'Quality', path: 'quality' },
-  { id: 'ci-activity', label: 'CI Activity', path: 'ci-activity' },
-  { id: 'templates', label: 'Templates', path: 'create' },
+  // Distinct from rail "Activity" (portal-wide job runs)
+  { id: 'ci-activity', label: 'Pipeline activity', path: 'ci-activity' },
+  // Distinct from rail "Templates" (portal-wide run catalog)
+  { id: 'templates', label: 'Scaffold', path: 'create' },
 ];
 
 const getTabIndexFromPath = (pathname: string): number => {

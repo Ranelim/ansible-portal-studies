@@ -43,10 +43,6 @@ import {
   FlatHomeDashboardPage,
   inventoriesIaPage,
   edgeFleetsIaPage,
-  edgeDevicesIaPage,
-  complianceDashboardIaPage,
-  edgeImagesIaPage,
-  edgeRepositoriesIaPage,
 } from '../IaPlaceholder';
 import { SetupWizardPage } from '../Setup/SetupWizardPage';
 import { GeneralPage } from '../Admin/GeneralPage';
@@ -184,37 +180,38 @@ const RouteViewContent = () => {
           path="edge-fleets/*"
           element={<IaPlaceholderPage config={edgeFleetsIaPage} />}
         />
+        {/* Legacy anti-pattern paths → correct entity surfaces */}
         <Route
           path="edge-devices"
-          element={<IaPlaceholderPage config={edgeDevicesIaPage} />}
+          element={<Navigate to="/self-service/edge-fleets" replace />}
         />
         <Route
           path="edge-devices/*"
-          element={<IaPlaceholderPage config={edgeDevicesIaPage} />}
+          element={<Navigate to="/self-service/edge-fleets" replace />}
         />
         <Route
           path="compliance-dashboard"
-          element={<IaPlaceholderPage config={complianceDashboardIaPage} />}
+          element={<Navigate to="/self-service/inventories" replace />}
         />
         <Route
           path="compliance-dashboard/*"
-          element={<IaPlaceholderPage config={complianceDashboardIaPage} />}
+          element={<Navigate to="/self-service/inventories" replace />}
         />
         <Route
           path="edge-images"
-          element={<IaPlaceholderPage config={edgeImagesIaPage} />}
+          element={<Navigate to="/self-service/edge-fleets" replace />}
         />
         <Route
           path="edge-images/*"
-          element={<IaPlaceholderPage config={edgeImagesIaPage} />}
+          element={<Navigate to="/self-service/edge-fleets" replace />}
         />
         <Route
           path="edge-repositories"
-          element={<IaPlaceholderPage config={edgeRepositoriesIaPage} />}
+          element={<Navigate to="/self-service/edge-fleets" replace />}
         />
         <Route
           path="edge-repositories/*"
-          element={<IaPlaceholderPage config={edgeRepositoriesIaPage} />}
+          element={<Navigate to="/self-service/edge-fleets" replace />}
         />
         {/* Legacy compliance routes kept for deep links */}
         <Route path="compliance" element={<CompliancePage />} />

@@ -30,7 +30,7 @@ const IA_MODEL_OPTIONS: Array<{
     id: 'curated',
     label: 'Option 2 — Curated sections',
     blurb:
-      'Same entity rule as Option 1 — one rail item per primary entity, with the full ecosystem on that surface — grouped under role-adaptive Automate / Develop / Operate so the list is organized by job.',
+      'Same entity rule as Option 1 — one rail item per primary entity, ecosystem on the page. Run (Templates + Activity) on top as the global run band, then Develop / Operate by seat.',
   },
   {
     id: 'experiences',

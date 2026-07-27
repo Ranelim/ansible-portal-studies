@@ -39,10 +39,7 @@ import CategoryIcon from '@material-ui/icons/Category';
 import MemoryIcon from '@material-ui/icons/Memory';
 import StorageIcon from '@material-ui/icons/Storage';
 import RouterIcon from '@material-ui/icons/Router';
-import DevicesOtherIcon from '@material-ui/icons/DevicesOther';
 import DashboardIcon from '@material-ui/icons/Dashboard';
-import PhotoLibraryIcon from '@material-ui/icons/PhotoLibrary';
-import FolderOpenIcon from '@material-ui/icons/FolderOpen';
 import LibraryBooks from '@material-ui/icons/LibraryBooks';
 import SchoolIcon from '@material-ui/icons/School';
 import SettingsIcon from '@material-ui/icons/Settings';
@@ -50,7 +47,6 @@ import LinkIcon from '@material-ui/icons/Link';
 import VpnKeyIcon from '@material-ui/icons/VpnKey';
 import SyncIcon from '@material-ui/icons/Sync';
 import ViewListIcon from '@material-ui/icons/ViewList';
-import VerifiedUserIcon from '@material-ui/icons/VerifiedUser';
 import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
 import ExpandLessIcon from '@material-ui/icons/ExpandLess';
 import HomeIcon from '@material-ui/icons/Home';
@@ -258,7 +254,59 @@ const AdminItems = () => (
   </>
 );
 
-/** Option 2 — curated role-adaptive rail (job sections + entity items). */
+/** Global run pins — portal-wide Templates + Activity (not a peer domain section). */
+const RunPins = () => <AutomateItems />;
+
+const DevelopEntityItems = () => (
+  <>
+    <SidebarItem
+      icon={CodeIcon}
+      to="/self-service/repositories"
+      text="Git Repositories"
+    />
+    <SidebarItem
+      icon={CategoryIcon}
+      to="/self-service/collections"
+      text="Collections"
+    />
+    <SidebarItem
+      icon={MemoryIcon}
+      to="/self-service/ee"
+      text="Execution Environments"
+    />
+  </>
+);
+
+const OperateEntityItems = ({
+  showInventories,
+  showEdgeFleets,
+}: {
+  showInventories: boolean;
+  showEdgeFleets: boolean;
+}) => (
+  <>
+    {showInventories && (
+      <SidebarItem
+        icon={StorageIcon}
+        to="/self-service/inventories"
+        text="Inventories"
+      />
+    )}
+    {showEdgeFleets && (
+      <SidebarItem
+        icon={RouterIcon}
+        to="/self-service/edge-fleets"
+        text="Edge fleets"
+      />
+    )}
+  </>
+);
+
+/**
+ * Option 2 — curated role-adaptive rail.
+ * Run (Templates + Activity) always on top as the global run band,
+ * then Develop / Operate entity sections by seat.
+ */
 export const BaselineSidebar = () => {
   const { role, hasRole } = useUserRoleContext();
   const { plugins } = useNavPlugins();
@@ -267,88 +315,28 @@ export const BaselineSidebar = () => {
   const canSeeOps = role === 'operator' || isAdmin;
   const showInventories = canSeeOps && plugins.compliance;
   const showEdgeFleets = canSeeOps && plugins.rhem;
-  const showEdgeDevices =
-    canSeeOps && plugins.rhem && (plugins.rhemDevices || plugins.navSprawl);
-  const sprawl = canSeeOps && plugins.navSprawl;
-  const showOperate =
-    showInventories ||
-    showEdgeFleets ||
-    showEdgeDevices ||
-    (sprawl && plugins.compliance) ||
-    (sprawl && plugins.rhem);
+  const showOperate = showInventories || showEdgeFleets;
 
   return (
     <SearchAndMenu>
-      <ModelHint text="Option 2 — curated · 1 item/entity · ecosystem on the page" />
-      <SidebarSectionLabel text="Automate" />
-      <AutomateItems />
+      <ModelHint text="Option 2 — Run band on top · entity sections · 1 item/entity" />
+      <SidebarSectionLabel text="Run" />
+      <RunPins />
       {showDevelop && (
         <>
           <SidebarDivider />
           <SidebarSectionLabel text="Develop" />
-          <SidebarItem
-            icon={CodeIcon}
-            to="/self-service/repositories"
-            text="Git Repositories"
-          />
-          <SidebarItem
-            icon={CategoryIcon}
-            to="/self-service/collections"
-            text="Collections"
-          />
-          <SidebarItem
-            icon={MemoryIcon}
-            to="/self-service/ee"
-            text="Execution Environments"
-          />
+          <DevelopEntityItems />
         </>
       )}
       {showOperate && (
         <>
           <SidebarDivider />
           <SidebarSectionLabel text="Operate" />
-          {showInventories && (
-            <SidebarItem
-              icon={StorageIcon}
-              to="/self-service/inventories"
-              text="Inventories"
-            />
-          )}
-          {sprawl && plugins.compliance && (
-            <SidebarItem
-              icon={DashboardIcon}
-              to="/self-service/compliance-dashboard"
-              text="Compliance dashboard"
-            />
-          )}
-          {showEdgeFleets && (
-            <SidebarItem
-              icon={RouterIcon}
-              to="/self-service/edge-fleets"
-              text="Edge fleets"
-            />
-          )}
-          {showEdgeDevices && (
-            <SidebarItem
-              icon={DevicesOtherIcon}
-              to="/self-service/edge-devices"
-              text="Devices"
-            />
-          )}
-          {sprawl && plugins.rhem && (
-            <>
-              <SidebarItem
-                icon={PhotoLibraryIcon}
-                to="/self-service/edge-images"
-                text="Images"
-              />
-              <SidebarItem
-                icon={FolderOpenIcon}
-                to="/self-service/edge-repositories"
-                text="Repositories"
-              />
-            </>
-          )}
+          <OperateEntityItems
+            showInventories={showInventories}
+            showEdgeFleets={showEdgeFleets}
+          />
         </>
       )}
       <SidebarDivider />
@@ -638,25 +626,11 @@ export const ExperiencesSidebar = () => {
         <>
           <RunItems />
           <SidebarDivider />
+          {/* One primary entity — Dashboard / Profiles / Scan history as page tabs */}
           <SidebarItem
             icon={StorageIcon}
             to="/self-service/inventories"
             text="Inventories"
-          />
-          <SidebarItem
-            icon={DashboardIcon}
-            to="/self-service/compliance-dashboard"
-            text="Dashboard"
-          />
-          <SidebarItem
-            icon={VerifiedUserIcon}
-            to="/self-service/inventories"
-            text="Profiles"
-          />
-          <SidebarItem
-            icon={HistoryIcon}
-            to="/self-service/inventories"
-            text="Scan history"
           />
           <SidebarDivider />
           <SidebarSectionLabel text="Manage" />
@@ -672,25 +646,11 @@ export const ExperiencesSidebar = () => {
         <>
           <RunItems />
           <SidebarDivider />
+          {/* One primary entity — Devices / Images live as tabs on Edge fleets */}
           <SidebarItem
             icon={RouterIcon}
             to="/self-service/edge-fleets"
-            text="Fleets"
-          />
-          <SidebarItem
-            icon={DevicesOtherIcon}
-            to="/self-service/edge-devices"
-            text="Devices"
-          />
-          <SidebarItem
-            icon={PhotoLibraryIcon}
-            to="/self-service/edge-images"
-            text="Images"
-          />
-          <SidebarItem
-            icon={FolderOpenIcon}
-            to="/self-service/edge-repositories"
-            text="Repositories"
+            text="Edge fleets"
           />
           <SidebarDivider />
           <SidebarSectionLabel text="Manage" />

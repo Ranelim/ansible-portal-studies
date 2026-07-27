@@ -36,7 +36,7 @@ import { makeStyles, alpha } from '@material-ui/core/styles';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useApi, identityApiRef } from '@backstage/core-plugin-api';
 import { useStarredEntities } from '@backstage/plugin-catalog-react';
-import { useState, useMemo, type ReactNode } from 'react';
+import { useState, useMemo, useEffect, type ReactNode } from 'react';
 import {
   useUserRoleContext,
   writeNavPlugins,
@@ -54,7 +54,7 @@ import { IA_BANNER_HEIGHT } from '../IaPrototype';
 
 const SEAT_STORAGE_KEY = 'portal-nav-seat';
 
-/** Prototype seats: role + which optional plugins appear in the rail */
+/** Prototype seats: role + which optional plugins appear in the left nav */
 const SEAT_OPTIONS: Array<{
   id: string;
   role: UserRole;
@@ -67,106 +67,50 @@ const SEAT_OPTIONS: Array<{
     role: 'sme',
     label: 'SME',
     icon: <PersonOutlineIcon fontSize="small" />,
-    plugins: {
-      apme: false,
-      compliance: false,
-      rhem: false,
-      rhemDevices: false,
-      navSprawl: false,
-    },
+    plugins: { apme: false, compliance: false, rhem: false },
   },
   {
     id: 'developer',
     role: 'developer',
     label: 'Developer',
     icon: <BuildIcon fontSize="small" />,
-    plugins: {
-      apme: true,
-      compliance: false,
-      rhem: false,
-      rhemDevices: false,
-      navSprawl: false,
-    },
+    plugins: { apme: true, compliance: false, rhem: false },
   },
   {
     id: 'compliance-ops',
     role: 'operator',
     label: 'Compliance ops',
     icon: <StorageIcon fontSize="small" />,
-    plugins: {
-      apme: false,
-      compliance: true,
-      rhem: false,
-      rhemDevices: false,
-      navSprawl: false,
-    },
+    plugins: { apme: false, compliance: true, rhem: false },
   },
   {
     id: 'edge-ops',
     role: 'operator',
-    label: 'Edge ops (1 item)',
+    label: 'Edge ops',
     icon: <RouterIcon fontSize="small" />,
-    plugins: {
-      apme: false,
-      compliance: false,
-      rhem: true,
-      rhemDevices: false,
-      navSprawl: false,
-    },
-  },
-  {
-    id: 'edge-ops-2',
-    role: 'operator',
-    label: 'Edge ops (2 items)',
-    icon: <RouterIcon fontSize="small" />,
-    plugins: {
-      apme: false,
-      compliance: false,
-      rhem: true,
-      rhemDevices: true,
-      navSprawl: false,
-    },
+    plugins: { apme: false, compliance: false, rhem: true },
   },
   {
     id: 'ops-both',
     role: 'operator',
     label: 'Ops (both plugins)',
     icon: <SecurityIcon fontSize="small" />,
-    plugins: {
-      apme: false,
-      compliance: true,
-      rhem: true,
-      rhemDevices: false,
-      navSprawl: false,
-    },
-  },
-  {
-    id: 'ops-sprawl',
-    role: 'operator',
-    label: 'Anti-pattern: sprawl (6)',
-    icon: <SecurityIcon fontSize="small" />,
-    plugins: {
-      apme: false,
-      compliance: true,
-      rhem: true,
-      rhemDevices: true,
-      navSprawl: true,
-    },
+    plugins: { apme: false, compliance: true, rhem: true },
   },
   {
     id: 'admin',
     role: 'admin',
     label: 'Admin',
     icon: <SupervisorAccountIcon fontSize="small" />,
-    plugins: {
-      apme: true,
-      compliance: true,
-      rhem: true,
-      rhemDevices: true,
-      navSprawl: false,
-    },
+    plugins: { apme: true, compliance: true, rhem: true },
   },
 ];
+
+/** Legacy anti-pattern seat ids → current seats */
+const SEAT_MIGRATIONS: Record<string, string> = {
+  'edge-ops-2': 'edge-ops',
+  'ops-sprawl': 'ops-both',
+};
 
 const DEVSPACES_DASHBOARD_URL = '/devspaces-mockup.html?state=scm';
 const IS_DEVSPACES_CONNECTED = true;
@@ -456,6 +400,39 @@ export const GlobalHeader = () => {
   const { role: currentRole, hasRole } = useUserRoleContext();
   const isDeveloper = hasRole('developer');
   const showOperate = currentRole === 'operator' || currentRole === 'admin';
+
+  // Keep seat ↔ plugins in sync; migrate removed anti-pattern seats once
+  useEffect(() => {
+    try {
+      let seatId = localStorage.getItem(SEAT_STORAGE_KEY) || 'admin';
+      let needsReload = false;
+      const rawPlugins = localStorage.getItem('portal-nav-plugins');
+      if (
+        rawPlugins &&
+        (rawPlugins.includes('rhemDevices') || rawPlugins.includes('navSprawl'))
+      ) {
+        needsReload = true;
+      }
+      if (SEAT_MIGRATIONS[seatId]) {
+        seatId = SEAT_MIGRATIONS[seatId];
+        localStorage.setItem(SEAT_STORAGE_KEY, seatId);
+        needsReload = true;
+      }
+      const seat =
+        SEAT_OPTIONS.find(s => s.id === seatId) ??
+        SEAT_OPTIONS.find(s => s.id === 'admin');
+      if (seat) {
+        localStorage.setItem('portal-user-role', seat.role);
+        writeNavPlugins(seat.plugins);
+      }
+      if (needsReload && !sessionStorage.getItem('portal-nav-seat-migrated')) {
+        sessionStorage.setItem('portal-nav-seat-migrated', '1');
+        window.location.reload();
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   if (location.pathname.includes('/setup')) {
     return null;

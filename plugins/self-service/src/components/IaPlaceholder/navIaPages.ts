@@ -44,7 +44,7 @@ export const edgeFleetsIaPage: IaPageConfig = {
   title: 'Edge fleets',
   subtitle: 'Edge device fleet lifecycle (RHEM)',
   purpose:
-    'Manage edge device fleets — desired state, updates, and health. Distinct from inventory compliance. Default: Devices stay as a tab here (0 extra rail items).',
+    'Primary Operate entity for RHEM. Manage fleets — desired state, updates, and health. Devices and images live as tabs here, not as separate left-nav items.',
   preview: true,
   tabs: [
     {
@@ -55,8 +55,12 @@ export const edgeFleetsIaPage: IaPageConfig = {
     {
       id: 'devices',
       label: 'Devices',
-      expect:
-        'Default pattern: devices as a tab. Alternate: promote to a sibling rail item (see Devices page / Edge ops 2-item seat).',
+      expect: 'Devices across fleets — member of this entity surface, not a sibling nav item.',
+    },
+    {
+      id: 'images',
+      label: 'Images',
+      expect: 'OS / app images used by fleet desired state.',
     },
   ],
   also: 'Fleet detail: desired state (OS / config / apps), members, updates.',
