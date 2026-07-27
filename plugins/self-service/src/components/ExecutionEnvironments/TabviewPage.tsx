@@ -72,7 +72,13 @@ export const EEHeader = ({ children }: { children?: React.ReactNode }) => {
 };
 
 const tabs = [
-  { id: 0, label: 'Catalog', icon: <CategoryOutlinedIcon />, path: 'catalog' },
+  // Entity list — never "Catalog" (Catalog = Portal-wide discovery only)
+  {
+    id: 0,
+    label: 'Execution environments',
+    icon: <CategoryOutlinedIcon />,
+    path: 'catalog',
+  },
   { id: 1, label: 'Create', icon: <CreateComponentIcon />, path: 'create' },
 ];
 

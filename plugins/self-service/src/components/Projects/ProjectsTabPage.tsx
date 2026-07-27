@@ -11,12 +11,13 @@ import { ProjectsCreateContent } from './create/ProjectsCreateContent';
 import { CIActivityContent } from './ci/CIActivityContent';
 import { QualityOverviewContent } from './quality/QualityOverviewContent';
 
+// Entity pattern: no Dashboard (list is landing) → Repositories → domain → Scaffold (trailing)
 const tabs = [
   { id: 'repositories', label: 'Repositories', path: 'list' },
   { id: 'quality', label: 'Quality', path: 'quality' },
   // Distinct from rail "Activity" (portal-wide job runs)
   { id: 'ci-activity', label: 'Pipeline activity', path: 'ci-activity' },
-  // Distinct from rail "Templates" (portal-wide run catalog)
+  // Trailing create — distinct from rail "Templates" (portal-wide run catalog)
   { id: 'templates', label: 'Scaffold', path: 'create' },
 ];
 

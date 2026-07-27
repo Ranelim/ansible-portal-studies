@@ -397,7 +397,7 @@ export const FlatNavSidebar = () => {
       <SidebarItem
         icon={HistoryIcon}
         to="/self-service/create/tasks"
-        text="History"
+        text="Activity"
       />
       <SidebarItem icon={LibraryBooks} to="docs" text="Documentation" />
       <SidebarItem
@@ -484,14 +484,14 @@ const useExperienceSwitchStyles = makeStyles(theme => ({
   },
 }));
 
-/** Run pair — Templates + History (Activity). */
+/** Run pair — Templates + Activity (same labels as curated Run band). */
 const RunItems = () => (
   <>
     <SidebarItem icon={AddCircleOutlineIcon} to="/create" text="Templates" />
     <SidebarItem
       icon={HistoryIcon}
       to="/self-service/create/tasks"
-      text="History"
+      text="Activity"
     />
   </>
 );
@@ -577,7 +577,7 @@ export const ExperiencesSidebar = () => {
         </>
       )}
 
-      {/* SME / Automate — Templates, History, Catalog only */}
+      {/* SME / Automate — Templates, Activity, Catalog only */}
       {active === 'automate' && (
         <>
           <RunItems />
@@ -662,7 +662,7 @@ export const ExperiencesSidebar = () => {
         </>
       )}
 
-      {/* Admin — settings only; no Templates / History */}
+      {/* Admin — settings only; no Templates / Activity */}
       {active === 'admin' && <AdminItems />}
     </SearchAndMenu>
   );

@@ -14,6 +14,7 @@ import {
   type NavIaModel,
 } from '@ansible/plugin-backstage-self-service';
 import { IA_BANNER_HEIGHT } from './chromeHeights';
+import { modelHomePath } from './navIaLandings';
 
 const IA_MODEL_OPTIONS: Array<{
   id: NavIaModel;
@@ -24,7 +25,7 @@ const IA_MODEL_OPTIONS: Array<{
     id: 'flat',
     label: 'Option 1 — Flat list (RHDH)',
     blurb:
-      'One menu item per primary entity (Git Repositories, Inventories, Edge fleets, …). Each entity holds its ecosystem — related plugins, tabs, and actions — instead of new sibling rail rows. Pinned Home / Catalog / run / learn, then a flat phonebook; Admin in a bottom drawer.',
+      'One menu item per primary entity (Git Repositories, Inventories, Edge fleets, …). Each entity holds its ecosystem — related plugins, tabs, and actions — instead of new sibling rail rows. Pinned Home / Catalog / Templates / Activity / learn, then a flat phonebook; Admin in a bottom drawer.',
   },
   {
     id: 'curated',
@@ -36,7 +37,7 @@ const IA_MODEL_OPTIONS: Array<{
     id: 'experiences',
     label: 'Option 3 — Experiences (toggle)',
     blurb:
-      'Show one experience at a time via a rail toggle. All (Home) is a Bridge-style hub for experiences and plugins — no Templates/History until you enter a mode.',
+      'Show one experience at a time via a rail toggle. All (Home) is a Bridge-style hub for experiences and plugins — no Templates/Activity until you enter a mode.',
   },
 ];
 
@@ -120,11 +121,9 @@ export const IaPrototypeBanner = () => {
     if (next === 'experiences') {
       setExperience('all');
       writeNavExperience('all');
-      navigate('/self-service/experiences');
     }
-    if (next === 'flat') {
-      navigate('/self-service/home');
-    }
+    // Always land on that model's home so content matches the left nav
+    navigate(modelHomePath(next));
   };
 
   return (

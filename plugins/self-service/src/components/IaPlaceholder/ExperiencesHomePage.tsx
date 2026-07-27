@@ -52,7 +52,7 @@ const EXPERIENCE_META: Record<
 > = {
   automate: {
     plugins: ['Scaffolder / self-service'],
-    railItems: ['Templates', 'History', 'Catalog'],
+    railItems: ['Templates', 'Activity', 'Catalog'],
     landing: '/create',
     summary: 'Run job templates and track activity (SME home).',
     metric: '24',
@@ -86,7 +86,7 @@ const EXPERIENCE_META: Record<
     plugins: ['Portal admin', 'Integrations', 'RBAC'],
     railItems: ['Settings', 'Integrations', 'Access Control', 'Sync Status'],
     landing: '/self-service/admin/general',
-    summary: 'Administration settings only — no Templates or History.',
+    summary: 'Administration settings only — no Templates or Activity.',
     metric: '4',
     metricLabel: 'integrations',
   },
@@ -139,7 +139,7 @@ const VIEW_META: Record<
   dashboard: {
     title: 'Dashboard',
     subtitle:
-      'Bridge-style home — overview of experiences on this seat. Open a mode to work; no Templates or History here.',
+      'Bridge-style home — overview of experiences on this seat. Open a mode to work; no Templates or Activity here.',
   },
   catalog: {
     title: 'Experiences',
@@ -195,7 +195,7 @@ export const ExperiencesHomePage = () => {
         name: 'Scaffolder / self-service',
         experienceId: 'automate',
         experienceLabel: EXPERIENCE_LABELS.automate,
-        contributes: 'Templates, History, Catalog',
+        contributes: 'Templates, Activity, Catalog',
         status: 'Always on',
         landing: '/create',
       },

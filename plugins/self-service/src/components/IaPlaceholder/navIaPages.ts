@@ -1,7 +1,28 @@
+/**
+ * Entity page tab pattern (Portal IA — apply to every primary entity surface)
+ *
+ * Order (fixed slots; omit empty ones):
+ *   1. Dashboard     — optional. Cross-object overview/KPIs. LANDING when present.
+ *   2. {Entity}      — required. Plural entity name for the list (never "Catalog").
+ *                      LANDING when there is no Dashboard.
+ *   3. Domain tabs   — ecosystem (Quality, Devices, Scans, Profiles, Images…).
+ *   4. Trailing      — exactly one of:
+ *                        Templates — filtered run/scaffold templates for this entity
+ *                        Settings  — user-scoped prefs for this whole surface
+ *                      Never Admin/integration config (that stays Administration).
+ *
+ * Rules:
+ * - Never land on domain or trailing tabs.
+ * - Never name the list tab "Catalog" (Catalog = Portal-wide discovery only).
+ * - Don't invent a Dashboard that duplicates the list.
+ */
+
 export type IaTab = {
   id: string;
   label: string;
   expect: string;
+  /** Marks the Dashboard or entity-list landing slot for docs/guards. */
+  slot?: 'dashboard' | 'list' | 'domain' | 'trailing';
 };
 
 export type IaPageConfig = {
@@ -11,145 +32,174 @@ export type IaPageConfig = {
   tabs: IaTab[];
   also?: string;
   preview?: boolean;
-  /** Shown when this rail item illustrates PDT sprawl / rejected contribution. */
   antiPattern?: boolean;
 };
+
+/** Landing tab index: Dashboard if present, else first list tab, else 0. */
+export function landingTabIndex(tabs: IaTab[]): number {
+  const dash = tabs.findIndex(t => t.slot === 'dashboard' || t.id === 'dashboard');
+  if (dash >= 0) return dash;
+  const list = tabs.findIndex(t => t.slot === 'list');
+  if (list >= 0) return list;
+  return 0;
+}
 
 export const inventoriesIaPage: IaPageConfig = {
   title: 'Inventories',
   subtitle: 'Compliance on host inventories',
   purpose:
-    'Scan inventories against compliance profiles, review findings, and remediate hosts.',
+    'Entity pattern: Dashboard (landing) → Inventories list → domain tabs → Templates. Scan inventories, review findings, remediate hosts.',
   tabs: [
     {
-      id: 'catalog',
-      label: 'Catalog',
-      expect: 'List of all inventories with compliance summary.',
+      id: 'dashboard',
+      label: 'Dashboard',
+      slot: 'dashboard',
+      expect:
+        'Landing. Org/posture KPIs across inventories — open findings, compliance %, recent scans. Not a second list.',
     },
     {
-      id: 'compliance',
-      label: 'Compliance',
-      expect: 'Fleet-level compliance profiles and posture.',
+      id: 'inventories',
+      label: 'Inventories',
+      slot: 'list',
+      expect: 'Table of inventories with compliance summary. Primary object list (never named Catalog).',
     },
     {
-      id: 'scan-history',
-      label: 'Scan History',
-      expect: 'Past compliance scans across inventories.',
+      id: 'scans',
+      label: 'Scans',
+      slot: 'domain',
+      expect: 'Scan history across inventories.',
+    },
+    {
+      id: 'profiles',
+      label: 'Profiles',
+      slot: 'domain',
+      expect: 'Compliance profiles applied to inventories.',
+    },
+    {
+      id: 'templates',
+      label: 'Templates',
+      slot: 'trailing',
+      expect:
+        'Remediation / scan-related templates for this entity. Not the global Run → Templates list.',
     },
   ],
-  also: 'Inventory detail: Overview, Compliance, Hosts, Settings.',
+  also: 'Inventory detail: Overview, Compliance, Hosts. Admin connection settings stay under Administration.',
 };
 
 export const edgeFleetsIaPage: IaPageConfig = {
   title: 'Edge fleets',
   subtitle: 'Edge device fleet lifecycle (RHEM)',
   purpose:
-    'Primary Operate entity for RHEM. Manage fleets — desired state, updates, and health. Devices and images live as tabs here, not as separate left-nav items.',
+    'Entity pattern: Dashboard (landing) → Fleets list → Devices / Images → Templates. Devices are tabs here, not left-nav items.',
   preview: true,
   tabs: [
     {
+      id: 'dashboard',
+      label: 'Dashboard',
+      slot: 'dashboard',
+      expect:
+        'Landing. Fleet health, devices pending update, rollout status. Distinct from the Fleets table.',
+    },
+    {
       id: 'fleets',
       label: 'Fleets',
-      expect: 'List of fleets and rollout status.',
+      slot: 'list',
+      expect: 'List of fleets and rollout status — primary RHEM object list.',
     },
     {
       id: 'devices',
       label: 'Devices',
-      expect: 'Devices across fleets — member of this entity surface, not a sibling nav item.',
+      slot: 'domain',
+      expect: 'Devices across fleets (ecosystem tab).',
     },
     {
       id: 'images',
       label: 'Images',
+      slot: 'domain',
       expect: 'OS / app images used by fleet desired state.',
+    },
+    {
+      id: 'templates',
+      label: 'Templates',
+      slot: 'trailing',
+      expect: 'Edge / fleet-related job templates for this entity, if any.',
     },
   ],
   also: 'Fleet detail: desired state (OS / config / apps), members, updates.',
 };
 
-/** Alternate contribution: same plugin, second primary object on the rail (architecture-gated). */
+/** ——— Legacy anti-pattern pages (routes redirect away; kept for reference) ——— */
+
 export const edgeDevicesIaPage: IaPageConfig = {
   title: 'Devices',
-  subtitle: 'Edge devices (RHEM) — second rail item',
-  purpose:
-    'Demo only: one plugin contributing two Operate rail items when Devices needs a top-level entry. Prefer tabs under Edge fleets unless architecture review says otherwise.',
+  subtitle: 'Do not use as a rail item',
+  purpose: 'Devices belong under Edge fleets as a domain tab.',
   preview: true,
+  antiPattern: true,
   tabs: [
     {
       id: 'all',
       label: 'All devices',
-      expect: 'Org-wide device list and health.',
-    },
-    {
-      id: 'unassigned',
-      label: 'Unassigned',
-      expect: 'Devices not yet in a fleet.',
+      expect: 'Prefer Edge fleets → Devices tab.',
     },
   ],
-  also: 'Device detail: desired vs reported state, membership, updates.',
 };
-
-/** ——— Anti-pattern sprawl seat (Compliance 2 + RHEM 4) ——— */
 
 export const complianceDashboardIaPage: IaPageConfig = {
   title: 'Compliance dashboard',
-  subtitle: 'Anti-pattern — second Compliance rail item',
-  purpose:
-    'Should be a tab (or overview) on Inventories, not a sibling Operate row. Settings for the Compliance plugin belong under Administration → Integrations.',
+  subtitle: 'Do not use as a rail item',
+  purpose: 'Dashboard is a tab on Inventories, not a sibling Operate row.',
   antiPattern: true,
   tabs: [
     {
       id: 'posture',
       label: 'Posture',
-      expect: 'Org-wide compliance scorecards — better as Inventories → Compliance tab.',
+      expect: 'Prefer Inventories → Dashboard.',
     },
   ],
-  also: 'Preferred: Operate → Inventories only; Admin for connection/settings.',
 };
 
 export const edgeImagesIaPage: IaPageConfig = {
   title: 'Images',
-  subtitle: 'Anti-pattern — RHEM product IA on the Portal rail',
-  purpose:
-    'OS / app images are secondary to fleets. Keep under Edge fleets (tab or detail), not a top-level Operate item.',
+  subtitle: 'Do not use as a rail item',
+  purpose: 'Images belong under Edge fleets as a domain tab.',
   preview: true,
   antiPattern: true,
   tabs: [
     {
       id: 'catalog',
-      label: 'Image catalog',
-      expect: 'Better nested under fleet desired-state or a fleets sub-nav.',
+      label: 'Images',
+      expect: 'Prefer Edge fleets → Images.',
     },
   ],
 };
 
 export const edgeEnrollmentIaPage: IaPageConfig = {
   title: 'Enrollment',
-  subtitle: 'Anti-pattern — RHEM product IA on the Portal rail',
-  purpose:
-    'Device enrollment is a task/flow, not a primary object for every Operator landing. Prefer action from Devices/Fleets or a guided wizard.',
+  subtitle: 'Do not use as a rail item',
+  purpose: 'Enrollment is an action/flow, not a persistent Operate item.',
   preview: true,
   antiPattern: true,
   tabs: [
     {
       id: 'enroll',
       label: 'Enroll devices',
-      expect: 'Wizard / action — not a persistent Operate rail item.',
+      expect: 'Wizard from Fleets or Devices.',
     },
   ],
 };
 
 export const edgeRepositoriesIaPage: IaPageConfig = {
   title: 'Repositories',
-  subtitle: 'Anti-pattern — RHEM product IA on the Portal rail',
-  purpose:
-    'Conflicts with Develop → Git Repositories naming and is not an Operate primary object for Portal. Nest under Edge fleets or Admin if config-only.',
+  subtitle: 'Do not use as a rail item',
+  purpose: 'Conflicts with Git Repositories; nest under fleets or Admin if config-only.',
   preview: true,
   antiPattern: true,
   tabs: [
     {
       id: 'sources',
       label: 'Content sources',
-      expect: 'Config/content source — Admin or in-page under fleets.',
+      expect: 'Admin or fleet detail — not Operate rail.',
     },
   ],
 };

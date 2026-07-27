@@ -25,6 +25,18 @@ Purple **Nav IA prototype** banner (above the dark masthead) — short explanati
 | **Option 2 — Curated sections** | **Run** (Templates + Activity) on top as global run band, then **Develop / Operate** entity sections by seat |
 | **Option 3 — Experiences (toggle)** | One experience at a time; All (Home) = Bridge hub for experiences/plugins (no run items until a mode) |
 
+Switching models always lands on that model’s home. A route guard also redirects if you bookmark a model-specific URL (e.g. Bridge Dashboard under curated).
+
+### Entity page tab pattern (locked for this prototype)
+
+```
+[Dashboard?] → [{Entity} list] → [domain tabs…] → [Templates | Settings]
+```
+
+- **Landing:** Dashboard if present, else entity-named list — never “Catalog”.
+- **Trailing:** one of Templates (entity-filtered) or user Settings — not Admin config.
+- Applied on Inventories + Edge fleets placeholders; Git Repositories already matches (list → domain → Scaffold).
+
 Also: Profile → **Switch seat** (SME / Developer / Compliance ops / Edge ops / Ops both / Admin).
 
 ### Suggested walkthrough

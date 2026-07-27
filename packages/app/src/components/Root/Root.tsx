@@ -15,7 +15,7 @@ import {
   ExperiencesSidebar,
   FlatNavSidebar,
 } from './navSidebars';
-import { CHROME_TOP } from '../IaPrototype';
+import { CHROME_TOP, NavIaRouteGuard } from '../IaPrototype';
 
 const useRootStyles = makeStyles(theme => ({
   '@global': {
@@ -99,6 +99,7 @@ export const Root = ({ children }: PropsWithChildren<{}>) => {
   return (
     <RestartProvider>
       <div className={rootClasses.fixedHeaderOffset}>
+        <NavIaRouteGuard />
         <SidebarPage>
           <RoleAdaptiveSidebar />
           <GlobalRestartBanner />
