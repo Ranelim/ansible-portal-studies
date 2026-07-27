@@ -29,9 +29,9 @@ Purple **Nav IA prototype** banner (above the dark masthead) — short explanati
 
 | Model | What it demonstrates |
 |---|---|
-| **Option 1 — Flat list (RHDH)** | **One menu item per primary entity**; each entity holds its ecosystem (plugins/tabs/actions). Pins + flat phonebook; Home = seat dashboard; Admin drawer at bottom |
-| **Option 2 — Curated sections** | **Run** (Templates + Activity) on top as global run band, then **Develop / Operate** entity sections by seat |
-| **Option 3 — Experiences (toggle)** | One experience at a time. **All (Home)** = Dashboard (insight widgets) · Experiences (Bridge tiles) · Plugins (admin only) · Settings. Domain modes: Dashboard · run · entities (list-first) · Settings. Platform Admin only in **Administration** |
+| **Option 1 — Flat list (RHDH)** | **Rail (side nav):** one menu item per primary entity. Pins + flat phonebook; Admin drawer. **Entity tabs:** Dashboard? → list → domain → Templates \| Settings |
+| **Option 2 — Curated sections** | **Rail (side nav):** same one-item-per-entity rule; Run band then labeled Develop / Operate / Learn / Admin sections. **Entity tabs:** same as Option 1 |
+| **Option 3 — Experiences (toggle)** | **Rail (side nav):** one experience at a time; still one item per entity. Domain order: Dashboard → Templates → Activity → entities → Settings. **Entity tabs (list-first):** list → domain → Templates \| Settings (no entity Dashboard tab) |
 
 
 Switching models always lands on that model’s home. A route guard also redirects if you bookmark a model-specific URL (e.g. Bridge Dashboard under curated).

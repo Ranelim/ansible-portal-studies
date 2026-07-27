@@ -25,19 +25,19 @@ const IA_MODEL_OPTIONS: Array<{
     id: 'flat',
     label: 'Option 1 — Flat list (RHDH)',
     blurb:
-      'One menu item per primary entity (Git Repositories, Inventories, Edge fleets, …). Each entity holds its ecosystem — related plugins, tabs, and actions — instead of new sibling rail rows. Pinned Home / Catalog / Templates / Activity / learn, then a flat phonebook; Admin in a bottom drawer.',
+      'Rail (side nav): one menu item per primary entity; plugins extend that page — do not add sibling rail rows. Pins (Home, Catalog, Templates, Activity, Learn) then a flat entity phonebook; Administration in a bottom drawer. Entity page tabs: Dashboard? → {Entity} list → domain tabs → Templates | Settings.',
   },
   {
     id: 'curated',
     label: 'Option 2 — Curated sections',
     blurb:
-      'Same entity rule as Option 1 — one rail item per primary entity, ecosystem on the page. Run (Templates + Activity) on top as the global run band, then Develop / Operate by seat.',
+      'Rail (side nav): same one-item-per-entity rule as Option 1. Run band (Templates + Activity) on top, then Develop / Operate / Learn / Administration as labeled sections (not collapsible drawers). Entity page tabs: Dashboard? → {Entity} list → domain tabs → Templates | Settings.',
   },
   {
     id: 'experiences',
     label: 'Option 3 — Experiences (toggle)',
     blurb:
-      'One experience at a time. Rail: Dashboard (overview) · Templates · Activity · entities (list-first) · Settings. Entity pages omit Dashboard tabs under Option 3. Platform config only in Administration.',
+      'Rail (side nav): one experience at a time; still one menu item per primary entity inside the mode. Domain rail order: Dashboard → Templates → Activity → entities → Settings. All (Home): insight Dashboard · Experiences catalog · Plugins (admin only) · Settings. Entity page tabs (list-first): {Entity} list → domain tabs → Templates | Settings — overview lives on the experience Dashboard, not an entity Dashboard tab. Platform config only in Administration.',
   },
 ];
 
@@ -78,7 +78,7 @@ const useStyles = makeStyles(theme => ({
   },
   select: {
     minWidth: 320,
-    maxWidth: 420,
+    maxWidth: 440,
     flexShrink: 0,
     '& .MuiOutlinedInput-root': {
       height: 32,
@@ -132,8 +132,9 @@ export const IaPrototypeBanner = () => {
         Nav IA prototype
       </Typography>
       <Typography className={classes.copy} component="span">
-        Explore how Automation Portal could structure the left nav as we add plugins.
-        Switch models below — this banner is design exploration only, not product UI.
+        Explore how Automation Portal could structure the rail (side nav) as we
+        add plugins. Switch models below — design exploration only, not product
+        UI.
       </Typography>
       <FormControl variant="outlined" size="small" className={classes.select}>
         <Select
@@ -147,7 +148,7 @@ export const IaPrototypeBanner = () => {
             <MenuItem
               key={opt.id}
               value={opt.id}
-              style={{ whiteSpace: 'normal', maxWidth: 420, alignItems: 'flex-start' }}
+              style={{ whiteSpace: 'normal', maxWidth: 520, alignItems: 'flex-start' }}
             >
               <Box py={0.5}>
                 <Typography variant="body2" style={{ fontWeight: 600 }}>

@@ -319,7 +319,7 @@ export const BaselineSidebar = () => {
 
   return (
     <SearchAndMenu>
-      <ModelHint text="Option 2 — Run band on top · entity sections · 1 item/entity" />
+      <ModelHint text="Option 2 — rail (side nav): 1 item/entity · Run → Develop/Operate · tabs: Dashboard? → list → domain → Templates|Settings" />
       <SidebarSectionLabel text="Run" />
       <RunPins />
       {showDevelop && (
@@ -385,7 +385,7 @@ export const FlatNavSidebar = () => {
         ) : undefined
       }
     >
-      <ModelHint text="Option 1 (RHDH) — 1 item/entity · ecosystem on the page · Admin drawer" />
+      <ModelHint text="Option 1 — rail (side nav): 1 item/entity · flat phonebook · tabs: Dashboard? → list → domain → Templates|Settings" />
 
       <SidebarItem icon={HomeIcon} to="/self-service/home" text="Home" />
       <SidebarItem
@@ -550,7 +550,7 @@ export const ExperiencesSidebar = () => {
 
   return (
     <SearchAndMenu>
-      <ModelHint text="Option 3 — Dashboard · run · entities (list-first) · Settings · Admin in Administration" />
+      <ModelHint text="Option 3 — rail (side nav): 1 item/entity · Dashboard→run→entities→Settings · entity tabs list-first (no Dashboard tab)" />
 
       <Box className={classes.wrap}>
         <FormControl
