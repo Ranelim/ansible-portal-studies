@@ -1,0 +1,2 @@
+"use strict";(self.webpackChunkapp=self.webpackChunkapp||[]).push([["6402"],{78665(e,s,a){a.d(s,{HasResourcesCard:()=>c});var t=a(31085),r=a(97214),p=a(59084),n=a(15669),i=a(58045),u=a(47250);function c(e){let{t:s}=(0,u.i)(i.W),{variant:a="gridItem",title:c=s("hasResourcesCard.title"),columns:d=n.v9,tableOptions:l={}}=e;return(0,t.jsx)(p.p,{variant:a,title:c,entityKind:"Resource",relationType:r.sA,columns:d,asRenderableEntities:n.eB,emptyMessage:s("hasResourcesCard.emptyMessage"),emptyHelpLink:n.nz,tableOptions:l})}}}]);
+//# sourceMappingURL=6402.64ad9ce6.chunk.js.map
