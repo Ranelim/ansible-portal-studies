@@ -6,7 +6,9 @@
  * Active when true:
  * - Opt 1/4 Home: "Experiences" → "Shortcuts"
  * - Opt 1/4 rail: hide global Catalog for SME
- * - Opt 3: SME lands in Automate (/create); All-bridge also shows Templates/Activity
+ *
+ * Opt 5 SME lock (Automate only, no Experience dropdown, no All/Home) is always on —
+ * see `availableExperiences` + ExperiencesSidebar + navIaLandings.
  */
 export const NAV_IA_REVIEW_MODS = true;
 

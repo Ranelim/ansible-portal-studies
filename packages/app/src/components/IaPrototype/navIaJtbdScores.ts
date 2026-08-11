@@ -49,10 +49,10 @@ export const NAV_IA_JTBD_JOBS: JtbdJob[] = [
       curated: 'Pass',
       hybrid: 'Pass',
       homeband: 'Pass',
-      experiences: 'Weak',
+      experiences: 'Pass',
     },
     notes:
-      '1–4 expose the right objects by seat. Opt 5 requires entering the right experience first.',
+      '1–4 expose the right objects by seat. Opt 5 SME is locked in Automate (no mode pick). Dev/Ops/Admin still choose an experience.',
   },
   {
     id: 4,
@@ -63,10 +63,10 @@ export const NAV_IA_JTBD_JOBS: JtbdJob[] = [
       curated: 'Pass',
       hybrid: 'Pass',
       homeband: 'Pass',
-      experiences: 'Weak',
+      experiences: 'Pass',
     },
     notes:
-      'Opt 2/4 seat landings (Templates / repos / inventories). Opt 3 SME→Templates, others→Dashboard. Opt 1 always Home; Opt 5 mode-dependent.',
+      'Opt 2/4 seat landings. Opt 3 SME→Templates, others→Dashboard. Opt 5 SME→Automate/Templates (no All bridge); other seats still land All or pick a mode.',
   },
   {
     id: 5,
@@ -163,7 +163,7 @@ export const NAV_IA_JTBD_JOBS: JtbdJob[] = [
       experiences: 'Pass',
     },
     notes:
-      'Opt 4 SME stays lean (no Home). Opt 3 SME now flat pins when Home is sole band. Multi-band Opt 3 still denser (drawers).',
+      'Opt 4 SME stays lean (no Home). Opt 3 SME flat pins when Home is sole band. Opt 5 SME: Automate only, Experience dropdown hidden — lean Templates/Activity/Catalog/Settings.',
   },
   {
     id: 12,
@@ -217,7 +217,7 @@ export const NAV_IA_JTBD_JOBS: JtbdJob[] = [
       experiences: 'Fail',
     },
     notes:
-      'Placement does not require Experiences. Opt 5 does not beat Opt 2/3/4 enough to be the default shell.',
+      'SME lock removes mode tax for the primary seat, but placement still does not require Experiences. Opt 5 does not beat Opt 2/3/4 enough to be the default shell.',
   },
 ];
 

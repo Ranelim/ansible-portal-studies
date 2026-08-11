@@ -87,6 +87,10 @@ export function availableExperiences(args: {
   compliance: boolean;
   rhem: boolean;
 }): NavExperience[] {
+  // Opt 5 — SME is locked to Automate (no All/Home bridge, no experience switcher).
+  if (args.role === 'sme') {
+    return ['automate'];
+  }
   const list: NavExperience[] = ['all', 'automate'];
   if (args.role === 'developer' || args.isAdmin) list.push('develop');
   if ((args.role === 'operator' || args.isAdmin) && args.compliance) {

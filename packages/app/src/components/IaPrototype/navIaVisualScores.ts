@@ -16,7 +16,8 @@ export const NAV_IA_VISUAL_RAIL_ITEMS: Record<
   curated: { SME: 7, Developer: 11, Operator: 10, Admin: 19 },
   hybrid: { SME: 6, Developer: 12, Operator: 11, Admin: 21 },
   homeband: { SME: 5, Developer: 11, Operator: 10, Admin: 19 },
-  experiences: { SME: 5, Developer: 8, Operator: 4, Admin: 5 },
+  // SME Automate lock — no Experience dropdown (Templates, Activity, Catalog, Settings)
+  experiences: { SME: 4, Developer: 8, Operator: 4, Admin: 5 },
 };
 
 /**
@@ -52,7 +53,8 @@ export const NAV_IA_VISUAL_SCORES: Record<
     Admin: { 'Cognitive load': 3, Clarity: 4, Orientation: 4 },
   },
   experiences: {
-    SME: { 'Cognitive load': 5, Clarity: 4, Orientation: 4 },
+    // After SME→Automate lock + hidden switcher (Aug 11 2026)
+    SME: { 'Cognitive load': 5, Clarity: 5, Orientation: 5 },
     Developer: { 'Cognitive load': 4, Clarity: 4, Orientation: 4 },
     Operator: { 'Cognitive load': 5, Clarity: 2, Orientation: 1 },
     Admin: { 'Cognitive load': 5, Clarity: 2, Orientation: 1 },
@@ -85,7 +87,7 @@ const VISUAL_READ: Record<NavIaModel, Record<VisualSeat, string>> = {
     Admin: 'Still dense; collapse required; Dashboard kept',
   },
   experiences: {
-    SME: 'Lean Automate mode — good once inside',
+    SME: 'Locked Automate — no switcher; Templates landing',
     Developer: 'Focused Develop mode rail',
     Operator: 'Stuck on All — Operate objects missing',
     Admin: 'Stuck on All — work hidden behind mode',

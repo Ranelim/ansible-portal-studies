@@ -27,7 +27,6 @@ import {
   useNavIaModel,
   writeNavIaModel,
   writeNavExperience,
-  NAV_IA_REVIEW_MODS,
   type NavIaModel,
 } from '@ansible/plugin-backstage-self-service';
 import { IA_BANNER_HEIGHT } from './chromeHeights';
@@ -292,8 +291,8 @@ export const IaPrototypeBanner = () => {
       } catch {
         /* ignore */
       }
-      const nextExp =
-        NAV_IA_REVIEW_MODS && role === 'sme' ? 'automate' : 'all';
+      // Opt 5 — SME locks to Automate (no All/Home bridge)
+      const nextExp = role === 'sme' ? 'automate' : 'all';
       setExperience(nextExp);
       writeNavExperience(nextExp);
     }

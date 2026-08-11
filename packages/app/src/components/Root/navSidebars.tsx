@@ -627,6 +627,7 @@ export const ExperiencesSidebar = () => {
   const { plugins } = useNavPlugins();
   const { experience, setExperience } = useNavIaModel();
   const isAdmin = hasRole('admin');
+  const smeLocked = isSmeRole(role);
   const available = availableExperiences({
     role,
     isAdmin,
@@ -638,9 +639,11 @@ export const ExperiencesSidebar = () => {
     ? experience
     : available[0] ?? 'all';
 
+  // SME: force Automate + persist (no All/Home). Hide switcher when only one experience.
   useEffect(() => {
     if (active !== experience) {
       setExperience(active);
+      writeNavExperience(active);
     }
   }, [active, experience, setExperience]);
 
@@ -669,34 +672,40 @@ export const ExperiencesSidebar = () => {
     />
   );
 
+  const showExperienceSwitcher = !smeLocked && available.length > 1;
+
   return (
     <SearchAndMenu>
-      <Box className={classes.wrap}>
-        <FormControl
-          variant="outlined"
-          size="small"
-          fullWidth
-          className={classes.select}
-        >
-          <InputLabel id="portal-experience-label">Experience</InputLabel>
-          <Select
-            labelId="portal-experience-label"
-            label="Experience"
-            value={active}
+      {showExperienceSwitcher && (
+        <Box className={classes.wrap}>
+          <FormControl
+            variant="outlined"
+            size="small"
             fullWidth
-            onChange={e => onExperienceChange(e.target.value as NavExperience)}
+            className={classes.select}
           >
-            {available.map(id => (
-              <MenuItem key={id} value={id}>
-                {EXPERIENCE_LABELS[id]}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-      </Box>
+            <InputLabel id="portal-experience-label">Experience</InputLabel>
+            <Select
+              labelId="portal-experience-label"
+              label="Experience"
+              value={active}
+              fullWidth
+              onChange={e =>
+                onExperienceChange(e.target.value as NavExperience)
+              }
+            >
+              {available.map(id => (
+                <MenuItem key={id} value={id}>
+                  {EXPERIENCE_LABELS[id]}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Box>
+      )}
 
-      {/* All (Home) — Bridge: Dashboard + Experiences; Plugins = admin only */}
-      {active === 'all' && (
+      {/* All (Home) — Bridge: Dashboard + Experiences; Plugins = admin only (never SME) */}
+      {active === 'all' && !smeLocked && (
         <>
           <SidebarItem
             icon={DashboardIcon}
@@ -709,7 +718,6 @@ export const ExperiencesSidebar = () => {
             to="/self-service/experiences/catalog"
             text="Experiences"
           />
-          {NAV_IA_REVIEW_MODS && isSmeRole(role) && <RunItems />}
           {isAdmin && (
             <SidebarItem
               icon={CategoryIcon}

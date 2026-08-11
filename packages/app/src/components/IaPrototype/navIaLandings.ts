@@ -1,5 +1,4 @@
 import {
-  NAV_IA_REVIEW_MODS,
   type NavIaModel,
 } from '@ansible/plugin-backstage-self-service';
 
@@ -53,8 +52,8 @@ export function modelHomePath(model: NavIaModel): string {
   if (model === 'homeband') return homeBandLandingPath();
   if (model === 'flat') return '/self-service/home';
   if (model === 'experiences') {
-    // Review mod: SME lands in Automate (Templates), not All-bridge
-    if (NAV_IA_REVIEW_MODS && readSeatRole() === 'sme') {
+    // Opt 5 — SME lands in Automate (Templates), never All (Home) bridge
+    if (readSeatRole() === 'sme') {
       return '/create';
     }
     return '/self-service/experiences';
@@ -101,8 +100,15 @@ export function mismatchedModelRedirect(
   if (model === 'flat' && (onBridge || onOutcomes || onHomeDashboard)) {
     return '/self-service/home';
   }
-  if (model === 'experiences' && (onFlatHome || onOutcomes || onHomeDashboard)) {
-    return '/self-service/experiences';
+  if (model === 'experiences') {
+    const sme = readSeatRole() === 'sme';
+    // SME must not stay on All (Home) bridge — only Automate
+    if (sme && onBridge) {
+      return '/create';
+    }
+    if (onFlatHome || onOutcomes || onHomeDashboard) {
+      return sme ? '/create' : '/self-service/experiences';
+    }
   }
   return null;
 }
