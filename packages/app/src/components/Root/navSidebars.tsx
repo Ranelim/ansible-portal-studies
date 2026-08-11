@@ -294,16 +294,43 @@ const OperateEntityItems = ({
 );
 
 /**
+ * Option 4 (hybrid) — gated Home: Dashboard + Search.
+ * Same gate as Opt 3 homeband (Develop / Operate / Admin present).
+ */
+const GatedHomeSection = () => (
+  <>
+    <SidebarSectionLabel text="Home" />
+    <SidebarItem
+      icon={DashboardIcon}
+      to="/self-service/home-dashboard"
+      text="Dashboard"
+    />
+    <SidebarItem icon={SearchIcon} to="/search" text="Search" />
+    <SidebarDivider />
+  </>
+);
+
+/**
  * Option 2 — pins + job-band sections (recommended).
- * Top stack (like Option 1): Templates + Activity with no section label.
- * Then labeled bands: Develop / Operate / Learn / Administration (by seat + plugins).
- * Empty Operate omitted. No Home/Catalog pins. Rail Search kept.
- * Option 4 reuses this rail with rail Search omitted (header search only).
+ * Top stack: Home + Templates + Activity (unlabeled). Then Develop / Operate /
+ * Learn / Administration. Empty Operate omitted. No Catalog. Rail Search kept.
+ * Option 4 (hybrid) reuses this rail without Home pin, with Run label, without
+ * floating rail Search, plus a gated Home section (Dashboard + Search) when
+ * Develop / Operate / Admin are present.
  */
 export const BaselineSidebar = ({
   showSearch = true,
+  showRunLabel = false,
+  showHomePin = true,
+  showGatedHomeSection = false,
 }: {
   showSearch?: boolean;
+  /** When true, label Templates + Activity as “Run” (Option 4). */
+  showRunLabel?: boolean;
+  /** Home pin → /self-service/home (Option 2). Off for Option 4. */
+  showHomePin?: boolean;
+  /** Gated Home section: Dashboard + Search (Option 4). */
+  showGatedHomeSection?: boolean;
 } = {}) => {
   const { role, hasRole } = useUserRoleContext();
   const { plugins } = useNavPlugins();
@@ -313,10 +340,15 @@ export const BaselineSidebar = ({
   const showInventories = canSeeOps && plugins.compliance;
   const showEdgeFleets = canSeeOps && plugins.rhem;
   const showOperate = showInventories || showEdgeFleets;
+  const hasOtherBands = showDevelop || showOperate || isAdmin;
 
   return (
     <SearchAndMenu showSearch={showSearch}>
-      {/* Default pins — unlabeled (portal-wide Templates + Activity) */}
+      {showGatedHomeSection && hasOtherBands && <GatedHomeSection />}
+      {showRunLabel && <SidebarSectionLabel text="Run" />}
+      {showHomePin && (
+        <SidebarItem icon={HomeIcon} to="/self-service/home" text="Home" />
+      )}
       <RunPins />
       {showDevelop && (
         <>
@@ -448,12 +480,96 @@ export const FlatNavSidebar = () => {
 };
 
 /**
- * Option 4 — same job-band rail as Option 2 (seat-adaptive), without rail Search.
- * Header OmniSearch remains the entry; /search stays the full results page.
+ * Option 4 — job-band rail with labeled Run; no floating rail Search.
+ * When Develop / Operate / Admin are present: gated Home section (Dashboard +
+ * Search) — same gate as Option 3. SME stays lean (Run + Learn).
+ * Header OmniSearch remains for SME; multi-band also gets Home → Search.
  */
 export const PinsBundlesSidebar = () => (
-  <BaselineSidebar showSearch={false} />
+  <BaselineSidebar
+    showSearch={false}
+    showRunLabel
+    showHomePin={false}
+    showGatedHomeSection
+  />
 );
+
+/**
+ * Option 3 — fork of Option 2 with a labeled Home band first:
+ * Dashboard (if non-default bands on) + Search + Templates + Activity + Learn.
+ * Then Develop / Operate / Administration by seat. No Outcomes.
+ * When Home is the only band (SME), omit section label/drawer — flat pins only.
+ */
+export const HomeBandSidebar = () => {
+  const { role, hasRole } = useUserRoleContext();
+  const { plugins } = useNavPlugins();
+  const isAdmin = hasRole('admin');
+  const showDevelop = role === 'developer' || isAdmin;
+  const canSeeOps = role === 'operator' || isAdmin;
+  const showInventories = canSeeOps && plugins.compliance;
+  const showEdgeFleets = canSeeOps && plugins.rhem;
+  const showOperate = showInventories || showEdgeFleets;
+  /** Other bands present → Home is a real section (label + drawer + Dashboard). */
+  const hasOtherBands = showDevelop || showOperate || isAdmin;
+
+  const homeItems = (
+    <>
+      {hasOtherBands && (
+        <SidebarItem
+          icon={DashboardIcon}
+          to="/self-service/home-dashboard"
+          text="Dashboard"
+        />
+      )}
+      <SidebarItem icon={SearchIcon} to="/search" text="Search" />
+      <RunPins />
+      <LearnItems />
+    </>
+  );
+
+  return (
+    <SearchAndMenu showSearch={false}>
+      {hasOtherBands ? (
+        <SectionDrawer id="homeband-home" label="Home" defaultOpen>
+          {homeItems}
+        </SectionDrawer>
+      ) : (
+        homeItems
+      )}
+      {showDevelop && (
+        <>
+          <SidebarDivider />
+          <SectionDrawer id="homeband-develop" label="Develop" defaultOpen>
+            <DevelopEntityItems />
+          </SectionDrawer>
+        </>
+      )}
+      {showOperate && (
+        <>
+          <SidebarDivider />
+          <SectionDrawer id="homeband-operate" label="Operate" defaultOpen>
+            <OperateEntityItems
+              showInventories={showInventories}
+              showEdgeFleets={showEdgeFleets}
+            />
+          </SectionDrawer>
+        </>
+      )}
+      {isAdmin && (
+        <>
+          <SidebarDivider />
+          <SectionDrawer
+            id="homeband-admin"
+            label="Administration"
+            defaultOpen={false}
+          >
+            <AdminItems />
+          </SectionDrawer>
+        </>
+      )}
+    </SearchAndMenu>
+  );
+};
 
 const EXPERIENCE_LANDING: Record<NavExperience, string> = {
   all: '/self-service/experiences',
@@ -503,7 +619,7 @@ const RunItems = () => (
   </>
 );
 
-/** Option 3 — Experience toggle in the rail; experience name is the chrome, not a section label. */
+/** Option 5 — Experience toggle in the rail; experience name is the chrome, not a section label. */
 export const ExperiencesSidebar = () => {
   const classes = useExperienceSwitchStyles();
   const navigate = useNavigate();

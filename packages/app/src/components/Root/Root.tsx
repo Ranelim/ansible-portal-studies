@@ -14,6 +14,7 @@ import {
   BaselineSidebar,
   ExperiencesSidebar,
   FlatNavSidebar,
+  HomeBandSidebar,
   PinsBundlesSidebar,
 } from './navSidebars';
 import { CHROME_TOP, NavIaRouteGuard } from '../IaPrototype';
@@ -92,6 +93,7 @@ const RoleAdaptiveSidebar = () => {
   if (model === 'experiences') return <ExperiencesSidebar />;
   if (model === 'flat') return <FlatNavSidebar />;
   if (model === 'hybrid') return <PinsBundlesSidebar />;
+  if (model === 'homeband') return <HomeBandSidebar />;
   return <BaselineSidebar />; // Option 2 — pins + job-band sections
 };
 

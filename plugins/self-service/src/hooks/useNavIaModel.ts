@@ -1,10 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 /** Prototype IA models — switch to compare side by side. */
-export type NavIaModel = 'curated' | 'experiences' | 'flat' | 'hybrid';
+export type NavIaModel =
+  | 'curated'
+  | 'experiences'
+  | 'flat'
+  | 'hybrid'
+  | 'homeband';
 
 /**
- * Experiences for Option 3 (toggle). Availability depends on seat + plugins.
+ * Experiences for Option 5 (toggle). Availability depends on seat + plugins.
  * Templates/Activity are duplicated inside each experience's rail.
  */
 export type NavExperience =
@@ -36,7 +41,8 @@ function readModel(): NavIaModel {
       raw === 'experiences' ||
       raw === 'curated' ||
       raw === 'flat' ||
-      raw === 'hybrid'
+      raw === 'hybrid' ||
+      raw === 'homeband'
     ) {
       return raw;
     }

@@ -39,6 +39,8 @@ import { CompliancePage } from '../Compliance/CompliancePage';
 import {
   IaPlaceholderPage,
   UnifiedCatalogPage,
+  OutcomesPage,
+  HomeBandDashboardPage,
   ExperiencesHomePage,
   FlatHomeDashboardPage,
   ExperienceSettingsPage,
@@ -173,6 +175,11 @@ const RouteViewContent = () => {
         />
         <Route path="resources" element={<UnifiedCatalogPage />} />
         <Route path="resources/*" element={<UnifiedCatalogPage />} />
+        {/* IA Option 3 — Home Dashboard (+ Outcomes route retained, not in rail) */}
+        <Route path="home-dashboard" element={<HomeBandDashboardPage />} />
+        <Route path="home-dashboard/*" element={<HomeBandDashboardPage />} />
+        <Route path="outcomes" element={<OutcomesPage />} />
+        <Route path="outcomes/*" element={<OutcomesPage />} />
         {/* IA placeholders — Inventories / Edge fleets (AAP-84131) */}
         <Route
           path="inventories"

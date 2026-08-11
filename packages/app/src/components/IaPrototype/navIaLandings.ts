@@ -36,9 +36,21 @@ export function curatedLandingPath(): string {
   return '/create';
 }
 
+/** Option 3 (homeband) — multi-band → Home Dashboard; SME → Templates (like Opt 2). */
+export function homeBandLandingPath(): string {
+  const role = readSeatRole();
+  if (role === 'sme') return '/create';
+  // Non-default bands on → Dashboard is in the Home section
+  if (role === 'developer' || role === 'admin' || role === 'operator') {
+    return '/self-service/home-dashboard';
+  }
+  return curatedLandingPath();
+}
+
 export function modelHomePath(model: NavIaModel): string {
-  // Opt 2 + Opt 4 share seat-aware curated landings
+  // Opt 2 + Opt 4 (hybrid) share seat-aware curated landings
   if (model === 'curated' || model === 'hybrid') return curatedLandingPath();
+  if (model === 'homeband') return homeBandLandingPath();
   if (model === 'flat') return '/self-service/home';
   if (model === 'experiences') {
     // Review mod: SME lands in Automate (Templates), not All-bridge
@@ -56,20 +68,40 @@ export function mismatchedModelRedirect(
   pathname: string,
 ): string | null {
   const onBridge = pathname.startsWith('/self-service/experiences');
-  const onFlatHome = pathname.startsWith('/self-service/home');
+  const onFlatHome =
+    pathname === '/self-service/home' ||
+    pathname.startsWith('/self-service/home/');
   const onFlatCatalog = pathname.startsWith('/self-service/resources');
+  const onOutcomes = pathname.startsWith('/self-service/outcomes');
+  const onHomeDashboard = pathname.startsWith('/self-service/home-dashboard');
 
-  // Opt 2 + Opt 4 — job-band rail; leave flat Home / Catalog / Experiences bridge
+  // Opt 2 — allow Home pin; leave Catalog / Experiences / Opt4-only surfaces
   if (
-    (model === 'curated' || model === 'hybrid') &&
-    (onBridge || onFlatHome || onFlatCatalog)
+    model === 'curated' &&
+    (onBridge || onFlatCatalog || onOutcomes || onHomeDashboard)
   ) {
     return curatedLandingPath();
   }
-  if (model === 'flat' && onBridge) {
+  // Opt 4 (hybrid) — no Home pin; allow gated Dashboard; leave flat Home /
+  // Catalog / Experiences / Outcomes
+  if (
+    model === 'hybrid' &&
+    (onBridge || onFlatHome || onFlatCatalog || onOutcomes)
+  ) {
+    return curatedLandingPath();
+  }
+  // Opt 3 (homeband) — allow Home Dashboard; leave Outcomes / Opt 1 Home /
+  // Catalog / Experiences
+  if (
+    model === 'homeband' &&
+    (onBridge || onFlatHome || onFlatCatalog || onOutcomes)
+  ) {
+    return homeBandLandingPath();
+  }
+  if (model === 'flat' && (onBridge || onOutcomes || onHomeDashboard)) {
     return '/self-service/home';
   }
-  if (model === 'experiences' && onFlatHome) {
+  if (model === 'experiences' && (onFlatHome || onOutcomes || onHomeDashboard)) {
     return '/self-service/experiences';
   }
   return null;

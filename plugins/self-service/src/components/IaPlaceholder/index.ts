@@ -1,5 +1,7 @@
 export { IaPlaceholderPage } from './IaPlaceholderPage';
 export { UnifiedCatalogPage } from './UnifiedCatalogPage';
+export { OutcomesPage } from './OutcomesPage';
+export { HomeBandDashboardPage } from './HomeBandDashboardPage';
 export { ExperiencesHomePage } from './ExperiencesHomePage';
 export { FlatHomeDashboardPage } from './FlatHomeDashboardPage';
 export { ExperienceSettingsPage } from './ExperienceSettingsPage';

@@ -39,6 +39,7 @@ import { useStarredEntities } from '@backstage/plugin-catalog-react';
 import { useState, useMemo, useEffect, type ReactNode } from 'react';
 import {
   useUserRoleContext,
+  useNavIaModel,
   writeNavPlugins,
   type UserRole,
   type NavPluginsState,
@@ -398,6 +399,15 @@ export const GlobalHeader = () => {
   const identityApi = useApi(identityApiRef);
 
   const { role: currentRole, hasRole } = useUserRoleContext();
+  const { model: navIaModel } = useNavIaModel();
+  /**
+   * Hide masthead OmniSearch when the rail already exposes Search
+   * (Opt 1/2 floating modal; Opt 3 Home → Search page). Opt 4 keeps header search; Opt 5 has rail Search too.
+   */
+  const hideMastheadSearch =
+    navIaModel === 'flat' ||
+    navIaModel === 'curated' ||
+    navIaModel === 'homeband';
   const isDeveloper = hasRole('developer');
   const showOperate = currentRole === 'operator' || currentRole === 'admin';
 
@@ -480,10 +490,11 @@ export const GlobalHeader = () => {
 
         <Divider orientation="vertical" flexItem className={classes.brandDivider} />
 
-        {/* Search */}
-        <Box className={classes.omniSearchWrapper}>
-          <OmniSearch />
-        </Box>
+        {!hideMastheadSearch && (
+          <Box className={classes.omniSearchWrapper}>
+            <OmniSearch />
+          </Box>
+        )}
 
         <div className={classes.spacer} />
 

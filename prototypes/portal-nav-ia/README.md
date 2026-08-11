@@ -29,10 +29,11 @@ Purple **Nav IA prototype** banner (above the dark masthead) — short explanati
 
 | Model | What it demonstrates |
 |---|---|
-| **Option 1 — Flat list (RHDH)** | Unlabeled rail: Home, Catalog, Templates, Activity, Learn, then flat entity phonebook; Admin drawer; rail Search. **Entity tabs:** Dashboard? → list → domain → Templates \| Settings |
-| **Option 2 — Pins + job-band sections** | **Recommended:** unlabeled Templates + Activity, then labeled Develop / Operate / Learn / Administration (by seat). No Home/Catalog; rail Search kept. Seat landings. **Entity tabs:** list → domain → Scaffold \| Settings |
-| **Option 3 — Experiences (toggle)** | One experience at a time. Domain order: Dashboard → Templates → Activity → entities → Settings. **Entity tabs (list-first):** list → domain → Templates \| Settings (no entity Dashboard tab). Exploration only |
-| **Option 4 — Pins + job bands (header search)** | **Same rail as Option 2**, but no rail Search — header OmniSearch only. Use to walk seats on the recommended IA |
+| **Option 1 — Baseline (RHDH-like)** | Baseline for comparison (not shipped Portal SoT). Unlabeled rail: Home, Catalog, Templates, Activity, Learn, then flat entity phonebook; Admin drawer; rail Search. **Entity tabs:** Dashboard? → list → domain → Templates \| Settings |
+| **Option 2 — Pins + job-band sections** | Strong baseline proposal: unlabeled Home + Templates + Activity, then labeled Develop / Operate / Learn / Administration (by seat). No Catalog; rail Search kept. Seat landings. **Entity tabs:** list → domain → Scaffold \| Settings |
+| **Option 3 — Home band + job sections** | **Home** bundles Dashboard (if Develop/Operate/Admin on), Search, Templates, Activity, Learn. Then Develop / Operate / Administration. No Outcomes. No masthead search. |
+| **Option 4 — Run + gated Home** | Labeled **Run**; no floating rail Search (header OmniSearch). Multi-band: gated **Home** (Dashboard, Search) above Run; SME stays Run + Learn. Then Develop / Operate / Learn / Administration |
+| **Option 5 — Concept: Experiences** | Concept only. One experience at a time. Domain order: Dashboard → Templates → Activity → entities → Settings. **Entity tabs (list-first):** list → domain → Templates \| Settings. Not a default-shell finalist — listed last |
 
 
 Switching models always lands on that model’s home. A route guard also redirects if you bookmark a model-specific URL (e.g. Bridge Dashboard under curated).
@@ -52,13 +53,14 @@ Also: Profile → **Switch seat** (SME / Developer / Compliance ops / Edge ops /
 ### Suggested walkthrough
 
 1. Seat **Ops (both)** → **Option 1** → flat Inventories + Edge fleets; open Home dashboard.  
-2. Same seat → **Option 2** → Templates/Activity on top, then Operate entities.  
-3. Seat **Ops (both)** → **Option 3** → Edge → **Dashboard** (overview) → **Edge fleets** (list-first, no Dashboard tab).  
-4. Seat **Developer** → **Option 3** → Develop Dashboard → repos/collections/EEs as lists.  
-5. Seat **Admin** → **Option 3** → Develop → **Settings** → deep-link to Integrations (Administration).  
-6. Seat **SME** → **Option 4** → Templates + Activity + Learn only (no rail Search); lands on Templates.  
-7. Seat **Developer** → **Option 4** → Templates/Activity + Develop + Learn; lands on Git Repositories.  
-8. Seat **Ops (both)** → **Option 4** → Templates/Activity + Operate + Learn; lands on Inventories / Edge fleets.
+2. Same seat → **Option 2** → Home + Templates/Activity, then Operate entities.  
+3. Seat **SME** → **Option 3** → flat Home pins (Search, Templates, Activity, Learn); lands on Templates.  
+4. Seat **SME** → **Option 4** → Run + Learn only (no rail Search); lands on Templates.  
+5. Seat **Developer** → **Option 4** → Run + Develop + Learn; lands on Git Repositories.  
+6. Seat **Ops (both)** → **Option 4** → Run + Operate + Learn; lands on Inventories / Edge fleets.  
+7. Seat **Ops (both)** → **Option 5** → Edge → **Dashboard** (overview) → **Edge fleets** (list-first).  
+8. Seat **Developer** → **Option 5** → Develop Dashboard → repos/collections/EEs as lists.  
+9. Seat **Admin** → **Option 5** → Develop → **Settings** → deep-link to Integrations (Administration).
 
 ## Key files
 
