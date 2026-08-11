@@ -474,7 +474,7 @@ export const IaPrototypeBanner = () => {
                       <TableCell width={40}>#</TableCell>
                       <TableCell>Job</TableCell>
                       <TableCell width={80}>Score</TableCell>
-                      <TableCell>Why</TableCell>
+                      <TableCell>Why this score</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -484,6 +484,14 @@ export const IaPrototypeBanner = () => {
                         <TableCell>
                           <Typography variant="body2" style={{ fontWeight: 600 }}>
                             {job.title}
+                          </Typography>
+                          <Typography
+                            variant="caption"
+                            color="textSecondary"
+                            display="block"
+                            style={{ marginTop: 2, lineHeight: 1.35 }}
+                          >
+                            {job.meaning}
                           </Typography>
                         </TableCell>
                         <TableCell>
@@ -510,7 +518,8 @@ export const IaPrototypeBanner = () => {
           <Divider style={{ marginTop: 8, marginBottom: 12 }} />
           <Typography variant="caption" color="textSecondary">
             Design judgment against the live prototype (not a usability study).
-            Totals use jobs 1–14 only.
+            Each job shows what it means, then why this option scored that way.
+            Totals use jobs 1–14 only; job 15 is an Experiences kill-test.
           </Typography>
         </DialogContent>
       </Dialog>
