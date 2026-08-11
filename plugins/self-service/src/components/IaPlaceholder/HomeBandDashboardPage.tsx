@@ -110,7 +110,6 @@ export const HomeBandDashboardPage = () => {
   const jumps: JumpLink[] = [
     { label: 'Templates', href: '/create' },
     { label: 'Activity', href: '/self-service/create/tasks' },
-    { label: 'Outcomes', href: '/self-service/outcomes' },
     ...(showDevelop
       ? [{ label: 'Git Repositories', href: '/self-service/repositories' }]
       : []),
