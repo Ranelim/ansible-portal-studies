@@ -34,9 +34,6 @@ import { LightspeedProvider, LightspeedPanel } from './components/Lightspeed';
 import { QuickstartProvider, QuickstartPanel, WelcomeModal } from './components/Quickstart';
 import { getThemes } from '@red-hat-developer-hub/backstage-plugin-theme';
 
-import {
-  AlertDisplay,
-} from '@backstage/core-components';
 import { CustomSignInPage } from './components/SignIn/CustomSignInPage';
 import { createApp } from '@backstage/app-defaults';
 import { AppRouter, FlatRoutes } from '@backstage/core-app-api';
@@ -355,7 +352,8 @@ const RoleProvider = ({ children }: { children: React.ReactNode }) => {
 
 export default app.createRoot(
   <>
-    <AlertDisplay />
+    {/* Nav IA prototype: hide Backstage alert toasts (catalog/backend noise without AAP). */}
+    {/* <AlertDisplay /> */}
     <AppRouter>
       <RoleProvider>
         <LightspeedProvider>
