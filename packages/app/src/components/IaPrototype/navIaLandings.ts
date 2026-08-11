@@ -1,4 +1,15 @@
-import type { NavIaModel } from '@ansible/plugin-backstage-self-service';
+import {
+  NAV_IA_REVIEW_MODS,
+  type NavIaModel,
+} from '@ansible/plugin-backstage-self-service';
+
+function readSeatRole(): string {
+  try {
+    return localStorage.getItem('portal-user-role') || 'sme';
+  } catch {
+    return 'sme';
+  }
+}
 
 /** Seat-aware landing for curated (Option 2). */
 export function curatedLandingPath(): string {
@@ -26,8 +37,16 @@ export function curatedLandingPath(): string {
 }
 
 export function modelHomePath(model: NavIaModel): string {
+  // Opt 2 + Opt 4 share seat-aware curated landings
+  if (model === 'curated' || model === 'hybrid') return curatedLandingPath();
   if (model === 'flat') return '/self-service/home';
-  if (model === 'experiences') return '/self-service/experiences';
+  if (model === 'experiences') {
+    // Review mod: SME lands in Automate (Templates), not All-bridge
+    if (NAV_IA_REVIEW_MODS && readSeatRole() === 'sme') {
+      return '/create';
+    }
+    return '/self-service/experiences';
+  }
   return curatedLandingPath();
 }
 
@@ -40,7 +59,11 @@ export function mismatchedModelRedirect(
   const onFlatHome = pathname.startsWith('/self-service/home');
   const onFlatCatalog = pathname.startsWith('/self-service/resources');
 
-  if (model === 'curated' && (onBridge || onFlatHome || onFlatCatalog)) {
+  // Opt 2 + Opt 4 — job-band rail; leave flat Home / Catalog / Experiences bridge
+  if (
+    (model === 'curated' || model === 'hybrid') &&
+    (onBridge || onFlatHome || onFlatCatalog)
+  ) {
     return curatedLandingPath();
   }
   if (model === 'flat' && onBridge) {

@@ -10,3 +10,4 @@ export {
   type IaPageConfig,
   type IaTab,
 } from './navIaPages';
+export { NAV_IA_REVIEW_MODS, isSmeRole } from './navIaReviewMods';

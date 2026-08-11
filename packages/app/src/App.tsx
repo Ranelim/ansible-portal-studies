@@ -25,6 +25,7 @@ import { ReportIssue } from '@backstage/plugin-techdocs-module-addons-contrib';
 import { UserSettingsPage } from '@backstage/plugin-user-settings';
 import { apis } from './apis';
 import { entityPage } from './components/catalog/EntityPage';
+import { SearchPage as BackstageSearchPage } from '@backstage/plugin-search';
 import { SearchPage } from './components/search/SearchPage';
 import { Root } from './components/Root';
 import { GlobalHeader } from './components/GlobalHeader';
@@ -332,7 +333,10 @@ const routes = (
         </RequirePermission>
       }
     />
-    <Route path="/search" element={<SearchPage />} />
+    {/* Backstage SearchPage binds routeRef{id=search} required by SidebarSearchModal */}
+    <Route path="/search" element={<BackstageSearchPage />}>
+      <SearchPage />
+    </Route>
     <Route path="/rbac" element={<RbacPage />} />
     <Route path="/settings" element={<UserSettingsPage />} />
     <Route path="/catalog-graph" element={<CatalogGraphPage />} />

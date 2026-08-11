@@ -204,12 +204,6 @@ export const ExperienceDashboardPage = () => {
               ))}
             </Box>
           </Box>
-
-          <Typography variant="caption" className={classes.muted}>
-            IA note: experience Dashboard = overview. Entity rail item = list.
-            Do not duplicate this overview as an entity Dashboard tab while
-            Option 3 is active.
-          </Typography>
         </Box>
       </Content>
     </Page>

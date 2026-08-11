@@ -7,6 +7,8 @@ import {
   availableExperiences,
   EXPERIENCE_LABELS,
   writeNavExperience,
+  NAV_IA_REVIEW_MODS,
+  isSmeRole,
   type NavExperience,
 } from '@ansible/plugin-backstage-self-service';
 import { SidebarSectionLabel } from '@ansible/plugin-backstage-rhaap';
@@ -22,7 +24,6 @@ import {
 import {
   makeStyles,
   Box,
-  Typography,
   Collapse,
   IconButton,
   FormControl,
@@ -63,22 +64,6 @@ const SidebarSpacer = () => {
   const classes = useSidebarLogoStyles();
   return <div className={classes.root} />;
 };
-
-const ModelHint = ({ text }: { text: string }) => (
-  <Box px={2} py={1}>
-    <Typography
-      variant="caption"
-      style={{
-        display: 'block',
-        opacity: 0.65,
-        lineHeight: 1.4,
-        fontSize: 11,
-      }}
-    >
-      {text}
-    </Typography>
-  </Box>
-);
 
 const DRAWER_STORAGE_KEY = 'portal-nav-section-drawers';
 
@@ -184,19 +169,25 @@ const SectionDrawer = ({
   );
 };
 
+/** Same shell as team app Root — Backstage sidebar search + menu (parity with main). */
 const SearchAndMenu = ({
   children,
   footer,
+  showSearch = true,
 }: {
   children: ReactNode;
   /** Pinned below a flex spacer (e.g. Administration drawer). */
   footer?: ReactNode;
+  /** When false, omit floating Search rail item (header OmniSearch remains). */
+  showSearch?: boolean;
 }) => (
   <Sidebar>
     <SidebarSpacer />
-    <SidebarGroup label="Search" icon={<SearchIcon />} to="/search">
-      <SidebarSearchModal />
-    </SidebarGroup>
+    {showSearch && (
+      <SidebarGroup label="Search" icon={<SearchIcon />} to="/search">
+        <SidebarSearchModal />
+      </SidebarGroup>
+    )}
     <SidebarGroup label="Menu" icon={<MenuIcon />}>
       {children}
       {footer ? (
@@ -265,14 +256,14 @@ const DevelopEntityItems = () => (
       text="Git Repositories"
     />
     <SidebarItem
-      icon={CategoryIcon}
-      to="/self-service/collections"
-      text="Collections"
-    />
-    <SidebarItem
       icon={MemoryIcon}
       to="/self-service/ee"
       text="Execution Environments"
+    />
+    <SidebarItem
+      icon={CategoryIcon}
+      to="/self-service/collections"
+      text="Collections"
     />
   </>
 );
@@ -303,11 +294,17 @@ const OperateEntityItems = ({
 );
 
 /**
- * Option 2 — curated role-adaptive rail.
- * Run (Templates + Activity) always on top as the global run band,
- * then Develop / Operate entity sections by seat.
+ * Option 2 — pins + job-band sections (recommended).
+ * Top stack (like Option 1): Templates + Activity with no section label.
+ * Then labeled bands: Develop / Operate / Learn / Administration (by seat + plugins).
+ * Empty Operate omitted. No Home/Catalog pins. Rail Search kept.
+ * Option 4 reuses this rail with rail Search omitted (header search only).
  */
-export const BaselineSidebar = () => {
+export const BaselineSidebar = ({
+  showSearch = true,
+}: {
+  showSearch?: boolean;
+} = {}) => {
   const { role, hasRole } = useUserRoleContext();
   const { plugins } = useNavPlugins();
   const isAdmin = hasRole('admin');
@@ -318,9 +315,8 @@ export const BaselineSidebar = () => {
   const showOperate = showInventories || showEdgeFleets;
 
   return (
-    <SearchAndMenu>
-      <ModelHint text="Option 2 — rail (side nav): 1 item/entity · Run → Develop/Operate · tabs: Dashboard? → list → domain → Templates|Settings" />
-      <SidebarSectionLabel text="Run" />
+    <SearchAndMenu showSearch={showSearch}>
+      {/* Default pins — unlabeled (portal-wide Templates + Activity) */}
       <RunPins />
       {showDevelop && (
         <>
@@ -367,6 +363,7 @@ export const FlatNavSidebar = () => {
   const showInventories = canSeeOps && plugins.compliance;
   const showEdgeFleets = canSeeOps && plugins.rhem;
   const showOperate = showInventories || showEdgeFleets;
+  const hideCatalogForSme = NAV_IA_REVIEW_MODS && isSmeRole(role);
 
   return (
     <SearchAndMenu
@@ -385,14 +382,14 @@ export const FlatNavSidebar = () => {
         ) : undefined
       }
     >
-      <ModelHint text="Option 1 — rail (side nav): 1 item/entity · flat phonebook · tabs: Dashboard? → list → domain → Templates|Settings" />
-
       <SidebarItem icon={HomeIcon} to="/self-service/home" text="Home" />
-      <SidebarItem
-        icon={ViewListIcon}
-        to="/self-service/resources"
-        text="Catalog"
-      />
+      {!hideCatalogForSme && (
+        <SidebarItem
+          icon={ViewListIcon}
+          to="/self-service/resources"
+          text="Catalog"
+        />
+      )}
       <SidebarItem icon={AddCircleOutlineIcon} to="/create" text="Templates" />
       <SidebarItem
         icon={HistoryIcon}
@@ -449,6 +446,14 @@ export const FlatNavSidebar = () => {
     </SearchAndMenu>
   );
 };
+
+/**
+ * Option 4 — same job-band rail as Option 2 (seat-adaptive), without rail Search.
+ * Header OmniSearch remains the entry; /search stays the full results page.
+ */
+export const PinsBundlesSidebar = () => (
+  <BaselineSidebar showSearch={false} />
+);
 
 const EXPERIENCE_LANDING: Record<NavExperience, string> = {
   all: '/self-service/experiences',
@@ -550,8 +555,6 @@ export const ExperiencesSidebar = () => {
 
   return (
     <SearchAndMenu>
-      <ModelHint text="Option 3 — rail (side nav): 1 item/entity · Dashboard→run→entities→Settings · entity tabs list-first (no Dashboard tab)" />
-
       <Box className={classes.wrap}>
         <FormControl
           variant="outlined"
@@ -590,6 +593,7 @@ export const ExperiencesSidebar = () => {
             to="/self-service/experiences/catalog"
             text="Experiences"
           />
+          {NAV_IA_REVIEW_MODS && isSmeRole(role) && <RunItems />}
           {isAdmin && (
             <SidebarItem
               icon={CategoryIcon}

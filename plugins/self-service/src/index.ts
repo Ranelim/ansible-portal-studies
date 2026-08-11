@@ -40,4 +40,8 @@ export {
   type NavIaModel,
   type NavExperience,
 } from './hooks/useNavIaModel';
+export {
+  NAV_IA_REVIEW_MODS,
+  isSmeRole,
+} from './components/IaPlaceholder/navIaReviewMods';
 export type { UserRole, UseUserRoleResult } from './hooks/useUserRole';

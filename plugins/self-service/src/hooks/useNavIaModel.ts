@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 /** Prototype IA models — switch to compare side by side. */
-export type NavIaModel = 'curated' | 'experiences' | 'flat';
+export type NavIaModel = 'curated' | 'experiences' | 'flat' | 'hybrid';
 
 /**
  * Experiences for Option 3 (toggle). Availability depends on seat + plugins.
@@ -18,7 +18,8 @@ export type NavExperience =
 const MODEL_KEY = 'portal-nav-ia-model';
 const EXPERIENCE_KEY = 'portal-nav-experience';
 
-const DEFAULT_MODEL: NavIaModel = 'flat';
+/** Default for ephemeral recommended prototype; exploration can override via localStorage. */
+const DEFAULT_MODEL: NavIaModel = 'curated';
 const DEFAULT_EXPERIENCE: NavExperience = 'all';
 
 const listeners = new Set<() => void>();
@@ -31,7 +32,12 @@ function readModel(): NavIaModel {
   try {
     const raw = localStorage.getItem(MODEL_KEY);
     if (raw === 'baseline' || raw === 'sections') return 'curated'; // legacy ids
-    if (raw === 'experiences' || raw === 'curated' || raw === 'flat') {
+    if (
+      raw === 'experiences' ||
+      raw === 'curated' ||
+      raw === 'flat' ||
+      raw === 'hybrid'
+    ) {
       return raw;
     }
   } catch {

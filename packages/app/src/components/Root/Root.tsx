@@ -14,16 +14,23 @@ import {
   BaselineSidebar,
   ExperiencesSidebar,
   FlatNavSidebar,
+  PinsBundlesSidebar,
 } from './navSidebars';
 import { CHROME_TOP, NavIaRouteGuard } from '../IaPrototype';
 
 const useRootStyles = makeStyles(theme => ({
   '@global': {
-    '.BackstageSidebar-root': {
+    // JSS hashes class names (e.g. BackstageSidebar-root-83) — use substring match
+    // so the rail clears the IA banner + masthead. Otherwise the first section
+    // label ("Run") sits under the header and looks "missing".
+    '[class*="BackstageSidebar-root"]': {
       top: `${CHROME_TOP}px !important`,
+      height: `calc(100% - ${CHROME_TOP}px) !important`,
     },
-    '.BackstageSidebar-drawer': {
-      top: `${CHROME_TOP}px !important`,
+    // Drawer is position:absolute inside root — keep top:0 relative to root
+    '[class*="BackstageSidebar-drawer"]': {
+      top: '0 !important',
+      height: '100% !important',
       overflowY: 'auto !important' as any,
     },
     'body, html': {
@@ -84,7 +91,8 @@ const RoleAdaptiveSidebar = () => {
   const { model } = useNavIaModel();
   if (model === 'experiences') return <ExperiencesSidebar />;
   if (model === 'flat') return <FlatNavSidebar />;
-  return <BaselineSidebar />; // Option 2 — curated sections
+  if (model === 'hybrid') return <PinsBundlesSidebar />;
+  return <BaselineSidebar />; // Option 2 — pins + job-band sections
 };
 
 export const Root = ({ children }: PropsWithChildren<{}>) => {

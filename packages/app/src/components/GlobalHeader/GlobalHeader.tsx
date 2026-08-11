@@ -472,7 +472,9 @@ export const GlobalHeader = () => {
           <RedHatLogo />
           <Box className={classes.brandTextGroup}>
             <Typography className={classes.brandTop}>Red Hat</Typography>
-            <Typography className={classes.brandBottom}>Automation Portal</Typography>
+            <Typography className={classes.brandBottom}>
+              Automation Portal
+            </Typography>
           </Box>
         </Link>
 

@@ -15,6 +15,7 @@ import {
 } from '../../hooks/useNavIaModel';
 import { useNavPlugins } from '../../hooks/useNavPlugins';
 import { useUserRoleContext } from '../../hooks/useUserRole';
+import { NAV_IA_REVIEW_MODS } from './navIaReviewMods';
 
 type Kpi = {
   id: string;
@@ -156,7 +157,7 @@ const useStyles = makeStyles(theme => ({
 }));
 
 /**
- * Option 1 (RHDH) — Home as a portal dashboard: KPIs, experience snippets,
+ * Option 1 / 4 — Home as a portal dashboard: KPIs, experience snippets,
  * and generic platform metrics (not a blank placeholder).
  */
 export const FlatHomeDashboardPage = () => {
@@ -262,17 +263,7 @@ export const FlatHomeDashboardPage = () => {
   return (
     <Page themeId="app">
       <Header
-        title={
-          <Box display="flex" alignItems="center" style={{ gap: 8 }}>
-            <span>Home</span>
-            <Chip
-              label="Option 1"
-              size="small"
-              color="primary"
-              style={{ borderRadius: 16, fontSize: 11 }}
-            />
-          </Box>
-        }
+        title="Home"
         pageTitleOverride="Home"
         subtitle="Dashboard — KPIs, experience snapshots, and platform metrics for this seat"
       />
@@ -319,15 +310,16 @@ export const FlatHomeDashboardPage = () => {
         </Box>
 
         <Typography variant="subtitle1" className={classes.sectionTitle}>
-          Experiences
+          {NAV_IA_REVIEW_MODS ? 'Shortcuts' : 'Experiences'}
         </Typography>
         <Typography
           variant="body2"
           color="textSecondary"
           className={classes.sectionHint}
         >
-          Snippets into areas this seat can reach. In the flat model these are
-          shortcuts into the phonebook — not a separate experience toggle.
+          {NAV_IA_REVIEW_MODS
+            ? 'Snippets into areas this seat can reach. These are phonebook shortcuts — not Option 3’s Experience toggle.'
+            : 'Snippets into areas this seat can reach. In the flat model these are shortcuts into the phonebook — not a separate experience toggle.'}
         </Typography>
         <Box className={classes.experienceGrid}>
           {snippets.map(snippet => (

@@ -29,9 +29,10 @@ Purple **Nav IA prototype** banner (above the dark masthead) — short explanati
 
 | Model | What it demonstrates |
 |---|---|
-| **Option 1 — Flat list (RHDH)** | **Rail (side nav):** one menu item per primary entity. Pins + flat phonebook; Admin drawer. **Entity tabs:** Dashboard? → list → domain → Templates \| Settings |
-| **Option 2 — Curated sections** | **Rail (side nav):** same one-item-per-entity rule; Run band then labeled Develop / Operate / Learn / Admin sections. **Entity tabs:** same as Option 1 |
-| **Option 3 — Experiences (toggle)** | **Rail (side nav):** one experience at a time; still one item per entity. Domain order: Dashboard → Templates → Activity → entities → Settings. **Entity tabs (list-first):** list → domain → Templates \| Settings (no entity Dashboard tab) |
+| **Option 1 — Flat list (RHDH)** | Unlabeled rail: Home, Catalog, Templates, Activity, Learn, then flat entity phonebook; Admin drawer; rail Search. **Entity tabs:** Dashboard? → list → domain → Templates \| Settings |
+| **Option 2 — Pins + job-band sections** | **Recommended:** unlabeled Templates + Activity, then labeled Develop / Operate / Learn / Administration (by seat). No Home/Catalog; rail Search kept. Seat landings. **Entity tabs:** list → domain → Scaffold \| Settings |
+| **Option 3 — Experiences (toggle)** | One experience at a time. Domain order: Dashboard → Templates → Activity → entities → Settings. **Entity tabs (list-first):** list → domain → Templates \| Settings (no entity Dashboard tab). Exploration only |
+| **Option 4 — Pins + job bands (header search)** | **Same rail as Option 2**, but no rail Search — header OmniSearch only. Use to walk seats on the recommended IA |
 
 
 Switching models always lands on that model’s home. A route guard also redirects if you bookmark a model-specific URL (e.g. Bridge Dashboard under curated).
@@ -54,7 +55,10 @@ Also: Profile → **Switch seat** (SME / Developer / Compliance ops / Edge ops /
 2. Same seat → **Option 2** → Templates/Activity on top, then Operate entities.  
 3. Seat **Ops (both)** → **Option 3** → Edge → **Dashboard** (overview) → **Edge fleets** (list-first, no Dashboard tab).  
 4. Seat **Developer** → **Option 3** → Develop Dashboard → repos/collections/EEs as lists.  
-5. Seat **Admin** → **Option 3** → Develop → **Settings** → deep-link to Integrations (Administration).
+5. Seat **Admin** → **Option 3** → Develop → **Settings** → deep-link to Integrations (Administration).  
+6. Seat **SME** → **Option 4** → Templates + Activity + Learn only (no rail Search); lands on Templates.  
+7. Seat **Developer** → **Option 4** → Templates/Activity + Develop + Learn; lands on Git Repositories.  
+8. Seat **Ops (both)** → **Option 4** → Templates/Activity + Operate + Learn; lands on Inventories / Edge fleets.
 
 ## Key files
 

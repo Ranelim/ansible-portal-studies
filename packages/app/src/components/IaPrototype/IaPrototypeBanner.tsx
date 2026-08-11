@@ -11,6 +11,7 @@ import {
   useNavIaModel,
   writeNavIaModel,
   writeNavExperience,
+  NAV_IA_REVIEW_MODS,
   type NavIaModel,
 } from '@ansible/plugin-backstage-self-service';
 import { IA_BANNER_HEIGHT } from './chromeHeights';
@@ -25,19 +26,25 @@ const IA_MODEL_OPTIONS: Array<{
     id: 'flat',
     label: 'Option 1 — Flat list (RHDH)',
     blurb:
-      'Rail (side nav): one menu item per primary entity; plugins extend that page — do not add sibling rail rows. Pins (Home, Catalog, Templates, Activity, Learn) then a flat entity phonebook; Administration in a bottom drawer. Entity page tabs: Dashboard? → {Entity} list → domain tabs → Templates | Settings.',
+      'Unlabeled rail: Home, Catalog, Templates, Activity, Documentation, Learning Paths, then a flat entity phonebook (Git Repositories, EEs, Collections, Inventories, Edge fleets by seat). No Develop/Operate/Learn section labels. Administration in a bottom drawer. Includes Backstage rail Search (modal). Entity tabs: Dashboard? → {Entity} list → domain → Templates | Settings.',
   },
   {
     id: 'curated',
-    label: 'Option 2 — Curated sections',
+    label: 'Option 2 — Pins + job-band sections',
     blurb:
-      'Rail (side nav): same one-item-per-entity rule as Option 1. Run band (Templates + Activity) on top, then Develop / Operate / Learn / Administration as labeled sections (not collapsible drawers). Entity page tabs: Dashboard? → {Entity} list → domain tabs → Templates | Settings.',
+      'Recommended. Top stack like Option 1 but lean: Templates + Activity only (no Home/Catalog, no “Run” label). Then labeled job bands: Develop / Operate (by seat + plugins) → Learn → Administration (admin). One rail item per primary object; plugins extend hosts as tabs. Includes rail Search. Seat landings: SME → Templates; Dev/Admin → Git Repositories; Operator → Inventories / Edge fleets.',
   },
   {
     id: 'experiences',
     label: 'Option 3 — Experiences (toggle)',
     blurb:
-      'Rail (side nav): one experience at a time; still one menu item per primary entity inside the mode. Domain rail order: Dashboard → Templates → Activity → entities → Settings. All (Home): insight Dashboard · Experiences catalog · Plugins (admin only) · Settings. Entity page tabs (list-first): {Entity} list → domain tabs → Templates | Settings — overview lives on the experience Dashboard, not an entity Dashboard tab. Platform config only in Administration.',
+      'Job-mode switcher: enter one experience at a time (Automate, Develop, Compliance, Edge, Administration, or All). Domain rail: Dashboard → Templates → Activity → entities → Settings. All (Home): insight Dashboard · Experiences catalog · Plugins (admin only) · Settings. Entity pages are list-first (no entity Dashboard tab). Exploration only — not required for plugin placement.',
+  },
+  {
+    id: 'hybrid',
+    label: 'Option 4 — Pins + job bands (header search)',
+    blurb:
+      'Same rail as Option 2 (Templates + Activity, then Develop / Operate / Learn / Administration by seat) but no floating Search on the rail. Use header OmniSearch; full results stay on /search. Best for walking SME / Developer / Operator / Admin seats on the recommended IA without Backstage Search modal chrome.',
   },
 ];
 
@@ -77,8 +84,8 @@ const useStyles = makeStyles(theme => ({
     },
   },
   select: {
-    minWidth: 320,
-    maxWidth: 440,
+    minWidth: 340,
+    maxWidth: 460,
     flexShrink: 0,
     '& .MuiOutlinedInput-root': {
       height: 32,
@@ -119,8 +126,17 @@ export const IaPrototypeBanner = () => {
     setModel(next);
     writeNavIaModel(next);
     if (next === 'experiences') {
-      setExperience('all');
-      writeNavExperience('all');
+      let role = 'sme';
+      try {
+        role = localStorage.getItem('portal-user-role') || 'sme';
+      } catch {
+        /* ignore */
+      }
+      // Review mod: SME defaults into Automate so they are not stuck on All
+      const nextExp =
+        NAV_IA_REVIEW_MODS && role === 'sme' ? 'automate' : 'all';
+      setExperience(nextExp);
+      writeNavExperience(nextExp);
     }
     // Always land on that model's home so content matches the left nav
     navigate(modelHomePath(next));

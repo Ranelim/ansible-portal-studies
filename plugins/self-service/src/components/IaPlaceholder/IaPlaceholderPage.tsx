@@ -103,15 +103,6 @@ export const IaPlaceholderPage = ({ config }: Props) => {
           >
             {purpose}
           </Typography>
-          <Typography
-            variant="caption"
-            color="textSecondary"
-            style={{ display: 'block', marginBottom: 12 }}
-          >
-            {experiencesModel
-              ? 'Option 3 entity page: list → domain tabs → Templates (trailing). Overview = experience Dashboard in the rail.'
-              : 'Tab pattern: Dashboard? → entity list → domain tabs → Templates or Settings (trailing). Landing = Dashboard if present, else list.'}
-          </Typography>
           {tab && (
             <Box
               style={{
