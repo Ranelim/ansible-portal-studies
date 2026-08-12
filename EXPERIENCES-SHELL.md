@@ -21,9 +21,9 @@ Build the **Experience Bridge** shell from the Aug 11 stakeholder direction:
 
 | Surface | Chrome | Landing |
 |---|---|---|
-| **Bridge** (`/self-service/experiences`) | Masthead only | Experiences tab (cards) + Dashboard tab (teaser) |
-| **Bridge tools** | — | Search filter · Recent / A–Z · **Assistant** AI card |
-| **Assistant** (`/self-service/assistant`) | Masthead only | Gemini-style cross-experience chat (prototype) |
+| **Bridge** (`/self-service/experiences`) | Masthead only | Experiences cards · search · sort |
+| **Assistant** (`/self-service/assistant`) | Masthead only | Chat skeleton (TBD) |
+| **Global account** (`/settings`, catalog `user/*`, `/notifications`) | Masthead only | No experience rail; **preserves** last experience for Back |
 | **Inside experience** | Masthead + experience rail | Automate → Templates; others → Dashboard / entity home |
 | **SME** | Masthead + Automate rail | `/create` (never Bridge) |
 

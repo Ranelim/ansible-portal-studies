@@ -10,6 +10,12 @@ import {
 } from '@ansible/plugin-backstage-self-service';
 import { SidebarPage } from '@backstage/core-components';
 import { ExperiencesSidebar } from './navSidebars';
+import {
+  GlobalShellResumeBar,
+  isBridgePath,
+  isGlobalShellPath,
+  useCaptureGlobalShellReturn,
+} from './GlobalShellResumeBar';
 import { CHROME_TOP, NavIaRouteGuard } from '../IaPrototype';
 
 const useRootStyles = makeStyles(theme => {
@@ -127,16 +133,8 @@ const GlobalRestartBanner = () => {
   );
 };
 
-function isBridgePath(pathname: string): boolean {
-  return (
-    pathname === '/self-service/experiences' ||
-    pathname.startsWith('/self-service/experiences/') ||
-    pathname === '/self-service/assistant' ||
-    pathname.startsWith('/self-service/assistant/') ||
-    pathname === '/notifications' ||
-    pathname.startsWith('/notifications/')
-  );
-}
+/** Experiences catalog + Assistant — rail-less; clears domain to Bridge 'all'. */
+// Path helpers live in GlobalShellResumeBar (shared with resume bar).
 
 export const Root = ({ children }: PropsWithChildren<{}>) => {
   const rootClasses = useRootStyles();
@@ -144,11 +142,15 @@ export const Root = ({ children }: PropsWithChildren<{}>) => {
   const { setExperience } = useNavIaModel();
   const isSetup = location.pathname.includes('/setup');
   const onBridge = isBridgePath(location.pathname);
+  const onGlobalShell = isGlobalShellPath(location.pathname);
+  const railLess = onBridge || onGlobalShell;
 
-  // Persist Bridge context on catalog / assistant (no domain rail).
+  useCaptureGlobalShellReturn(location.pathname);
+
+  // Only the Experiences catalog / Assistant reset domain to Bridge 'all'.
+  // Settings / My profile / notifications keep the last experience for Back.
   useEffect(() => {
     if (!onBridge) return;
-    // Assistant is cross-experience — keep Bridge context ('all')
     setExperience('all');
     writeNavExperience('all');
   }, [onBridge, setExperience]);
@@ -157,13 +159,14 @@ export const Root = ({ children }: PropsWithChildren<{}>) => {
     return <>{children}</>;
   }
 
-  // Bridge: masthead + full-width catalog — no left rail
-  if (onBridge) {
+  // Rail-less: Bridge catalog, Assistant, account pages, notifications
+  if (railLess) {
     return (
       <RestartProvider>
         <div className={rootClasses.fixedHeaderOffset}>
           <NavIaRouteGuard />
           <GlobalRestartBanner />
+          {onGlobalShell && <GlobalShellResumeBar />}
           <div className={rootClasses.bridgeContent}>{children}</div>
         </div>
       </RestartProvider>
