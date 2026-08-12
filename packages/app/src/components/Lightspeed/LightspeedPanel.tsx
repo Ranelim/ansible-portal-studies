@@ -165,6 +165,21 @@ const useStyles = makeStyles(theme => ({
     color: theme.palette.text.disabled,
     flexShrink: 0,
   },
+  /** RHDH Local–style Lightspeed FAB (not in masthead icon cluster) */
+  fab: {
+    position: 'fixed',
+    right: theme.spacing(3),
+    bottom: theme.spacing(3),
+    zIndex: theme.zIndex.drawer + 1,
+    width: 56,
+    height: 56,
+    backgroundColor: theme.palette.primary.main,
+    color: theme.palette.primary.contrastText,
+    boxShadow: theme.shadows[6],
+    '&:hover': {
+      backgroundColor: theme.palette.primary.dark,
+    },
+  },
 }));
 
 const LightspeedStarIcon = ({ size = 18 }: { size?: number }) => (
@@ -211,7 +226,7 @@ export const LightspeedPanel = () => {
   const classes = useStyles();
   const {
     isOpen, isExpanded, messages,
-    close, toggleExpand, sendMessage, clearMessages,
+    open, close, toggleExpand, sendMessage, clearMessages,
   } = useLightspeed();
   const [inputValue, setInputValue] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -235,66 +250,80 @@ export const LightspeedPanel = () => {
   };
 
   return (
-    <Slide direction="left" in={isOpen} mountOnEnter unmountOnExit>
-      <Box className={`${classes.panel} ${isExpanded ? classes.panelExpanded : classes.panelNarrow}`}>
-        <Box className={classes.header}>
-          <Box className={classes.headerIcon}>
-            <LightspeedStarIcon size={18} />
+    <>
+      {/* RHDH Local pattern: Lightspeed as FAB, not masthead icon */}
+      {!isOpen && (
+        <Tooltip title="Lightspeed AI" placement="left" arrow>
+          <IconButton
+            className={classes.fab}
+            onClick={() => open()}
+            aria-label="Open Lightspeed AI"
+          >
+            <LightspeedStarIcon size={22} />
+          </IconButton>
+        </Tooltip>
+      )}
+      <Slide direction="left" in={isOpen} mountOnEnter unmountOnExit>
+        <Box className={`${classes.panel} ${isExpanded ? classes.panelExpanded : classes.panelNarrow}`}>
+          <Box className={classes.header}>
+            <Box className={classes.headerIcon}>
+              <LightspeedStarIcon size={18} />
+            </Box>
+            <Typography className={classes.headerTitle}>
+              Lightspeed
+            </Typography>
+            <Tooltip title="Clear conversation" arrow>
+              <IconButton size="small" className={classes.headerAction} onClick={clearMessages}>
+                <DeleteOutlineIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title={isExpanded ? 'Collapse to panel' : 'Expand to full width'} arrow>
+              <IconButton size="small" className={classes.headerAction} onClick={toggleExpand}>
+                {isExpanded
+                  ? <FullscreenExitIcon fontSize="small" />
+                  : <FullscreenIcon fontSize="small" />}
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Close" arrow>
+              <IconButton size="small" onClick={close} className={classes.headerAction}>
+                <CloseIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
           </Box>
-          <Typography className={classes.headerTitle}>
-            Lightspeed
+
+          <Box className={`${classes.messagesArea} ${isExpanded ? classes.messagesAreaExpanded : ''}`}>
+            {messages.map((msg, i) => (
+              <MessageBubble key={i} message={msg} expanded={isExpanded} />
+            ))}
+            <div ref={messagesEndRef} />
+          </Box>
+
+          <Box className={classes.inputWrapper}>
+            <Box className={`${classes.inputArea} ${isExpanded ? classes.inputAreaExpanded : ''}`}>
+              <InputBase
+                className={`${classes.inputField} ${isExpanded ? classes.inputFieldExpanded : ''}`}
+                placeholder="Ask Lightspeed anything..."
+                multiline
+                maxRows={4}
+                value={inputValue}
+                onChange={e => setInputValue(e.target.value)}
+                onKeyDown={handleKeyDown}
+              />
+              <IconButton
+                className={classes.sendButton}
+                onClick={handleSend}
+                disabled={!inputValue.trim()}
+                size="small"
+              >
+                <SendIcon fontSize="small" />
+              </IconButton>
+            </Box>
+          </Box>
+          <Typography className={classes.poweredBy}>
+            Powered by Red Hat Lightspeed
           </Typography>
-          <Tooltip title="Clear conversation" arrow>
-            <IconButton size="small" className={classes.headerAction} onClick={clearMessages}>
-              <DeleteOutlineIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title={isExpanded ? 'Collapse to panel' : 'Expand to full width'} arrow>
-            <IconButton size="small" className={classes.headerAction} onClick={toggleExpand}>
-              {isExpanded
-                ? <FullscreenExitIcon fontSize="small" />
-                : <FullscreenIcon fontSize="small" />}
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Close" arrow>
-            <IconButton size="small" onClick={close} className={classes.headerAction}>
-              <CloseIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
         </Box>
-
-        <Box className={`${classes.messagesArea} ${isExpanded ? classes.messagesAreaExpanded : ''}`}>
-          {messages.map((msg, i) => (
-            <MessageBubble key={i} message={msg} expanded={isExpanded} />
-          ))}
-          <div ref={messagesEndRef} />
-        </Box>
-
-        <Box className={classes.inputWrapper}>
-          <Box className={`${classes.inputArea} ${isExpanded ? classes.inputAreaExpanded : ''}`}>
-            <InputBase
-              className={`${classes.inputField} ${isExpanded ? classes.inputFieldExpanded : ''}`}
-              placeholder="Ask Lightspeed anything..."
-              multiline
-              maxRows={4}
-              value={inputValue}
-              onChange={e => setInputValue(e.target.value)}
-              onKeyDown={handleKeyDown}
-            />
-            <IconButton
-              className={classes.sendButton}
-              onClick={handleSend}
-              disabled={!inputValue.trim()}
-              size="small"
-            >
-              <SendIcon fontSize="small" />
-            </IconButton>
-          </Box>
-        </Box>
-        <Typography className={classes.poweredBy}>
-          Powered by Red Hat Lightspeed
-        </Typography>
-      </Box>
-    </Slide>
+      </Slide>
+    </>
   );
 };

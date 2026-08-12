@@ -1,120 +1,114 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 
-// --- Mocks ---
-// mock navigate function to assert navigation calls
-const mockNavigate = jest.fn();
+const React = require('react');
 
-// simple Link mock that renders an <a> for the 'to' prop
-const MockLink = ({ to, children, className }: any) => (
-  // eslint-disable-next-line jsx-a11y/anchor-has-content
-  <a href={to} className={className}>
-    {children}
-  </a>
+jest.mock(
+  '@red-hat-developer-hub/backstage-plugin-global-header/dist/components/GlobalHeaderComponent.esm.js',
+  () => ({
+    GlobalHeaderComponent: ({ globalHeaderMountPoints }: any) =>
+      React.createElement(
+        'nav',
+        { id: 'global-header', 'data-testid': 'rhdh-global-header' },
+        globalHeaderMountPoints?.map((mp: any, i: number) =>
+          React.createElement(mp.Component, {
+            key: i,
+            ...(mp.config?.props || {}),
+          }),
+        ),
+      ),
+  }),
 );
 
-jest.mock('react-router-dom', () => ({
-  __esModule: true,
-  Link: (props: any) => <MockLink {...props} />,
-  useNavigate: () => mockNavigate,
+jest.mock(
+  '@red-hat-developer-hub/backstage-plugin-global-header/dist/components/Spacer/Spacer.esm.js',
+  () => ({ Spacer: () => null }),
+);
+
+jest.mock(
+  '@red-hat-developer-hub/backstage-plugin-global-header/dist/components/HeaderDropdownComponent/StarredDropdown.esm.js',
+  () => ({
+    StarredDropdown: () =>
+      React.createElement('button', { 'aria-label': 'Starred' }, 'Starred'),
+  }),
+);
+
+jest.mock(
+  '@red-hat-developer-hub/backstage-plugin-global-header/dist/components/Divider/Divider.esm.js',
+  () => ({ Divider: () => null }),
+);
+
+jest.mock('./AutomationPortalBrand', () => ({
+  AutomationPortalBrand: () => (
+    <a href="/">
+      <span>Automation Portal</span>
+    </a>
+  ),
 }));
 
-// mock identity API and useApi
-const mockSignOut = jest.fn().mockResolvedValue(undefined);
-const mockIdentityApi = {
-  signOut: mockSignOut,
-};
+jest.mock('./PortalHeaderSearch', () => ({
+  PortalHeaderSearch: () => (
+    <input aria-label="Search" placeholder="Search..." />
+  ),
+}));
 
-jest.mock('@backstage/core-plugin-api', () => ({
-  __esModule: true,
-  // keep identityApiRef so imports resolve; value isn't used directly in the test
-  identityApiRef: {},
-  useApi: () => mockIdentityApi,
+jest.mock('./PortalCreateButton', () => ({
+  PortalCreateButton: () => (
+    <button type="button" title="Create..." aria-label="Create...">
+      Create
+    </button>
+  ),
+}));
+
+jest.mock('./PortalNotificationButton', () => ({
+  PortalNotificationButton: () => (
+    <a href="/notifications" aria-label="Notifications">
+      Notifications
+    </a>
+  ),
+}));
+
+jest.mock('./PortalHelpMenu', () => ({
+  PortalHelpMenu: () => (
+    <button type="button" aria-label="Help">
+      Help
+    </button>
+  ),
+}));
+
+jest.mock('./PortalProfileMenu', () => ({
+  PortalProfileMenu: () => (
+    <button type="button" aria-label="Profile">
+      Guest
+    </button>
+  ),
 }));
 
 import { GlobalHeader } from './GlobalHeader';
 
 describe('GlobalHeader', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
+  it('composes RHDH header with Automation Portal brand and quiet search', () => {
+    render(
+      <MemoryRouter>
+        <GlobalHeader />
+      </MemoryRouter>,
+    );
 
-  it('renders title, search input and action buttons', () => {
-    render(<GlobalHeader />);
-
-    // Title/link present
-    expect(screen.getByText('Ansible RHDH')).toBeInTheDocument();
-
-    // Search input - placeholder and aria-label
-    const input = screen.getByPlaceholderText('Search...') as HTMLInputElement;
-    expect(input).toBeInTheDocument();
-    expect(input).toHaveAttribute('aria-label', 'search');
-
-    // Create button (has title attribute)
+    expect(screen.getByTestId('rhdh-global-header')).toBeInTheDocument();
+    expect(screen.getByText('Automation Portal')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Search...')).toBeInTheDocument();
+    expect(screen.queryByText(/Error fetching results/i)).not.toBeInTheDocument();
     expect(screen.getByTitle('Create...')).toBeInTheDocument();
-
-    // Profile icon button present
-    // const profileBtn = screen.getAllByRole('button').find(btn =>
-    //   btn.innerHTML.includes('AccountCircle') || btn.getAttribute('aria-label') === 'account',
-    // );
-    // There should be at least one button; we won't require exact icon internals
-    expect(screen.getAllByRole('button').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByLabelText('Notifications')).toBeInTheDocument();
+    expect(screen.getByLabelText('Profile')).toBeInTheDocument();
   });
 
-  it('navigates to catalog when Create button is clicked', async () => {
-    render(<GlobalHeader />);
-
-    const createBtn = screen.getByTitle('Create...');
-    await userEvent.click(createBtn);
-
-    expect(mockNavigate).toHaveBeenCalledWith('/self-service/catalog');
-  });
-
-  it('submits search form and navigates to search results', async () => {
-    render(<GlobalHeader />);
-
-    const input = screen.getByPlaceholderText('Search...') as HTMLInputElement;
-
-    await userEvent.type(input, 'hello world');
-
-    // submit by submitting the form element (find nearest form)
-    const form = input.closest('form')!;
-    expect(form).toBeTruthy();
-
-    // use fireEvent.submit to trigger the form submit handler
-    fireEvent.submit(form);
-
-    await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith('/search?query=hello%20world');
-    });
-  });
-
-  it('opens profile menu and logs out (calls identityApi.signOut) then closes menu', async () => {
-    render(<GlobalHeader />);
-
-    // Click profile icon (the last icon button)
-    // There are multiple icon buttons; find the one that does not have title 'Create...'
-    const buttons = screen.getAllByRole('button');
-    // The AccountCircle button is typically the last one — click the last button
-    const profileBtn = buttons[buttons.length - 1];
-    await userEvent.click(profileBtn);
-
-    // Menu should appear - look for Settings and Logout menu items
-    expect(await screen.findByText('Settings')).toBeInTheDocument();
-    expect(screen.getByText('Logout')).toBeInTheDocument();
-
-    // Click Logout and ensure signOut called
-    await userEvent.click(screen.getByText('Logout'));
-
-    await waitFor(() => {
-      expect(mockSignOut).toHaveBeenCalled();
-    });
-
-    // Instead of checking "not.toBeInTheDocument()", check visibility:
-    await waitFor(() => {
-      const settings = screen.queryByText('Settings');
-      // if settings node exists but is hidden, this will pass
-      expect(settings).not.toBeVisible();
-    });
+  it('hides on setup routes', () => {
+    render(
+      <MemoryRouter initialEntries={['/setup']}>
+        <GlobalHeader />
+      </MemoryRouter>,
+    );
+    expect(screen.queryByTestId('rhdh-global-header')).not.toBeInTheDocument();
   });
 });

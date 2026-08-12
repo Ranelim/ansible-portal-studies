@@ -42,6 +42,7 @@ import {
   OutcomesPage,
   HomeBandDashboardPage,
   ExperiencesHomePage,
+  PortalAssistantPage,
   FlatHomeDashboardPage,
   ExperienceSettingsPage,
   ExperienceDashboardPage,
@@ -165,6 +166,8 @@ const RouteViewContent = () => {
         <Route path="home/*" element={<FlatHomeDashboardPage />} />
         <Route path="experiences" element={<ExperiencesHomePage />} />
         <Route path="experiences/*" element={<ExperiencesHomePage />} />
+        <Route path="assistant" element={<PortalAssistantPage />} />
+        <Route path="assistant/*" element={<PortalAssistantPage />} />
         <Route
           path="experience-settings"
           element={<ExperienceSettingsPage />}

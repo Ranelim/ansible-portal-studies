@@ -9,13 +9,28 @@
 
 Build the **Experience Bridge** shell from the Aug 11 stakeholder direction:
 
-- Card catalog landing (orientation) under global masthead — no domain rail on Bridge
-- Enter experience → dedicated rail; return to Bridge
-- One experience → no switcher chrome
-- Masthead globals: search, notifications (drawer + center), personal settings
-- Admin / plugins / settings levels / notifications — stub then deepen
+- Card catalog landing (orientation) under global masthead — **no domain rail on Bridge**
+- Enter experience → dedicated rail; return to Bridge via **Experiences** pin
+- SME → Automate only (no Bridge, no switcher)
+- No Opt 1–5 purple banner / model switcher on this branch
+- Masthead globals next: search, notifications (drawer + center), personal settings
 
-**Not** the Opt 1–5 bakeoff (kept on `design/portal-nav-ia`).
+**Not** the Opt 1–5 bakeoff (kept on `design/portal-nav-ia` / :3011).
+
+## Shell map (current)
+
+| Surface | Chrome | Landing |
+|---|---|---|
+| **Bridge** (`/self-service/experiences`) | Masthead only | Experiences tab (cards) + Dashboard tab (teaser) |
+| **Bridge tools** | — | Search filter · Recent / A–Z · **Assistant** AI card |
+| **Assistant** (`/self-service/assistant`) | Masthead only | Gemini-style cross-experience chat (prototype) |
+| **Inside experience** | Masthead + experience rail | Automate → Templates; others → Dashboard / entity home |
+| **SME** | Masthead + Automate rail | `/create` (never Bridge) |
+
+**Teasers (Aug 12):** Dashboard tab (deferred MVP), catalog search + Recent, AI Assistant experience (full page; masthead Lightspeed stays the quick drawer).
+
+**Masthead / chrome gameplan:** RHDH = base; Portal = justified variation only. Prefer [RHDH Local](https://github.com/redhat-developer/rhdh-local) + global-header defaults for comparison — see `scratch/masthead-rhdh-baseline.md` (awaiting Shiran production header config).
+
 
 ## Git
 
@@ -28,4 +43,12 @@ Build the **Experience Bridge** shell from the Aug 11 stakeholder direction:
 cd ~/portal-projects/ansible-backstage-plugins-experiences
 yarn start
 # → http://localhost:3012
+```
+
+For the 5-option exploration:
+
+```bash
+cd ~/portal-projects/ansible-backstage-plugins-nav-ia
+yarn start
+# → http://localhost:3011
 ```

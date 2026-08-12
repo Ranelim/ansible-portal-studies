@@ -23,8 +23,8 @@ export type NavExperience =
 const MODEL_KEY = 'portal-nav-ia-model';
 const EXPERIENCE_KEY = 'portal-nav-experience';
 
-/** Default for ephemeral recommended prototype; exploration can override via localStorage. */
-const DEFAULT_MODEL: NavIaModel = 'curated';
+/** Default for Experiences shell branch — Bridge + experience rails (not Opt 1–5 bakeoff). */
+const DEFAULT_MODEL: NavIaModel = 'experiences';
 const DEFAULT_EXPERIENCE: NavExperience = 'all';
 
 const listeners = new Set<() => void>();
@@ -34,17 +34,11 @@ function notify() {
 }
 
 function readModel(): NavIaModel {
+  // Experiences shell branch: always experiences (ignore leftover bakeoff localStorage).
   try {
     const raw = localStorage.getItem(MODEL_KEY);
-    if (raw === 'baseline' || raw === 'sections') return 'curated'; // legacy ids
-    if (
-      raw === 'experiences' ||
-      raw === 'curated' ||
-      raw === 'flat' ||
-      raw === 'hybrid' ||
-      raw === 'homeband'
-    ) {
-      return raw;
+    if (raw && raw !== 'experiences') {
+      localStorage.setItem(MODEL_KEY, 'experiences');
     }
   } catch {
     /* ignore */
@@ -104,7 +98,7 @@ export function availableExperiences(args: {
 }
 
 export const EXPERIENCE_LABELS: Record<NavExperience, string> = {
-  all: 'All (Home)',
+  all: 'Experiences',
   automate: 'Automate',
   develop: 'Develop',
   compliance: 'Compliance',

@@ -1,4 +1,4 @@
-import { PropsWithChildren } from 'react';
+import { PropsWithChildren, useEffect } from 'react';
 import { makeStyles, Box, Typography, Button } from '@material-ui/core';
 import WarningIcon from '@material-ui/icons/Warning';
 import { useLocation } from 'react-router-dom';
@@ -6,24 +6,57 @@ import {
   RestartProvider,
   useRestartRequired,
   useNavIaModel,
+  writeNavExperience,
 } from '@ansible/plugin-backstage-self-service';
-import {
-  SidebarPage,
-} from '@backstage/core-components';
-import {
-  BaselineSidebar,
-  ExperiencesSidebar,
-  FlatNavSidebar,
-  HomeBandSidebar,
-  PinsBundlesSidebar,
-} from './navSidebars';
+import { SidebarPage } from '@backstage/core-components';
+import { ExperiencesSidebar } from './navSidebars';
 import { CHROME_TOP, NavIaRouteGuard } from '../IaPrototype';
 
-const useRootStyles = makeStyles(theme => ({
+const useRootStyles = makeStyles(theme => {
+  const rhdhGeneral = (theme.palette as any).rhdh?.general ?? {};
+  // Stock RHDH light AppBar = #f2f2f2 (same as sidebar); dark = #151515.
+  // Do NOT use background.paper (#fff) — that was an accidental Portal override.
+  const appBarBg =
+    rhdhGeneral.appBarBackgroundColor ??
+    (theme.palette.type === 'dark' ? '#151515' : '#f2f2f2');
+  const appBarFg =
+    rhdhGeneral.appBarForegroundColor ?? theme.palette.text.primary;
+
+  return {
   '@global': {
+    // RHDH GlobalHeaderComponent ships sticky; this app shells it as a sibling
+    // outside SidebarPage — pin fixed so rail/content clearances stay correct.
+    '#global-header': {
+      position: 'fixed !important' as any,
+      top: 0,
+      left: 0,
+      right: 0,
+      zIndex: theme.zIndex.drawer + 1,
+      // Match RHDH MuiAppBar override (appBarBackgroundColor). Keep text/icon
+      // overrides — Backstage <Link> still resolves to primary.blue otherwise.
+      backgroundColor: `${appBarBg} !important`,
+      color: `${appBarFg} !important`,
+      '& .MuiToolbar-root': {
+        color: appBarFg,
+      },
+      '& .MuiIconButton-root, & .MuiButton-root': {
+        color: theme.palette.text.secondary,
+      },
+      '& .MuiIconButton-root:hover, & .MuiButton-root:hover': {
+        color: theme.palette.text.primary,
+        backgroundColor: theme.palette.action.hover,
+      },
+      '& .MuiSvgIcon-root': {
+        color: 'inherit',
+      },
+      // Backstage Link paints primary blue — kill that inside the masthead
+      '& a, & a:hover, & a:visited': {
+        color: 'inherit',
+        textDecoration: 'none',
+      },
+    },
     // JSS hashes class names (e.g. BackstageSidebar-root-83) — use substring match
-    // so the rail clears the IA banner + masthead. Otherwise the first section
-    // label ("Run") sits under the header and looks "missing".
+    // so the rail clears the masthead.
     '[class*="BackstageSidebar-root"]': {
       top: `${CHROME_TOP}px !important`,
       height: `calc(100% - ${CHROME_TOP}px) !important`,
@@ -50,7 +83,12 @@ const useRootStyles = makeStyles(theme => ({
     minHeight: '100vh',
     backgroundColor: theme.palette.background.default,
   },
-}));
+  /** Bridge: masthead only — full-width content, no experience rail. */
+  bridgeContent: {
+    minHeight: `calc(100vh - ${CHROME_TOP}px)`,
+  },
+};
+});
 
 const GlobalRestartBanner = () => {
   const { restartRequired, setRestartRequired } = useRestartRequired();
@@ -73,7 +111,8 @@ const GlobalRestartBanner = () => {
     >
       <WarningIcon style={{ fontSize: 20, color: '#f0ad4e', flexShrink: 0 }} />
       <Typography style={{ flex: 1, fontSize: 13, lineHeight: 1.5 }}>
-        Configuration changes have been saved but require a portal restart to take effect.
+        Configuration changes have been saved but require a portal restart to
+        take effect.
       </Typography>
       <Button
         variant="contained"
@@ -88,22 +127,47 @@ const GlobalRestartBanner = () => {
   );
 };
 
-const RoleAdaptiveSidebar = () => {
-  const { model } = useNavIaModel();
-  if (model === 'experiences') return <ExperiencesSidebar />;
-  if (model === 'flat') return <FlatNavSidebar />;
-  if (model === 'hybrid') return <PinsBundlesSidebar />;
-  if (model === 'homeband') return <HomeBandSidebar />;
-  return <BaselineSidebar />; // Option 2 — pins + job-band sections
-};
+function isBridgePath(pathname: string): boolean {
+  return (
+    pathname === '/self-service/experiences' ||
+    pathname.startsWith('/self-service/experiences/') ||
+    pathname === '/self-service/assistant' ||
+    pathname.startsWith('/self-service/assistant/') ||
+    pathname === '/notifications' ||
+    pathname.startsWith('/notifications/')
+  );
+}
 
 export const Root = ({ children }: PropsWithChildren<{}>) => {
   const rootClasses = useRootStyles();
   const location = useLocation();
+  const { setExperience } = useNavIaModel();
   const isSetup = location.pathname.includes('/setup');
+  const onBridge = isBridgePath(location.pathname);
+
+  // Persist Bridge context on catalog / assistant (no domain rail).
+  useEffect(() => {
+    if (!onBridge) return;
+    // Assistant is cross-experience — keep Bridge context ('all')
+    setExperience('all');
+    writeNavExperience('all');
+  }, [onBridge, setExperience]);
 
   if (isSetup) {
     return <>{children}</>;
+  }
+
+  // Bridge: masthead + full-width catalog — no left rail
+  if (onBridge) {
+    return (
+      <RestartProvider>
+        <div className={rootClasses.fixedHeaderOffset}>
+          <NavIaRouteGuard />
+          <GlobalRestartBanner />
+          <div className={rootClasses.bridgeContent}>{children}</div>
+        </div>
+      </RestartProvider>
+    );
   }
 
   return (
@@ -111,7 +175,7 @@ export const Root = ({ children }: PropsWithChildren<{}>) => {
       <div className={rootClasses.fixedHeaderOffset}>
         <NavIaRouteGuard />
         <SidebarPage>
-          <RoleAdaptiveSidebar />
+          <ExperiencesSidebar />
           <GlobalRestartBanner />
           {children}
         </SidebarPage>

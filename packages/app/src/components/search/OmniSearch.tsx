@@ -9,7 +9,6 @@ import {
   Divider,
   Chip,
   makeStyles,
-  alpha,
 } from '@material-ui/core';
 import SearchIcon from '@material-ui/icons/Search';
 import HistoryIcon from '@material-ui/icons/History';
@@ -41,15 +40,19 @@ const useStyles = makeStyles(theme => ({
   searchWrapper: {
     position: 'relative',
     borderRadius: 20,
-    backgroundColor: alpha(theme.palette.common.white, 0.1),
+    // Theme-aware — works on light and dark masthead (RHDH-aligned)
+    backgroundColor: theme.palette.action.hover,
+    border: `1px solid ${theme.palette.divider}`,
+    color: theme.palette.text.primary,
     '&:hover': {
-      backgroundColor: alpha(theme.palette.common.white, 0.16),
+      backgroundColor: theme.palette.action.selected,
     },
-    transition: theme.transitions.create(['background-color']),
+    transition: theme.transitions.create(['background-color', 'border-color']),
     flexShrink: 1,
   },
   searchWrapperFocused: {
-    backgroundColor: alpha(theme.palette.common.white, 0.16),
+    backgroundColor: theme.palette.action.selected,
+    borderColor: theme.palette.primary.main,
     borderRadius: '20px 20px 4px 4px',
   },
   searchIconWrapper: {
@@ -60,11 +63,11 @@ const useStyles = makeStyles(theme => ({
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    opacity: 0.6,
+    color: theme.palette.text.secondary,
     zIndex: 1,
   },
   inputRoot: {
-    color: 'inherit',
+    color: theme.palette.text.primary,
     width: '100%',
   },
   inputInput: {
@@ -73,12 +76,13 @@ const useStyles = makeStyles(theme => ({
     transition: theme.transitions.create('width'),
     width: '26ch',
     fontSize: 13,
-    color: 'inherit',
+    color: theme.palette.text.primary,
     '&:focus': {
       width: '38ch',
     },
     '&::placeholder': {
-      opacity: 0.5,
+      color: theme.palette.text.secondary,
+      opacity: 1,
     },
   },
   popper: {
@@ -91,7 +95,7 @@ const useStyles = makeStyles(theme => ({
     backgroundColor: theme.palette.background.paper,
     border: `1px solid ${theme.palette.divider}`,
     borderRadius: '0 0 8px 8px',
-    boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+    boxShadow: theme.shadows[8],
     maxHeight: '70vh',
     overflow: 'auto',
   },

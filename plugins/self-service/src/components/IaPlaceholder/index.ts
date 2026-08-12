@@ -3,6 +3,7 @@ export { UnifiedCatalogPage } from './UnifiedCatalogPage';
 export { OutcomesPage } from './OutcomesPage';
 export { HomeBandDashboardPage } from './HomeBandDashboardPage';
 export { ExperiencesHomePage } from './ExperiencesHomePage';
+export { PortalAssistantPage } from './PortalAssistantPage';
 export { FlatHomeDashboardPage } from './FlatHomeDashboardPage';
 export { ExperienceSettingsPage } from './ExperienceSettingsPage';
 export { ExperienceDashboardPage } from './ExperienceDashboardPage';

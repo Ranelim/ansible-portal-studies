@@ -1,18 +1,22 @@
-import { useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Page, Header, Content } from '@backstage/core-components';
+import { Page, Content } from '@backstage/core-components';
 import {
   Box,
-  Button,
   Chip,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
+  FormControl,
+  IconButton,
+  InputAdornment,
+  InputLabel,
+  MenuItem,
+  Select,
+  TextField,
+  Tooltip,
   Typography,
   makeStyles,
 } from '@material-ui/core';
+import SearchIcon from '@material-ui/icons/Search';
+import HelpOutlineIcon from '@material-ui/icons/HelpOutline';
 import {
   availableExperiences,
   EXPERIENCE_LABELS,
@@ -23,10 +27,14 @@ import {
 import { useNavPlugins } from '../../hooks/useNavPlugins';
 import { useUserRoleContext } from '../../hooks/useUserRole';
 
-type BridgeView = 'dashboard' | 'catalog' | 'plugins';
+type SortMode = 'recent' | 'az';
+
+type ExperienceId = Exclude<NavExperience, 'all'>;
+
+const RECENT_KEY = 'portal-experience-recent';
 
 /** User-facing experience blurbs — not IA documentation. */
-const EXPERIENCE_BLURB: Record<Exclude<NavExperience, 'all'>, string> = {
+const EXPERIENCE_BLURB: Record<ExperienceId, string> = {
   automate: 'Run job templates and track recent activity.',
   develop: 'Build and manage automation content — repos, collections, and EEs.',
   compliance: 'Scan inventories, review findings, and remediate hosts.',
@@ -34,7 +42,7 @@ const EXPERIENCE_BLURB: Record<Exclude<NavExperience, 'all'>, string> = {
   admin: 'Configure integrations, access, and platform sync.',
 };
 
-const EXPERIENCE_LANDING: Record<Exclude<NavExperience, 'all'>, string> = {
+const EXPERIENCE_LANDING: Record<ExperienceId, string> = {
   automate: '/create',
   develop: '/self-service/experience-dashboard',
   compliance: '/self-service/experience-dashboard',
@@ -42,8 +50,7 @@ const EXPERIENCE_LANDING: Record<Exclude<NavExperience, 'all'>, string> = {
   admin: '/self-service/admin/general',
 };
 
-/** Accent strips for Bridge tiles (theme-adjacent, not one-off product chrome). */
-const EXPERIENCE_ACCENT: Record<Exclude<NavExperience, 'all'>, string> = {
+const EXPERIENCE_ACCENT: Record<ExperienceId, string> = {
   automate: '#0066CC',
   develop: '#3D1C7C',
   compliance: '#C46100',
@@ -51,96 +58,64 @@ const EXPERIENCE_ACCENT: Record<Exclude<NavExperience, 'all'>, string> = {
   admin: '#6A6E73',
 };
 
-type InsightWidget = {
-  id: string;
-  experienceId: Exclude<NavExperience, 'all'>;
-  title: string;
-  value: string;
-  detail: string;
-  source: string;
-  href: string;
-};
+function readRecent(): ExperienceId[] {
+  try {
+    const raw = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]');
+    if (!Array.isArray(raw)) return [];
+    return raw.filter((id): id is ExperienceId =>
+      ['automate', 'develop', 'compliance', 'edge', 'admin'].includes(id),
+    );
+  } catch {
+    return [];
+  }
+}
 
-const INSIGHT_WIDGETS: InsightWidget[] = [
-  {
-    id: 'automate-runs',
-    experienceId: 'automate',
-    title: 'Recent runs',
-    value: '24',
-    detail: '2 failed in the last 7 days',
-    source: 'Automate',
-    href: '/self-service/create/tasks',
-  },
-  {
-    id: 'develop-quality',
-    experienceId: 'develop',
-    title: 'Content quality',
-    value: '78',
-    detail: '3 repositories need attention',
-    source: 'Develop · APME',
-    href: '/self-service/repositories/quality',
-  },
-  {
-    id: 'compliance-findings',
-    experienceId: 'compliance',
-    title: 'Open findings',
-    value: '3',
-    detail: 'Critical across inventories',
-    source: 'Compliance',
-    href: '/self-service/inventories',
-  },
-  {
-    id: 'edge-health',
-    experienceId: 'edge',
-    title: 'Fleet health',
-    value: '1',
-    detail: 'Degraded fleet · 4 devices offline',
-    source: 'Edge',
-    href: '/self-service/edge-fleets',
-  },
-];
-
-type PluginRow = {
-  name: string;
-  feeds: string;
-  experienceId: NavExperience;
-  status: 'Enabled' | 'Seat-gated' | 'Always on';
-  landing: string;
-};
+export function pushRecentExperience(id: ExperienceId) {
+  const next = [id, ...readRecent().filter(x => x !== id)].slice(0, 8);
+  try {
+    localStorage.setItem(RECENT_KEY, JSON.stringify(next));
+  } catch {
+    /* ignore */
+  }
+}
 
 const useStyles = makeStyles(theme => ({
-  intro: {
-    marginBottom: theme.spacing(2.5),
-    maxWidth: 720,
-    lineHeight: 1.6,
-    color: theme.palette.text.secondary,
-  },
-  widgetGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
-    gap: theme.spacing(2),
+  prompt: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: theme.spacing(0.5),
     marginBottom: theme.spacing(2),
   },
-  widget: {
-    border: `1px solid ${theme.palette.divider}`,
-    borderRadius: 4,
-    padding: theme.spacing(2),
-    backgroundColor: theme.palette.background.paper,
+  promptTitle: {
+    fontWeight: 600,
+    fontSize: 20,
+    lineHeight: 1.3,
+  },
+  infoButton: {
+    padding: 4,
+    color: theme.palette.text.secondary,
+  },
+  toolbar: {
     display: 'flex',
-    flexDirection: 'column',
-    gap: theme.spacing(0.75),
-    minHeight: 148,
-    cursor: 'pointer',
-    transition: 'border-color 120ms ease, box-shadow 120ms ease',
-    '&:hover': {
-      borderColor: theme.palette.primary.main,
-      boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: theme.spacing(1.5),
+    marginBottom: theme.spacing(2.5),
+  },
+  search: {
+    flex: '1 1 220px',
+    maxWidth: 360,
+    '& .MuiOutlinedInput-root': {
+      borderRadius: 4,
+      backgroundColor: theme.palette.background.paper,
     },
   },
-  widgetValue: {
-    fontSize: 32,
-    fontWeight: 700,
-    lineHeight: 1.05,
+  sortControl: {
+    minWidth: 160,
+    '& .MuiOutlinedInput-root': {
+      borderRadius: 4,
+      backgroundColor: theme.palette.background.paper,
+    },
   },
   tileGrid: {
     display: 'grid',
@@ -154,16 +129,24 @@ const useStyles = makeStyles(theme => ({
     backgroundColor: theme.palette.background.paper,
     display: 'flex',
     flexDirection: 'column',
-    minHeight: 220,
+    minHeight: 180,
     cursor: 'pointer',
     transition: 'transform 140ms ease, box-shadow 140ms ease',
     '&:hover': {
       transform: 'translateY(-2px)',
       boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
     },
+    '&:focus-visible': {
+      outline: `2px solid ${theme.palette.primary.main}`,
+      outlineOffset: 2,
+    },
+  },
+  tileAi: {
+    borderColor: 'rgba(0, 102, 204, 0.35)',
+    boxShadow: '0 0 0 1px rgba(0, 102, 204, 0.08)',
   },
   tileAccent: {
-    height: 72,
+    height: 56,
     position: 'relative',
     backgroundImage:
       'linear-gradient(135deg, rgba(255,255,255,0.18) 0%, rgba(0,0,0,0.12) 100%)',
@@ -175,36 +158,37 @@ const useStyles = makeStyles(theme => ({
     gap: theme.spacing(1),
     flex: 1,
   },
+  tileTitleRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: theme.spacing(1),
+  },
   tileTitle: {
     fontWeight: 700,
     fontSize: 18,
   },
+  empty: {
+    color: theme.palette.text.secondary,
+    padding: theme.spacing(3, 0),
+  },
 }));
 
-function viewFromLocation(pathname: string, search: string): BridgeView {
-  if (pathname.endsWith('/plugins')) return 'plugins';
-  if (pathname.endsWith('/catalog')) return 'catalog';
-  const tab = new URLSearchParams(search).get('tab');
-  if (tab === 'plugins') return 'plugins';
-  if (tab === 'catalog') return 'catalog';
-  return 'dashboard';
-}
-
 /**
- * Option 3 — All (Home) Bridge:
- * - Dashboard = cross-experience insight widgets (Portal layout + contributed widgets)
- * - Experiences = Bridge catalog tiles (enter a mode)
- * - Plugins = admin-only inventory (not an end-user surface)
+ * Experience Bridge — masthead + lean card catalog (no left rail).
+ * Enter = whole-card click.
  */
 export const ExperiencesHomePage = () => {
   const classes = useStyles();
   const navigate = useNavigate();
   const location = useLocation();
-  const view = viewFromLocation(location.pathname, location.search);
   const { role, hasRole } = useUserRoleContext();
   const { plugins } = useNavPlugins();
   const { setExperience } = useNavIaModel();
   const isAdmin = hasRole('admin');
+
+  const [query, setQuery] = useState('');
+  const [sort, setSort] = useState<SortMode>('recent');
+  const [recent, setRecent] = useState<ExperienceId[]>(() => readRecent());
 
   const available = useMemo(
     () =>
@@ -213,259 +197,207 @@ export const ExperiencesHomePage = () => {
         isAdmin,
         compliance: plugins.compliance,
         rhem: plugins.rhem,
-      }).filter(id => id !== 'all') as Exclude<NavExperience, 'all'>[],
+      }).filter(id => id !== 'all') as ExperienceId[],
     [role, isAdmin, plugins.compliance, plugins.rhem],
   );
 
-  // Plugins is admin-only — bounce everyone else to Dashboard
+  // Old /experiences/dashboard bookmark → catalog
   useEffect(() => {
-    if (view === 'plugins' && !isAdmin) {
+    if (location.pathname.endsWith('/dashboard')) {
       navigate('/self-service/experiences', { replace: true });
     }
-  }, [view, isAdmin, navigate]);
+  }, [location.pathname, navigate]);
 
-  const widgets = useMemo(
-    () => INSIGHT_WIDGETS.filter(w => available.includes(w.experienceId)),
-    [available],
+  useEffect(() => {
+    setRecent(readRecent());
+  }, [location.pathname]);
+
+  useEffect(() => {
+    document.title = 'Experiences | Automation Portal';
+  }, []);
+
+  const sortedFiltered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    let list = available.filter(id => {
+      if (!q) return true;
+      return (
+        EXPERIENCE_LABELS[id].toLowerCase().includes(q) ||
+        EXPERIENCE_BLURB[id].toLowerCase().includes(q)
+      );
+    });
+    if (sort === 'az') {
+      list = [...list].sort((a, b) =>
+        EXPERIENCE_LABELS[a].localeCompare(EXPERIENCE_LABELS[b]),
+      );
+    } else {
+      const rank = new Map(recent.map((id, i) => [id, i]));
+      list = [...list].sort((a, b) => {
+        const ra = rank.has(a) ? rank.get(a)! : 999;
+        const rb = rank.has(b) ? rank.get(b)! : 999;
+        if (ra !== rb) return ra - rb;
+        return EXPERIENCE_LABELS[a].localeCompare(EXPERIENCE_LABELS[b]);
+      });
+    }
+    // Pin Administration just before Assistant (rendered last in the grid).
+    const withoutAdmin = list.filter(id => id !== 'admin');
+    return list.includes('admin') ? [...withoutAdmin, 'admin'] : withoutAdmin;
+  }, [available, query, sort, recent]);
+
+  const openExperience = useCallback(
+    (id: ExperienceId) => {
+      pushRecentExperience(id);
+      setRecent(readRecent());
+      setExperience(id);
+      writeNavExperience(id);
+      navigate(EXPERIENCE_LANDING[id]);
+    },
+    [navigate, setExperience],
   );
 
-  const pluginRows: PluginRow[] = useMemo(() => {
-    const list: PluginRow[] = [
-      {
-        name: 'Scaffolder / self-service',
-        feeds: 'Automate',
-        experienceId: 'automate',
-        status: 'Always on',
-        landing: '/create',
-      },
-      {
-        name: 'Self-service content',
-        feeds: 'Develop',
-        experienceId: 'develop',
-        status: available.includes('develop') ? 'Enabled' : 'Seat-gated',
-        landing: '/self-service/repositories',
-      },
-      {
-        name: 'APME',
-        feeds: 'Develop (Quality tabs)',
-        experienceId: 'develop',
-        status:
-          plugins.apme && available.includes('develop')
-            ? 'Enabled'
-            : 'Seat-gated',
-        landing: '/self-service/repositories/quality',
-      },
-      {
-        name: 'Compliance',
-        feeds: 'Compliance experience',
-        experienceId: 'compliance',
-        status:
-          plugins.compliance && available.includes('compliance')
-            ? 'Enabled'
-            : 'Seat-gated',
-        landing: '/self-service/inventories',
-      },
-      {
-        name: 'RHEM / Flight Control',
-        feeds: 'Edge experience',
-        experienceId: 'edge',
-        status:
-          plugins.rhem && available.includes('edge') ? 'Enabled' : 'Seat-gated',
-        landing: '/self-service/edge-fleets',
-      },
-      {
-        name: 'Portal admin',
-        feeds: 'Administration',
-        experienceId: 'admin',
-        status: available.includes('admin') ? 'Enabled' : 'Seat-gated',
-        landing: '/self-service/admin/general',
-      },
-    ];
-    return list.filter(
-      p => available.includes(p.experienceId as Exclude<NavExperience, 'all'>) || p.status === 'Always on',
+  const openAssistant = () => {
+    navigate('/self-service/assistant');
+  };
+
+  const qNorm = query.trim().toLowerCase();
+  const assistantMatches =
+    !qNorm ||
+    ['assistant', 'ai', 'chat', 'help', 'ask'].some(
+      k => qNorm.includes(k) || k.startsWith(qNorm),
     );
-  }, [available, plugins.apme, plugins.compliance, plugins.rhem]);
-
-  const openExperience = (id: Exclude<NavExperience, 'all'>) => {
-    setExperience(id);
-    writeNavExperience(id);
-    navigate(EXPERIENCE_LANDING[id]);
-  };
-
-  const openWidget = (w: InsightWidget) => {
-    setExperience(w.experienceId);
-    writeNavExperience(w.experienceId);
-    navigate(w.href);
-  };
-
-  const title =
-    view === 'catalog'
-      ? 'Experiences'
-      : view === 'plugins'
-        ? 'Plugins'
-        : 'Dashboard';
-  const subtitle =
-    view === 'catalog'
-      ? 'Choose an experience to work in — each mode focuses the left nav on that job.'
-      : view === 'plugins'
-        ? 'Installed plugins and which experience they feed. Admin inventory — not an end-user catalog.'
-        : 'Insights across experiences on this seat. Portal owns the layout; teams contribute widgets.';
 
   return (
     <Page themeId="app">
-      <Header title={title} pageTitleOverride={title} subtitle={subtitle} />
       <Content>
-        {view === 'dashboard' && (
-          <>
-            <Typography variant="body2" className={classes.intro}>
-              Cross-experience insights — not a second Experiences catalog.
-              Widgets are contributed by experience teams into Portal-defined
-              slots (density, empty states, and placement stay Portal-owned).
-            </Typography>
-            <Box className={classes.widgetGrid}>
-              {widgets.map(w => (
+        <Box className={classes.prompt}>
+          <Typography className={classes.promptTitle} component="h1">
+            Experiences
+          </Typography>
+          <Tooltip
+            title="Experiences are job modes — ways of working in Automation Portal, not plugins. Open a card to enter that mode."
+            placement="right"
+            arrow
+          >
+            <IconButton
+              className={classes.infoButton}
+              size="small"
+              aria-label="About experiences"
+            >
+              <HelpOutlineIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        </Box>
+
+        <Box className={classes.toolbar}>
+          <TextField
+            className={classes.search}
+            size="small"
+            variant="outlined"
+            placeholder="Search experiences"
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon fontSize="small" color="action" />
+                </InputAdornment>
+              ),
+            }}
+            inputProps={{ 'aria-label': 'Search experiences' }}
+          />
+          <FormControl
+            className={classes.sortControl}
+            size="small"
+            variant="outlined"
+          >
+            <InputLabel id="experience-sort-label">Sort by</InputLabel>
+            <Select
+              labelId="experience-sort-label"
+              label="Sort by"
+              value={sort}
+              onChange={e => setSort(e.target.value as SortMode)}
+            >
+              <MenuItem value="recent">Recent</MenuItem>
+              <MenuItem value="az">A–Z</MenuItem>
+            </Select>
+          </FormControl>
+        </Box>
+
+        <Box className={classes.tileGrid}>
+          {sortedFiltered.map(id => (
+              <Box
+                key={id}
+                className={classes.tile}
+                role="button"
+                tabIndex={0}
+                aria-label={`Open ${EXPERIENCE_LABELS[id]}`}
+                onClick={() => openExperience(id)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    openExperience(id);
+                  }
+                }}
+              >
                 <Box
-                  key={w.id}
-                  className={classes.widget}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => openWidget(w)}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      openWidget(w);
-                    }
-                  }}
-                >
-                  <Typography variant="caption" color="textSecondary">
-                    {w.source}
-                  </Typography>
-                  <Typography variant="subtitle2" style={{ fontWeight: 600 }}>
-                    {w.title}
-                  </Typography>
-                  <Typography className={classes.widgetValue}>
-                    {w.value}
+                  className={classes.tileAccent}
+                  style={{ backgroundColor: EXPERIENCE_ACCENT[id] }}
+                />
+                <Box className={classes.tileBody}>
+                  <Typography className={classes.tileTitle}>
+                    {EXPERIENCE_LABELS[id]}
                   </Typography>
                   <Typography variant="body2" color="textSecondary">
-                    {w.detail}
+                    {EXPERIENCE_BLURB[id]}
                   </Typography>
                 </Box>
-              ))}
-            </Box>
-            {widgets.length === 0 && (
-              <Typography color="textSecondary">
-                No experience insights on this seat yet.
-              </Typography>
-            )}
-          </>
-        )}
+              </Box>
+            ))}
 
-        {view === 'catalog' && (
-          <>
-            <Typography variant="body2" className={classes.intro}>
-              Experiences are job modes (Automate, Develop, Compliance, Edge,
-              Administration) — not plugins. A plugin (for example Compliance or
-              RHEM) feeds an experience; this page is how you enter the mode.
-            </Typography>
-            <Box className={classes.tileGrid}>
-              {available.map(id => (
-                <Box
-                  key={id}
-                  className={classes.tile}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => openExperience(id)}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      openExperience(id);
-                    }
-                  }}
-                >
-                  <Box
-                    className={classes.tileAccent}
-                    style={{ backgroundColor: EXPERIENCE_ACCENT[id] }}
+          {assistantMatches && (
+            <Box
+              className={`${classes.tile} ${classes.tileAi}`}
+              role="button"
+              tabIndex={0}
+              aria-label="Open Assistant"
+              onClick={openAssistant}
+              onKeyDown={e => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  openAssistant();
+                }
+              }}
+            >
+              <Box
+                className={classes.tileAccent}
+                style={{
+                  background:
+                    'linear-gradient(135deg, #0066CC 0%, #3D1C7C 55%, #EE0000 100%)',
+                }}
+              />
+              <Box className={classes.tileBody}>
+                <Box className={classes.tileTitleRow}>
+                  <Typography className={classes.tileTitle}>
+                    Assistant
+                  </Typography>
+                  <Chip
+                    size="small"
+                    label="AI"
+                    style={{ height: 22, fontSize: 11, borderRadius: 12 }}
                   />
-                  <Box className={classes.tileBody}>
-                    <Typography className={classes.tileTitle}>
-                      {EXPERIENCE_LABELS[id]}
-                    </Typography>
-                    <Typography variant="body2" color="textSecondary">
-                      {EXPERIENCE_BLURB[id]}
-                    </Typography>
-                    <Box mt="auto" pt={1}>
-                      <Button
-                        color="primary"
-                        variant="contained"
-                        size="small"
-                        style={{ textTransform: 'none', borderRadius: 20 }}
-                        onClick={e => {
-                          e.stopPropagation();
-                          openExperience(id);
-                        }}
-                      >
-                        Open {EXPERIENCE_LABELS[id]}
-                      </Button>
-                    </Box>
-                  </Box>
                 </Box>
-              ))}
+                <Typography variant="body2" color="textSecondary">
+                  Helps across your experiences — answers questions and can take
+                  action for you.
+                </Typography>
+              </Box>
             </Box>
-          </>
-        )}
+          )}
+        </Box>
 
-        {view === 'plugins' && isAdmin && (
-          <>
-            <Typography variant="body2" className={classes.intro}>
-              End users work in experiences and entities. This list is for
-              platform admins — what is installed and which experience it feeds.
-              Prefer Administration for enablement and Integrations.
-            </Typography>
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>Plugin</TableCell>
-                  <TableCell>Feeds experience</TableCell>
-                  <TableCell>Status</TableCell>
-                  <TableCell />
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {pluginRows.map(row => (
-                  <TableRow key={`${row.name}-${row.experienceId}`} hover>
-                    <TableCell>
-                      <Typography variant="body2" style={{ fontWeight: 600 }}>
-                        {row.name}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>{row.feeds}</TableCell>
-                    <TableCell>
-                      <Chip
-                        size="small"
-                        label={row.status}
-                        variant="outlined"
-                        style={{ borderRadius: 12, fontSize: 11 }}
-                      />
-                    </TableCell>
-                    <TableCell align="right">
-                      <Button
-                        color="primary"
-                        size="small"
-                        style={{ textTransform: 'none', borderRadius: 20 }}
-                        onClick={() =>
-                          openExperience(
-                            row.experienceId as Exclude<NavExperience, 'all'>,
-                          )
-                        }
-                      >
-                        Open experience
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </>
+        {sortedFiltered.length === 0 && !assistantMatches && (
+          <Typography className={classes.empty}>
+            No experiences match “{query}”.
+          </Typography>
         )}
       </Content>
     </Page>

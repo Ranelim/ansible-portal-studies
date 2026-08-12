@@ -5,8 +5,8 @@ import {
   useNavPlugins,
   useNavIaModel,
   availableExperiences,
-  EXPERIENCE_LABELS,
   writeNavExperience,
+  EXPERIENCE_LABELS,
   NAV_IA_REVIEW_MODS,
   isSmeRole,
   type NavExperience,
@@ -26,10 +26,6 @@ import {
   Box,
   Collapse,
   IconButton,
-  FormControl,
-  Select,
-  MenuItem,
-  InputLabel,
 } from '@material-ui/core';
 import MenuIcon from '@material-ui/icons/Menu';
 import SearchIcon from '@material-ui/icons/Search';
@@ -51,6 +47,7 @@ import ViewListIcon from '@material-ui/icons/ViewList';
 import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
 import ExpandLessIcon from '@material-ui/icons/ExpandLess';
 import HomeIcon from '@material-ui/icons/Home';
+import AppsIcon from '@material-ui/icons/Apps';
 
 const useSidebarLogoStyles = makeStyles({
   root: {
@@ -571,41 +568,7 @@ export const HomeBandSidebar = () => {
   );
 };
 
-const EXPERIENCE_LANDING: Record<NavExperience, string> = {
-  all: '/self-service/experiences',
-  automate: '/create',
-  develop: '/self-service/experience-dashboard',
-  compliance: '/self-service/experience-dashboard',
-  edge: '/self-service/experience-dashboard',
-  admin: '/self-service/admin/general',
-};
-
 const EXPERIENCE_DASHBOARD = '/self-service/experience-dashboard';
-
-const useExperienceSwitchStyles = makeStyles(theme => ({
-  wrap: {
-    display: 'block',
-    boxSizing: 'border-box',
-    // Full width between side margins (do not touch panel borders)
-    width: `calc(100% - ${theme.spacing(3)}px)`,
-    marginLeft: theme.spacing(1.5),
-    marginRight: theme.spacing(1.5),
-    marginTop: theme.spacing(0.5),
-    marginBottom: theme.spacing(1.5),
-    padding: 0,
-  },
-  select: {
-    width: '100%',
-    display: 'block',
-    '& .MuiInputBase-root, & .MuiOutlinedInput-root': {
-      width: '100%',
-      borderRadius: 4,
-      fontSize: 13,
-      fontWeight: 600,
-      backgroundColor: theme.palette.background.paper,
-    },
-  },
-}));
 
 /** Run pair — Templates + Activity (same labels as curated Run band). */
 const RunItems = () => (
@@ -619,10 +582,12 @@ const RunItems = () => (
   </>
 );
 
-/** Option 5 — Experience toggle in the rail; experience name is the chrome, not a section label. */
+/**
+ * Experience domain rail (Bridge is rail-less — see Root).
+ * Experiences pin → All experiences catalog.
+ * Section label under the pin = current experience (orientation; not a switcher).
+ */
 export const ExperiencesSidebar = () => {
-  const classes = useExperienceSwitchStyles();
-  const navigate = useNavigate();
   const { role, hasRole } = useUserRoleContext();
   const { plugins } = useNavPlugins();
   const { experience, setExperience } = useNavIaModel();
@@ -637,21 +602,22 @@ export const ExperiencesSidebar = () => {
 
   const active: NavExperience = available.includes(experience)
     ? experience
-    : available[0] ?? 'all';
+    : available[0] ?? 'automate';
 
-  // SME: force Automate + persist (no All/Home). Hide switcher when only one experience.
+  // SME: force Automate. Multi-seat: coerce invalid experience away from Bridge 'all'.
   useEffect(() => {
-    if (active !== experience) {
-      setExperience(active);
-      writeNavExperience(active);
+    let next = active;
+    if (next === 'all') {
+      next =
+        smeLocked
+          ? 'automate'
+          : available.find(id => id !== 'all') ?? 'automate';
     }
-  }, [active, experience, setExperience]);
-
-  const onExperienceChange = (next: NavExperience) => {
-    setExperience(next);
-    writeNavExperience(next);
-    navigate(EXPERIENCE_LANDING[next]);
-  };
+    if (next !== experience) {
+      setExperience(next);
+      writeNavExperience(next);
+    }
+  }, [active, experience, setExperience, smeLocked, available]);
 
   /** Trailing Settings — experience prefs; platform Admin stays in Administration. */
   const ExperienceSettingsItem = (
@@ -672,65 +638,34 @@ export const ExperiencesSidebar = () => {
     />
   );
 
-  const showExperienceSwitcher = !smeLocked && available.length > 1;
+  const domain =
+    active === 'all'
+      ? smeLocked
+        ? 'automate'
+        : available.find(id => id !== 'all') ?? 'automate'
+      : active;
+
+  const experienceLabel =
+    EXPERIENCE_LABELS[domain] ?? EXPERIENCE_LABELS.automate;
 
   return (
-    <SearchAndMenu>
-      {showExperienceSwitcher && (
-        <Box className={classes.wrap}>
-          <FormControl
-            variant="outlined"
-            size="small"
-            fullWidth
-            className={classes.select}
-          >
-            <InputLabel id="portal-experience-label">Experience</InputLabel>
-            <Select
-              labelId="portal-experience-label"
-              label="Experience"
-              value={active}
-              fullWidth
-              onChange={e =>
-                onExperienceChange(e.target.value as NavExperience)
-              }
-            >
-              {available.map(id => (
-                <MenuItem key={id} value={id}>
-                  {EXPERIENCE_LABELS[id]}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </Box>
-      )}
-
-      {/* All (Home) — Bridge: Dashboard + Experiences; Plugins = admin only (never SME) */}
-      {active === 'all' && !smeLocked && (
+    <SearchAndMenu showSearch={false}>
+      {/* Return to Bridge — multi-experience seats only (SME is Automate-locked). */}
+      {!smeLocked && (
         <>
           <SidebarItem
-            icon={DashboardIcon}
+            icon={AppsIcon}
             to="/self-service/experiences"
-            text="Dashboard"
-            end
-          />
-          <SidebarItem
-            icon={ViewListIcon}
-            to="/self-service/experiences/catalog"
             text="Experiences"
           />
-          {isAdmin && (
-            <SidebarItem
-              icon={CategoryIcon}
-              to="/self-service/experiences/plugins"
-              text="Plugins"
-            />
-          )}
-          {ExperienceSettingsItem}
+          <SidebarDivider />
         </>
       )}
 
-      {/* Continuous list: Dashboard + Templates + Activity + entities + Settings */}
-      {active === 'automate' && (
+      {/* Current experience — orientation only (not a dropdown / switcher). */}
+      <SidebarSectionLabel text={experienceLabel} />
+
+      {domain === 'automate' && (
         <>
           <RunItems />
           <SidebarItem
@@ -742,7 +677,7 @@ export const ExperiencesSidebar = () => {
         </>
       )}
 
-      {active === 'develop' && (
+      {domain === 'develop' && (
         <>
           {ExperienceDashboardItem}
           <RunItems />
@@ -765,7 +700,7 @@ export const ExperiencesSidebar = () => {
         </>
       )}
 
-      {active === 'compliance' && (
+      {domain === 'compliance' && (
         <>
           {ExperienceDashboardItem}
           <RunItems />
@@ -778,7 +713,7 @@ export const ExperiencesSidebar = () => {
         </>
       )}
 
-      {active === 'edge' && (
+      {domain === 'edge' && (
         <>
           {ExperienceDashboardItem}
           <RunItems />
@@ -791,8 +726,7 @@ export const ExperiencesSidebar = () => {
         </>
       )}
 
-      {/* Administration experience — platform config only */}
-      {active === 'admin' && <AdminItems />}
+      {domain === 'admin' && <AdminItems />}
     </SearchAndMenu>
   );
 };

@@ -4,13 +4,22 @@ import {
 
 function readSeatRole(): string {
   try {
-    return localStorage.getItem('portal-user-role') || 'sme';
+    // Match useUserRole prototype default when no override is set
+    return localStorage.getItem('portal-user-role') || 'admin';
   } catch {
-    return 'sme';
+    return 'admin';
   }
 }
 
-/** Seat-aware landing for curated (Option 2). */
+/** Experiences shell: SME → Automate; multi-experience → Bridge catalog. */
+export function modelHomePath(_model?: NavIaModel): string {
+  if (readSeatRole() === 'sme') {
+    return '/create';
+  }
+  return '/self-service/experiences';
+}
+
+/** Seat-aware fallback used by RoleLandingRedirect for operator plugins. */
 export function curatedLandingPath(): string {
   let role = 'sme';
   let compliance = false;
@@ -35,80 +44,26 @@ export function curatedLandingPath(): string {
   return '/create';
 }
 
-/** Option 3 (homeband) — multi-band → Home Dashboard; SME → Templates (like Opt 2). */
-export function homeBandLandingPath(): string {
-  const role = readSeatRole();
-  if (role === 'sme') return '/create';
-  // Non-default bands on → Dashboard is in the Home section
-  if (role === 'developer' || role === 'admin' || role === 'operator') {
-    return '/self-service/home-dashboard';
-  }
-  return curatedLandingPath();
-}
-
-export function modelHomePath(model: NavIaModel): string {
-  // Opt 2 + Opt 4 (hybrid) share seat-aware curated landings
-  if (model === 'curated' || model === 'hybrid') return curatedLandingPath();
-  if (model === 'homeband') return homeBandLandingPath();
-  if (model === 'flat') return '/self-service/home';
-  if (model === 'experiences') {
-    // Opt 5 — SME lands in Automate (Templates), never All (Home) bridge
-    if (readSeatRole() === 'sme') {
-      return '/create';
-    }
-    return '/self-service/experiences';
-  }
-  return curatedLandingPath();
-}
-
-/** Pages that belong to only one IA model — redirect if the active model differs. */
+/**
+ * Experiences shell — leave bakeoff-only surfaces; SME never stays on Bridge.
+ */
 export function mismatchedModelRedirect(
-  model: NavIaModel,
+  _model: NavIaModel,
   pathname: string,
 ): string | null {
   const onBridge = pathname.startsWith('/self-service/experiences');
   const onFlatHome =
     pathname === '/self-service/home' ||
     pathname.startsWith('/self-service/home/');
-  const onFlatCatalog = pathname.startsWith('/self-service/resources');
   const onOutcomes = pathname.startsWith('/self-service/outcomes');
   const onHomeDashboard = pathname.startsWith('/self-service/home-dashboard');
+  const sme = readSeatRole() === 'sme';
 
-  // Opt 2 — allow Home pin; leave Catalog / Experiences / Opt4-only surfaces
-  if (
-    model === 'curated' &&
-    (onBridge || onFlatCatalog || onOutcomes || onHomeDashboard)
-  ) {
-    return curatedLandingPath();
+  if (sme && onBridge) {
+    return '/create';
   }
-  // Opt 4 (hybrid) — no Home pin; allow gated Dashboard; leave flat Home /
-  // Catalog / Experiences / Outcomes
-  if (
-    model === 'hybrid' &&
-    (onBridge || onFlatHome || onFlatCatalog || onOutcomes)
-  ) {
-    return curatedLandingPath();
-  }
-  // Opt 3 (homeband) — allow Home Dashboard; leave Outcomes / Opt 1 Home /
-  // Catalog / Experiences
-  if (
-    model === 'homeband' &&
-    (onBridge || onFlatHome || onFlatCatalog || onOutcomes)
-  ) {
-    return homeBandLandingPath();
-  }
-  if (model === 'flat' && (onBridge || onOutcomes || onHomeDashboard)) {
-    return '/self-service/home';
-  }
-  if (model === 'experiences') {
-    const sme = readSeatRole() === 'sme';
-    // SME must not stay on All (Home) bridge — only Automate
-    if (sme && onBridge) {
-      return '/create';
-    }
-    if (onFlatHome || onOutcomes || onHomeDashboard) {
-      return sme ? '/create' : '/self-service/experiences';
-    }
+  if (onFlatHome || onOutcomes || onHomeDashboard) {
+    return modelHomePath();
   }
   return null;
 }

@@ -29,7 +29,7 @@ import { SearchPage as BackstageSearchPage } from '@backstage/plugin-search';
 import { SearchPage } from './components/search/SearchPage';
 import { Root } from './components/Root';
 import { GlobalHeader } from './components/GlobalHeader';
-import { IaPrototypeBanner } from './components/IaPrototype';
+import { PortalNotificationsPage } from './components/Notifications/PortalNotificationsPage';
 import { LightspeedProvider, LightspeedPanel } from './components/Lightspeed';
 import { QuickstartProvider, QuickstartPanel, WelcomeModal } from './components/Quickstart';
 import { getThemes } from '@red-hat-developer-hub/backstage-plugin-theme';
@@ -241,22 +241,10 @@ const app = createApp({
 });
 
 const RoleLandingRedirect = () => {
-  const { role, hasRole } = useUserRoleContext();
-  let target = '/create';
-  if (role === 'operator') {
-    // Prefer Inventories or Edge fleets based on which plugin is enabled
-    let plugins = { compliance: true, rhem: false };
-    try {
-      plugins = { ...plugins, ...JSON.parse(localStorage.getItem('portal-nav-plugins') || '{}') };
-    } catch {
-      /* keep defaults */
-    }
-    if (plugins.compliance) target = '/self-service/inventories';
-    else if (plugins.rhem) target = '/self-service/edge-fleets';
-    else target = '/create';
-  } else if (hasRole('developer')) {
-    target = '/self-service/repositories';
-  }
+  const { role, loading } = useUserRoleContext();
+  if (loading) return null;
+  // Experiences shell: SME → Automate; multi-experience → Bridge catalog
+  const target = role === 'sme' ? '/create' : '/self-service/experiences';
   return <Navigate to={target} replace />;
 };
 
@@ -336,6 +324,7 @@ const routes = (
     </Route>
     <Route path="/rbac" element={<RbacPage />} />
     <Route path="/settings" element={<UserSettingsPage />} />
+    <Route path="/notifications" element={<PortalNotificationsPage />} />
     <Route path="/catalog-graph" element={<CatalogGraphPage />} />
     <Route path="/self-service" element={<SelfServicePage />} />
   </FlatRoutes>
@@ -358,7 +347,6 @@ export default app.createRoot(
       <RoleProvider>
         <LightspeedProvider>
           <QuickstartProvider>
-            <IaPrototypeBanner />
             <GlobalHeader />
             <Root>{routes}</Root>
             <LightspeedPanel />
