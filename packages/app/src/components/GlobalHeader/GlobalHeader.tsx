@@ -14,16 +14,24 @@ import { PortalCreateButton } from './PortalCreateButton';
 import { PortalNotificationButton } from './PortalNotificationButton';
 import { PortalHelpMenu } from './PortalHelpMenu';
 import { PortalProfileMenu } from './PortalProfileMenu';
+// import { ExperiencesWaffleButton } from './ExperiencesWaffleButton';
 
 /**
- * Brand (224 = sidebar; waffle lives inside brand when Option B) → Search → Spacer →
+ * Brand (224 = sidebar) → Search → Spacer →
  * Create → Starred → Help → Bell → Divider → Profile
+ *
+ * Experiences waffle (blue Apps slice → Bridge) parked — set SHOW_EXPERIENCES_WAFFLE
+ * in ExperiencesWaffleButton + remount priority 210 when trying again.
  */
 export const GlobalHeader = () => {
   const location = useLocation();
 
   const portalHeaderMountPoints: GlobalHeaderComponentMountPoint[] = useMemo(
     () => [
+      // {
+      //   Component: ExperiencesWaffleButton,
+      //   config: { priority: 210 },
+      // },
       {
         Component: AutomationPortalBrand,
         config: { priority: 200 },

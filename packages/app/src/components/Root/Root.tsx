@@ -18,6 +18,7 @@ import {
 } from './GlobalShellResumeBar';
 import {
   CHROME_TOP_BASE,
+  MASTHEAD_HEIGHT,
   chromeTopForAdminSync,
   NavIaRouteGuard,
 } from '../IaPrototype';
@@ -46,17 +47,21 @@ const useRootStyles = makeStyles(theme => {
       // overrides — Backstage <Link> still resolves to primary.blue otherwise.
       backgroundColor: `${appBarBg} !important`,
       color: `${appBarFg} !important`,
-      '& .MuiToolbar-root': {
+      // MUI v5 prefix = v5-MuiToolbar-root (not .MuiToolbar-root) — attribute match required
+      '& [class*="MuiToolbar-root"]': {
         color: appBarFg,
+        minHeight: `${MASTHEAD_HEIGHT}px !important`,
       },
-      '& .MuiIconButton-root, & .MuiButton-root': {
-        color: theme.palette.text.secondary,
-      },
-      '& .MuiIconButton-root:hover, & .MuiButton-root:hover': {
-        color: theme.palette.text.primary,
-        backgroundColor: theme.palette.action.hover,
-      },
-      '& .MuiSvgIcon-root': {
+      '& .MuiIconButton-root, & .MuiButton-root, & [class*="MuiIconButton-root"], & [class*="MuiButton-root"]':
+        {
+          color: theme.palette.text.secondary,
+        },
+      '& .MuiIconButton-root:hover, & .MuiButton-root:hover, & [class*="MuiIconButton-root"]:hover, & [class*="MuiButton-root"]:hover':
+        {
+          color: theme.palette.text.primary,
+          backgroundColor: theme.palette.action.hover,
+        },
+      '& .MuiSvgIcon-root, & [class*="MuiSvgIcon-root"]': {
         color: 'inherit',
       },
       // Backstage Link paints primary blue — kill that inside the masthead

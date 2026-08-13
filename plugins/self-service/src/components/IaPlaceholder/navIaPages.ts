@@ -6,20 +6,22 @@
  *   2. {Entity}      — required. Plural entity name for the list (never "Catalog").
  *                      LANDING when there is no Dashboard.
  *   3. Domain tabs   — ecosystem (Quality, Devices, Scans, Profiles, Images…).
- *   4. Trailing      — exactly one of:
- *                        Templates — filtered run/scaffold templates for this entity
- *                        Settings  — user-scoped prefs for this whole surface
+ *   4. Trailing      — Settings only when real prefs exist.
+ *                      Object scaffolder = header Create CTA → template modal
+ *                      (not a trailing Templates / Scaffold tab). Aug 13 prototype.
  *                      Never Admin/integration config (that stays Administration).
  *
- * Option 3 experience rail: Dashboard (overview) → run → entities (list-first) → Settings.
- * Under Option 3, omit entity Dashboard tabs — overview lives on the experience Dashboard.
+ * Experiences rail: Dashboard? → Templates → Activity → Class A (list-first).
+ * Omit entity Dashboard tabs — overview lives on the experience Dashboard.
  * Deep-link to Administration for platform config — do not embed Manage.
  *
  * Rules:
- * - Never land on domain or trailing tabs.
+ * - Never land on domain tabs.
  * - Never name the list tab "Catalog" (Catalog = Portal-wide discovery only).
  * - Don't invent a Dashboard that duplicates the list.
  */
+
+import type { ResourceTemplateKind } from '../common/resourceTemplates';
 
 export type IaTab = {
   id: string;
@@ -37,6 +39,8 @@ export type IaPageConfig = {
   also?: string;
   preview?: boolean;
   antiPattern?: boolean;
+  /** When set, page shows Create CTA → filtered template modal (no trailing Templates tab). */
+  createKind?: ResourceTemplateKind;
 };
 
 /** Landing tab index: Dashboard if present, else first list tab, else 0. */
@@ -52,7 +56,8 @@ export const inventoriesIaPage: IaPageConfig = {
   title: 'Inventories',
   subtitle: 'Compliance on host inventories',
   purpose:
-    'Entity pattern: Dashboard (landing) → Inventories list → domain tabs → Templates. Scan inventories, review findings, remediate hosts.',
+    'Entity pattern: Dashboard (landing) → Inventories list → domain tabs. Create inventory = header CTA → template modal (not a trailing Templates tab).',
+  createKind: 'inventory',
   tabs: [
     {
       id: 'dashboard',
@@ -79,23 +84,17 @@ export const inventoriesIaPage: IaPageConfig = {
       slot: 'domain',
       expect: 'Compliance profiles applied to inventories.',
     },
-    {
-      id: 'templates',
-      label: 'Templates',
-      slot: 'trailing',
-      expect:
-        'Remediation / scan-related templates for this entity. Not the global Run → Templates list.',
-    },
   ],
-  also: 'Inventory detail: Overview, Compliance, Hosts. Admin connection settings stay under Administration.',
+  also: 'Inventory detail: Overview, Compliance, Hosts. Admin connection settings stay under Administration. Scan/remediation run templates stay on experience Templates or inventory actions — not a host trailing tab.',
 };
 
 export const edgeFleetsIaPage: IaPageConfig = {
   title: 'Edge fleets',
   subtitle: 'Edge device fleet lifecycle (RHEM)',
   purpose:
-    'Entity pattern: Dashboard (landing) → Fleets list → Devices / Images → Templates. Devices are tabs here, not left-nav items.',
+    'Entity pattern: Dashboard (landing) → Fleets list → Devices / Images. Create fleet = header CTA → template modal. Devices are tabs here, not left-nav items.',
   preview: true,
+  createKind: 'edge-fleet',
   tabs: [
     {
       id: 'dashboard',
@@ -121,12 +120,6 @@ export const edgeFleetsIaPage: IaPageConfig = {
       label: 'Images',
       slot: 'domain',
       expect: 'OS / app images used by fleet desired state.',
-    },
-    {
-      id: 'templates',
-      label: 'Templates',
-      slot: 'trailing',
-      expect: 'Edge / fleet-related job templates for this entity, if any.',
     },
   ],
   also: 'Fleet detail: desired state (OS / config / apps), members, updates.',

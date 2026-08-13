@@ -41,7 +41,6 @@ import RouterIcon from '@material-ui/icons/Router';
 import DashboardIcon from '@material-ui/icons/Dashboard';
 import LibraryBooks from '@material-ui/icons/LibraryBooks';
 import SchoolIcon from '@material-ui/icons/School';
-import SettingsIcon from '@material-ui/icons/Settings';
 import LinkIcon from '@material-ui/icons/Link';
 import VpnKeyIcon from '@material-ui/icons/VpnKey';
 import SyncIcon from '@material-ui/icons/Sync';
@@ -745,15 +744,10 @@ export const ExperiencesSidebar = () => {
     }
   }, [active, experience, setExperience, smeLocked, available]);
 
-  /** Trailing Settings — experience prefs; platform Admin stays in Administration. */
-  const ExperienceSettingsItem = (
-    <SidebarItem
-      icon={SettingsIcon}
-      to="/self-service/experience-settings"
-      text="Settings"
-    />
-  );
-
+  /**
+   * Experience Settings rail omitted until real personal prefs exist.
+   * Platform sync / integrations stay in Administration; page route kept for later.
+   */
   /** Experience Dashboard — overview; entity items stay list-first. */
   const ExperienceDashboardItem = (
     <SidebarItem
@@ -835,7 +829,6 @@ export const ExperiencesSidebar = () => {
             to="/self-service/resources"
             text="Catalog"
           />
-          {ExperienceSettingsItem}
         </>
       )}
 
@@ -858,7 +851,6 @@ export const ExperiencesSidebar = () => {
             to="/self-service/ee"
             text="Execution Environments"
           />
-          {ExperienceSettingsItem}
         </>
       )}
 
@@ -871,7 +863,6 @@ export const ExperiencesSidebar = () => {
             to="/self-service/inventories"
             text="Inventories"
           />
-          {ExperienceSettingsItem}
         </>
       )}
 
@@ -884,7 +875,6 @@ export const ExperiencesSidebar = () => {
             to="/self-service/edge-fleets"
             text="Edge fleets"
           />
-          {ExperienceSettingsItem}
         </>
       )}
 

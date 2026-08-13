@@ -31,6 +31,7 @@ const useStyles = makeStyles(theme => ({
     textTransform: 'none',
     fontWeight: 500,
     whiteSpace: 'nowrap',
+    borderRadius: 20,
   },
   paper: {
     marginTop: 4,

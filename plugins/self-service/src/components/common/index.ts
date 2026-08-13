@@ -11,6 +11,15 @@ export { SCM_INTEGRATION_AUTH_FAILED_CODE } from '@ansible/backstage-rhaap-commo
 export type { FetchGitFileOutcome } from './fetchReadme';
 export { useSharedStyles } from './styles';
 export { GitLabIcon, RedHatIcon } from './icons';
+export { CreateFromTemplateDialog } from './CreateFromTemplateDialog';
+export {
+  RESOURCE_TEMPLATES,
+  RESOURCE_TEMPLATE_COPY,
+} from './resourceTemplates';
+export type {
+  ResourceTemplate,
+  ResourceTemplateKind,
+} from './resourceTemplates';
 export {
   CONFIGURATION_DOCS_URL,
   SYNC_STARTED_CATEGORY,

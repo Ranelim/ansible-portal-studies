@@ -1,31 +1,58 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Page, Header, HeaderTabs, Content } from '@backstage/core-components';
-import { Box, Chip, Typography } from '@material-ui/core';
+import { Box, Button, Chip, Typography, makeStyles } from '@material-ui/core';
+import AddIcon from '@material-ui/icons/Add';
 import { useNavIaModel } from '../../hooks/useNavIaModel';
+import { CreateFromTemplateDialog } from '../common/CreateFromTemplateDialog';
+import { RESOURCE_TEMPLATE_COPY, ResourceTemplateKind } from '../common/resourceTemplates';
 import { IaPageConfig, IaTab, landingTabIndex } from './navIaPages';
 
 type Props = {
   config: IaPageConfig;
 };
 
+const useStyles = makeStyles(() => ({
+  createButton: {
+    textTransform: 'none',
+    fontWeight: 500,
+    borderRadius: 20,
+    whiteSpace: 'nowrap',
+  },
+}));
+
 function tabsForModel(
   tabs: IaTab[],
   experiencesModel: boolean,
 ): IaTab[] {
-  // Option 3: overview lives on the experience Dashboard rail item —
-  // entity pages stay list-first (no Dashboard tab).
-  if (!experiencesModel) return tabs;
-  return tabs.filter(t => t.slot !== 'dashboard' && t.id !== 'dashboard');
+  // Experiences: overview on experience Dashboard; entity pages list-first.
+  // Object create = header CTA → modal (no trailing Templates tab).
+  let next = tabs;
+  if (experiencesModel) {
+    next = next.filter(t => t.slot !== 'dashboard' && t.id !== 'dashboard');
+  }
+  return next.filter(t => t.slot !== 'trailing' && t.id !== 'templates');
+}
+
+function createKindForPage(config: IaPageConfig): ResourceTemplateKind | null {
+  if (config.createKind) return config.createKind;
+  if (config.title === 'Inventories') return 'inventory';
+  if (config.title === 'Edge fleets') return 'edge-fleet';
+  return null;
 }
 
 /**
  * Lightweight IA exploration page — purpose + tabs + one-line expectations.
  * Lands on Dashboard when present, else the entity list tab.
- * Under Option 3, Dashboard tabs are omitted (experience Dashboard owns overview).
+ * Under Experiences, Dashboard + trailing Templates tabs are omitted;
+ * Create is a header button that opens a filtered template modal.
  */
 export const IaPlaceholderPage = ({ config }: Props) => {
+  const classes = useStyles();
   const { model } = useNavIaModel();
   const experiencesModel = model === 'experiences';
+  const createKind = createKindForPage(config);
+  const [createOpen, setCreateOpen] = useState(false);
+
   const tabs = useMemo(
     () => tabsForModel(config.tabs, experiencesModel),
     [config.tabs, experiencesModel],
@@ -47,41 +74,65 @@ export const IaPlaceholderPage = ({ config }: Props) => {
   );
 
   const purpose = experiencesModel
-    ? `${config.purpose.replace(
-        /Dashboard \(landing\)\s*→\s*/i,
-        '',
-      )} Under Option 3, experience Dashboard owns overview — this page lands on the list.`
+    ? `${config.purpose
+        .replace(/Dashboard \(landing\)\s*→\s*/i, '')
+        .replace(
+          /\s*→\s*Templates\.?/i,
+          '. Create uses a header button → template modal.',
+        )} Under Experiences, experience Dashboard owns overview — this page lands on the list.`
     : config.purpose;
+
+  const createCopy = createKind ? RESOURCE_TEMPLATE_COPY[createKind] : null;
 
   return (
     <Page themeId="app">
       <Header
         title={
-          <Box display="flex" alignItems="center" style={{ gap: 8 }}>
-            <span>{config.title}</span>
-            {config.preview && (
+          <Box
+            display="flex"
+            alignItems="center"
+            justifyContent="space-between"
+            width="100%"
+            style={{ gap: 8 }}
+          >
+            <Box display="flex" alignItems="center" style={{ gap: 8 }}>
+              <span>{config.title}</span>
+              {config.preview && (
+                <Chip
+                  label="Preview"
+                  size="small"
+                  variant="outlined"
+                  style={{ borderRadius: 16, fontSize: 11 }}
+                />
+              )}
+              {config.antiPattern && (
+                <Chip
+                  label="Anti-pattern"
+                  size="small"
+                  color="secondary"
+                  style={{ borderRadius: 16, fontSize: 11 }}
+                />
+              )}
               <Chip
-                label="Preview"
+                label="IA placeholder"
                 size="small"
                 variant="outlined"
+                color="default"
                 style={{ borderRadius: 16, fontSize: 11 }}
               />
-            )}
-            {config.antiPattern && (
-              <Chip
-                label="Anti-pattern"
+            </Box>
+            {createKind && createCopy && (
+              <Button
+                variant="contained"
+                color="primary"
                 size="small"
-                color="secondary"
-                style={{ borderRadius: 16, fontSize: 11 }}
-              />
+                className={classes.createButton}
+                startIcon={<AddIcon />}
+                onClick={() => setCreateOpen(true)}
+              >
+                {createCopy.createLabel}
+              </Button>
             )}
-            <Chip
-              label="IA placeholder"
-              size="small"
-              variant="outlined"
-              color="default"
-              style={{ borderRadius: 16, fontSize: 11 }}
-            />
           </Box>
         }
         pageTitleOverride={config.title}
@@ -153,6 +204,13 @@ export const IaPlaceholderPage = ({ config }: Props) => {
           )}
         </Box>
       </Content>
+      {createKind && (
+        <CreateFromTemplateDialog
+          open={createOpen}
+          onClose={() => setCreateOpen(false)}
+          kind={createKind}
+        />
+      )}
     </Page>
   );
 };

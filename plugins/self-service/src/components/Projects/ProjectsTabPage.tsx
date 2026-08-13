@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Header, Page, HeaderTabs, Content } from '@backstage/core-components';
 import { Box } from '@material-ui/core';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -6,31 +6,37 @@ import FileCopyOutlinedIcon from '@material-ui/icons/FileCopyOutlined';
 import SearchIcon from '@material-ui/icons/Search';
 import { PageHelpIcon } from '../common/PageHelpIcon';
 import { AddActionButton } from '../common/AddActionButton';
+import { CreateFromTemplateDialog } from '../common/CreateFromTemplateDialog';
 import { GitRepositoriesContent } from './catalog/GitRepositoriesContent';
-import { ProjectsCreateContent } from './create/ProjectsCreateContent';
 import { CIActivityContent } from './ci/CIActivityContent';
 import { QualityOverviewContent } from './quality/QualityOverviewContent';
 
-// Entity pattern: no Dashboard (list is landing) → Repositories → domain → Scaffold (trailing)
+// Entity pattern: list landing → domain tabs. Create = header CTA → template modal (no trailing Scaffold tab).
 const tabs = [
   { id: 'repositories', label: 'Repositories', path: 'list' },
   { id: 'quality', label: 'Quality', path: 'quality' },
   // Distinct from rail "Activity" (portal-wide job runs)
   { id: 'ci-activity', label: 'Pipeline activity', path: 'ci-activity' },
-  // Trailing create — distinct from rail "Templates" (portal-wide run catalog)
-  { id: 'templates', label: 'Scaffold', path: 'create' },
 ];
 
 const getTabIndexFromPath = (pathname: string): number => {
   if (pathname.includes('/repositories/quality')) return 1;
   if (pathname.includes('/repositories/ci-activity')) return 2;
-  if (pathname.includes('/repositories/create')) return 3;
   return 0;
 };
 
 export const ProjectsTabs: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const [createOpen, setCreateOpen] = useState(false);
+
+  // Legacy /repositories/create deep link → list + open create modal
+  useEffect(() => {
+    if (location.pathname.includes('/repositories/create')) {
+      setCreateOpen(true);
+      navigate('/self-service/repositories/list', { replace: true });
+    }
+  }, [location.pathname, navigate]);
 
   const selectedTab = useMemo(
     () => getTabIndexFromPath(location.pathname),
@@ -54,9 +60,6 @@ export const ProjectsTabs: React.FC = () => {
     if (selectedTab === 2) {
       return <CIActivityContent key="ci-activity" />;
     }
-    if (selectedTab === 3) {
-      return <ProjectsCreateContent key="create" />;
-    }
     return <GitRepositoriesContent key="repositories" />;
   }, [selectedTab]);
 
@@ -78,13 +81,15 @@ export const ProjectsTabs: React.FC = () => {
               options={[
                 {
                   label: 'Create from template',
-                  description: 'Scaffold a new repository from a curated template with best-practice structure.',
+                  description:
+                    'Scaffold a new repository from a curated template with best-practice structure.',
                   icon: <FileCopyOutlinedIcon fontSize="small" />,
-                  onClick: () => navigate('/self-service/repositories/create'),
+                  onClick: () => setCreateOpen(true),
                 },
                 {
                   label: 'Import existing repository',
-                  description: 'Connect an existing Git repository to discover and govern its automation content.',
+                  description:
+                    'Connect an existing Git repository to discover and govern its automation content.',
                   icon: <SearchIcon fontSize="small" />,
                   onClick: () => navigate('/self-service/catalog-import'),
                 },
@@ -101,6 +106,11 @@ export const ProjectsTabs: React.FC = () => {
         tabs={tabs.map(({ id, label }) => ({ id, label }))}
       />
       <Content>{content}</Content>
+      <CreateFromTemplateDialog
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        kind="repository"
+      />
     </Page>
   );
 };

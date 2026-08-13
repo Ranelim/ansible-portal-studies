@@ -13,15 +13,14 @@ import ArrowDropDownIcon from '@material-ui/icons/ArrowDropDown';
 import AddCircleOutlineIcon from '@material-ui/icons/AddCircleOutline';
 import PublishIcon from '@material-ui/icons/Publish';
 import CategoryOutlinedIcon from '@material-ui/icons/CategoryOutlined';
-import CreateComponentIcon from '@material-ui/icons/AddCircleOutline';
 import { Header, Page, HeaderTabs, Content } from '@backstage/core-components';
 import { useRouteRef } from '@backstage/core-plugin-api';
 import { usePermission } from '@backstage/plugin-permission-react';
 import { catalogEntityCreatePermission } from '@backstage/plugin-catalog-common/alpha';
 
 import { rootRouteRef } from '../../routes';
-import { CreateContent } from './create/CreateContent';
 import { EntityCatalogContent } from './catalog/CatalogContent';
+import { CreateFromTemplateDialog } from '../common/CreateFromTemplateDialog';
 
 const useStyles = makeStyles(theme => ({
   tabLabel: {
@@ -42,6 +41,11 @@ const useStyles = makeStyles(theme => ({
   menuItemText: {
     display: 'flex',
     flexDirection: 'column' as const,
+  },
+  actionsButton: {
+    textTransform: 'none',
+    fontWeight: 500,
+    borderRadius: 20,
   },
 }));
 
@@ -79,13 +83,7 @@ const tabs = [
     icon: <CategoryOutlinedIcon />,
     path: 'catalog',
   },
-  { id: 1, label: 'Create', icon: <CreateComponentIcon />, path: 'create' },
 ];
-
-const getTabIndexFromPath = (pathname: string): number => {
-  if (pathname.includes('/ee/create')) return 1;
-  return 0;
-};
 
 export const EETabs: React.FC = () => {
   const classes = useStyles();
@@ -96,22 +94,27 @@ export const EETabs: React.FC = () => {
     permission: catalogEntityCreatePermission,
   });
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [createOpen, setCreateOpen] = useState(false);
 
-  const selectedTab = useMemo(
-    () => getTabIndexFromPath(location.pathname),
-    [location.pathname],
-  );
+  // Legacy /ee/create deep link → catalog + open create modal
+  useEffect(() => {
+    if (location.pathname.includes('/ee/create')) {
+      setCreateOpen(true);
+      navigate(`${rootLink()}/ee/catalog`, { replace: true });
+    }
+  }, [location.pathname, navigate, rootLink]);
 
   useEffect(() => {
     const tabIndex = (location.state as { tabIndex?: number })?.tabIndex;
     if (tabIndex !== undefined) {
-      const tab = tabs[tabIndex];
-      if (tab) {
-        navigate(`${rootLink()}/ee/${tab.path}`, {
-          replace: true,
-          state: {},
-        });
+      // Former Create tab (1) → open modal; list tab stays on catalog
+      if (tabIndex === 1) {
+        setCreateOpen(true);
       }
+      navigate(`${rootLink()}/ee/catalog`, {
+        replace: true,
+        state: {},
+      });
     }
   }, [location.state, navigate, rootLink]);
 
@@ -127,6 +130,10 @@ export const EETabs: React.FC = () => {
 
   const handleTabSwitch = useCallback(
     (index: number) => {
+      if (index === 1) {
+        setCreateOpen(true);
+        return;
+      }
       onTabSelect(index);
     },
     [onTabSelect],
@@ -145,20 +152,18 @@ export const EETabs: React.FC = () => {
 
   const handleCreate = useCallback(() => {
     handleMenuClose();
-    navigate(`${rootLink()}/ee/create`);
-  }, [handleMenuClose, navigate, rootLink]);
+    setCreateOpen(true);
+  }, [handleMenuClose]);
 
   const handleImport = useCallback(() => {
     handleMenuClose();
     navigate(`${rootLink()}/catalog-import`);
   }, [handleMenuClose, navigate, rootLink]);
 
-  const content = useMemo(() => {
-    if (selectedTab === 1) {
-      return <CreateContent key="create" />;
-    }
-    return <EntityCatalogContent key="catalog" onTabSwitch={handleTabSwitch} />;
-  }, [selectedTab, handleTabSwitch]);
+  const content = useMemo(
+    () => <EntityCatalogContent key="catalog" onTabSwitch={handleTabSwitch} />,
+    [handleTabSwitch],
+  );
 
   return (
     <Page themeId="app">
@@ -168,6 +173,7 @@ export const EETabs: React.FC = () => {
             <Button
               variant="contained"
               color="primary"
+              className={classes.actionsButton}
               onClick={handleMenuOpen}
               endIcon={<ArrowDropDownIcon />}
             >
@@ -191,7 +197,7 @@ export const EETabs: React.FC = () => {
                     Create definition
                   </Typography>
                   <Typography variant="caption" color="textSecondary">
-                    Build a new EE definition from a preset or from scratch.
+                    Build a new EE definition from a curated template.
                   </Typography>
                 </Box>
               </MenuItem>
@@ -212,22 +218,30 @@ export const EETabs: React.FC = () => {
           </>
         )}
       </EEHeader>
-      <HeaderTabs
-        selectedIndex={selectedTab}
-        onChange={onTabSelect}
-        tabs={
-          tabs.map(({ label, icon }) => ({
-            id: label.toLowerCase(),
-            label: (
-              <Box className={classes.tabLabel}>
-                {icon}
-                {label}
-              </Box>
-            ),
-          })) as any
-        }
-      />
+      {/* Single list tab — no Create tab; create is header Actions → modal */}
+      {tabs.length > 1 && (
+        <HeaderTabs
+          selectedIndex={0}
+          onChange={onTabSelect}
+          tabs={
+            tabs.map(({ label, icon }) => ({
+              id: label.toLowerCase(),
+              label: (
+                <Box className={classes.tabLabel}>
+                  {icon}
+                  {label}
+                </Box>
+              ),
+            })) as any
+          }
+        />
+      )}
       <Content>{content}</Content>
+      <CreateFromTemplateDialog
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        kind="execution-environment"
+      />
     </Page>
   );
 };
