@@ -9,6 +9,7 @@ import {
   EXPERIENCE_LABELS,
   NAV_IA_REVIEW_MODS,
   isSmeRole,
+  useAdminSyncIa,
   type NavExperience,
 } from '@ansible/plugin-backstage-self-service';
 import { SidebarSectionLabel } from '@ansible/plugin-backstage-rhaap';
@@ -44,6 +45,7 @@ import SettingsIcon from '@material-ui/icons/Settings';
 import LinkIcon from '@material-ui/icons/Link';
 import VpnKeyIcon from '@material-ui/icons/VpnKey';
 import SyncIcon from '@material-ui/icons/Sync';
+import ExtensionIcon from '@material-ui/icons/Extension';
 import ViewListIcon from '@material-ui/icons/ViewList';
 import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
 import ExpandLessIcon from '@material-ui/icons/ExpandLess';
@@ -224,26 +226,39 @@ const LearnItems = () => (
   </>
 );
 
-const AdminItems = () => (
-  <>
-    <SidebarItem
-      icon={SettingsIcon}
-      to="/self-service/admin/general"
-      text="Settings"
-    />
-    <SidebarItem
-      icon={LinkIcon}
-      to="/self-service/admin/integrations"
-      text="Integrations"
-    />
-    <SidebarItem icon={VpnKeyIcon} to="rbac" text="Access Control" />
-    <SidebarItem
-      icon={SyncIcon}
-      to="/self-service/admin/sync-activity"
-      text="Sync Status"
-    />
-  </>
-);
+const AdminItems = () => {
+  const { variant } = useAdminSyncIa();
+  const showSyncRail = variant !== 'opt1';
+  const syncLabel = variant === 'opt2' ? 'Sync activity' : 'Sync';
+
+  return (
+    <>
+      <SidebarItem
+        icon={DashboardIcon}
+        to="/self-service/admin/overview"
+        text="Overview"
+      />
+      <SidebarItem
+        icon={LinkIcon}
+        to="/self-service/admin/integrations"
+        text="Integrations"
+      />
+      {showSyncRail && (
+        <SidebarItem
+          icon={SyncIcon}
+          to="/self-service/admin/sync-activity"
+          text={syncLabel}
+        />
+      )}
+      <SidebarItem icon={VpnKeyIcon} to="rbac" text="Access Control" />
+      <SidebarItem
+        icon={ExtensionIcon}
+        to="/self-service/admin/plugins"
+        text="Plugins"
+      />
+    </>
+  );
+};
 
 /** Global run pins — portal-wide Templates + Activity (not a peer domain section). */
 const RunPins = () => <AutomateItems />;

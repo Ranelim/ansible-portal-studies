@@ -21,7 +21,7 @@ const EXPERIENCE_RESUME: Record<
   develop: '/self-service/experience-dashboard',
   compliance: '/self-service/experience-dashboard',
   edge: '/self-service/experience-dashboard',
-  admin: '/self-service/admin/general',
+  admin: '/self-service/admin/overview',
 };
 
 export function isBridgePath(pathname: string): boolean {

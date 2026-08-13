@@ -56,7 +56,7 @@ const EXPERIENCE_BLURB: Record<ExperienceId, string> = {
   develop: 'Build and manage automation content — repos, collections, and EEs.',
   compliance: 'Scan inventories, review findings, and remediate hosts.',
   edge: 'Manage edge device fleets, updates, and desired state.',
-  admin: 'Configure integrations, access, and platform sync.',
+  admin: 'Configure integrations, plugins, access, and platform sync.',
 };
 
 const EXPERIENCE_LANDING: Record<ExperienceId, string> = {
@@ -64,7 +64,7 @@ const EXPERIENCE_LANDING: Record<ExperienceId, string> = {
   develop: '/self-service/experience-dashboard',
   compliance: '/self-service/experience-dashboard',
   edge: '/self-service/experience-dashboard',
-  admin: '/self-service/admin/general',
+  admin: '/self-service/admin/overview',
 };
 
 const EXPERIENCE_ACCENT: Record<ExperienceId, string> = {
@@ -102,7 +102,7 @@ const EXPERIENCE_COUNTS: Record<
   ],
   admin: [
     { value: 5, label: 'Integrations' },
-    { value: 2, label: 'Syncs' },
+    { value: 6, label: 'Plugins' },
     { value: 14, label: 'Users' },
   ],
 };

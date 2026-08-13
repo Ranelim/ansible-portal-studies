@@ -16,6 +16,7 @@ import {
   ListItemText,
   Divider,
   ListSubheader,
+  CircularProgress,
 } from '@material-ui/core';
 import { CatalogFilterLayout } from '@backstage/plugin-catalog-react';
 import CheckCircleOutlineIcon from '@material-ui/icons/CheckCircleOutline';
@@ -25,9 +26,10 @@ import WarningIcon from '@material-ui/icons/Warning';
 import ScheduleIcon from '@material-ui/icons/Schedule';
 import MoreVertIcon from '@material-ui/icons/MoreVert';
 import SettingsIcon from '@material-ui/icons/Settings';
+import SyncIcon from '@material-ui/icons/Sync';
 import ArrowDropDownIcon from '@material-ui/icons/ArrowDropDown';
 import FiberManualRecordIcon from '@material-ui/icons/FiberManualRecord';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import {
   DEMO_CONNECTIONS,
   DEMO_SYNC_HISTORY,
@@ -36,6 +38,12 @@ import {
 } from './syncDemoData';
 import { PageHelpIcon } from '../common/PageHelpIcon';
 import { statusColors } from '../common/statusColors';
+import {
+  SyncErrorModal,
+  type SyncEntityStatus,
+} from './SyncErrorModal';
+import { useAdminSyncIa } from './useAdminSyncIa';
+import { RunSyncScopeDialog } from './RunSyncScopeDialog';
 
 const useStyles = makeStyles(theme => ({
   filterLabel: {
@@ -157,10 +165,7 @@ const sourceToProviderId = (source: string): string | null => {
 const sourceToProviderLink = (source: string): string | null => {
   const id = sourceToProviderId(source);
   if (!id) return null;
-  const provider = DEMO_CONNECTIONS.find(c => c.id === id);
-  if (!provider) return null;
-  const base = provider.type === 'git' ? '/self-service/admin/scm' : '/self-service/admin/connections';
-  return `${base}/${id}`;
+  return `/self-service/admin/integrations/${id}?tab=sync`;
 };
 
 type HistoryFilter = {
@@ -170,7 +175,33 @@ type HistoryFilter = {
   status: string;
 };
 
-const HistoryRowActions = ({ entry }: { entry: SyncHistoryEntry }) => {
+function syncNowLabel(source: string): string {
+  if (source === 'all') return 'Sync all now';
+  if (source === 'Private Automation Hub') return 'Sync Hub now';
+  if (source === 'Public Registries') return 'Sync registries now';
+  return `Sync ${source} now`;
+}
+
+function entryToErrorEntity(entry: SyncHistoryEntry): SyncEntityStatus {
+  return {
+    source: entry.source,
+    entity: entry.contentType,
+    lastSync: entry.started,
+    lastSyncDuration: entry.duration,
+    interval: 'See provider Sync settings',
+    errorDetail: entry.errorDetail ?? entry.result,
+    errorTrace: entry.logLines?.join('\n'),
+    providerId: sourceToProviderId(entry.source) ?? undefined,
+  };
+}
+
+const HistoryRowActions = ({
+  entry,
+  onViewFailure,
+}: {
+  entry: SyncHistoryEntry;
+  onViewFailure: (entry: SyncHistoryEntry) => void;
+}) => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const navigate = useNavigate();
 
@@ -191,7 +222,17 @@ const HistoryRowActions = ({ entry }: { entry: SyncHistoryEntry }) => {
           <ListItemText primary="View log" />
         </MuiMenuItem>
         {entry.status === 'Failed' && (
-          <MuiMenuItem onClick={() => { setAnchorEl(null); console.log('Retry:', entry.id); }}>{/* eslint-disable-line no-console */}
+          <MuiMenuItem
+            onClick={() => {
+              setAnchorEl(null);
+              onViewFailure(entry);
+            }}
+          >
+            <ListItemText primary="View details" />
+          </MuiMenuItem>
+        )}
+        {entry.status === 'Failed' && (
+          <MuiMenuItem onClick={() => { setAnchorEl(null); onViewFailure(entry); }}>
             <ListItemText primary="Retry" />
           </MuiMenuItem>
         )}
@@ -209,25 +250,36 @@ const HistoryRowActions = ({ entry }: { entry: SyncHistoryEntry }) => {
   );
 };
 
-const HistoryTab = () => {
+const HistoryTab = ({
+  sourceFilter,
+  onSourceFilterChange,
+  onViewFailure,
+}: {
+  sourceFilter: string;
+  onSourceFilterChange: (source: string) => void;
+  onViewFailure: (entry: SyncHistoryEntry) => void;
+}) => {
   const classes = useStyles();
   const navigate = useNavigate();
   const [filters, setFilters] = useState<HistoryFilter>({
-    source: 'all',
+    source: sourceFilter,
     contentType: 'all',
     trigger: 'all',
     status: 'all',
   });
 
+  // Keep sidebar Source filter in sync with header Sync button scope.
+  const effectiveFilters = { ...filters, source: sourceFilter };
+
   const filtered = useMemo(() => {
     return DEMO_SYNC_HISTORY.filter(entry => {
-      if (filters.source !== 'all' && entry.source !== filters.source) return false;
-      if (filters.contentType !== 'all' && entry.contentType !== filters.contentType) return false;
-      if (filters.trigger !== 'all' && entry.trigger !== filters.trigger) return false;
-      if (filters.status !== 'all' && entry.status !== filters.status) return false;
+      if (effectiveFilters.source !== 'all' && entry.source !== effectiveFilters.source) return false;
+      if (effectiveFilters.contentType !== 'all' && entry.contentType !== effectiveFilters.contentType) return false;
+      if (effectiveFilters.trigger !== 'all' && entry.trigger !== effectiveFilters.trigger) return false;
+      if (effectiveFilters.status !== 'all' && entry.status !== effectiveFilters.status) return false;
       return true;
     });
-  }, [filters]);
+  }, [effectiveFilters.source, effectiveFilters.contentType, effectiveFilters.trigger, effectiveFilters.status]);
 
   const activeSyncs = DEMO_SYNC_HISTORY.filter(e => e.status === 'In Progress').length;
   const last24h = DEMO_SYNC_HISTORY.length;
@@ -262,7 +314,7 @@ const HistoryTab = () => {
         const providerLink = sourceToProviderLink(row.source);
         return providerLink ? (
           <Link
-            to={`${providerLink}?tab=sync`}
+            to={providerLink}
             className={classes.sourceLink}
             onClick={(e: React.MouseEvent) => e.stopPropagation()}
           >
@@ -305,14 +357,39 @@ const HistoryTab = () => {
       title: 'Status',
       field: 'status',
       render: (row: SyncHistoryEntry) => (
-        <Chip
-          icon={<StatusIcon status={row.status} />}
-          label={row.status}
-          size="small"
-          color={statusColor(row.status)}
-          variant="outlined"
-          className={classes.statusChip}
-        />
+        <Box>
+          <Chip
+            icon={<StatusIcon status={row.status} />}
+            label={row.status}
+            size="small"
+            color={statusColor(row.status)}
+            variant="outlined"
+            className={classes.statusChip}
+          />
+          {row.status === 'Failed' && (
+            <Typography
+              component="button"
+              type="button"
+              onClick={(e: React.MouseEvent) => {
+                e.stopPropagation();
+                onViewFailure(row);
+              }}
+              style={{
+                display: 'block',
+                marginTop: 4,
+                padding: 0,
+                border: 'none',
+                background: 'none',
+                cursor: 'pointer',
+                fontSize: 12,
+                color: '#0066CC',
+                textAlign: 'left',
+              }}
+            >
+              View details
+            </Typography>
+          )}
+        </Box>
       ),
     },
     {
@@ -328,7 +405,9 @@ const HistoryTab = () => {
       title: '',
       width: '48px',
       sorting: false,
-      render: (row: SyncHistoryEntry) => <HistoryRowActions entry={row} />,
+      render: (row: SyncHistoryEntry) => (
+        <HistoryRowActions entry={row} onViewFailure={onViewFailure} />
+      ),
     },
   ];
 
@@ -339,9 +418,10 @@ const HistoryTab = () => {
         <Paper className={classes.filterPaper}>
           <FormControl fullWidth>
             <Select
-              value={filters.source}
-              onChange={e => setFilters(prev => ({ ...prev, source: e.target.value as string }))}
+              value={sourceFilter}
+              onChange={e => onSourceFilterChange(e.target.value as string)}
               input={<Input disableUnderline />}
+              inputProps={{ 'aria-label': 'Filter sync by source' }}
             >
               <MuiMenuItem value="all">All</MuiMenuItem>
               <MuiMenuItem value="AAP">AAP</MuiMenuItem>
@@ -481,8 +561,7 @@ const SyncSettingsDropdown = () => {
 
   const handleClick = (provider: typeof DEMO_CONNECTIONS[0]) => {
     setAnchorEl(null);
-    const base = provider.type === 'git' ? '/self-service/admin/scm' : '/self-service/admin/connections';
-    navigate(`${base}/${provider.id}`);
+    navigate(`/self-service/admin/integrations/${provider.id}?tab=sync`);
   };
 
   return (
@@ -565,30 +644,154 @@ const SyncSettingsDropdown = () => {
 };
 
 // ---------------------------------------------------------------------------
-// Main page — Activity only (schedules moved to per-connection detail pages)
+// History panel — reusable for Opt 1 Integrations → Activity tab
+// ---------------------------------------------------------------------------
+
+export const SyncHistoryPanel = ({
+  sourceFilter,
+  onSourceFilterChange,
+  onViewFailure,
+}: {
+  sourceFilter: string;
+  onSourceFilterChange: (source: string) => void;
+  onViewFailure: (entry: SyncHistoryEntry) => void;
+}) => (
+  <HistoryTab
+    sourceFilter={sourceFilter}
+    onSourceFilterChange={onSourceFilterChange}
+    onViewFailure={onViewFailure}
+  />
+);
+
+/** Standalone history + error modal for embedding (Opt 1 Activity tab). */
+export const SyncHistoryEmbedded = () => {
+  const [sourceFilter, setSourceFilter] = useState('all');
+  const [errorEntity, setErrorEntity] = useState<SyncEntityStatus | null>(null);
+
+  return (
+    <>
+      <HistoryTab
+        sourceFilter={sourceFilter}
+        onSourceFilterChange={setSourceFilter}
+        onViewFailure={entry => setErrorEntity(entryToErrorEntity(entry))}
+      />
+      <SyncErrorModal
+        entity={errorEntity}
+        open={Boolean(errorEntity)}
+        onClose={() => setErrorEntity(null)}
+      />
+    </>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// Main page — variant-aware (Existing / Opt 1 redirect / Opt 2 scoped Run sync)
 // ---------------------------------------------------------------------------
 
 export const SyncActivityPage = () => {
+  const { variant } = useAdminSyncIa();
+  const [sourceFilter, setSourceFilter] = useState('all');
+  const [syncing, setSyncing] = useState(false);
+  const [runOpen, setRunOpen] = useState(false);
+  const [errorEntity, setErrorEntity] = useState<SyncEntityStatus | null>(null);
+
+  if (variant === 'opt1') {
+    return (
+      <Navigate
+        to="/self-service/admin/integrations?tab=activity"
+        replace
+      />
+    );
+  }
+
+  const isOpt2 = variant === 'opt2';
+
+  const handleSyncNow = () => {
+    if (syncing) return;
+    setSyncing(true);
+    window.setTimeout(() => setSyncing(false), 2500);
+  };
+
+  const handleViewFailure = (entry: SyncHistoryEntry) => {
+    setErrorEntity(entryToErrorEntity(entry));
+  };
+
+  const title = isOpt2 ? 'Sync activity' : 'Sync';
+  const subtitle = isOpt2
+    ? 'History of sync operations. Use Run sync… to choose connections — or sync from Integrations.'
+    : 'Monitor and manage sync operations across all connected platforms';
+
   return (
     <Page themeId="app">
       <Header
         title={
           <Box display="flex" alignItems="center">
-            Sync
+            {title}
             <PageHelpIcon
-              tooltipLabel="What is sync?"
-              title="Sync"
-              description="Monitor sync operations across all connected platforms. Use the Sync settings dropdown to jump to any provider's sync configuration."
+              tooltipLabel={`What is ${title}?`}
+              title={title}
+              description={
+                isOpt2
+                  ? 'This page is a log. Run sync… opens a scope dialog so you pick which connections to sync. Per-connection Sync now still lives on Integrations.'
+                  : 'Monitor sync operations across all connected platforms. Use Sync all now (or Sync {source} now when filtered) to trigger a manual sync. Sync settings jumps to each provider’s schedule.'
+              }
             />
           </Box>
         }
-        pageTitleOverride="Sync"
-        subtitle="Monitor and manage sync operations across all connected platforms"
+        pageTitleOverride={title}
+        subtitle={subtitle}
       >
-        <SyncSettingsDropdown />
+        <Box display="flex" alignItems="center" style={{ gap: 8 }}>
+          <SyncSettingsDropdown />
+          {isOpt2 ? (
+            <Button
+              variant="contained"
+              color="primary"
+              size="small"
+              onClick={() => setRunOpen(true)}
+              startIcon={<SyncIcon style={{ fontSize: 16 }} />}
+              style={{ textTransform: 'none', fontSize: 13, borderRadius: 20 }}
+            >
+              Run sync…
+            </Button>
+          ) : (
+            <Button
+              variant="contained"
+              color="primary"
+              size="small"
+              disabled={syncing}
+              onClick={handleSyncNow}
+              startIcon={
+                syncing ? (
+                  <CircularProgress size={14} color="inherit" />
+                ) : (
+                  <SyncIcon style={{ fontSize: 16 }} />
+                )
+              }
+              style={{ textTransform: 'none', fontSize: 13, borderRadius: 20 }}
+            >
+              {syncing ? 'Syncing…' : syncNowLabel(sourceFilter)}
+            </Button>
+          )}
+        </Box>
       </Header>
       <Content>
-        <HistoryTab />
+        <HistoryTab
+          sourceFilter={sourceFilter}
+          onSourceFilterChange={setSourceFilter}
+          onViewFailure={handleViewFailure}
+        />
+        <SyncErrorModal
+          entity={errorEntity}
+          open={Boolean(errorEntity)}
+          onClose={() => setErrorEntity(null)}
+        />
+        {isOpt2 && (
+          <RunSyncScopeDialog
+            open={runOpen}
+            onClose={() => setRunOpen(false)}
+          />
+        )}
       </Content>
     </Page>
   );

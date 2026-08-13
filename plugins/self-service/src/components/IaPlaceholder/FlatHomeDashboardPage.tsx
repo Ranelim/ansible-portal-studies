@@ -71,7 +71,7 @@ const SNIPPETS: Record<
     summary: 'Integrations, sync health, and access control.',
     metric: '4',
     metricLabel: 'integrations',
-    href: '/self-service/admin/general',
+    href: '/self-service/admin/overview',
     highlights: ['Sync OK', '1 warning'],
   },
 };

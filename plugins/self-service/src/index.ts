@@ -45,3 +45,9 @@ export {
   isSmeRole,
 } from './components/IaPlaceholder/navIaReviewMods';
 export type { UserRole, UseUserRoleResult } from './hooks/useUserRole';
+export { useAdminSyncIa } from './components/Admin/useAdminSyncIa';
+export type { AdminSyncIaVariant } from './components/Admin/adminSyncIa';
+export {
+  readAdminSyncIa,
+  writeAdminSyncIa,
+} from './components/Admin/adminSyncIa';

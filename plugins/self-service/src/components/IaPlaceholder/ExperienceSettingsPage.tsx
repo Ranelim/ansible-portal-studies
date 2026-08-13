@@ -187,7 +187,7 @@ export const ExperienceSettingsPage = () => {
                     variant="contained"
                     color="primary"
                     onClick={() =>
-                      openAdministration('/self-service/admin/general')
+                      openAdministration('/self-service/admin/overview')
                     }
                     style={{ borderRadius: 20 }}
                   >
@@ -205,8 +205,9 @@ export const ExperienceSettingsPage = () => {
             <Divider style={{ marginTop: 16, marginBottom: 12 }} />
             <Typography variant="body2" className={classes.muted}>
               Rule: experience Settings = prefs. Administration = platform
-              config. Navigate out — do not embed Admin inside Develop /
-              Compliance / Edge.
+              config (Overview, Integrations, Sync, Access Control, Plugins).
+              Navigate out — do not embed Admin inside Develop / Compliance /
+              Edge.
             </Typography>
           </InfoCard>
         </Box>

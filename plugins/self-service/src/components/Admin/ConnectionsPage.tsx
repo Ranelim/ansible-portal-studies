@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Page, Header, Content } from '@backstage/core-components';
 import {
   Box,
@@ -11,6 +11,9 @@ import {
   Chip,
   Tooltip,
   IconButton,
+  Tab,
+  Tabs,
+  SvgIcon,
 } from '@material-ui/core';
 import SyncIcon from '@material-ui/icons/Sync';
 import ErrorOutlineIcon from '@material-ui/icons/ErrorOutline';
@@ -23,7 +26,12 @@ import OpenInNewIcon from '@material-ui/icons/OpenInNew';
 import AddIcon from '@material-ui/icons/Add';
 import CloseIcon from '@material-ui/icons/Close';
 import VerifiedUserOutlinedIcon from '@material-ui/icons/VerifiedUserOutlined';
-import { SvgIcon } from '@material-ui/core';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { useAdminSyncIa } from './useAdminSyncIa';
+import { SyncHistoryEmbedded } from './SyncActivityPage';
+import { PageHelpIcon } from '../common/PageHelpIcon';
+import { DEMO_CONNECTIONS, ConnectionProvider } from './syncDemoData';
+import { statusColors } from '../common/statusColors';
 
 const AnsibleIcon = (props: any) => (
   <SvgIcon {...props} viewBox="0 0 24 24">
@@ -48,11 +56,6 @@ const PAHIcon = (props: any) => (
     <path d="M21 3H3a2 2 0 00-2 2v14a2 2 0 002 2h18a2 2 0 002-2V5a2 2 0 00-2-2zm-9 15H5v-2h7v2zm4-4H5v-2h11v2zm3-4H5V8h14v2z" />
   </SvgIcon>
 );
-import { useNavigate } from 'react-router-dom';
-import { DEMO_CONNECTIONS, ConnectionProvider } from './syncDemoData';
-import { PageHelpIcon } from '../common/PageHelpIcon';
-import { statusColors } from '../common/statusColors';
-
 const useStyles = makeStyles(theme => ({
   sectionTitle: {
     fontWeight: 600,
@@ -149,6 +152,10 @@ const useStyles = makeStyles(theme => ({
     alignItems: 'center',
     gap: theme.spacing(1.5),
   },
+  pageTabs: {
+    marginBottom: theme.spacing(2),
+    borderBottom: `1px solid ${theme.palette.divider}`,
+  },
 }));
 
 const providerIcon = (id: string): { icon: React.ReactNode; bg: string } => {
@@ -173,10 +180,10 @@ const providerIcon = (id: string): { icon: React.ReactNode; bg: string } => {
 const providerTypeLabel = (type: ConnectionProvider['type']): string => {
   switch (type) {
     case 'aap': return 'Automation Platform';
-    case 'pah': return 'Content Registry';
-    case 'git': return 'Source Control';
-    case 'registry': return 'Public Content';
-    case 'devtools': return 'Development Environment';
+    case 'pah': return 'Automation Hub';
+    case 'git': return 'Source control';
+    case 'registry': return 'Container registry';
+    case 'devtools': return 'Developer tools';
     default: return '';
   }
 };
@@ -463,7 +470,20 @@ const SyncFailureBanner = ({ classes }: { classes: ReturnType<typeof useStyles> 
 
 export const ConnectionsPage = () => {
   const classes = useStyles();
+  const { variant } = useAdminSyncIa();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [syncing, setSyncing] = useState(false);
+  const merged = variant === 'opt1';
+  const tabFromUrl =
+    new URLSearchParams(location.search).get('tab') === 'activity'
+      ? 'activity'
+      : 'connections';
+  const [tab, setTab] = useState<'connections' | 'activity'>(tabFromUrl);
+
+  useEffect(() => {
+    setTab(tabFromUrl);
+  }, [tabFromUrl]);
 
   const connections = DEMO_CONNECTIONS.filter(c => c.type === 'aap' || c.type === 'pah');
   const sourceControl = DEMO_CONNECTIONS.filter(c => c.type === 'git');
@@ -475,6 +495,19 @@ export const ConnectionsPage = () => {
     setTimeout(() => setSyncing(false), 2500);
   };
 
+  const setMergedTab = (next: 'connections' | 'activity') => {
+    setTab(next);
+    navigate(
+      next === 'activity'
+        ? '/self-service/admin/integrations?tab=activity'
+        : '/self-service/admin/integrations',
+      { replace: true },
+    );
+  };
+
+  const showConnections = !merged || tab === 'connections';
+  const showActivity = merged && tab === 'activity';
+
   return (
     <Page themeId="app">
       <Header
@@ -484,107 +517,144 @@ export const ConnectionsPage = () => {
             <PageHelpIcon
               tooltipLabel="What are integrations?"
               title="What are Integrations?"
-              description="Integrations connect the portal to the automation platforms, content registries, and developer tools that power your workflows. Configure credentials, choose what content to sync, and enable optional tools for your team."
+              description={
+                merged
+                  ? 'Opt 1: Connections (wire systems + Sync all / Sync now) and Activity (sync history) live as tabs here — no separate Sync rail.'
+                  : 'Integrations connect Automation Portal to external systems: AAP, Private Automation Hub, GitHub/GitLab (source control for Git repositories), container registries (EE images — not Git repos), and developer tools such as Dev Spaces. Installed Portal capabilities are listed under Plugins.'
+              }
             />
           </Box>
         }
         pageTitleOverride="Integrations"
-        subtitle="Manage connections to automation platforms, content registries, and developer tools"
+        subtitle={
+          merged
+            ? 'Connect systems and review sync activity in one place'
+            : 'Connect AAP, Hub, source control, container registries, and developer tools'
+        }
       >
-        <Box className={classes.headerActions}>
-          <Button
-            variant="outlined"
-            size="small"
-            startIcon={<SyncIcon style={{ fontSize: 16 }} />}
-            onClick={handleSyncAll}
-            disabled={syncing}
-            style={{ textTransform: 'none', fontSize: 13 }}
-          >
-            {syncing ? 'Syncing…' : 'Sync all'}
-          </Button>
-          <Button
-            variant="contained"
-            color="primary"
-            size="small"
-            startIcon={<AddIcon style={{ fontSize: 16 }} />}
-            style={{ textTransform: 'none', fontSize: 13 }}
-          >
-            Add integration
-          </Button>
-        </Box>
+        {showConnections && (
+          <Box className={classes.headerActions}>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<SyncIcon style={{ fontSize: 16 }} />}
+              onClick={handleSyncAll}
+              disabled={syncing}
+              style={{ textTransform: 'none', fontSize: 13, borderRadius: 20 }}
+            >
+              {syncing ? 'Syncing…' : 'Sync all connections'}
+            </Button>
+            <Button
+              variant="contained"
+              color="primary"
+              size="small"
+              startIcon={<AddIcon style={{ fontSize: 16 }} />}
+              style={{ textTransform: 'none', fontSize: 13, borderRadius: 20 }}
+            >
+              Add integration
+            </Button>
+          </Box>
+        )}
       </Header>
       <Content>
-        <SyncFailureBanner classes={classes} />
+        {merged && (
+          <Tabs
+            className={classes.pageTabs}
+            value={tab}
+            onChange={(_e, v) => setMergedTab(v)}
+            indicatorColor="primary"
+            textColor="primary"
+            aria-label="Integrations sections"
+          >
+            <Tab label="Connections" value="connections" />
+            <Tab label="Activity" value="activity" />
+          </Tabs>
+        )}
 
-        <Typography className={classes.sectionTitle}>
-          Automation platforms
-        </Typography>
-        <Box className={classes.cardGrid}>
-          {connections.map(provider => (
-            <ProviderCard key={provider.id} provider={provider} />
-          ))}
-        </Box>
+        {showActivity && <SyncHistoryEmbedded />}
 
-        <Typography className={classes.sectionTitle}>
-          Source control
-        </Typography>
-        <Box className={classes.cardGrid}>
-          {sourceControl.map(provider => (
-            <ProviderCard key={provider.id} provider={provider} />
-          ))}
-        </Box>
-
-        <Typography className={classes.sectionTitle}>
-          Container registries
-        </Typography>
-        <Box className={classes.cardGrid}>
-          {containerRegistries.map(provider => (
-            <ProviderCard key={provider.id} provider={provider} />
-          ))}
-        </Box>
-
-        {devTools.length > 0 && (
+        {showConnections && (
           <>
+            <SyncFailureBanner classes={classes} />
+
             <Typography className={classes.sectionTitle}>
-              Developer tools
+              Automation platforms
             </Typography>
             <Box className={classes.cardGrid}>
-              {devTools.map(provider => (
-                <DevToolsCard key={provider.id} provider={provider} />
+              {connections.map(provider => (
+                <ProviderCard key={provider.id} provider={provider} />
               ))}
+            </Box>
+
+            <Typography className={classes.sectionTitle}>
+              Source control
+            </Typography>
+            <Box className={classes.cardGrid}>
+              {sourceControl.map(provider => (
+                <ProviderCard key={provider.id} provider={provider} />
+              ))}
+            </Box>
+
+            <Typography className={classes.sectionTitle}>
+              Container registries
+            </Typography>
+            <Typography className={classes.sectionDescription}>
+              Image registries for execution environments — not GitHub/GitLab repositories.
+            </Typography>
+            <Box className={classes.cardGrid}>
+              {containerRegistries.map(provider => (
+                <ProviderCard key={provider.id} provider={provider} />
+              ))}
+            </Box>
+
+            {devTools.length > 0 && (
+              <>
+                <Typography className={classes.sectionTitle}>
+                  Developer tools
+                </Typography>
+                <Typography className={classes.sectionDescription}>
+                  Optional tools such as OpenShift Dev Spaces. Connection lives here;
+                  the capability also appears under Plugins.
+                </Typography>
+                <Box className={classes.cardGrid}>
+                  {devTools.map(provider => (
+                    <DevToolsCard key={provider.id} provider={provider} />
+                  ))}
+                </Box>
+              </>
+            )}
+
+            <Typography className={classes.sectionTitle}>
+              Quality scanning
+            </Typography>
+            <Box className={classes.cardGrid}>
+              <Card className={classes.card} style={{ cursor: 'default' }}>
+                <CardContent style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', height: '100%' }}>
+                  <Box display="flex" alignItems="flex-start" style={{ gap: 16 }}>
+                    <Box style={{ width: 40, height: 40, borderRadius: 8, backgroundColor: '#e7f1fa', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <VerifiedUserOutlinedIcon style={{ fontSize: 20, color: '#0066cc' }} />
+                    </Box>
+                    <Box style={{ flex: 1 }}>
+                      <Box display="flex" alignItems="center" style={{ gap: 8, marginBottom: 4 }}>
+                        <Typography style={{ fontWeight: 600, fontSize: 14 }}>APME Quality Scanning</Typography>
+                        <Chip label="Connected" size="small" style={{ backgroundColor: '#e6f9e6', color: '#1e4620', fontSize: 11, height: 20 }} />
+                      </Box>
+                      <Typography style={{ fontSize: 12, color: '#6a6e73', marginBottom: 2 }}>Content Modernization Engine</Typography>
+                      <Typography style={{ fontSize: 12, color: '#6a6e73', marginBottom: 8 }}>
+                        Scans automation content for compatibility violations against target AAP versions. Results appear in the Quality tab and as SARIF annotations in Dev Spaces.
+                      </Typography>
+                      <Box style={{ fontSize: 12, color: '#151515' }}>
+                        <Typography style={{ fontSize: 12 }}><strong>Target:</strong> AAP 2.7 (ansible-core 2.17)</Typography>
+                        <Typography style={{ fontSize: 12 }}><strong>Schedule:</strong> On every commit + weekly</Typography>
+                        <Typography style={{ fontSize: 12 }}><strong>Repos:</strong> 4 repositories scanned</Typography>
+                      </Box>
+                    </Box>
+                  </Box>
+                </CardContent>
+              </Card>
             </Box>
           </>
         )}
-
-        <Typography className={classes.sectionTitle}>
-          Quality scanning
-        </Typography>
-        <Box className={classes.cardGrid}>
-          <Card className={classes.card} style={{ cursor: 'default' }}>
-            <CardContent style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', height: '100%' }}>
-              <Box display="flex" alignItems="flex-start" style={{ gap: 16 }}>
-                <Box style={{ width: 40, height: 40, borderRadius: 8, backgroundColor: '#e7f1fa', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <VerifiedUserOutlinedIcon style={{ fontSize: 20, color: '#0066cc' }} />
-                </Box>
-                <Box style={{ flex: 1 }}>
-                  <Box display="flex" alignItems="center" style={{ gap: 8, marginBottom: 4 }}>
-                    <Typography style={{ fontWeight: 600, fontSize: 14 }}>APME Quality Scanning</Typography>
-                    <Chip label="Connected" size="small" style={{ backgroundColor: '#e6f9e6', color: '#1e4620', fontSize: 11, height: 20 }} />
-                  </Box>
-                  <Typography style={{ fontSize: 12, color: '#6a6e73', marginBottom: 2 }}>Content Modernization Engine</Typography>
-                  <Typography style={{ fontSize: 12, color: '#6a6e73', marginBottom: 8 }}>
-                    Scans automation content for compatibility violations against target AAP versions. Results appear in the Quality tab and as SARIF annotations in Dev Spaces.
-                  </Typography>
-                  <Box style={{ fontSize: 12, color: '#151515' }}>
-                    <Typography style={{ fontSize: 12 }}><strong>Target:</strong> AAP 2.7 (ansible-core 2.17)</Typography>
-                    <Typography style={{ fontSize: 12 }}><strong>Schedule:</strong> On every commit + weekly</Typography>
-                    <Typography style={{ fontSize: 12 }}><strong>Repos:</strong> 4 repositories scanned</Typography>
-                  </Box>
-                </Box>
-              </Box>
-            </CardContent>
-          </Card>
-        </Box>
       </Content>
     </Page>
   );

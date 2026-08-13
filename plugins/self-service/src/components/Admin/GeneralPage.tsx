@@ -52,31 +52,31 @@ const QUICK_START_STEPS = [
     description: 'Connect to Ansible Automation Platform to import job templates, inventories, and credentials.',
     done: true,
     status: 'Connected to aap.example.com',
-    link: '/self-service/admin/connections/aap',
+    link: '/self-service/admin/integrations/aap',
   },
   {
     label: 'Select AAP organizations',
     description: 'Choose which AAP organizations to sync users, teams, and content from.',
     done: true,
     status: '3 organizations syncing',
-    link: '/self-service/admin/connections/aap',
+    link: '/self-service/admin/integrations/aap',
   },
   {
-    label: 'Connect a content registry',
-    description: 'Add a Private Automation Hub or Galaxy instance to discover certified and validated collections.',
+    label: 'Connect a content hub',
+    description: 'Add Private Automation Hub or Galaxy to discover certified and validated collections.',
     done: true,
     status: 'Private Automation Hub connected',
-    link: '/self-service/admin/connections/pah',
+    link: '/self-service/admin/integrations/pah',
   },
   {
     label: 'Connect source control',
-    description: 'Link GitHub or GitLab to discover repositories and sync automation projects.',
+    description: 'Link GitHub or GitLab so the portal can discover Git repositories (not container registries).',
     done: false,
-    link: '/self-service/admin/scm',
+    link: '/self-service/admin/integrations',
   },
   {
-    label: 'Configure content sync schedule',
-    description: 'Set how often the portal syncs content from connected sources. Configure on each connection\'s Sync tab.',
+    label: 'Review sync health',
+    description: 'Monitor cross-provider sync activity. Per-provider schedules live on each Integrations card.',
     done: false,
     link: '/self-service/admin/sync-activity',
   },
@@ -93,16 +93,16 @@ export const GeneralPage = () => {
       <Header
         title={
           <Box display="flex" alignItems="center">
-            General
+            Overview
             <PageHelpIcon
-              tooltipLabel="What is the General page?"
-              title="General Settings"
-              description="View portal configuration and deployment status. Changes to settings on this page require a portal restart to take effect."
+              tooltipLabel="What is Overview?"
+              title="Administration Overview"
+              description="Portal setup posture, identity, and deployment status. Wire external systems under Integrations. Manage installed capabilities under Plugins. End-user prefs (theme, notification mute) live under Settings in the profile menu — not here."
             />
           </Box>
         }
-        pageTitleOverride="General"
-        subtitle="Portal configuration and deployment status. Changes to settings require a portal restart."
+        pageTitleOverride="Overview"
+        subtitle="Portal setup posture and deployment status. Connect systems under Integrations."
       />
       <Content>
 

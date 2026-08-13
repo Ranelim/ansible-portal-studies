@@ -52,6 +52,7 @@ import {
 import { SetupWizardPage } from '../Setup/SetupWizardPage';
 import { GeneralPage } from '../Admin/GeneralPage';
 import { DevSpacesDetailPage } from '../Admin/DevSpacesDetailPage';
+import { PluginsPage } from '../Admin/PluginsPage';
 import {
   NotificationProvider,
   NotificationStack,
@@ -240,7 +241,12 @@ const RouteViewContent = () => {
         <Route path="compliance/profiles" element={<CompliancePage />} />
         <Route path="compliance/profiles/:profileDefId" element={<CompliancePage />} />
         <Route path="learning" element={<LearningPage />} />
-        <Route path="admin/general" element={<GeneralPage />} />
+        <Route path="admin/overview" element={<GeneralPage />} />
+        <Route
+          path="admin/general"
+          element={<Navigate to="/self-service/admin/overview" replace />}
+        />
+        <Route path="admin/plugins" element={<PluginsPage />} />
         <Route path="admin/integrations" element={<ConnectionsPage />} />
         <Route path="admin/integrations/devspaces" element={<DevSpacesDetailPage />} />
         <Route path="admin/integrations/:providerId" element={<ConnectionDetailPage />} />
