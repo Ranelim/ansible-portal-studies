@@ -48,6 +48,7 @@ export type { UserRole, UseUserRoleResult } from './hooks/useUserRole';
 export { useAdminSyncIa } from './components/Admin/useAdminSyncIa';
 export type { AdminSyncIaVariant } from './components/Admin/adminSyncIa';
 export {
+  FORCED_ADMIN_SYNC_IA,
   readAdminSyncIa,
   writeAdminSyncIa,
 } from './components/Admin/adminSyncIa';

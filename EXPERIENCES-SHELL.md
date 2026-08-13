@@ -52,12 +52,30 @@ Not eng SoT until ADRs on `ansible-rhdh-plugins` `main`. Mirror: `.cursor/rules/
 - **Remediations** placement; Massimo **dynamic profile tabs**
 - Rail-less SME Automate (page tabs Templates \| Activity)
 - When experience **Settings** returns
+- **Resources** rail header for Class A only? (Taufique Aug 13 meeting OK — conflicts with “no section labels” quiet lock; decide next)
+- Nested experience nav pattern (PF drawer) for future plugins
+
+### Change now — from Ran + Taufique meeting (Aug 13 ~16:38)
+
+**Doc:** [Notes + transcript](https://docs.google.com/document/d/1nX49zFqZ7MnZfM5sw_NXoXg0dSTd8XQXVR42j7k_joc/edit?tab=t.58r4c16xhy1b) · detail in `scratch/experiences-decision-brief.md` § Aug 13 meeting.
+
+| Priority | Change |
+|---|---|
+| Next | Stakeholder **login → intro → Experiences** flow |
+| Next | Account chrome: **Back** (not “Developer”) |
+| Done (park) | Admin Sync **Option 1** forced (`FORCED_ADMIN_SYNC_IA = 'opt1'`); magenta compare bar hidden; Overview **Sync health** card removed. Opt 2 code kept for revive. Still open under Opt 1: tab **Sync settings**; modal→history; drop Quality from Integrations |
+| Done | Admin **Dashboard** = first rail item (Usage/Metrics placeholder cards); Bridge **Administration** still lands there. Not an Experience. |
+| Decide | **Resources** header on experience rails for Class A only |
+| Later | Real usage metrics + uninstall; nested-nav example; Cate/Kate APME feedback |
+
+Waffle masthead try = parked (`SHOW_EXPERIENCES_WAFFLE = false`).
+Admin Sync compare bar = parked (`FORCED_ADMIN_SYNC_IA = 'opt1'`; set `null` + restore `ADMIN_SYNC_IA_BAR_HEIGHT = 36` to revive).
 
 
 ## Git
 
 - Push **`gitlab` only** (never public `origin` / `fork`)
-- Pages (later): prefer `/portal-experiences/` so `/portal-nav-ia/` stays the museum
+- Pages: **`/portal-experiences/`** · shortcut `/experiences.html` · deploy `./deploy-pages-experiences.sh` (does not replace root APME or `/portal-nav-ia/`)
 
 ## Run
 
@@ -66,6 +84,11 @@ cd ~/portal-projects/ansible-backstage-plugins-experiences
 yarn start
 # → http://localhost:3012
 ```
+
+## Share (GitLab Pages — VPN)
+
+- https://ansible-portal-prototypes-c8c2a0.pages.redhat.com/portal-experiences/
+- Shortcut: https://ansible-portal-prototypes-c8c2a0.pages.redhat.com/experiences.html
 
 For the 5-option exploration:
 

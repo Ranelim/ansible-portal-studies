@@ -1,353 +1,111 @@
-import { useState } from 'react';
 import { Page, Header, Content } from '@backstage/core-components';
-import {
-  Box,
-  Typography,
-  Button,
-  Card,
-  CardContent,
-  Collapse,
-  IconButton,
-  makeStyles,
-  Chip,
-  LinearProgress,
-} from '@material-ui/core';
-import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
-import ExpandLessIcon from '@material-ui/icons/ExpandLess';
-import CheckCircleOutlineIcon from '@material-ui/icons/CheckCircleOutline';
-import RadioButtonUncheckedIcon from '@material-ui/icons/RadioButtonUnchecked';
-import LaunchIcon from '@material-ui/icons/Launch';
-import SyncIcon from '@material-ui/icons/Sync';
-import ErrorOutlineIcon from '@material-ui/icons/ErrorOutline';
-import ScheduleIcon from '@material-ui/icons/Schedule';
+import { Box, Card, CardContent, Typography, makeStyles } from '@material-ui/core';
 import { PageHelpIcon } from '../common/PageHelpIcon';
-import { statusColors } from '../common/statusColors';
-import { useAdminSyncIa } from './useAdminSyncIa';
-import { RunSyncScopeDialog } from './RunSyncScopeDialog';
 
 const useStyles = makeStyles(theme => ({
-  sectionCard: {
+  grid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
+    gap: theme.spacing(2),
+  },
+  card: {
     border: `1px solid ${theme.palette.divider}`,
     borderRadius: 8,
-    marginBottom: theme.spacing(3),
+    height: '100%',
   },
-  sectionTitle: {
-    fontSize: 16,
+  title: {
+    fontSize: 14,
     fontWeight: 600,
+    marginBottom: theme.spacing(1),
   },
-  sectionDescription: {
+  description: {
     fontSize: 13,
     color: theme.palette.text.secondary,
     lineHeight: 1.5,
-    marginTop: 4,
-  },
-  statusRow: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: theme.spacing(1.5, 0),
-    borderBottom: `1px solid ${theme.palette.divider}`,
-    '&:last-child': { borderBottom: 'none' },
-  },
-  syncMeta: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: theme.spacing(2),
-    marginTop: theme.spacing(1.5),
     marginBottom: theme.spacing(2),
   },
-  syncMetaItem: {
+  placeholder: {
     display: 'flex',
     alignItems: 'center',
-    gap: 6,
-    fontSize: 13,
-    color: theme.palette.text.secondary,
+    justifyContent: 'center',
+    minHeight: 120,
+    borderRadius: 4,
+    backgroundColor:
+      theme.palette.type === 'dark'
+        ? 'rgba(255,255,255,0.04)'
+        : 'rgba(0,0,0,0.03)',
+    border: `1px dashed ${theme.palette.divider}`,
   },
-  syncActions: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: theme.spacing(1),
-    alignItems: 'center',
+  placeholderLabel: {
+    fontSize: 12,
+    fontWeight: 600,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    color: theme.palette.text.secondary,
+    opacity: 0.7,
   },
 }));
 
-const QUICK_START_STEPS = [
+const PLACEHOLDER_CARDS = [
   {
-    label: 'Connect to AAP',
-    description: 'Connect to Ansible Automation Platform to import job templates, inventories, and credentials.',
-    done: true,
-    status: 'Connected to aap.example.com',
-    link: '/self-service/admin/integrations/aap',
+    title: 'Experience usage',
+    description: 'Launches and activity per experience.',
   },
   {
-    label: 'Select AAP organizations',
-    description: 'Choose which AAP organizations to sync users, teams, and content from.',
-    done: true,
-    status: '3 organizations syncing',
-    link: '/self-service/admin/integrations/aap',
+    title: 'Active users',
+    description: 'Seats and recent sign-ins across the instance.',
   },
   {
-    label: 'Connect a content hub',
-    description: 'Add Private Automation Hub or Galaxy to discover certified and validated collections.',
-    done: true,
-    status: 'Private Automation Hub connected',
-    link: '/self-service/admin/integrations/pah',
+    title: 'Template runs',
+    description: 'Run volume and success rate over time.',
   },
   {
-    label: 'Connect source control',
-    description: 'Link GitHub or GitLab so the portal can discover Git repositories (not container registries).',
-    done: false,
-    link: '/self-service/admin/integrations',
-  },
-  {
-    label: 'Review sync health',
-    description: 'Monitor cross-provider sync. Per-provider schedules live on each Integrations card.',
-    done: false,
-    link: '/self-service/admin/sync-activity',
+    title: 'Installed capabilities',
+    description: 'Plugins and experiences with uninstall actions later.',
   },
 ];
 
+/**
+ * Administration landing — Usage / Metrics Dashboard (first Admin rail item).
+ * Prototype placeholder only (Taufique Aug 13): empty cards, not real telemetry.
+ */
 export const GeneralPage = () => {
   const classes = useStyles();
-  const { variant } = useAdminSyncIa();
-  const doneCount = QUICK_START_STEPS.filter(s => s.done).length;
-  const allDone = doneCount === QUICK_START_STEPS.length;
-  const [progressOpen, setProgressOpen] = useState(!allDone);
-  const [runOpen, setRunOpen] = useState(false);
-  const [syncing, setSyncing] = useState(false);
-
-  const historyHref =
-    variant === 'opt1'
-      ? '/self-service/admin/integrations?tab=history'
-      : '/self-service/admin/sync-activity';
-
-  const handleSyncNow = () => {
-    if (variant === 'opt2') {
-      setRunOpen(true);
-      return;
-    }
-    setSyncing(true);
-    window.setTimeout(() => setSyncing(false), 2500);
-  };
 
   return (
     <Page themeId="app">
       <Header
         title={
           <Box display="flex" alignItems="center">
-            Overview
+            Dashboard
             <PageHelpIcon
-              tooltipLabel="What is Overview?"
-              title="Administration Overview"
-              description="Portal setup posture, identity, and deployment status. Wire external systems under Integrations. Manage installed capabilities under Plugins. End-user prefs (theme, notification mute) live under Settings in the profile menu — not here."
+              tooltipLabel="What is Dashboard?"
+              title="Administration Dashboard"
+              description="Admin-only usage and metrics for this Portal instance — experience activity, seats, and capability health. Platform configuration (Integrations, Access, Plugins) lives on the other Administration rail items."
             />
           </Box>
         }
-        pageTitleOverride="Overview"
-        subtitle="Portal setup posture and deployment status. Connect systems under Integrations."
+        pageTitleOverride="Dashboard"
+        subtitle="Usage and metrics for this Portal instance. Charts and actions TBD."
       />
       <Content>
-        {/* Sync health — quick sync action from Overview */}
-        <Card className={classes.sectionCard} variant="outlined">
-          <CardContent>
-            <Box
-              display="flex"
-              justifyContent="space-between"
-              alignItems="flex-start"
-              flexWrap="wrap"
-              style={{ gap: 12 }}
-            >
-              <Box style={{ flex: '1 1 240px', minWidth: 0 }}>
-                <Typography className={classes.sectionTitle}>
-                  Sync health
+        <Box className={classes.grid}>
+          {PLACEHOLDER_CARDS.map(card => (
+            <Card key={card.title} className={classes.card} variant="outlined">
+              <CardContent>
+                <Typography className={classes.title}>{card.title}</Typography>
+                <Typography className={classes.description}>
+                  {card.description}
                 </Typography>
-                <Typography className={classes.sectionDescription}>
-                  Cross-connection sync posture. Start a sync here, or open the
-                  full history for details.
-                </Typography>
-                <Box className={classes.syncMeta}>
-                  <Typography
-                    className={classes.syncMetaItem}
-                    component="span"
-                    style={{ color: statusColors.danger }}
-                  >
-                    <ErrorOutlineIcon style={{ fontSize: 16 }} />
-                    1 failed · GitHub — ansible-network
-                  </Typography>
-                  <Typography className={classes.syncMetaItem} component="span">
-                    <ScheduleIcon style={{ fontSize: 16 }} />
-                    Next: AAP Job Templates in 4 min
+                <Box className={classes.placeholder} aria-hidden>
+                  <Typography className={classes.placeholderLabel}>
+                    Image / chart TBD
                   </Typography>
                 </Box>
-              </Box>
-              <Box className={classes.syncActions}>
-                <Button
-                  size="small"
-                  color="primary"
-                  style={{ textTransform: 'none', fontSize: 12 }}
-                  href={historyHref}
-                >
-                  View sync history
-                </Button>
-                <Button
-                  variant="contained"
-                  color="primary"
-                  size="small"
-                  disabled={syncing}
-                  onClick={handleSyncNow}
-                  startIcon={<SyncIcon style={{ fontSize: 16 }} />}
-                  style={{
-                    textTransform: 'none',
-                    fontSize: 13,
-                    borderRadius: 20,
-                  }}
-                >
-                  {syncing
-                    ? 'Syncing…'
-                    : variant === 'opt2'
-                      ? 'Sync now…'
-                      : 'Sync now'}
-                </Button>
-              </Box>
-            </Box>
-          </CardContent>
-        </Card>
-
-        {/* Configuration Progress — collapsible, open by default while steps remain */}
-        <Card className={classes.sectionCard} variant="outlined">
-          <CardContent style={{ paddingBottom: progressOpen ? undefined : 16 }}>
-            <Box
-              display="flex" justifyContent="space-between" alignItems="center"
-              style={{ cursor: 'pointer' }}
-              onClick={() => setProgressOpen(!progressOpen)}
-            >
-              <Box display="flex" alignItems="center" style={{ gap: 12 }}>
-                <Typography className={classes.sectionTitle} style={{ marginBottom: 0 }}>
-                  Configuration Progress
-                </Typography>
-                <Chip
-                  label={`${doneCount} of ${QUICK_START_STEPS.length}`}
-                  size="small"
-                  style={{
-                    fontSize: 11,
-                    height: 22,
-                    backgroundColor: allDone ? 'rgba(99,153,61,0.15)' : 'rgba(77,163,255,0.15)',
-                    color: allDone ? statusColors.success : '#4DA3FF',
-                    fontWeight: 600,
-                  }}
-                />
-              </Box>
-              <IconButton size="small" style={{ marginRight: -8 }}>
-                {progressOpen ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-              </IconButton>
-            </Box>
-
-            {!progressOpen && (
-              <Box style={{ marginTop: 10 }}>
-                <LinearProgress
-                  variant="determinate"
-                  value={(doneCount / QUICK_START_STEPS.length) * 100}
-                  style={{ height: 4, borderRadius: 2 }}
-                />
-              </Box>
-            )}
-
-            <Collapse in={progressOpen}>
-              <Typography className={classes.sectionDescription} style={{ marginTop: 4 }}>
-                Track your portal setup. Complete all steps to unlock the full experience.
-              </Typography>
-
-              <Box style={{ margin: '12px 0 16px' }}>
-                <LinearProgress
-                  variant="determinate"
-                  value={(doneCount / QUICK_START_STEPS.length) * 100}
-                  style={{ height: 6, borderRadius: 3 }}
-                />
-              </Box>
-
-              {QUICK_START_STEPS.map(step => {
-                const stepLink =
-                  step.label === 'Review sync health' ? historyHref : step.link;
-                return (
-                <Box key={step.label} className={classes.statusRow} style={{ alignItems: 'flex-start', padding: '12px 0' }}>
-                  <Box display="flex" alignItems="flex-start" style={{ gap: 10, flex: 1 }}>
-                    {step.done ? (
-                      <CheckCircleOutlineIcon style={{ fontSize: 18, color: statusColors.success, marginTop: 1 }} />
-                    ) : (
-                      <RadioButtonUncheckedIcon style={{ fontSize: 18, color: 'rgba(255,255,255,0.2)', marginTop: 1 }} />
-                    )}
-                    <Box>
-                      <Typography style={{ fontSize: 13, fontWeight: 500, color: step.done ? 'inherit' : 'rgba(255,255,255,0.85)' }}>
-                        {step.label}
-                      </Typography>
-                      <Typography style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', lineHeight: 1.5, marginTop: 2 }}>
-                        {step.description}
-                      </Typography>
-                      {step.done && step.status && (
-                        <Typography style={{ fontSize: 12, color: statusColors.success, marginTop: 3 }}>
-                          {step.status}
-                        </Typography>
-                      )}
-                    </Box>
-                  </Box>
-                  {step.done ? (
-                    <Typography style={{ fontSize: 12, color: '#999', flexShrink: 0, marginTop: 1 }}>Done</Typography>
-                  ) : (
-                    <Button
-                      size="small"
-                      variant="outlined"
-                      color="primary"
-                      href={stepLink}
-                      style={{ textTransform: 'none', fontSize: 12, flexShrink: 0, marginTop: -1 }}
-                    >
-                      Configure
-                    </Button>
-                  )}
-                </Box>
-              );
-              })}
-
-              <Box style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-                <Button
-                  size="small"
-                  color="primary"
-                  startIcon={<LaunchIcon style={{ fontSize: 14 }} />}
-                  style={{ textTransform: 'none', fontSize: 12 }}
-                >
-                  Open Quick Start guide
-                </Button>
-              </Box>
-            </Collapse>
-          </CardContent>
-        </Card>
-
-
-        {/* System Information */}
-        <Card className={classes.sectionCard} variant="outlined">
-          <CardContent>
-            <Box marginBottom={2}>
-              <Typography className={classes.sectionTitle}>System Information</Typography>
-              <Typography className={classes.sectionDescription}>
-                Portal deployment details.
-              </Typography>
-            </Box>
-
-            <Box className={classes.statusRow}>
-              <Typography style={{ fontSize: 13, color: '#999' }}>Deployment mode</Typography>
-              <Typography style={{ fontSize: 13, fontWeight: 500 }}>Local development</Typography>
-            </Box>
-            <Box className={classes.statusRow}>
-              <Typography style={{ fontSize: 13, color: '#999' }}>Portal version</Typography>
-              <Typography style={{ fontSize: 13, fontWeight: 500 }}>1.0.0-dev</Typography>
-            </Box>
-            <Box className={classes.statusRow}>
-              <Typography style={{ fontSize: 13, color: '#999' }}>Portal base URL</Typography>
-              <Typography style={{ fontSize: 13, fontWeight: 500 }}>https://portal.example.com</Typography>
-            </Box>
-          </CardContent>
-        </Card>
-
-        <RunSyncScopeDialog open={runOpen} onClose={() => setRunOpen(false)} />
+              </CardContent>
+            </Card>
+          ))}
+        </Box>
       </Content>
     </Page>
   );

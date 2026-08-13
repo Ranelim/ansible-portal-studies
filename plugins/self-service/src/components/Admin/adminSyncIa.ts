@@ -4,8 +4,13 @@ export type AdminSyncIaVariant = 'opt1' | 'opt2';
 
 export const ADMIN_SYNC_IA_KEY = 'portal-admin-sync-ia';
 
-/** Null while magenta compare bar is active. */
-export const FORCED_ADMIN_SYNC_IA: AdminSyncIaVariant | null = null;
+/**
+ * Force Admin Sync IA while magenta compare bar is parked.
+ * Opt 1 = Taufique preference (connections-centric / merge under Integrations).
+ * Set null to restore the compare bar + localStorage switching.
+ * Opt 2 code paths stay intact for A/B revive.
+ */
+export const FORCED_ADMIN_SYNC_IA: AdminSyncIaVariant | null = 'opt1';
 
 const listeners = new Set<() => void>();
 

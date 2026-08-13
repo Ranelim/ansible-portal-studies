@@ -1,6 +1,7 @@
 import { Box, Typography, makeStyles } from '@material-ui/core';
 import { useLocation } from 'react-router-dom';
 import {
+  FORCED_ADMIN_SYNC_IA,
   useAdminSyncIa,
   useNavIaModel,
   type AdminSyncIaVariant,
@@ -86,12 +87,18 @@ const useStyles = makeStyles({
 /**
  * Temp design compare — Admin Sync / Integrations IA.
  * Only while the Administration experience is active.
+ * Parked while FORCED_ADMIN_SYNC_IA is set (Opt 1 = Taufique).
  */
 export const AdminSyncIaCompareBar = () => {
   const classes = useStyles();
   const { variant, setVariant } = useAdminSyncIa();
   const { experience } = useNavIaModel();
   const location = useLocation();
+
+  // Both Opt 1 / Opt 2 remain in code; bar hidden while one is forced.
+  if (FORCED_ADMIN_SYNC_IA) {
+    return null;
+  }
 
   if (experience !== 'admin' || location.pathname.includes('/setup')) {
     return null;

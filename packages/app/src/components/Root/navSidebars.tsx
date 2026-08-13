@@ -234,7 +234,7 @@ const AdminItems = () => {
       <SidebarItem
         icon={DashboardIcon}
         to="/self-service/admin/overview"
-        text="Overview"
+        text="Dashboard"
       />
       <SidebarItem
         icon={LinkIcon}

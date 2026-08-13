@@ -3,6 +3,7 @@ import { makeStyles, Box, Typography, Button } from '@material-ui/core';
 import WarningIcon from '@material-ui/icons/Warning';
 import { useLocation } from 'react-router-dom';
 import {
+  FORCED_ADMIN_SYNC_IA,
   RestartProvider,
   useRestartRequired,
   useNavIaModel,
@@ -152,7 +153,9 @@ export const Root = ({ children }: PropsWithChildren<{}>) => {
   const onBridge = isBridgePath(location.pathname);
   const onGlobalShell = isGlobalShellPath(location.pathname);
   const railLess = onBridge || onGlobalShell;
-  const showAdminSyncBar = experience === 'admin' && !isSetup;
+  // Magenta compare bar parked while Opt 1 is forced (Taufique).
+  const showAdminSyncBar =
+    experience === 'admin' && !isSetup && FORCED_ADMIN_SYNC_IA === null;
   const chromeTop = chromeTopForAdminSync(showAdminSyncBar);
 
   useCaptureGlobalShellReturn(location.pathname);
