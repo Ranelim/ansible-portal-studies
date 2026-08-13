@@ -9,16 +9,13 @@ import { ADMIN_SYNC_IA_BAR_HEIGHT } from './chromeHeights';
 const MAGENTA = '#BE0098';
 
 const OPTIONS: Array<{ id: AdminSyncIaVariant; label: string }> = [
-  { id: 'existing', label: 'Existing' },
   { id: 'opt1', label: '1 — Merge under Integrations' },
   { id: 'opt2', label: '2 — Sync activity + Run sync…' },
 ];
 
 const HINTS: Record<AdminSyncIaVariant, string> = {
-  existing:
-    'Sibling Sync rail + Sync all now on history (current prototype).',
   opt1:
-    'No Sync rail. Integrations tabs: Connections | Activity. Sync starts on Connections.',
+    'No Sync rail. Integrations tabs: Connections | Sync history. Sync starts on Connections.',
   opt2:
     'Rail = Sync activity. Run sync… opens a scope dialog — history stays a log.',
 };
@@ -87,7 +84,7 @@ const useStyles = makeStyles({
 
 /**
  * Temp design compare — Admin Sync / Integrations IA.
- * Existing · Opt 1 merge · Opt 2 Sync activity + scoped Run sync.
+ * Opt 1 merge · Opt 2 Sync activity + scoped Run sync.
  */
 export const AdminSyncIaCompareBar = () => {
   const classes = useStyles();

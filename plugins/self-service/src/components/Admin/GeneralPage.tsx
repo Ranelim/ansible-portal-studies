@@ -17,8 +17,13 @@ import ExpandLessIcon from '@material-ui/icons/ExpandLess';
 import CheckCircleOutlineIcon from '@material-ui/icons/CheckCircleOutline';
 import RadioButtonUncheckedIcon from '@material-ui/icons/RadioButtonUnchecked';
 import LaunchIcon from '@material-ui/icons/Launch';
+import SyncIcon from '@material-ui/icons/Sync';
+import ErrorOutlineIcon from '@material-ui/icons/ErrorOutline';
+import ScheduleIcon from '@material-ui/icons/Schedule';
 import { PageHelpIcon } from '../common/PageHelpIcon';
 import { statusColors } from '../common/statusColors';
+import { useAdminSyncIa } from './useAdminSyncIa';
+import { RunSyncScopeDialog } from './RunSyncScopeDialog';
 
 const useStyles = makeStyles(theme => ({
   sectionCard: {
@@ -43,6 +48,26 @@ const useStyles = makeStyles(theme => ({
     padding: theme.spacing(1.5, 0),
     borderBottom: `1px solid ${theme.palette.divider}`,
     '&:last-child': { borderBottom: 'none' },
+  },
+  syncMeta: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: theme.spacing(2),
+    marginTop: theme.spacing(1.5),
+    marginBottom: theme.spacing(2),
+  },
+  syncMetaItem: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 6,
+    fontSize: 13,
+    color: theme.palette.text.secondary,
+  },
+  syncActions: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: theme.spacing(1),
+    alignItems: 'center',
   },
 }));
 
@@ -76,7 +101,7 @@ const QUICK_START_STEPS = [
   },
   {
     label: 'Review sync health',
-    description: 'Monitor cross-provider sync activity. Per-provider schedules live on each Integrations card.',
+    description: 'Monitor cross-provider sync. Per-provider schedules live on each Integrations card.',
     done: false,
     link: '/self-service/admin/sync-activity',
   },
@@ -84,9 +109,26 @@ const QUICK_START_STEPS = [
 
 export const GeneralPage = () => {
   const classes = useStyles();
+  const { variant } = useAdminSyncIa();
   const doneCount = QUICK_START_STEPS.filter(s => s.done).length;
   const allDone = doneCount === QUICK_START_STEPS.length;
   const [progressOpen, setProgressOpen] = useState(!allDone);
+  const [runOpen, setRunOpen] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+
+  const historyHref =
+    variant === 'opt1'
+      ? '/self-service/admin/integrations?tab=history'
+      : '/self-service/admin/sync-activity';
+
+  const handleSyncNow = () => {
+    if (variant === 'opt2') {
+      setRunOpen(true);
+      return;
+    }
+    setSyncing(true);
+    window.setTimeout(() => setSyncing(false), 2500);
+  };
 
   return (
     <Page themeId="app">
@@ -105,7 +147,71 @@ export const GeneralPage = () => {
         subtitle="Portal setup posture and deployment status. Connect systems under Integrations."
       />
       <Content>
-
+        {/* Sync health — quick sync action from Overview */}
+        <Card className={classes.sectionCard} variant="outlined">
+          <CardContent>
+            <Box
+              display="flex"
+              justifyContent="space-between"
+              alignItems="flex-start"
+              flexWrap="wrap"
+              style={{ gap: 12 }}
+            >
+              <Box style={{ flex: '1 1 240px', minWidth: 0 }}>
+                <Typography className={classes.sectionTitle}>
+                  Sync health
+                </Typography>
+                <Typography className={classes.sectionDescription}>
+                  Cross-connection sync posture. Start a sync here, or open the
+                  full history for details.
+                </Typography>
+                <Box className={classes.syncMeta}>
+                  <Typography
+                    className={classes.syncMetaItem}
+                    component="span"
+                    style={{ color: statusColors.danger }}
+                  >
+                    <ErrorOutlineIcon style={{ fontSize: 16 }} />
+                    1 failed · GitHub — ansible-network
+                  </Typography>
+                  <Typography className={classes.syncMetaItem} component="span">
+                    <ScheduleIcon style={{ fontSize: 16 }} />
+                    Next: AAP Job Templates in 4 min
+                  </Typography>
+                </Box>
+              </Box>
+              <Box className={classes.syncActions}>
+                <Button
+                  size="small"
+                  color="primary"
+                  style={{ textTransform: 'none', fontSize: 12 }}
+                  href={historyHref}
+                >
+                  View sync history
+                </Button>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  size="small"
+                  disabled={syncing}
+                  onClick={handleSyncNow}
+                  startIcon={<SyncIcon style={{ fontSize: 16 }} />}
+                  style={{
+                    textTransform: 'none',
+                    fontSize: 13,
+                    borderRadius: 20,
+                  }}
+                >
+                  {syncing
+                    ? 'Syncing…'
+                    : variant === 'opt2'
+                      ? 'Sync now…'
+                      : 'Sync now'}
+                </Button>
+              </Box>
+            </Box>
+          </CardContent>
+        </Card>
 
         {/* Configuration Progress — collapsible, open by default while steps remain */}
         <Card className={classes.sectionCard} variant="outlined">
@@ -159,7 +265,10 @@ export const GeneralPage = () => {
                 />
               </Box>
 
-              {QUICK_START_STEPS.map(step => (
+              {QUICK_START_STEPS.map(step => {
+                const stepLink =
+                  step.label === 'Review sync health' ? historyHref : step.link;
+                return (
                 <Box key={step.label} className={classes.statusRow} style={{ alignItems: 'flex-start', padding: '12px 0' }}>
                   <Box display="flex" alignItems="flex-start" style={{ gap: 10, flex: 1 }}>
                     {step.done ? (
@@ -188,14 +297,15 @@ export const GeneralPage = () => {
                       size="small"
                       variant="outlined"
                       color="primary"
-                      href={step.link}
+                      href={stepLink}
                       style={{ textTransform: 'none', fontSize: 12, flexShrink: 0, marginTop: -1 }}
                     >
                       Configure
                     </Button>
                   )}
                 </Box>
-              ))}
+              );
+              })}
 
               <Box style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
                 <Button
@@ -236,6 +346,8 @@ export const GeneralPage = () => {
             </Box>
           </CardContent>
         </Card>
+
+        <RunSyncScopeDialog open={runOpen} onClose={() => setRunOpen(false)} />
       </Content>
     </Page>
   );

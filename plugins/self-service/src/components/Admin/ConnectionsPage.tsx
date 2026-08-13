@@ -475,11 +475,10 @@ export const ConnectionsPage = () => {
   const navigate = useNavigate();
   const [syncing, setSyncing] = useState(false);
   const merged = variant === 'opt1';
-  const tabFromUrl =
-    new URLSearchParams(location.search).get('tab') === 'activity'
-      ? 'activity'
-      : 'connections';
-  const [tab, setTab] = useState<'connections' | 'activity'>(tabFromUrl);
+  const rawTab = new URLSearchParams(location.search).get('tab');
+  const tabFromUrl: 'connections' | 'history' =
+    rawTab === 'history' || rawTab === 'activity' ? 'history' : 'connections';
+  const [tab, setTab] = useState<'connections' | 'history'>(tabFromUrl);
 
   useEffect(() => {
     setTab(tabFromUrl);
@@ -495,18 +494,18 @@ export const ConnectionsPage = () => {
     setTimeout(() => setSyncing(false), 2500);
   };
 
-  const setMergedTab = (next: 'connections' | 'activity') => {
+  const setMergedTab = (next: 'connections' | 'history') => {
     setTab(next);
     navigate(
-      next === 'activity'
-        ? '/self-service/admin/integrations?tab=activity'
+      next === 'history'
+        ? '/self-service/admin/integrations?tab=history'
         : '/self-service/admin/integrations',
       { replace: true },
     );
   };
 
   const showConnections = !merged || tab === 'connections';
-  const showActivity = merged && tab === 'activity';
+  const showHistory = merged && tab === 'history';
 
   return (
     <Page themeId="app">
@@ -519,7 +518,7 @@ export const ConnectionsPage = () => {
               title="What are Integrations?"
               description={
                 merged
-                  ? 'Opt 1: Connections (wire systems + Sync all / Sync now) and Activity (sync history) live as tabs here — no separate Sync rail.'
+                  ? 'Opt 1: Connections (wire systems + Sync all / Sync now) and Sync history live as tabs here — no separate Sync rail.'
                   : 'Integrations connect Automation Portal to external systems: AAP, Private Automation Hub, GitHub/GitLab (source control for Git repositories), container registries (EE images — not Git repos), and developer tools such as Dev Spaces. Installed Portal capabilities are listed under Plugins.'
               }
             />
@@ -528,33 +527,31 @@ export const ConnectionsPage = () => {
         pageTitleOverride="Integrations"
         subtitle={
           merged
-            ? 'Connect systems and review sync activity in one place'
+            ? 'Connect systems and review sync history in one place'
             : 'Connect AAP, Hub, source control, container registries, and developer tools'
         }
       >
-        {showConnections && (
-          <Box className={classes.headerActions}>
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={<SyncIcon style={{ fontSize: 16 }} />}
-              onClick={handleSyncAll}
-              disabled={syncing}
-              style={{ textTransform: 'none', fontSize: 13, borderRadius: 20 }}
-            >
-              {syncing ? 'Syncing…' : 'Sync all connections'}
-            </Button>
-            <Button
-              variant="contained"
-              color="primary"
-              size="small"
-              startIcon={<AddIcon style={{ fontSize: 16 }} />}
-              style={{ textTransform: 'none', fontSize: 13, borderRadius: 20 }}
-            >
-              Add integration
-            </Button>
-          </Box>
-        )}
+        <Box className={classes.headerActions}>
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<SyncIcon style={{ fontSize: 16 }} />}
+            onClick={handleSyncAll}
+            disabled={syncing}
+            style={{ textTransform: 'none', fontSize: 13, borderRadius: 20 }}
+          >
+            {syncing ? 'Syncing…' : 'Sync all connections'}
+          </Button>
+          <Button
+            variant="contained"
+            color="primary"
+            size="small"
+            startIcon={<AddIcon style={{ fontSize: 16 }} />}
+            style={{ textTransform: 'none', fontSize: 13, borderRadius: 20 }}
+          >
+            Add integration
+          </Button>
+        </Box>
       </Header>
       <Content>
         {merged && (
@@ -567,11 +564,11 @@ export const ConnectionsPage = () => {
             aria-label="Integrations sections"
           >
             <Tab label="Connections" value="connections" />
-            <Tab label="Activity" value="activity" />
+            <Tab label="Sync history" value="history" />
           </Tabs>
         )}
 
-        {showActivity && <SyncHistoryEmbedded />}
+        {showHistory && <SyncHistoryEmbedded />}
 
         {showConnections && (
           <>

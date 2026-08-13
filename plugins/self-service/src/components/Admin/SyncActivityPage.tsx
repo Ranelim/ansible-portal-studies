@@ -16,7 +16,6 @@ import {
   ListItemText,
   Divider,
   ListSubheader,
-  CircularProgress,
 } from '@material-ui/core';
 import { CatalogFilterLayout } from '@backstage/plugin-catalog-react';
 import CheckCircleOutlineIcon from '@material-ui/icons/CheckCircleOutline';
@@ -174,13 +173,6 @@ type HistoryFilter = {
   trigger: string;
   status: string;
 };
-
-function syncNowLabel(source: string): string {
-  if (source === 'all') return 'Sync all now';
-  if (source === 'Private Automation Hub') return 'Sync Hub now';
-  if (source === 'Public Registries') return 'Sync registries now';
-  return `Sync ${source} now`;
-}
 
 function entryToErrorEntity(entry: SyncHistoryEntry): SyncEntityStatus {
   return {
@@ -644,7 +636,7 @@ const SyncSettingsDropdown = () => {
 };
 
 // ---------------------------------------------------------------------------
-// History panel — reusable for Opt 1 Integrations → Activity tab
+// History panel — reusable for Opt 1 Integrations → Sync history tab
 // ---------------------------------------------------------------------------
 
 export const SyncHistoryPanel = ({
@@ -685,94 +677,56 @@ export const SyncHistoryEmbedded = () => {
 };
 
 // ---------------------------------------------------------------------------
-// Main page — variant-aware (Existing / Opt 1 redirect / Opt 2 scoped Run sync)
+// Main page — Opt 1 redirects into Integrations; Opt 2 = Sync activity + Run sync
 // ---------------------------------------------------------------------------
 
 export const SyncActivityPage = () => {
   const { variant } = useAdminSyncIa();
   const [sourceFilter, setSourceFilter] = useState('all');
-  const [syncing, setSyncing] = useState(false);
   const [runOpen, setRunOpen] = useState(false);
   const [errorEntity, setErrorEntity] = useState<SyncEntityStatus | null>(null);
 
   if (variant === 'opt1') {
     return (
       <Navigate
-        to="/self-service/admin/integrations?tab=activity"
+        to="/self-service/admin/integrations?tab=history"
         replace
       />
     );
   }
 
-  const isOpt2 = variant === 'opt2';
-
-  const handleSyncNow = () => {
-    if (syncing) return;
-    setSyncing(true);
-    window.setTimeout(() => setSyncing(false), 2500);
-  };
-
   const handleViewFailure = (entry: SyncHistoryEntry) => {
     setErrorEntity(entryToErrorEntity(entry));
   };
-
-  const title = isOpt2 ? 'Sync activity' : 'Sync';
-  const subtitle = isOpt2
-    ? 'History of sync operations. Use Run sync… to choose connections — or sync from Integrations.'
-    : 'Monitor and manage sync operations across all connected platforms';
 
   return (
     <Page themeId="app">
       <Header
         title={
           <Box display="flex" alignItems="center">
-            {title}
+            Sync activity
             <PageHelpIcon
-              tooltipLabel={`What is ${title}?`}
-              title={title}
-              description={
-                isOpt2
-                  ? 'This page is a log. Run sync… opens a scope dialog so you pick which connections to sync. Per-connection Sync now still lives on Integrations.'
-                  : 'Monitor sync operations across all connected platforms. Use Sync all now (or Sync {source} now when filtered) to trigger a manual sync. Sync settings jumps to each provider’s schedule.'
-              }
+              tooltipLabel="What is Sync activity?"
+              title="Sync activity"
+              description="This page is a log. Run sync… opens a scope dialog so you pick which connections to sync. Per-connection Sync now still lives on Integrations."
             />
           </Box>
         }
-        pageTitleOverride={title}
-        subtitle={subtitle}
+        pageTitleOverride="Sync activity"
+        subtitle="History of sync operations. Use Run sync… to choose connections — or sync from Integrations."
       >
         <Box display="flex" alignItems="center" style={{ gap: 8 }}>
           <SyncSettingsDropdown />
-          {isOpt2 ? (
-            <Button
-              variant="contained"
-              color="primary"
-              size="small"
-              onClick={() => setRunOpen(true)}
-              startIcon={<SyncIcon style={{ fontSize: 16 }} />}
-              style={{ textTransform: 'none', fontSize: 13, borderRadius: 20 }}
-            >
-              Run sync…
-            </Button>
-          ) : (
-            <Button
-              variant="contained"
-              color="primary"
-              size="small"
-              disabled={syncing}
-              onClick={handleSyncNow}
-              startIcon={
-                syncing ? (
-                  <CircularProgress size={14} color="inherit" />
-                ) : (
-                  <SyncIcon style={{ fontSize: 16 }} />
-                )
-              }
-              style={{ textTransform: 'none', fontSize: 13, borderRadius: 20 }}
-            >
-              {syncing ? 'Syncing…' : syncNowLabel(sourceFilter)}
-            </Button>
-          )}
+          <Button
+            variant="contained"
+            color="primary"
+            size="small"
+            onClick={() => setRunOpen(true)}
+            startIcon={<SyncIcon style={{ fontSize: 16 }} />}
+            style={{ textTransform: 'none', fontSize: 13, borderRadius: 20 }}
+          >
+            Run sync…
+          </Button>
         </Box>
       </Header>
       <Content>
@@ -786,12 +740,10 @@ export const SyncActivityPage = () => {
           open={Boolean(errorEntity)}
           onClose={() => setErrorEntity(null)}
         />
-        {isOpt2 && (
-          <RunSyncScopeDialog
-            open={runOpen}
-            onClose={() => setRunOpen(false)}
-          />
-        )}
+        <RunSyncScopeDialog
+          open={runOpen}
+          onClose={() => setRunOpen(false)}
+        />
       </Content>
     </Page>
   );

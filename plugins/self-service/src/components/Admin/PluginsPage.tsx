@@ -1,145 +1,189 @@
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Page, Header, Content, Link } from '@backstage/core-components';
+import { CatalogFilterLayout } from '@backstage/plugin-catalog-react';
 import {
   Box,
-  Chip,
+  Button,
+  Drawer,
+  FormControl,
+  Grid,
+  IconButton,
+  Input,
+  InputAdornment,
+  MenuItem as MuiMenuItem,
+  Paper,
+  Select,
+  Tab,
+  Tabs,
+  TextField,
   Typography,
   makeStyles,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
-  Button,
 } from '@material-ui/core';
-import ExtensionIcon from '@material-ui/icons/Extension';
+import Alert from '@material-ui/lab/Alert';
+import CloseIcon from '@material-ui/icons/Close';
+import SearchIcon from '@material-ui/icons/Search';
 import { PageHelpIcon } from '../common/PageHelpIcon';
+import { PluginCard, PluginCardGrid } from './rhdhExtensions/PluginCard';
+import { BadgeChip } from './rhdhExtensions/Badges';
+import { PluginIcon } from './rhdhExtensions/PluginIcon';
+import {
+  ExtensionsPlugin,
+  ExtensionsPluginInstallStatus,
+} from './rhdhExtensions/types';
+import {
+  PORTAL_CATALOG,
+  PortalCatalogEntry,
+} from './rhdhExtensions/portalCatalog';
 
-type PluginStatus = 'Enabled' | 'Preview' | 'Disabled';
+const EXPERIENCES = [
+  'all',
+  'Develop',
+  'Compliance',
+  'Edge',
+  'Administration',
+  'Cross-cutting',
+] as const;
 
-type PortalPluginRow = {
-  id: string;
-  name: string;
-  description: string;
-  status: PluginStatus;
-  /** Optional deep link into capability config (not a separate Admin rail item). */
-  configHref?: string;
-  configLabel?: string;
-};
-
-const DEMO_PLUGINS: PortalPluginRow[] = [
-  {
-    id: 'self-service',
-    name: 'Self-service',
-    description: 'Git Repositories, Templates, Activity, and shared Admin surfaces.',
-    status: 'Enabled',
-  },
-  {
-    id: 'apme',
-    name: 'APME Quality Scanning',
-    description:
-      'Quality tab on Git Repositories. Connect target AAP version under Integrations.',
-    status: 'Preview',
-    configHref: '/self-service/admin/integrations',
-    configLabel: 'Open Integrations',
-  },
-  {
-    id: 'compliance',
-    name: 'Compliance',
-    description: 'Inventories compliance scanning and remediation workflows.',
-    status: 'Preview',
-  },
-  {
-    id: 'devspaces',
-    name: 'Dev Spaces',
-    description:
-      'Adds “Edit in Dev Spaces” on projects. Wire the OpenShift Dev Spaces URL under Integrations → Developer tools.',
-    status: 'Enabled',
-    configHref: '/self-service/admin/integrations/devspaces',
-    configLabel: 'Configure connection',
-  },
-  {
-    id: 'ee-builder',
-    name: 'EE Builder',
-    description:
-      'Execution Environment build configuration (base images, registries, timeouts).',
-    status: 'Disabled',
-    configHref: '/self-service/admin/ee-builder',
-    configLabel: 'Open EE Builder',
-  },
-  {
-    id: 'notifications',
-    name: 'Notifications',
-    description: 'Global inbox and masthead bell. User prefs live under Settings → Notifications.',
-    status: 'Preview',
-  },
-];
+const HOSTS = [
+  'all',
+  'Git Repositories',
+  'Inventories',
+  'Edge fleets',
+  'Templates',
+  'Masthead',
+  'Administration',
+] as const;
 
 const useStyles = makeStyles(theme => ({
-  intro: {
+  pageTabs: {
     marginBottom: theme.spacing(2),
-    color: theme.palette.text.secondary,
-    maxWidth: 720,
+    borderBottom: `1px solid ${theme.palette.divider}`,
   },
-  tableWrap: {
-    border: `1px solid ${theme.palette.divider}`,
-    borderRadius: 8,
-    overflow: 'hidden',
-    backgroundColor: theme.palette.background.paper,
-  },
-  nameCell: {
+  banner: { marginBottom: theme.spacing(2) },
+  filterLabel: {
+    marginTop: theme.spacing(2),
+    marginBottom: theme.spacing(0.5),
+    fontSize: 12,
     fontWeight: 600,
-    fontSize: 14,
-  },
-  desc: {
-    fontSize: 13,
     color: theme.palette.text.secondary,
-    maxWidth: 480,
+    '&:first-of-type': { marginTop: 0 },
   },
-  emptyIcon: {
-    opacity: 0.35,
-    marginRight: theme.spacing(1),
-    verticalAlign: 'middle',
+  filterPaper: {
+    padding: theme.spacing(0, 1),
+    marginBottom: theme.spacing(0.5),
+  },
+  toolbar: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: theme.spacing(2),
+    marginBottom: theme.spacing(2),
+    flexWrap: 'wrap',
+  },
+  search: { minWidth: 220, maxWidth: 320, flex: '1 1 220px' },
+  // RHDH ExtensionsPluginDrawer: PaperProps sx minWidth 300, width 55vw
+  drawerPaper: {
+    minWidth: 300,
+    width: '55vw',
+    maxWidth: '100%',
+  },
+  drawerInner: {
+    padding: theme.spacing(3),
+  },
+  drawerClose: {
+    position: 'absolute',
+    right: 16,
+    top: 16,
+    color: theme.palette.grey[500],
   },
 }));
 
-function statusChip(status: PluginStatus) {
-  if (status === 'Enabled') {
-    return (
-      <Chip
-        label="Enabled"
-        size="small"
-        style={{ backgroundColor: '#e6f9e6', color: '#1e4620', fontSize: 11, height: 22 }}
-      />
-    );
-  }
-  if (status === 'Preview') {
-    return (
-      <Chip
-        label="Preview"
-        size="small"
-        style={{ backgroundColor: 'rgba(0,102,204,0.12)', color: '#0066CC', fontSize: 11, height: 22 }}
-      />
-    );
-  }
-  return (
-    <Chip
-      label="Disabled"
-      size="small"
-      variant="outlined"
-      style={{ fontSize: 11, height: 22 }}
-    />
-  );
-}
-
 /**
- * Administration → Plugins — installed Portal capabilities / enablement inventory.
- * External system wiring stays under Integrations (e.g. Dev Spaces URL).
- * EE Builder config is reached from here, not as its own Admin rail item.
+ * Administration → Plugins
+ * Catalog chrome = vendored RHDH Extensions PluginCard / BadgeTriange / PluginIcon.
+ * Portal-only: Experience + Host filters + Surfaces in the drawer.
  */
 export const PluginsPage = () => {
   const classes = useStyles();
   const navigate = useNavigate();
+
+  const [tab, setTab] = useState<'catalog' | 'installed'>('catalog');
+  const [experience, setExperience] = useState<string>('all');
+  const [host, setHost] = useState<string>('all');
+  const [query, setQuery] = useState('');
+  const [selectedName, setSelectedName] = useState<string | null>(null);
+  const [overrides, setOverrides] = useState<
+    Record<string, ExtensionsPluginInstallStatus>
+  >({});
+
+  const catalog = useMemo(() => {
+    return PORTAL_CATALOG.map(entry => {
+      const status =
+        overrides[entry.plugin.metadata.name] ??
+        entry.plugin.spec?.installStatus;
+      return {
+        ...entry,
+        plugin: {
+          ...entry.plugin,
+          spec: { ...entry.plugin.spec, installStatus: status },
+        },
+      };
+    });
+  }, [overrides]);
+
+  const installedCount = catalog.filter(
+    e =>
+      e.plugin.spec?.installStatus ===
+        ExtensionsPluginInstallStatus.Installed ||
+      e.plugin.spec?.installStatus ===
+        ExtensionsPluginInstallStatus.UpdateAvailable,
+  ).length;
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return catalog.filter(entry => {
+      const installed =
+        entry.plugin.spec?.installStatus ===
+          ExtensionsPluginInstallStatus.Installed ||
+        entry.plugin.spec?.installStatus ===
+          ExtensionsPluginInstallStatus.UpdateAvailable;
+      if (tab === 'installed' && !installed) return false;
+      if (
+        experience !== 'all' &&
+        !entry.extras.experiences.includes(experience)
+      ) {
+        return false;
+      }
+      if (host !== 'all' && !entry.extras.hosts.includes(host)) return false;
+      if (!q) return true;
+      const title = entry.plugin.metadata.title ?? entry.plugin.metadata.name;
+      return (
+        title.toLowerCase().includes(q) ||
+        (entry.plugin.metadata.description ?? '').toLowerCase().includes(q) ||
+        entry.extras.surfacePath.toLowerCase().includes(q)
+      );
+    });
+  }, [catalog, tab, experience, host, query]);
+
+  const selected: PortalCatalogEntry | undefined = catalog.find(
+    e => e.plugin.metadata.name === selectedName,
+  );
+
+  const openPlugin = (plugin: ExtensionsPlugin) => {
+    setSelectedName(plugin.metadata.name);
+  };
+
+  const toggleInstall = (entry: PortalCatalogEntry) => {
+    const name = entry.plugin.metadata.name;
+    const current =
+      overrides[name] ?? entry.plugin.spec?.installStatus;
+    const next =
+      current === ExtensionsPluginInstallStatus.Installed
+        ? ExtensionsPluginInstallStatus.Disabled
+        : ExtensionsPluginInstallStatus.Installed;
+    setOverrides(prev => ({ ...prev, [name]: next }));
+  };
 
   return (
     <Page themeId="app">
@@ -150,68 +194,249 @@ export const PluginsPage = () => {
             <PageHelpIcon
               tooltipLabel="What are Plugins?"
               title="Plugins"
-              description="Plugins are Portal capabilities installed on this instance (preview, enablement, lifecycle). Connecting external systems — AAP, GitHub, container registries, Dev Spaces — stays under Integrations."
+              description="Catalog cards use the RHDH Extensions PluginCard components (BadgeTriange, PluginIcon, CategoryLinkButton). Experience and Host are Portal filters; Surfaces in the drawer explain where UI lands."
             />
           </Box>
         }
         pageTitleOverride="Plugins"
-        subtitle="Installed Portal capabilities. Connect external systems under Integrations."
+        subtitle="Browse and enable Portal capabilities. Connections stay under Integrations."
       />
       <Content>
-        <Typography className={classes.intro} variant="body2">
-          <ExtensionIcon className={classes.emptyIcon} fontSize="small" />
-          This inventory is not a menu of experiences. Enablement here does not add
-          left-nav items by itself — features attach to object homes or Integrations
-          as designed.
-        </Typography>
+        <Tabs
+          className={classes.pageTabs}
+          value={tab}
+          onChange={(_e, v) => setTab(v)}
+          indicatorColor="primary"
+          textColor="primary"
+          aria-label="Plugins catalog"
+        >
+          <Tab label="Catalog" value="catalog" />
+          <Tab label={`Installed (${installedCount})`} value="installed" />
+        </Tabs>
 
-        <Box className={classes.tableWrap}>
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>Plugin</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell align="right">Actions</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {DEMO_PLUGINS.map(plugin => (
-                <TableRow key={plugin.id}>
-                  <TableCell>
-                    <Typography className={classes.nameCell}>{plugin.name}</Typography>
-                    <Typography className={classes.desc}>{plugin.description}</Typography>
-                  </TableCell>
-                  <TableCell>{statusChip(plugin.status)}</TableCell>
-                  <TableCell align="right">
-                    {plugin.configHref ? (
+        <Alert severity="info" className={classes.banner}>
+          Cards are the RHDH Extensions PluginCard (vendored). Prototype
+          enablement is simulated.{' '}
+          <Link to="/docs">View documentation</Link>
+        </Alert>
+
+        <CatalogFilterLayout>
+          <CatalogFilterLayout.Filters>
+            <Typography className={classes.filterLabel}>Experience</Typography>
+            <Paper className={classes.filterPaper}>
+              <FormControl fullWidth>
+                <Select
+                  value={experience}
+                  onChange={e => setExperience(e.target.value as string)}
+                  input={<Input disableUnderline />}
+                  inputProps={{ 'aria-label': 'Filter by experience' }}
+                >
+                  {EXPERIENCES.map(opt => (
+                    <MuiMenuItem key={opt} value={opt}>
+                      {opt === 'all' ? 'All' : opt}
+                    </MuiMenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Paper>
+
+            <Typography className={classes.filterLabel}>Host</Typography>
+            <Paper className={classes.filterPaper}>
+              <FormControl fullWidth>
+                <Select
+                  value={host}
+                  onChange={e => setHost(e.target.value as string)}
+                  input={<Input disableUnderline />}
+                  inputProps={{ 'aria-label': 'Filter by host' }}
+                >
+                  {HOSTS.map(opt => (
+                    <MuiMenuItem key={opt} value={opt}>
+                      {opt === 'all' ? 'All' : opt}
+                    </MuiMenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Paper>
+          </CatalogFilterLayout.Filters>
+
+          <CatalogFilterLayout.Content>
+            <Box className={classes.toolbar}>
+              <Typography variant="h6" style={{ fontWeight: 500 }}>
+                Plugins ({filtered.length})
+              </Typography>
+              <TextField
+                className={classes.search}
+                size="small"
+                variant="outlined"
+                placeholder="Search"
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon fontSize="small" color="action" />
+                    </InputAdornment>
+                  ),
+                }}
+                inputProps={{ 'aria-label': 'Search plugins' }}
+              />
+            </Box>
+
+            <PluginCardGrid>
+              {filtered.map(entry => (
+                <PluginCard
+                  key={entry.plugin.metadata.name}
+                  plugin={entry.plugin}
+                  onOpen={openPlugin}
+                  onCategoryClick={cat => setExperience(cat)}
+                />
+              ))}
+            </PluginCardGrid>
+
+            {filtered.length === 0 && (
+              <Box py={6} textAlign="center">
+                <Typography color="textSecondary">
+                  No plugins match these filters.
+                </Typography>
+              </Box>
+            )}
+          </CatalogFilterLayout.Content>
+        </CatalogFilterLayout>
+
+        <Drawer
+          anchor="right"
+          open={Boolean(selected)}
+          onClose={() => setSelectedName(null)}
+          PaperProps={{ className: classes.drawerPaper }}
+        >
+          {selected && (
+            <Box className={classes.drawerInner}>
+              <IconButton
+                aria-label="close"
+                className={classes.drawerClose}
+                onClick={() => setSelectedName(null)}
+              >
+                <CloseIcon />
+              </IconButton>
+
+              {/* Header row matches ExtensionsPluginContent */}
+              <Box display="flex" alignItems="center" style={{ gap: 16 }} mb={4}>
+                <PluginIcon plugin={selected.plugin} size={80} />
+                <Box>
+                  <Typography variant="h5" style={{ fontWeight: 500 }}>
+                    {selected.plugin.metadata.title ??
+                      selected.plugin.metadata.name}
+                  </Typography>
+                  <Box display="flex" alignItems="center" style={{ gap: 8 }}>
+                    <Typography variant="subtitle2" style={{ fontWeight: 400 }}>
+                      by{' '}
+                      <Link to="/self-service/admin/plugins">Red Hat</Link>
+                    </Typography>
+                    <BadgeChip plugin={selected.plugin} />
+                  </Box>
+                </Box>
+              </Box>
+
+              <Grid container spacing={2}>
+                <Grid item xs={12} md={3}>
+                  <Typography
+                    variant="subtitle1"
+                    style={{ fontWeight: 500, marginBottom: 8 }}
+                  >
+                    Highlights
+                  </Typography>
+                  <ul style={{ paddingLeft: 20, marginBottom: 24 }}>
+                    {(selected.plugin.spec?.highlights ?? []).map(h => (
+                      <li key={h} style={{ marginBottom: 8 }}>
+                        {h}
+                      </li>
+                    ))}
+                  </ul>
+                  <Typography
+                    variant="subtitle1"
+                    style={{ fontWeight: 500, marginBottom: 4 }}
+                  >
+                    Experience
+                  </Typography>
+                  <Typography variant="body2" paragraph>
+                    {selected.extras.experiences.join(', ')}
+                  </Typography>
+                  <Typography
+                    variant="subtitle1"
+                    style={{ fontWeight: 500, marginBottom: 4 }}
+                  >
+                    Host
+                  </Typography>
+                  <Typography variant="body2" paragraph>
+                    {selected.extras.hosts.join(', ')}
+                  </Typography>
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    disableElevation
+                    style={{ textTransform: 'none', marginTop: 8 }}
+                    onClick={() => toggleInstall(selected)}
+                  >
+                    {selected.plugin.spec?.installStatus ===
+                    ExtensionsPluginInstallStatus.Installed
+                      ? 'Disable'
+                      : 'Enable'}
+                  </Button>
+                </Grid>
+                <Grid item xs={12} md={9}>
+                  <Typography
+                    variant="subtitle1"
+                    style={{ fontWeight: 'bold', marginBottom: 8 }}
+                  >
+                    About
+                  </Typography>
+                  <Typography variant="body2" color="textSecondary" paragraph>
+                    {selected.extras.about}
+                  </Typography>
+                  <Typography
+                    variant="subtitle1"
+                    style={{ fontWeight: 'bold', marginBottom: 8 }}
+                  >
+                    Where it appears
+                  </Typography>
+                  <Typography variant="body2" paragraph>
+                    {selected.extras.surfacePath}
+                  </Typography>
+                  <Typography variant="body2" color="textSecondary">
+                    Does not:
+                  </Typography>
+                  <ul style={{ paddingLeft: 20 }}>
+                    {selected.extras.doesNot.map(d => (
+                      <li key={d}>{d}</li>
+                    ))}
+                  </ul>
+                  <Box mt={2} display="flex" flexDirection="column" style={{ gap: 8 }}>
+                    {selected.extras.openSurfaceHref && (
+                      <Link
+                        to={selected.extras.openSurfaceHref}
+                        onClick={() => setSelectedName(null)}
+                      >
+                        {selected.extras.openSurfaceLabel ?? 'Open surface'}
+                      </Link>
+                    )}
+                    {selected.extras.configHref && (
                       <Button
                         color="primary"
-                        size="small"
-                        style={{ textTransform: 'none', borderRadius: 20 }}
-                        onClick={() => navigate(plugin.configHref!)}
+                        style={{ textTransform: 'none', alignSelf: 'flex-start' }}
+                        onClick={() => {
+                          navigate(selected.extras.configHref!);
+                          setSelectedName(null);
+                        }}
                       >
-                        {plugin.configLabel ?? 'Configure'}
+                        {selected.extras.configLabel ?? 'Configure'}
                       </Button>
-                    ) : (
-                      <Typography variant="caption" color="textSecondary">
-                        —
-                      </Typography>
                     )}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </Box>
-
-        <Box mt={2}>
-          <Typography variant="caption" color="textSecondary">
-            Looking for GitHub or GitLab? Those are source-control{' '}
-            <Link to="/self-service/admin/integrations">Integrations</Link>
-            , not plugins. Container registries (for EE images) are also under
-            Integrations — not Git Repositories.
-          </Typography>
-        </Box>
+                  </Box>
+                </Grid>
+              </Grid>
+            </Box>
+          )}
+        </Drawer>
       </Content>
     </Page>
   );

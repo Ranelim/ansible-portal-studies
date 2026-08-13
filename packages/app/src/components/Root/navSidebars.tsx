@@ -228,8 +228,7 @@ const LearnItems = () => (
 
 const AdminItems = () => {
   const { variant } = useAdminSyncIa();
-  const showSyncRail = variant !== 'opt1';
-  const syncLabel = variant === 'opt2' ? 'Sync activity' : 'Sync';
+  const showSyncRail = variant === 'opt2';
 
   return (
     <>
@@ -247,7 +246,7 @@ const AdminItems = () => {
         <SidebarItem
           icon={SyncIcon}
           to="/self-service/admin/sync-activity"
-          text={syncLabel}
+          text="Sync activity"
         />
       )}
       <SidebarItem icon={VpnKeyIcon} to="rbac" text="Access Control" />
