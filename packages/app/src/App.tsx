@@ -22,7 +22,10 @@ import {
 } from '@backstage/plugin-techdocs';
 import { TechDocsAddons } from '@backstage/plugin-techdocs-react';
 import { ReportIssue } from '@backstage/plugin-techdocs-module-addons-contrib';
-import { UserSettingsPage } from '@backstage/plugin-user-settings';
+import {
+  SettingsLayout,
+  UserSettingsPage,
+} from '@backstage/plugin-user-settings';
 import { apis } from './apis';
 import { entityPage } from './components/catalog/EntityPage';
 import { SearchPage as BackstageSearchPage } from '@backstage/plugin-search';
@@ -31,6 +34,7 @@ import { Root } from './components/Root';
 import { GlobalHeader } from './components/GlobalHeader';
 // import { ExperienceReturnCompareBar } from './components/IaPrototype'; // kept — remount when comparing A again
 import { PortalNotificationsPage } from './components/Notifications/PortalNotificationsPage';
+import { PortalNotificationSettings } from './components/Notifications/PortalNotificationSettings';
 import { LightspeedProvider, LightspeedPanel } from './components/Lightspeed';
 import { QuickstartProvider, QuickstartPanel, WelcomeModal } from './components/Quickstart';
 import { getThemes } from '@red-hat-developer-hub/backstage-plugin-theme';
@@ -324,7 +328,11 @@ const routes = (
       <SearchPage />
     </Route>
     <Route path="/rbac" element={<RbacPage />} />
-    <Route path="/settings" element={<UserSettingsPage />} />
+    <Route path="/settings" element={<UserSettingsPage />}>
+      <SettingsLayout.Route path="/notifications" title="Notifications">
+        <PortalNotificationSettings />
+      </SettingsLayout.Route>
+    </Route>
     <Route path="/notifications" element={<PortalNotificationsPage />} />
     <Route path="/catalog-graph" element={<CatalogGraphPage />} />
     <Route path="/self-service" element={<SelfServicePage />} />

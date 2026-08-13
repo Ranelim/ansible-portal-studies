@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Page, Header, Content } from '@backstage/core-components';
 import {
@@ -21,11 +21,18 @@ import NotificationsNoneIcon from '@material-ui/icons/NotificationsNone';
 import DoneAllIcon from '@material-ui/icons/DoneAll';
 import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
 import OpenInNewIcon from '@material-ui/icons/OpenInNew';
+import SettingsIcon from '@material-ui/icons/Settings';
 import {
   EXPERIENCE_LABELS,
   writeNavExperience,
   type NavExperience,
 } from '@ansible/plugin-backstage-self-service';
+import {
+  NOTIFICATION_PREF_EVENT,
+  readNotificationPrefs,
+  type NotificationEventType,
+  type NotificationPrefs,
+} from './notificationPrefs';
 
 type ExperienceFilter = 'all' | Exclude<NavExperience, 'all'>;
 type Severity = 'Critical' | 'Important' | 'Normal';
@@ -39,6 +46,7 @@ type DemoItem = {
   detail: string;
   entity: string;
   experience: Exclude<NavExperience, 'all'>;
+  eventType: NotificationEventType;
   when: string;
   severity: Severity;
   unread: boolean;
@@ -69,6 +77,7 @@ const INITIAL_ITEMS: DemoItem[] = [
       'The run stopped after the playbook could not apply the firewall ruleset on host web-03. Review the Activity log, then re-run the template or open the repository to fix the task.',
     entity: 'network-harden',
     experience: 'automate',
+    eventType: 'template-run-failures',
     when: '12 minutes ago',
     severity: 'Critical',
     unread: true,
@@ -82,6 +91,7 @@ const INITIAL_ITEMS: DemoItem[] = [
       'APME reported new high-severity findings in roles/firewall. Score impact is concentrated in policy and security validators. Open the repository Quality tab to triage findings.',
     entity: 'edge-firewall',
     experience: 'develop',
+    eventType: 'quality-alerts',
     when: '1 hour ago',
     severity: 'Important',
     unread: true,
@@ -95,6 +105,7 @@ const INITIAL_ITEMS: DemoItem[] = [
       'Scheduled OpenSCAP scan against the DISA STIG profile completed successfully. No new critical findings since the last remediation cycle. Open Inventories to review the full report.',
     entity: 'prod-rhel',
     experience: 'compliance',
+    eventType: 'compliance-results',
     when: 'Yesterday',
     severity: 'Normal',
     unread: false,
@@ -108,6 +119,7 @@ const INITIAL_ITEMS: DemoItem[] = [
       'A new OS image is staged for store-edge-west (48 devices). Review the update window and rollout policy before approving. Open Edge fleets to continue.',
     entity: 'store-edge-west',
     experience: 'edge',
+    eventType: 'fleet-updates',
     when: '2 hours ago',
     severity: 'Normal',
     unread: true,
@@ -198,6 +210,11 @@ const useStyles = makeStyles(theme => ({
     minWidth: 0,
   },
   markAllBtn: {
+    textTransform: 'none',
+    fontWeight: 500,
+    borderRadius: 20,
+  },
+  settingsBtn: {
     textTransform: 'none',
     fontWeight: 500,
     borderRadius: 20,
@@ -372,24 +389,42 @@ export const PortalNotificationsPage = () => {
     useState<ExperienceFilter>('all');
   const [readFilter, setReadFilter] = useState<ReadFilter>('all');
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
+  const [prefs, setPrefs] = useState<NotificationPrefs>(() =>
+    readNotificationPrefs(),
+  );
+
+  useEffect(() => {
+    const refresh = () => setPrefs(readNotificationPrefs());
+    window.addEventListener(NOTIFICATION_PREF_EVENT, refresh);
+    window.addEventListener('storage', refresh);
+    return () => {
+      window.removeEventListener(NOTIFICATION_PREF_EVENT, refresh);
+      window.removeEventListener('storage', refresh);
+    };
+  }, []);
 
   const currentExperience = useMemo(
     () => readReturnExperience() ?? readLastExperience(),
     [],
   );
 
+  const subscribedItems = useMemo(
+    () => items.filter(i => prefs[i.eventType]),
+    [items, prefs],
+  );
+
   const unreadCount = useMemo(
-    () => items.filter(i => i.unread).length,
-    [items],
+    () => subscribedItems.filter(i => i.unread).length,
+    [subscribedItems],
   );
 
   const counts = useMemo(() => {
     const map: Partial<Record<Exclude<NavExperience, 'all'>, number>> = {};
     for (const id of FILTER_EXPERIENCES) {
-      map[id] = items.filter(i => i.experience === id).length;
+      map[id] = subscribedItems.filter(i => i.experience === id).length;
     }
     return map;
-  }, [items]);
+  }, [subscribedItems]);
 
   const menuExperiences = useMemo(() => {
     const withItems = FILTER_EXPERIENCES.filter(id => (counts[id] ?? 0) > 0);
@@ -403,7 +438,7 @@ export const PortalNotificationsPage = () => {
   }, [counts, currentExperience]);
 
   const visible = useMemo(() => {
-    return items.filter(item => {
+    return subscribedItems.filter(item => {
       if (
         experienceFilter !== 'all' &&
         item.experience !== experienceFilter
@@ -415,7 +450,7 @@ export const PortalNotificationsPage = () => {
       }
       return true;
     });
-  }, [items, experienceFilter, readFilter]);
+  }, [subscribedItems, experienceFilter, readFilter]);
 
   const markAllRead = () => {
     setItems(prev => prev.map(i => ({ ...i, unread: false })));
@@ -474,7 +509,7 @@ export const PortalNotificationsPage = () => {
               }
               inputProps={{ 'aria-label': 'Filter by experience' }}
             >
-              <MenuItem value="all">All ({items.length})</MenuItem>
+              <MenuItem value="all">All ({subscribedItems.length})</MenuItem>
               {menuExperiences.map(id => (
                 <MenuItem key={id} value={id}>
                   {EXPERIENCE_LABELS[id]}
@@ -499,6 +534,18 @@ export const PortalNotificationsPage = () => {
           </Button>
 
           <Box className={classes.toolbarSpacer} />
+
+          <Button
+            className={classes.settingsBtn}
+            color="primary"
+            variant="text"
+            size="small"
+            startIcon={<SettingsIcon />}
+            onClick={() => navigate('/settings/notifications')}
+            style={{ borderRadius: 20 }}
+          >
+            Notification settings
+          </Button>
 
           <Button
             className={classes.markAllBtn}
@@ -612,11 +659,13 @@ export const PortalNotificationsPage = () => {
               <Box className={classes.empty}>
                 <NotificationsNoneIcon style={{ opacity: 0.3, fontSize: 36 }} />
                 <Typography color="textSecondary">
-                  {readFilter === 'unread'
-                    ? "You're all caught up"
-                    : experienceFilter === 'all'
+                  {subscribedItems.length === 0
+                    ? 'No notification types enabled. Turn some on in Notification settings.'
+                    : readFilter === 'unread'
                       ? "You're all caught up"
-                      : `No notifications in ${EXPERIENCE_LABELS[experienceFilter]}`}
+                      : experienceFilter === 'all'
+                        ? "You're all caught up"
+                        : `No notifications in ${EXPERIENCE_LABELS[experienceFilter]}`}
                 </Typography>
               </Box>
             </ListItem>
