@@ -1,13 +1,14 @@
 import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Page, Header, Content } from '@backstage/core-components';
 import {
   Box,
   Button,
+  Collapse,
   FormControl,
   InputLabel,
   List,
   ListItem,
-  ListItemText,
   MenuItem,
   Select,
   Typography,
@@ -17,8 +18,12 @@ import ErrorOutlineIcon from '@material-ui/icons/ErrorOutline';
 import WarningIcon from '@material-ui/icons/Warning';
 import InfoOutlinedIcon from '@material-ui/icons/InfoOutlined';
 import NotificationsNoneIcon from '@material-ui/icons/NotificationsNone';
+import DoneAllIcon from '@material-ui/icons/DoneAll';
+import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
+import OpenInNewIcon from '@material-ui/icons/OpenInNew';
 import {
   EXPERIENCE_LABELS,
+  writeNavExperience,
   type NavExperience,
 } from '@ansible/plugin-backstage-self-service';
 
@@ -29,11 +34,16 @@ type ReadFilter = 'all' | 'unread';
 type DemoItem = {
   id: string;
   title: string;
+  description: string;
+  /** Richer author payload shown when expanded. */
+  detail: string;
   entity: string;
   experience: Exclude<NavExperience, 'all'>;
   when: string;
   severity: Severity;
   unread: boolean;
+  /** Prototype deep link into the relevant experience surface. */
+  href: string;
 };
 
 /** PF6 status intent — bar + label share these colors (icon + text, not color alone). */
@@ -50,42 +60,58 @@ const SEVERITY_STYLE: Record<
   Normal: { color: '#0066CC', bg: 'rgba(0, 102, 204, 0.12)', label: 'Normal' },
 };
 
-const DEMO_ITEMS: DemoItem[] = [
+const INITIAL_ITEMS: DemoItem[] = [
   {
     id: '1',
     title: 'Template run failed',
+    description: 'network-harden failed on step “Apply firewall rules”.',
+    detail:
+      'The run stopped after the playbook could not apply the firewall ruleset on host web-03. Review the Activity log, then re-run the template or open the repository to fix the task.',
     entity: 'network-harden',
     experience: 'automate',
     when: '12 minutes ago',
     severity: 'Critical',
     unread: true,
+    href: '/self-service/create/tasks',
   },
   {
     id: '2',
     title: 'Quality score dropped',
+    description: 'edge-firewall fell from 82 to 64 after the latest scan.',
+    detail:
+      'APME reported new high-severity findings in roles/firewall. Score impact is concentrated in policy and security validators. Open the repository Quality tab to triage findings.',
     entity: 'edge-firewall',
     experience: 'develop',
     when: '1 hour ago',
     severity: 'Important',
     unread: true,
+    href: '/self-service/repositories',
   },
   {
     id: '3',
     title: 'Compliance scan completed',
+    description: 'prod-rhel finished with no new critical findings.',
+    detail:
+      'Scheduled OpenSCAP scan against the DISA STIG profile completed successfully. No new critical findings since the last remediation cycle. Open Inventories to review the full report.',
     entity: 'prod-rhel',
     experience: 'compliance',
     when: 'Yesterday',
     severity: 'Normal',
     unread: false,
+    href: '/self-service/inventories',
   },
   {
     id: '4',
     title: 'Fleet update ready',
+    description: 'store-edge-west has a staged OS update ready to roll out.',
+    detail:
+      'A new OS image is staged for store-edge-west (48 devices). Review the update window and rollout policy before approving. Open Edge fleets to continue.',
     entity: 'store-edge-west',
     experience: 'edge',
     when: '2 hours ago',
     severity: 'Normal',
     unread: true,
+    href: '/self-service/edge-fleets',
   },
 ];
 
@@ -154,6 +180,10 @@ const useStyles = makeStyles(theme => ({
     gap: theme.spacing(1.5),
     marginBottom: theme.spacing(1.5),
   },
+  toolbarSpacer: {
+    flex: 1,
+    minWidth: theme.spacing(1),
+  },
   experienceSelect: {
     minWidth: 200,
     '& .MuiOutlinedInput-root': {
@@ -167,6 +197,11 @@ const useStyles = makeStyles(theme => ({
     borderRadius: 20,
     minWidth: 0,
   },
+  markAllBtn: {
+    textTransform: 'none',
+    fontWeight: 500,
+    borderRadius: 20,
+  },
   list: {
     backgroundColor: theme.palette.background.paper,
     borderTop: `1px solid ${theme.palette.divider}`,
@@ -175,30 +210,23 @@ const useStyles = makeStyles(theme => ({
   },
   row: {
     position: 'relative',
-    alignItems: 'flex-start',
-    paddingTop: theme.spacing(1.75),
-    paddingBottom: theme.spacing(1.75),
-    paddingLeft: theme.spacing(2.5),
-    paddingRight: theme.spacing(2),
+    display: 'block',
+    padding: 0,
     borderBottom: `1px solid ${theme.palette.divider}`,
-    transition: 'background-color 120ms ease',
     '&:last-child': {
       borderBottom: 'none',
     },
-    '&:hover': {
-      // Slightly stronger than unread wash so hover still reads
-      backgroundColor:
-        theme.palette.type === 'dark'
-          ? 'rgba(255,255,255,0.06)'
-          : 'rgba(0,0,0,0.04)',
-    },
   },
   rowUnread: {
-    // Cool grey whisper — unread, not severity (avoids warning-yellow collision)
+    // Warm attention wash (not cool grey) — clears when expand marks read.
     backgroundColor:
       theme.palette.type === 'dark'
-        ? 'rgba(255,255,255,0.04)'
-        : 'rgba(0, 0, 0, 0.035)',
+        ? 'rgba(240, 171, 0, 0.14)'
+        : '#FFFBE6',
+  },
+  rowExpanded: {
+    // Stay neutral once open — do not keep unread tint under expanded detail.
+    backgroundColor: 'transparent',
   },
   severityBar: {
     position: 'absolute',
@@ -206,6 +234,47 @@ const useStyles = makeStyles(theme => ({
     top: 0,
     bottom: 0,
     width: 3,
+  },
+  rowHeader: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    width: '100%',
+    margin: 0,
+    paddingTop: theme.spacing(1.75),
+    paddingBottom: theme.spacing(1.75),
+    paddingLeft: theme.spacing(2.5),
+    paddingRight: theme.spacing(1.5),
+    border: 'none',
+    background: 'transparent',
+    textAlign: 'left',
+    cursor: 'pointer',
+    font: 'inherit',
+    color: 'inherit',
+    transition: 'background-color 120ms ease',
+    '&:hover': {
+      backgroundColor:
+        theme.palette.type === 'dark'
+          ? 'rgba(255,255,255,0.06)'
+          : 'rgba(0,0,0,0.04)',
+    },
+    '&:focus-visible': {
+      outline: `2px solid ${theme.palette.primary.main}`,
+      outlineOffset: -2,
+    },
+  },
+  rowHeaderBody: {
+    flex: 1,
+    minWidth: 0,
+  },
+  chevron: {
+    flexShrink: 0,
+    marginLeft: theme.spacing(1),
+    marginTop: 2,
+    color: theme.palette.text.secondary,
+    transition: 'transform 160ms ease',
+  },
+  chevronOpen: {
+    transform: 'rotate(180deg)',
   },
   titleRow: {
     display: 'flex',
@@ -245,10 +314,41 @@ const useStyles = makeStyles(theme => ({
     whiteSpace: 'nowrap',
     border: 0,
   },
-  meta: {
+  description: {
     fontSize: 13,
+    lineHeight: 1.4,
+    color: theme.palette.text.primary,
+    marginTop: 4,
+    opacity: 0.9,
+  },
+  meta: {
+    fontSize: 12,
     color: theme.palette.text.secondary,
     marginTop: 4,
+  },
+  expandPanel: {
+    paddingLeft: theme.spacing(2.5),
+    paddingRight: theme.spacing(2),
+    paddingBottom: theme.spacing(2),
+  },
+  detail: {
+    fontSize: 13,
+    lineHeight: 1.5,
+    color: theme.palette.text.primary,
+    marginTop: 0,
+    marginBottom: theme.spacing(1.5),
+    maxWidth: 720,
+  },
+  actions: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: theme.spacing(1),
+  },
+  actionBtn: {
+    textTransform: 'none',
+    fontWeight: 500,
+    borderRadius: 20,
   },
   empty: {
     textAlign: 'center',
@@ -259,14 +359,19 @@ const useStyles = makeStyles(theme => ({
 }));
 
 /**
- * Cross-experience notification center — PF6 status intent on MUI.
- * Severity = bar + label; unread = cool wash + title weight + toolbar filter.
+ * Cross-experience notification center.
+ * Row click expands author detail and marks that item read (expand = ack).
+ * Multiple items can stay open — opening one does not collapse others.
+ * Deep link is a secondary “Open in …” CTA. Open center ≠ mark all read.
  */
 export const PortalNotificationsPage = () => {
   const classes = useStyles();
+  const navigate = useNavigate();
+  const [items, setItems] = useState<DemoItem[]>(INITIAL_ITEMS);
   const [experienceFilter, setExperienceFilter] =
     useState<ExperienceFilter>('all');
   const [readFilter, setReadFilter] = useState<ReadFilter>('all');
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
 
   const currentExperience = useMemo(
     () => readReturnExperience() ?? readLastExperience(),
@@ -274,17 +379,17 @@ export const PortalNotificationsPage = () => {
   );
 
   const unreadCount = useMemo(
-    () => DEMO_ITEMS.filter(i => i.unread).length,
-    [],
+    () => items.filter(i => i.unread).length,
+    [items],
   );
 
   const counts = useMemo(() => {
     const map: Partial<Record<Exclude<NavExperience, 'all'>, number>> = {};
     for (const id of FILTER_EXPERIENCES) {
-      map[id] = DEMO_ITEMS.filter(i => i.experience === id).length;
+      map[id] = items.filter(i => i.experience === id).length;
     }
     return map;
-  }, []);
+  }, [items]);
 
   const menuExperiences = useMemo(() => {
     const withItems = FILTER_EXPERIENCES.filter(id => (counts[id] ?? 0) > 0);
@@ -298,7 +403,7 @@ export const PortalNotificationsPage = () => {
   }, [counts, currentExperience]);
 
   const visible = useMemo(() => {
-    return DEMO_ITEMS.filter(item => {
+    return items.filter(item => {
       if (
         experienceFilter !== 'all' &&
         item.experience !== experienceFilter
@@ -310,7 +415,42 @@ export const PortalNotificationsPage = () => {
       }
       return true;
     });
-  }, [experienceFilter, readFilter]);
+  }, [items, experienceFilter, readFilter]);
+
+  const markAllRead = () => {
+    setItems(prev => prev.map(i => ({ ...i, unread: false })));
+    if (readFilter === 'unread') {
+      setReadFilter('all');
+    }
+  };
+
+  const markItemRead = (id: string) => {
+    setItems(prev =>
+      prev.map(i => (i.id === id ? { ...i, unread: false } : i)),
+    );
+  };
+
+  const toggleExpanded = (id: string) => {
+    const wasOpen = expandedIds.has(id);
+    setExpandedIds(prev => {
+      const next = new Set(prev);
+      if (wasOpen) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+    if (!wasOpen) {
+      markItemRead(id);
+    }
+  };
+
+  const openInExperience = (item: DemoItem) => {
+    markItemRead(item.id);
+    writeNavExperience(item.experience);
+    navigate(item.href);
+  };
 
   return (
     <Page themeId="app">
@@ -334,7 +474,7 @@ export const PortalNotificationsPage = () => {
               }
               inputProps={{ 'aria-label': 'Filter by experience' }}
             >
-              <MenuItem value="all">All ({DEMO_ITEMS.length})</MenuItem>
+              <MenuItem value="all">All ({items.length})</MenuItem>
               {menuExperiences.map(id => (
                 <MenuItem key={id} value={id}>
                   {EXPERIENCE_LABELS[id]}
@@ -357,27 +497,51 @@ export const PortalNotificationsPage = () => {
           >
             {unreadCount} unread
           </Button>
+
+          <Box className={classes.toolbarSpacer} />
+
+          <Button
+            className={classes.markAllBtn}
+            color="primary"
+            variant="outlined"
+            size="small"
+            startIcon={<DoneAllIcon />}
+            onClick={markAllRead}
+            disabled={unreadCount === 0}
+            style={{ borderRadius: 20 }}
+          >
+            Mark all read
+          </Button>
         </Box>
 
         <List className={classes.list} disablePadding>
           {visible.map(item => {
             const sev = SEVERITY_STYLE[item.severity];
+            const expanded = expandedIds.has(item.id);
+            const experienceLabel = EXPERIENCE_LABELS[item.experience];
+            const panelId = `notification-detail-${item.id}`;
+
             return (
               <ListItem
                 key={item.id}
                 className={`${classes.row} ${
-                  item.unread ? classes.rowUnread : ''
-                }`}
-                button={false}
+                  item.unread && !expanded ? classes.rowUnread : ''
+                } ${expanded ? classes.rowExpanded : ''}`}
+                disableGutters
               >
                 <span
                   className={classes.severityBar}
                   style={{ backgroundColor: sev.color }}
                   aria-hidden
                 />
-                <ListItemText
-                  disableTypography
-                  primary={
+                <button
+                  type="button"
+                  className={classes.rowHeader}
+                  aria-expanded={expanded}
+                  aria-controls={panelId}
+                  onClick={() => toggleExpanded(item.id)}
+                >
+                  <Box className={classes.rowHeaderBody}>
                     <Box className={classes.titleRow}>
                       <Typography
                         className={`${classes.title} ${
@@ -399,14 +563,47 @@ export const PortalNotificationsPage = () => {
                         {sev.label}
                       </span>
                     </Box>
-                  }
-                  secondary={
-                    <Typography className={classes.meta} component="p">
-                      {item.entity} · {EXPERIENCE_LABELS[item.experience]} ·{' '}
-                      {item.when}
+                    <Typography className={classes.description} component="p">
+                      {item.description}
                     </Typography>
-                  }
-                />
+                    <Typography className={classes.meta} component="p">
+                      {item.entity} · {experienceLabel} · {item.when}
+                    </Typography>
+                  </Box>
+                  <ExpandMoreIcon
+                    className={`${classes.chevron} ${
+                      expanded ? classes.chevronOpen : ''
+                    }`}
+                    fontSize="small"
+                    aria-hidden
+                  />
+                </button>
+
+                <Collapse in={expanded} timeout="auto" unmountOnExit>
+                  <Box
+                    id={panelId}
+                    className={classes.expandPanel}
+                    role="region"
+                    aria-label={`${item.title} details`}
+                  >
+                    <Typography className={classes.detail} component="p">
+                      {item.detail}
+                    </Typography>
+                    <Box className={classes.actions}>
+                      <Button
+                        className={classes.actionBtn}
+                        color="primary"
+                        variant="contained"
+                        size="small"
+                        startIcon={<OpenInNewIcon />}
+                        onClick={() => openInExperience(item)}
+                        style={{ borderRadius: 20 }}
+                      >
+                        Open in {experienceLabel}
+                      </Button>
+                    </Box>
+                  </Box>
+                </Collapse>
               </ListItem>
             );
           })}
