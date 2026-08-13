@@ -29,6 +29,7 @@ import { SearchPage as BackstageSearchPage } from '@backstage/plugin-search';
 import { SearchPage } from './components/search/SearchPage';
 import { Root } from './components/Root';
 import { GlobalHeader } from './components/GlobalHeader';
+// import { ExperienceReturnCompareBar } from './components/IaPrototype'; // kept — remount when comparing A again
 import { PortalNotificationsPage } from './components/Notifications/PortalNotificationsPage';
 import { LightspeedProvider, LightspeedPanel } from './components/Lightspeed';
 import { QuickstartProvider, QuickstartPanel, WelcomeModal } from './components/Quickstart';
@@ -348,6 +349,7 @@ export default app.createRoot(
         <LightspeedProvider>
           <QuickstartProvider>
             <GlobalHeader />
+            {/* <ExperienceReturnCompareBar /> — B forced; remount to compare A */}
             <Root>{routes}</Root>
             <LightspeedPanel />
             <QuickstartPanel />

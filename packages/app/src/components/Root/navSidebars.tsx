@@ -26,6 +26,7 @@ import {
   Box,
   Collapse,
   IconButton,
+  Typography,
 } from '@material-ui/core';
 import MenuIcon from '@material-ui/icons/Menu';
 import SearchIcon from '@material-ui/icons/Search';
@@ -47,7 +48,9 @@ import ViewListIcon from '@material-ui/icons/ViewList';
 import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
 import ExpandLessIcon from '@material-ui/icons/ExpandLess';
 import HomeIcon from '@material-ui/icons/Home';
-import AppsIcon from '@material-ui/icons/Apps';
+import ArrowBackIcon from '@material-ui/icons/ArrowBack';
+import ChevronLeftIcon from '@material-ui/icons/ChevronLeft';
+import { useExperienceReturnChrome } from '../IaPrototype/useExperienceReturnChrome';
 
 const useSidebarLogoStyles = makeStyles({
   root: {
@@ -582,15 +585,124 @@ const RunItems = () => (
   </>
 );
 
+const useQuietReturnStyles = makeStyles(theme => ({
+  /** Option A — “← Experiences” aligned to the SidebarItem icon column. */
+  quietReturn: {
+    display: 'flex',
+    alignItems: 'center',
+    width: '100%',
+    margin: 0,
+    padding: theme.spacing(0.5, 1, 0.25, 0),
+    border: 'none',
+    background: 'transparent',
+    borderRadius: 0,
+    cursor: 'pointer',
+    color: theme.palette.text.secondary,
+    fontSize: 12,
+    fontWeight: 600,
+    lineHeight: 1.3,
+    textAlign: 'left' as const,
+    '&:hover': {
+      color: theme.palette.text.primary,
+      backgroundColor: theme.palette.action.hover,
+    },
+    '&:focus-visible': {
+      outline: `2px solid ${theme.palette.primary.main}`,
+      outlineOffset: -2,
+    },
+  },
+  /** Matches Backstage SidebarItem iconContainer (72px, centered). */
+  iconCol: {
+    boxSizing: 'border-box' as const,
+    width: sidebarConfig.iconContainerWidth,
+    minWidth: sidebarConfig.iconContainerWidth,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  quietIcon: {
+    fontSize: 18,
+    opacity: 0.85,
+  },
+  /** Option B — chevron + experience label on one row. */
+  labelReturnRow: {
+    display: 'flex',
+    alignItems: 'center',
+    width: '100%',
+    padding: '10px 8px 8px 0',
+    minHeight: 32,
+  },
+  labelReturnBtn: {
+    appearance: 'none' as const,
+    width: 24,
+    height: 24,
+    minWidth: 24,
+    padding: 0,
+    margin: 0,
+    border: 'none',
+    borderRadius: 4,
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    cursor: 'pointer',
+    flexShrink: 0,
+    color: theme.palette.text.secondary,
+    backgroundColor:
+      theme.palette.type === 'dark'
+        ? 'rgba(255,255,255,0.08)'
+        : 'rgba(0,0,0,0.06)',
+    '&:hover': {
+      color: theme.palette.text.primary,
+      backgroundColor:
+        theme.palette.type === 'dark'
+          ? 'rgba(255,255,255,0.14)'
+          : 'rgba(0,0,0,0.1)',
+    },
+    '&:focus-visible': {
+      outline: `2px solid ${theme.palette.primary.main}`,
+      outlineOffset: 1,
+    },
+  },
+  labelReturnChevron: {
+    fontSize: 18,
+  },
+  labelReturnText: {
+    fontSize: 11,
+    fontWeight: 700,
+    textTransform: 'uppercase' as const,
+    letterSpacing: '0.07em',
+    color: theme.palette.text.secondary,
+    lineHeight: 1.2,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap' as const,
+    // Pull toward icon column like SidebarItem label (iconContainer has -16px marginRight).
+    marginLeft: -theme.spacing(1),
+  },
+  softDiv: {
+    margin: theme.spacing(0.5, 2, 0.5),
+    border: 'none',
+    borderTop: `1px solid ${
+      theme.palette.type === 'dark'
+        ? 'rgba(255,255,255,0.12)'
+        : 'rgba(0,0,0,0.08)'
+    }`,
+  },
+}));
+
 /**
  * Experience domain rail (Bridge is rail-less — see Root).
- * Experiences pin → All experiences catalog.
- * Section label under the pin = current experience (orientation; not a switcher).
+ * Return chrome A/B via magenta compare bar (temp).
+ * Section label = current experience (orientation; not a switcher).
  */
 export const ExperiencesSidebar = () => {
+  const quietClasses = useQuietReturnStyles();
+  const navigate = useNavigate();
   const { role, hasRole } = useUserRoleContext();
   const { plugins } = useNavPlugins();
   const { experience, setExperience } = useNavIaModel();
+  const { variant: returnChrome } = useExperienceReturnChrome();
   const isAdmin = hasRole('admin');
   const smeLocked = isSmeRole(role);
   const available = availableExperiences({
@@ -648,22 +760,58 @@ export const ExperiencesSidebar = () => {
   const experienceLabel =
     EXPERIENCE_LABELS[domain] ?? EXPERIENCE_LABELS.automate;
 
+  const showQuietReturn = !smeLocked && returnChrome === 'quiet';
+  const showLabelReturn = !smeLocked && returnChrome === 'waffle';
+
+  const goExperiences = () => navigate('/self-service/experiences');
+
   return (
     <SearchAndMenu showSearch={false}>
-      {/* Return to Bridge — multi-experience seats only (SME is Automate-locked). */}
-      {!smeLocked && (
-        <>
-          <SidebarItem
-            icon={AppsIcon}
-            to="/self-service/experiences"
-            text="Experiences"
-          />
-          <SidebarDivider />
-        </>
+      {/* A — quiet “← Experiences” above the label. */}
+      {showQuietReturn && (
+        <button
+          type="button"
+          className={quietClasses.quietReturn}
+          onClick={goExperiences}
+          aria-label="Back to Experiences"
+        >
+          <span className={quietClasses.iconCol} aria-hidden>
+            <ArrowBackIcon className={quietClasses.quietIcon} />
+          </span>
+          Experiences
+        </button>
       )}
 
-      {/* Current experience — orientation only (not a dropdown / switcher). */}
-      <SidebarSectionLabel text={experienceLabel} />
+      {/* B — left chevron beside experience name (icon-column aligned). */}
+      {showLabelReturn ? (
+        <>
+          <Box className={quietClasses.labelReturnRow}>
+            <span className={quietClasses.iconCol}>
+              <button
+                type="button"
+                className={quietClasses.labelReturnBtn}
+                onClick={goExperiences}
+                aria-label="Back to Experiences"
+                title="Back to Experiences"
+              >
+                <ChevronLeftIcon className={quietClasses.labelReturnChevron} />
+              </button>
+            </span>
+            <Typography
+              className={quietClasses.labelReturnText}
+              component="span"
+            >
+              {experienceLabel}
+            </Typography>
+          </Box>
+          <hr className={quietClasses.softDiv} />
+        </>
+      ) : (
+        !showQuietReturn && <SidebarSectionLabel text={experienceLabel} />
+      )}
+
+      {/* A keeps a normal section label under the quiet return. */}
+      {showQuietReturn && <SidebarSectionLabel text={experienceLabel} />}
 
       {domain === 'automate' && (
         <>

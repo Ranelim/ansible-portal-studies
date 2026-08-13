@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import type { GlobalHeaderComponentMountPoint } from '@red-hat-developer-hub/backstage-plugin-global-header';
 
@@ -15,54 +16,56 @@ import { PortalHelpMenu } from './PortalHelpMenu';
 import { PortalProfileMenu } from './PortalProfileMenu';
 
 /**
- * Brand (224 = sidebar) → Search → Spacer → Create → Starred → Help → Bell → Divider → Profile
- * Seat switcher is inside Profile (prototype). Lightspeed = FAB.
- * Search is PortalHeaderSearch — stock SearchComponent prints API errors in the masthead.
+ * Brand (224 = sidebar; waffle lives inside brand when Option B) → Search → Spacer →
+ * Create → Starred → Help → Bell → Divider → Profile
  */
-const portalHeaderMountPoints: GlobalHeaderComponentMountPoint[] = [
-  {
-    Component: AutomationPortalBrand,
-    config: { priority: 200 },
-  },
-  {
-    Component: PortalHeaderSearch,
-    config: { priority: 100 },
-  },
-  {
-    Component: Spacer,
-    config: {
-      priority: 99,
-      props: { growFactor: 1 },
-    },
-  },
-  {
-    Component: PortalCreateButton,
-    config: { priority: 90 },
-  },
-  {
-    Component: StarredDropdown,
-    config: { priority: 85 },
-  },
-  {
-    Component: PortalHelpMenu,
-    config: { priority: 80 },
-  },
-  {
-    Component: PortalNotificationButton,
-    config: { priority: 70 },
-  },
-  {
-    Component: Divider,
-    config: { priority: 50 },
-  },
-  {
-    Component: PortalProfileMenu,
-    config: { priority: 10 },
-  },
-];
-
 export const GlobalHeader = () => {
   const location = useLocation();
+
+  const portalHeaderMountPoints: GlobalHeaderComponentMountPoint[] = useMemo(
+    () => [
+      {
+        Component: AutomationPortalBrand,
+        config: { priority: 200 },
+      },
+      {
+        Component: PortalHeaderSearch,
+        config: { priority: 100 },
+      },
+      {
+        Component: Spacer,
+        config: {
+          priority: 99,
+          props: { growFactor: 1 },
+        },
+      },
+      {
+        Component: PortalCreateButton,
+        config: { priority: 90 },
+      },
+      {
+        Component: StarredDropdown,
+        config: { priority: 85 },
+      },
+      {
+        Component: PortalHelpMenu,
+        config: { priority: 80 },
+      },
+      {
+        Component: PortalNotificationButton,
+        config: { priority: 70 },
+      },
+      {
+        Component: Divider,
+        config: { priority: 50 },
+      },
+      {
+        Component: PortalProfileMenu,
+        config: { priority: 10 },
+      },
+    ],
+    [],
+  );
 
   if (location.pathname.includes('/setup')) {
     return null;
