@@ -16,7 +16,11 @@ import {
   isGlobalShellPath,
   useCaptureGlobalShellReturn,
 } from './GlobalShellResumeBar';
-import { CHROME_TOP, NavIaRouteGuard } from '../IaPrototype';
+import {
+  CHROME_TOP_BASE,
+  chromeTopForAdminSync,
+  NavIaRouteGuard,
+} from '../IaPrototype';
 
 const useRootStyles = makeStyles(theme => {
   const rhdhGeneral = (theme.palette as any).rhdh?.general ?? {};
@@ -62,10 +66,10 @@ const useRootStyles = makeStyles(theme => {
       },
     },
     // JSS hashes class names (e.g. BackstageSidebar-root-83) — use substring match
-    // so the rail clears the masthead.
+    // so the rail clears the masthead (+ Admin Sync bar when --portal-chrome-top is set).
     '[class*="BackstageSidebar-root"]': {
-      top: `${CHROME_TOP}px !important`,
-      height: `calc(100% - ${CHROME_TOP}px) !important`,
+      top: `var(--portal-chrome-top, ${CHROME_TOP_BASE}px) !important`,
+      height: `calc(100% - var(--portal-chrome-top, ${CHROME_TOP_BASE}px)) !important`,
     },
     // Drawer is position:absolute inside root — keep top:0 relative to root
     '[class*="BackstageSidebar-drawer"]': {
@@ -85,13 +89,12 @@ const useRootStyles = makeStyles(theme => {
     },
   },
   fixedHeaderOffset: {
-    paddingTop: CHROME_TOP,
     minHeight: '100vh',
     backgroundColor: theme.palette.background.default,
   },
   /** Bridge: masthead only — full-width content, no experience rail. */
   bridgeContent: {
-    minHeight: `calc(100vh - ${CHROME_TOP}px)`,
+    minHeight: `calc(100vh - var(--portal-chrome-top, ${CHROME_TOP_BASE}px))`,
   },
 };
 });
@@ -139,11 +142,13 @@ const GlobalRestartBanner = () => {
 export const Root = ({ children }: PropsWithChildren<{}>) => {
   const rootClasses = useRootStyles();
   const location = useLocation();
-  const { setExperience } = useNavIaModel();
+  const { experience, setExperience } = useNavIaModel();
   const isSetup = location.pathname.includes('/setup');
   const onBridge = isBridgePath(location.pathname);
   const onGlobalShell = isGlobalShellPath(location.pathname);
   const railLess = onBridge || onGlobalShell;
+  const showAdminSyncBar = experience === 'admin' && !isSetup;
+  const chromeTop = chromeTopForAdminSync(showAdminSyncBar);
 
   useCaptureGlobalShellReturn(location.pathname);
 
@@ -155,6 +160,18 @@ export const Root = ({ children }: PropsWithChildren<{}>) => {
     writeNavExperience('all');
   }, [onBridge, setExperience]);
 
+  useEffect(() => {
+    document.documentElement.style.setProperty(
+      '--portal-chrome-top',
+      `${chromeTop}px`,
+    );
+  }, [chromeTop]);
+
+  const chromeOffsetStyle = {
+    paddingTop: chromeTop,
+    ['--portal-chrome-top' as string]: `${chromeTop}px`,
+  };
+
   if (isSetup) {
     return <>{children}</>;
   }
@@ -163,7 +180,7 @@ export const Root = ({ children }: PropsWithChildren<{}>) => {
   if (railLess) {
     return (
       <RestartProvider>
-        <div className={rootClasses.fixedHeaderOffset}>
+        <div className={rootClasses.fixedHeaderOffset} style={chromeOffsetStyle}>
           <NavIaRouteGuard />
           <GlobalRestartBanner />
           {onGlobalShell && <GlobalShellResumeBar />}
@@ -175,7 +192,7 @@ export const Root = ({ children }: PropsWithChildren<{}>) => {
 
   return (
     <RestartProvider>
-      <div className={rootClasses.fixedHeaderOffset}>
+      <div className={rootClasses.fixedHeaderOffset} style={chromeOffsetStyle}>
         <NavIaRouteGuard />
         <SidebarPage>
           <ExperiencesSidebar />

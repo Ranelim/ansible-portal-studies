@@ -2,6 +2,7 @@ import { Box, Typography, makeStyles } from '@material-ui/core';
 import { useLocation } from 'react-router-dom';
 import {
   useAdminSyncIa,
+  useNavIaModel,
   type AdminSyncIaVariant,
 } from '@ansible/plugin-backstage-self-service';
 import { ADMIN_SYNC_IA_BAR_HEIGHT } from './chromeHeights';
@@ -84,14 +85,15 @@ const useStyles = makeStyles({
 
 /**
  * Temp design compare — Admin Sync / Integrations IA.
- * Opt 1 merge · Opt 2 Sync activity + scoped Run sync.
+ * Only while the Administration experience is active.
  */
 export const AdminSyncIaCompareBar = () => {
   const classes = useStyles();
   const { variant, setVariant } = useAdminSyncIa();
+  const { experience } = useNavIaModel();
   const location = useLocation();
 
-  if (location.pathname.includes('/setup')) {
+  if (experience !== 'admin' || location.pathname.includes('/setup')) {
     return null;
   }
 

@@ -31,12 +31,11 @@ const RedHatFedora = ({ size = 36 }: { size?: number }) => (
 
 /**
  * Portal brand — AAP / RHDH masthead hierarchy:
- * fedora (transparent) + strong “Red Hat” + secondary product name.
+ * fedora (transparent) + strong “Red Hat” + bold product name.
  */
 export const AutomationPortalBrand = () => {
   const theme = useTheme();
   const ink = theme.palette.text.primary;
-  const muted = theme.palette.text.secondary;
 
   return (
     <Box
@@ -93,15 +92,16 @@ export const AutomationPortalBrand = () => {
           >
             Red Hat
           </Typography>
+          {/* Secondary product line — RHDH-like hierarchy under bold Red Hat */}
           <Typography
             component="span"
             sx={{
               fontFamily:
                 '"Red Hat Text", "RedHatText", Helvetica, Arial, sans-serif',
-              fontSize: 12,
+              fontSize: 16,
               fontWeight: 400,
-              lineHeight: 1.2,
-              color: muted,
+              lineHeight: 1.15,
+              color: ink,
               whiteSpace: 'nowrap',
               overflow: 'hidden',
               textOverflow: 'ellipsis',

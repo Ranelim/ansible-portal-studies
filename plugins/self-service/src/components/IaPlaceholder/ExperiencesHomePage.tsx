@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Page, Content } from '@backstage/core-components';
 import {
   Box,
+  Button,
   Chip,
   FormControl,
   IconButton,
@@ -74,44 +75,6 @@ const EXPERIENCE_ACCENT: Record<ExperienceId, string> = {
   edge: '#147EBC',
   admin: '#6A6E73',
 };
-
-/** Hub-style footer counts — exploratory stand-ins for “what’s inside”. */
-const EXPERIENCE_COUNTS: Record<
-  ExperienceId,
-  Array<{ value: number; label: string }>
-> = {
-  automate: [
-    { value: 12, label: 'Templates' },
-    { value: 48, label: 'Runs' },
-    { value: 3, label: 'Approvals' },
-  ],
-  develop: [
-    { value: 24, label: 'Repos' },
-    { value: 86, label: 'Collections' },
-    { value: 9, label: 'EEs' },
-  ],
-  compliance: [
-    { value: 6, label: 'Inventories' },
-    { value: 4, label: 'Profiles' },
-    { value: 128, label: 'Findings' },
-  ],
-  edge: [
-    { value: 3, label: 'Fleets' },
-    { value: 142, label: 'Devices' },
-    { value: 2, label: 'Images' },
-  ],
-  admin: [
-    { value: 5, label: 'Integrations' },
-    { value: 6, label: 'Plugins' },
-    { value: 14, label: 'Users' },
-  ],
-};
-
-const ASSISTANT_COUNTS = [
-  { value: 4, label: 'Experiences' },
-  { value: 0, label: 'Actions' },
-  { value: 1, label: 'Chat' },
-];
 
 function experienceIcon(id: ExperienceId | 'assistant'): ReactNode {
   const props = { style: { fontSize: 22 } };
@@ -321,6 +284,7 @@ const useStyles = makeStyles(theme => ({
   },
   hubCard: {
     width: 280,
+    minHeight: 168,
     border: `1px solid ${theme.palette.divider}`,
     borderRadius: 3,
     backgroundColor: theme.palette.background.paper,
@@ -361,7 +325,7 @@ const useStyles = makeStyles(theme => ({
     justifyContent: 'flex-end',
   },
   hubNameBlock: {
-    padding: theme.spacing(0, 2, 1),
+    padding: theme.spacing(0, 2, 0.5),
   },
   hubName: {
     fontWeight: 700,
@@ -371,41 +335,29 @@ const useStyles = makeStyles(theme => ({
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap' as const,
   },
-  hubProvided: {
-    fontSize: 12,
-    color: theme.palette.text.secondary,
-    marginTop: 2,
-  },
   hubDescription: {
     padding: theme.spacing(0, 2),
-    height: 48,
-    overflow: 'hidden',
     fontSize: 14,
-    lineHeight: 1.35,
+    lineHeight: 1.4,
     color: theme.palette.text.primary,
   },
-  hubCounts: {
+  hubActions: {
     display: 'flex',
-    justifyContent: 'space-between',
-    gap: theme.spacing(0.5),
+    justifyContent: 'flex-start',
     padding: theme.spacing(1.5, 2, 2),
     marginTop: 'auto',
   },
-  hubCount: {
-    textAlign: 'center' as const,
-    minWidth: 0,
-    flex: 1,
-  },
-  hubCountValue: {
-    fontWeight: 700,
-    fontSize: 14,
-    lineHeight: 1.2,
-    color: theme.palette.text.primary,
-  },
-  hubCountLabel: {
-    fontSize: 11,
-    color: theme.palette.text.secondary,
-    lineHeight: 1.2,
+  /** Secondary launch — outlined blue on white (not primary filled). */
+  hubLaunch: {
+    borderRadius: 20,
+    textTransform: 'none',
+    fontWeight: 600,
+    paddingLeft: theme.spacing(2),
+    paddingRight: theme.spacing(2),
+    backgroundColor: theme.palette.background.paper,
+    '&:hover': {
+      backgroundColor: theme.palette.background.paper,
+    },
   },
   empty: {
     color: theme.palette.text.secondary,
@@ -415,7 +367,7 @@ const useStyles = makeStyles(theme => ({
 
 /**
  * Experience Bridge — masthead + lean card catalog (no left rail).
- * Enter = whole-card click.
+ * Enter = whole-card click or secondary Launch button.
  * Magenta A/B tabs = temp design compare (accent tiles vs Hub catalog).
  */
 export const ExperiencesHomePage = () => {
@@ -627,20 +579,23 @@ export const ExperiencesHomePage = () => {
             <Typography className={classes.hubName} title={EXPERIENCE_LABELS[id]}>
               {EXPERIENCE_LABELS[id]}
             </Typography>
-            <Typography className={classes.hubProvided}>
-              Provided by Automation Portal
-            </Typography>
           </Box>
           <Typography className={classes.hubDescription}>
             {EXPERIENCE_BLURB[id]}
           </Typography>
-          <Box className={classes.hubCounts}>
-            {EXPERIENCE_COUNTS[id].map(c => (
-              <Box key={c.label} className={classes.hubCount}>
-                <Typography className={classes.hubCountValue}>{c.value}</Typography>
-                <Typography className={classes.hubCountLabel}>{c.label}</Typography>
-              </Box>
-            ))}
+          <Box className={classes.hubActions}>
+            <Button
+              className={classes.hubLaunch}
+              variant="outlined"
+              color="primary"
+              size="small"
+              onClick={e => {
+                e.stopPropagation();
+                openExperience(id);
+              }}
+            >
+              Launch
+            </Button>
           </Box>
         </Box>
       ))}
@@ -680,21 +635,24 @@ export const ExperiencesHomePage = () => {
           </Box>
           <Box className={classes.hubNameBlock}>
             <Typography className={classes.hubName}>Assistant</Typography>
-            <Typography className={classes.hubProvided}>
-              Provided by Automation Portal
-            </Typography>
           </Box>
           <Typography className={classes.hubDescription}>
             Helps across your experiences — answers questions and can take
             action for you.
           </Typography>
-          <Box className={classes.hubCounts}>
-            {ASSISTANT_COUNTS.map(c => (
-              <Box key={c.label} className={classes.hubCount}>
-                <Typography className={classes.hubCountValue}>{c.value}</Typography>
-                <Typography className={classes.hubCountLabel}>{c.label}</Typography>
-              </Box>
-            ))}
+          <Box className={classes.hubActions}>
+            <Button
+              className={classes.hubLaunch}
+              variant="outlined"
+              color="primary"
+              size="small"
+              onClick={e => {
+                e.stopPropagation();
+                openAssistant();
+              }}
+            >
+              Launch
+            </Button>
           </Box>
         </Box>
       )}
