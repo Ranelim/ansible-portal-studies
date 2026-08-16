@@ -9,6 +9,7 @@ import {
   useTemplatesRunsIa,
   type NavExperience,
 } from '@ansible/plugin-backstage-self-service';
+import { RAIL_ICON_GUTTER_PX } from '../IaPrototype/chromeHeights';
 
 const RETURN_KEY = 'portal-global-shell-return';
 
@@ -181,7 +182,11 @@ const useStyles = makeStyles(theme => ({
     display: 'flex',
     alignItems: 'center',
     gap: theme.spacing(1),
-    padding: theme.spacing(1, 3),
+    paddingTop: theme.spacing(1),
+    paddingBottom: theme.spacing(1),
+    // Align “Back” with waffle / TEMP / page Header (page gutter).
+    paddingLeft: RAIL_ICON_GUTTER_PX,
+    paddingRight: RAIL_ICON_GUTTER_PX,
     borderBottom: `1px solid ${theme.palette.divider}`,
     backgroundColor: theme.palette.background.paper,
   },
@@ -189,8 +194,13 @@ const useStyles = makeStyles(theme => ({
     textTransform: 'none',
     fontWeight: 500,
     color: theme.palette.text.primary,
-    paddingLeft: theme.spacing(0.5),
+    paddingLeft: 0,
     paddingRight: theme.spacing(1),
+    marginLeft: 0,
+    '& .MuiButton-startIcon': {
+      marginLeft: 0,
+      marginRight: 6,
+    },
   },
 }));
 

@@ -2,10 +2,14 @@
 export const IA_BANNER_HEIGHT = 0;
 export const MASTHEAD_HEIGHT = 64;
 /**
- * Left inset for waffle / Back / magenta TEMP — matches Backstage SidebarItem
- * icon glyphs (item inset 8 + iconPadding 24). Shared vertical frame with rail.
+ * Left inset for waffle / Back / magenta TEMP / page Header+Content.
+ * Matches Backstage SidebarItem icon glyphs (item inset 8 + iconPadding 24).
+ * One vertical frame on rail-less pages; same inset inside the content column
+ * when a side rail is present.
  */
 export const RAIL_ICON_GUTTER_PX = 32;
+/** @deprecated alias — use RAIL_ICON_GUTTER_PX */
+export const PAGE_GUTTER_PX = RAIL_ICON_GUTTER_PX;
 /** MUI AppBar Toolbar default horizontal gutter. */
 export const MASTHEAD_TOOLBAR_GUTTER_PX = 24;
 /**

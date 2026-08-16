@@ -24,9 +24,7 @@ function isGlobalCreatePath(pathname: string, search: string): boolean {
 }
 
 /**
- * RHDH Create slot.
- * Option A: all templates (rail-less `/create`).
- * Option B: Templates | Runs tabs (Automate experience removed).
+ * RHDH Create slot — same masthead icon grid as Starred / Help / Notifications.
  */
 export const PortalCreateButton = () => {
   const navigate = useNavigate();
@@ -42,25 +40,22 @@ export const PortalCreateButton = () => {
   const label = mastheadPlus ? 'Templates and runs' : 'All templates';
 
   return (
-    <Box>
-      <Tooltip title={label}>
-        <Box
-          component="span"
-          sx={mastheadTooltipChildSx}
-          data-masthead-active={active ? 'true' : undefined}
+    <Tooltip title={label}>
+      <Box
+        component="span"
+        sx={mastheadTooltipChildSx}
+        data-masthead-active={active ? 'true' : undefined}
+      >
+        <IconButton
+          color="inherit"
+          onClick={() => navigate('/create')}
+          aria-label={label}
+          aria-current={active ? 'page' : undefined}
+          sx={mastheadIconButtonSx(active)}
         >
-          <IconButton
-            color="inherit"
-            size="small"
-            onClick={() => navigate('/create')}
-            aria-label={label}
-            aria-current={active ? 'page' : undefined}
-            sx={mastheadIconButtonSx(active)}
-          >
-            <AddIcon fontSize="small" />
-          </IconButton>
-        </Box>
-      </Tooltip>
-    </Box>
+          <AddIcon />
+        </IconButton>
+      </Box>
+    </Tooltip>
   );
 };

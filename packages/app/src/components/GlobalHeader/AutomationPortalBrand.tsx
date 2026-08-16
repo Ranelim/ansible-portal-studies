@@ -11,10 +11,6 @@ import {
   ExperiencesWaffleButton,
   SHOW_EXPERIENCES_WAFFLE,
 } from './ExperiencesWaffleButton';
-import {
-  MASTHEAD_TOOLBAR_GUTTER_PX,
-  RAIL_ICON_GUTTER_PX,
-} from '../IaPrototype/chromeHeights';
 
 /** Matches Backstage/RHDH open sidebar — brand column = rail width so search hits the gutter. */
 export const SIDEBAR_WIDTH_OPEN = 224;
@@ -72,12 +68,10 @@ export const AutomationPortalBrand = () => {
         alignItems: 'center',
         flexShrink: 0,
         boxSizing: 'border-box',
-        // Toolbar gutter is 24px; pad to RAIL_ICON_GUTTER (32) so waffle hit
-        // aligns with sidebar menu icons (and Back / magenta TEMP).
+        // Toolbar left = RAIL_ICON_GUTTER (Root CSS). No extra brand pad — waffle
+        // hit edge is the page gutter line (TEMP / Back / Header / Content).
         ml: 0,
-        pl: SHOW_EXPERIENCES_WAFFLE
-          ? `${RAIL_ICON_GUTTER_PX - MASTHEAD_TOOLBAR_GUTTER_PX}px`
-          : 1.5,
+        pl: SHOW_EXPERIENCES_WAFFLE ? 0 : 1.5,
         pr: 1,
         // Room between waffle pressed surface and fedora.
         gap: SHOW_EXPERIENCES_WAFFLE ? 1.5 : 0,

@@ -26,6 +26,7 @@ import { isAutomateFullPagePath } from './AutomateFullPageChrome';
 import {
   CHROME_TOP_BASE,
   MASTHEAD_HEIGHT,
+  RAIL_ICON_GUTTER_PX,
   chromeTopForPrototypeBars,
   NavIaRouteGuard,
 } from '../IaPrototype';
@@ -59,7 +60,24 @@ const useRootStyles = makeStyles(theme => {
       '& [class*="MuiToolbar-root"]': {
         color: appBarFg,
         minHeight: `${MASTHEAD_HEIGHT}px !important`,
+        alignItems: 'center',
+        // Lock masthead left to page gutter so waffle aligns with TEMP / Back / Header.
+        paddingLeft: `var(--portal-page-gutter, ${RAIL_ICON_GUTTER_PX}px) !important`,
+        paddingRight: `var(--portal-page-gutter, ${RAIL_ICON_GUTTER_PX}px) !important`,
       },
+      // Masthead action grid — identical 32×32 hits (Create / Starred / Help / Bell).
+      '& [class*="MuiToolbar-root"] > *': {
+        display: 'inline-flex',
+        alignItems: 'center',
+        alignSelf: 'center',
+      },
+      // Glyph grid — beat MuiSvgIcon-fontSizeMedium (24px) on toolbar actions.
+      '& [class*="MuiToolbar-root"] [class*="MuiIconButton-root"] [class*="MuiSvgIcon-root"]':
+        {
+          fontSize: '20px !important',
+          width: '20px !important',
+          height: '20px !important',
+        },
       '& .MuiIconButton-root, & .MuiButton-root, & [class*="MuiIconButton-root"], & [class*="MuiButton-root"]':
         {
           color: theme.palette.text.secondary,
@@ -106,9 +124,23 @@ const useRootStyles = makeStyles(theme => {
     'body, html': {
       backgroundColor: `${theme.palette.background.default} !important`,
     },
-    '.BackstageHeader-header': {
+    // Page gutter = waffle / TEMP / rail-icon column (RAIL_ICON_GUTTER_PX).
+    // Overrides Backstage Header (spacing 3 = 24) + Content (spacing 2/3).
+    ':root': {
+      ['--portal-page-gutter' as string]: `${RAIL_ICON_GUTTER_PX}px`,
+    },
+    'header[class*="BackstageHeader-header"]': {
       position: 'relative',
       zIndex: 0,
+      paddingLeft: `var(--portal-page-gutter, ${RAIL_ICON_GUTTER_PX}px) !important`,
+      paddingRight: `var(--portal-page-gutter, ${RAIL_ICON_GUTTER_PX}px) !important`,
+    },
+    '[class*="BackstageHeaderTabs-tabsWrapper"]': {
+      paddingLeft: `var(--portal-page-gutter, ${RAIL_ICON_GUTTER_PX}px) !important`,
+    },
+    '[class*="BackstageContent-root"]:not([class*="noPadding"])': {
+      paddingLeft: `var(--portal-page-gutter, ${RAIL_ICON_GUTTER_PX}px) !important`,
+      paddingRight: `var(--portal-page-gutter, ${RAIL_ICON_GUTTER_PX}px) !important`,
     },
     '.BackstagePage-root': {
       overflow: 'hidden',

@@ -11,8 +11,7 @@ import {
 } from './mastheadIconSx';
 
 /**
- * Same visual as RHDH NotificationButton, always visible.
- * Uses navigate (not Backstage Link) so icons stay header-grey, not primary blue.
+ * Notifications — same masthead icon grid as Create / Starred / Help.
  */
 export const PortalNotificationButton = ({
   title = 'Notifications',
@@ -33,7 +32,7 @@ export const PortalNotificationButton = ({
     pathname === to || pathname.startsWith(`${to.replace(/\/$/, '')}/`);
 
   return (
-    <Box sx={layout}>
+    <Box sx={{ ...layout, display: 'inline-flex', lineHeight: 0 }}>
       <Tooltip title={tooltip ?? title}>
         <Box
           component="span"
@@ -42,18 +41,30 @@ export const PortalNotificationButton = ({
         >
           <IconButton
             color="inherit"
-            size="small"
             onClick={() => navigate(to)}
             aria-label={title}
             aria-current={active ? 'page' : undefined}
             sx={mastheadIconButtonSx(active)}
           >
             {unreadCount > 0 ? (
-              <Badge badgeContent={unreadCount} color="error" max={999}>
-                <NotificationIcon fontSize="small" />
+              <Badge
+                badgeContent={unreadCount}
+                color="error"
+                max={999}
+                overlap="circular"
+                sx={{
+                  '& .MuiBadge-badge': {
+                    fontSize: 10,
+                    height: 16,
+                    minWidth: 16,
+                    padding: '0 4px',
+                  },
+                }}
+              >
+                <NotificationIcon />
               </Badge>
             ) : (
-              <NotificationIcon fontSize="small" />
+              <NotificationIcon />
             )}
           </IconButton>
         </Box>

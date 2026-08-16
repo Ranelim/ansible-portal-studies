@@ -19,7 +19,7 @@ import { useTheme } from '@mui/material/styles';
 import { HeaderDropdownComponent } from '@red-hat-developer-hub/backstage-plugin-global-header/dist/components/HeaderDropdownComponent/HeaderDropdownComponent.esm.js';
 import { useDropdownManager } from '@red-hat-developer-hub/backstage-plugin-global-header/dist/hooks/useDropdownManager.esm.js';
 import { DropdownEmptyState } from '@red-hat-developer-hub/backstage-plugin-global-header/dist/components/HeaderDropdownComponent/DropdownEmptyState.esm.js';
-import { mastheadIconButtonSx } from './mastheadIconSx';
+import { mastheadIconButtonSx, mastheadIconSlotSx } from './mastheadIconSx';
 
 const StarredItem: FC<{
   entityRef: string;
@@ -80,18 +80,22 @@ export const PortalStarredMenu = () => {
   const open = Boolean(anchorEl);
 
   return (
-    <Box data-masthead-menu-open={open ? 'true' : undefined}>
+    <Box
+      data-masthead-menu-open={open ? 'true' : undefined}
+      sx={mastheadIconSlotSx}
+    >
       <HeaderDropdownComponent
-        buttonContent={<StarBorderIcon fontSize="small" />}
+        buttonContent={<StarBorderIcon />}
         onOpen={handleOpen}
         onClose={handleClose}
         anchorEl={anchorEl}
         tooltip="Your starred items"
         isIconButton
+        size="medium"
         buttonProps={{
           color: 'inherit',
           'aria-label': 'Your starred items',
-          sx: mastheadIconButtonSx(false),
+          sx: mastheadIconButtonSx(open),
         }}
       >
         {entitiesArray.length > 0 ? (

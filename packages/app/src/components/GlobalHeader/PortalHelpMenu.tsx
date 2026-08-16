@@ -6,7 +6,7 @@ import MenuItem from '@mui/material/MenuItem';
 import ListItemText from '@mui/material/ListItemText';
 import { HeaderDropdownComponent } from '@red-hat-developer-hub/backstage-plugin-global-header/dist/components/HeaderDropdownComponent/HeaderDropdownComponent.esm.js';
 import { useDropdownManager } from '@red-hat-developer-hub/backstage-plugin-global-header/dist/hooks/useDropdownManager.esm.js';
-import { mastheadIconButtonSx } from './mastheadIconSx';
+import { mastheadIconButtonSx, mastheadIconSlotSx } from './mastheadIconSx';
 
 /**
  * Dark body text like Profile menu — never Backstage Link primary blue.
@@ -64,15 +64,19 @@ export const PortalHelpMenu = () => {
   };
 
   return (
-    <Box data-masthead-menu-open={open ? 'true' : undefined}>
+    <Box
+      data-masthead-menu-open={open ? 'true' : undefined}
+      sx={mastheadIconSlotSx}
+    >
       <HeaderDropdownComponent
         isIconButton
+        size="medium"
         tooltip="Help"
-        buttonContent={<HelpOutlineIcon fontSize="small" />}
+        buttonContent={<HelpOutlineIcon />}
         buttonProps={{
           color: 'inherit',
           'aria-label': 'Help',
-          sx: mastheadIconButtonSx(false),
+          sx: mastheadIconButtonSx(open),
         }}
         onOpen={handleOpen}
         onClose={handleClose}
