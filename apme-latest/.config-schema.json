@@ -237,113 +237,6 @@
       "path": "node_modules/@red-hat-developer-hub/cli/node_modules/@backstage/cli/package.json"
     },
     {
-      "path": "plugins/self-service/config.d.ts",
-      "value": {
-        "type": "object",
-        "properties": {
-          "ansible": {
-            "description": "Configurations for the Ansible plugin",
-            "type": "object",
-            "properties": {
-              "rhaap": {
-                "description": "AAP base URL",
-                "deepVisibility": "frontend",
-                "type": "object",
-                "properties": {
-                  "baseUrl": {
-                    "visibility": "frontend",
-                    "type": "string"
-                  }
-                }
-              },
-              "feedback": {
-                "description": "Feedback form configuration",
-                "deepVisibility": "frontend",
-                "type": "object",
-                "properties": {
-                  "enabled": {
-                    "description": "Enable or disable the feedback form. Defaults to true.",
-                    "visibility": "frontend",
-                    "type": "boolean"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "$schema": "http://json-schema.org/draft-07/schema#"
-      },
-      "packageName": "@ansible/plugin-backstage-self-service"
-    },
-    {
-      "path": "plugins/backstage-rhaap/config.d.ts",
-      "value": {
-        "type": "object",
-        "properties": {
-          "ansible": {
-            "description": "Configurations for the Ansible plugin",
-            "type": "object",
-            "properties": {
-              "devSpaces": {
-                "description": "The devspaces baseUrl for Openshift Dev Spaces Dashboard.",
-                "deepVisibility": "frontend",
-                "type": "object",
-                "properties": {
-                  "baseUrl": {
-                    "visibility": "frontend",
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "baseUrl"
-                ]
-              },
-              "automationHub": {
-                "deepVisibility": "frontend",
-                "type": "object",
-                "properties": {
-                  "baseUrl": {
-                    "visibility": "frontend",
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "baseUrl"
-                ]
-              },
-              "rhaap": {
-                "deepVisibility": "frontend",
-                "type": "object",
-                "properties": {
-                  "baseUrl": {
-                    "visibility": "frontend",
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "baseUrl"
-                ]
-              },
-              "feedback": {
-                "description": "Feedback form configuration",
-                "deepVisibility": "frontend",
-                "type": "object",
-                "properties": {
-                  "enabled": {
-                    "description": "Enable or disable the feedback form. Defaults to true.",
-                    "visibility": "frontend",
-                    "type": "boolean"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "$schema": "http://json-schema.org/draft-07/schema#"
-      },
-      "packageName": "@ansible/plugin-backstage-rhaap"
-    },
-    {
       "path": "plugins/backstage-rhaap-common/config.d.ts",
       "value": {
         "type": "object",
@@ -482,6 +375,159 @@
         "$schema": "http://json-schema.org/draft-07/schema#"
       },
       "packageName": "@ansible/backstage-rhaap-common"
+    },
+    {
+      "path": "plugins/self-service/config.d.ts",
+      "value": {
+        "type": "object",
+        "properties": {
+          "ansible": {
+            "description": "Configurations for the Ansible plugin",
+            "type": "object",
+            "properties": {
+              "rhaap": {
+                "description": "AAP base URL",
+                "deepVisibility": "frontend",
+                "type": "object",
+                "properties": {
+                  "baseUrl": {
+                    "visibility": "frontend",
+                    "type": "string"
+                  }
+                }
+              },
+              "feedback": {
+                "description": "Feedback form configuration",
+                "deepVisibility": "frontend",
+                "type": "object",
+                "properties": {
+                  "enabled": {
+                    "description": "Enable or disable the feedback form. Defaults to true.",
+                    "visibility": "frontend",
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "packageName": "@ansible/plugin-backstage-self-service"
+    },
+    {
+      "path": "plugins/backstage-rhaap/config.d.ts",
+      "value": {
+        "type": "object",
+        "properties": {
+          "ansible": {
+            "description": "Configurations for the Ansible plugin",
+            "type": "object",
+            "properties": {
+              "devSpaces": {
+                "description": "The devspaces baseUrl for Openshift Dev Spaces Dashboard.",
+                "deepVisibility": "frontend",
+                "type": "object",
+                "properties": {
+                  "baseUrl": {
+                    "visibility": "frontend",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "baseUrl"
+                ]
+              },
+              "automationHub": {
+                "deepVisibility": "frontend",
+                "type": "object",
+                "properties": {
+                  "baseUrl": {
+                    "visibility": "frontend",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "baseUrl"
+                ]
+              },
+              "rhaap": {
+                "deepVisibility": "frontend",
+                "type": "object",
+                "properties": {
+                  "baseUrl": {
+                    "visibility": "frontend",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "baseUrl"
+                ]
+              },
+              "feedback": {
+                "description": "Feedback form configuration",
+                "deepVisibility": "frontend",
+                "type": "object",
+                "properties": {
+                  "enabled": {
+                    "description": "Enable or disable the feedback form. Defaults to true.",
+                    "visibility": "frontend",
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "packageName": "@ansible/plugin-backstage-rhaap"
+    },
+    {
+      "path": "node_modules/@backstage/core-components/config.d.ts",
+      "value": {
+        "type": "object",
+        "properties": {
+          "auth": {
+            "type": "object",
+            "properties": {
+              "autologout": {
+                "description": "Autologout feature configuration",
+                "type": "object",
+                "properties": {
+                  "enabled": {
+                    "description": "Enable or disable the autologout feature",
+                    "visibility": "frontend",
+                    "type": "boolean"
+                  },
+                  "idleTimeoutMinutes": {
+                    "description": "Number of minutes after which the inactive user is logged out automatically.\nDefault is 60 minutes (1 hour)",
+                    "visibility": "frontend",
+                    "type": "number"
+                  },
+                  "promptBeforeIdleSeconds": {
+                    "description": "Number of seconds before the idle timeout where the user will be asked if it's still active.\nA dialog will be shown.\nDefault is 10 seconds.\nSet to 0 seconds to disable the prompt.",
+                    "visibility": "frontend",
+                    "type": "number"
+                  },
+                  "useWorkerTimers": {
+                    "description": "Enable/disable the usage of worker thread timers instead of main thread timers.\nDefault is true.\nIf you experience some browser incompatibility, you may try to set this to false.",
+                    "visibility": "frontend",
+                    "type": "boolean"
+                  },
+                  "logoutIfDisconnected": {
+                    "description": "Enable/disable the automatic logout also on users that are logged in but with no Backstage tabs open.\nDefault is true.",
+                    "visibility": "frontend",
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "packageName": "@backstage/core-components"
     },
     {
       "path": "node_modules/@backstage/core-app-api/config.d.ts",
@@ -709,52 +755,6 @@
         "$schema": "http://json-schema.org/draft-07/schema#"
       },
       "packageName": "@backstage/core-app-api"
-    },
-    {
-      "path": "node_modules/@backstage/core-components/config.d.ts",
-      "value": {
-        "type": "object",
-        "properties": {
-          "auth": {
-            "type": "object",
-            "properties": {
-              "autologout": {
-                "description": "Autologout feature configuration",
-                "type": "object",
-                "properties": {
-                  "enabled": {
-                    "description": "Enable or disable the autologout feature",
-                    "visibility": "frontend",
-                    "type": "boolean"
-                  },
-                  "idleTimeoutMinutes": {
-                    "description": "Number of minutes after which the inactive user is logged out automatically.\nDefault is 60 minutes (1 hour)",
-                    "visibility": "frontend",
-                    "type": "number"
-                  },
-                  "promptBeforeIdleSeconds": {
-                    "description": "Number of seconds before the idle timeout where the user will be asked if it's still active.\nA dialog will be shown.\nDefault is 10 seconds.\nSet to 0 seconds to disable the prompt.",
-                    "visibility": "frontend",
-                    "type": "number"
-                  },
-                  "useWorkerTimers": {
-                    "description": "Enable/disable the usage of worker thread timers instead of main thread timers.\nDefault is true.\nIf you experience some browser incompatibility, you may try to set this to false.",
-                    "visibility": "frontend",
-                    "type": "boolean"
-                  },
-                  "logoutIfDisconnected": {
-                    "description": "Enable/disable the automatic logout also on users that are logged in but with no Backstage tabs open.\nDefault is true.",
-                    "visibility": "frontend",
-                    "type": "boolean"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "$schema": "http://json-schema.org/draft-07/schema#"
-      },
-      "packageName": "@backstage/core-components"
     },
     {
       "path": "node_modules/@backstage/plugin-catalog/config.d.ts",
@@ -1002,95 +1002,6 @@
         "$schema": "http://json-schema.org/draft-07/schema#"
       },
       "packageName": "@red-hat-developer-hub/backstage-plugin-theme"
-    },
-    {
-      "path": "node_modules/@backstage/plugin-home/config.d.ts",
-      "value": {
-        "type": "object",
-        "properties": {
-          "home": {
-            "type": "object",
-            "properties": {
-              "topVisits": {
-                "description": "Top visited plugin",
-                "visibility": "frontend",
-                "type": "object",
-                "properties": {
-                  "filterBy": {
-                    "description": "Filter By config",
-                    "visibility": "frontend",
-                    "type": "array",
-                    "items": {
-                      "type": "object",
-                      "properties": {
-                        "field": {
-                          "visibility": "frontend",
-                          "type": "string"
-                        },
-                        "operator": {
-                          "visibility": "frontend",
-                          "type": "string"
-                        },
-                        "value": {
-                          "visibility": "frontend",
-                          "type": [
-                            "string",
-                            "number"
-                          ]
-                        }
-                      },
-                      "required": [
-                        "field",
-                        "operator",
-                        "value"
-                      ]
-                    }
-                  }
-                }
-              },
-              "recentVisits": {
-                "description": "Recent visited plugin",
-                "visibility": "frontend",
-                "type": "object",
-                "properties": {
-                  "filterBy": {
-                    "description": "Filter By config",
-                    "visibility": "frontend",
-                    "type": "array",
-                    "items": {
-                      "type": "object",
-                      "properties": {
-                        "field": {
-                          "visibility": "frontend",
-                          "type": "string"
-                        },
-                        "operator": {
-                          "visibility": "frontend",
-                          "type": "string"
-                        },
-                        "value": {
-                          "visibility": "frontend",
-                          "type": [
-                            "string",
-                            "number"
-                          ]
-                        }
-                      },
-                      "required": [
-                        "field",
-                        "operator",
-                        "value"
-                      ]
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "$schema": "http://json-schema.org/draft-07/schema#"
-      },
-      "packageName": "@backstage/plugin-home"
     },
     {
       "path": "node_modules/@backstage/backend-dynamic-feature-service/config.d.ts",
@@ -1730,6 +1641,166 @@
       "packageName": "@backstage/plugin-permission-common"
     },
     {
+      "path": "node_modules/@backstage/plugin-home/config.d.ts",
+      "value": {
+        "type": "object",
+        "properties": {
+          "home": {
+            "type": "object",
+            "properties": {
+              "topVisits": {
+                "description": "Top visited plugin",
+                "visibility": "frontend",
+                "type": "object",
+                "properties": {
+                  "filterBy": {
+                    "description": "Filter By config",
+                    "visibility": "frontend",
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "field": {
+                          "visibility": "frontend",
+                          "type": "string"
+                        },
+                        "operator": {
+                          "visibility": "frontend",
+                          "type": "string"
+                        },
+                        "value": {
+                          "visibility": "frontend",
+                          "type": [
+                            "string",
+                            "number"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "field",
+                        "operator",
+                        "value"
+                      ]
+                    }
+                  }
+                }
+              },
+              "recentVisits": {
+                "description": "Recent visited plugin",
+                "visibility": "frontend",
+                "type": "object",
+                "properties": {
+                  "filterBy": {
+                    "description": "Filter By config",
+                    "visibility": "frontend",
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "field": {
+                          "visibility": "frontend",
+                          "type": "string"
+                        },
+                        "operator": {
+                          "visibility": "frontend",
+                          "type": "string"
+                        },
+                        "value": {
+                          "visibility": "frontend",
+                          "type": [
+                            "string",
+                            "number"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "field",
+                        "operator",
+                        "value"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "packageName": "@backstage/plugin-home"
+    },
+    {
+      "path": "node_modules/@backstage-community/plugin-rbac/node_modules/@backstage/plugin-permission-common/config.d.ts",
+      "value": {
+        "type": "object",
+        "properties": {
+          "permission": {
+            "description": "Configuration options for Backstage permissions and authorization",
+            "type": "object",
+            "properties": {
+              "enabled": {
+                "description": "Whether authorization is enabled in Backstage. Defaults to false, which means authorization\nrequests will be automatically allowed without invoking the authorization policy.",
+                "visibility": "frontend",
+                "type": "boolean"
+              },
+              "EXPERIMENTAL_enableBatchedRequests": {
+                "visibility": "frontend",
+                "type": "boolean"
+              }
+            }
+          }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "packageName": "@backstage/plugin-permission-common"
+    },
+    {
+      "path": "node_modules/@backstage-community/plugin-github-actions/node_modules/@backstage/core-components/config.d.ts",
+      "value": {
+        "type": "object",
+        "properties": {
+          "auth": {
+            "type": "object",
+            "properties": {
+              "autologout": {
+                "description": "Autologout feature configuration",
+                "type": "object",
+                "properties": {
+                  "enabled": {
+                    "description": "Enable or disable the autologout feature",
+                    "visibility": "frontend",
+                    "type": "boolean"
+                  },
+                  "idleTimeoutMinutes": {
+                    "description": "Number of minutes after which the inactive user is logged out automatically.\nDefault is 60 minutes (1 hour)",
+                    "visibility": "frontend",
+                    "type": "number"
+                  },
+                  "promptBeforeIdleSeconds": {
+                    "description": "Number of seconds before the idle timeout where the user will be asked if it's still active.\nA dialog will be shown.\nDefault is 10 seconds.\nSet to 0 seconds to disable the prompt.",
+                    "visibility": "frontend",
+                    "type": "number"
+                  },
+                  "useWorkerTimers": {
+                    "description": "Enable/disable the usage of worker thread timers instead of main thread timers.\nDefault is true.\nIf you experience some browser incompatibility, you may try to set this to false.",
+                    "visibility": "frontend",
+                    "type": "boolean"
+                  },
+                  "logoutIfDisconnected": {
+                    "description": "Enable/disable the automatic logout also on users that are logged in but with no Backstage tabs open.\nDefault is true.",
+                    "visibility": "frontend",
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "packageName": "@backstage/core-components"
+    },
+    {
       "path": "node_modules/@backstage-community/plugin-github-actions/node_modules/@backstage/integration/config.d.ts",
       "value": {
         "type": "object",
@@ -2224,123 +2295,6 @@
       "packageName": "@backstage/integration"
     },
     {
-      "path": "node_modules/@backstage-community/plugin-github-actions/node_modules/@backstage/core-components/config.d.ts",
-      "value": {
-        "type": "object",
-        "properties": {
-          "auth": {
-            "type": "object",
-            "properties": {
-              "autologout": {
-                "description": "Autologout feature configuration",
-                "type": "object",
-                "properties": {
-                  "enabled": {
-                    "description": "Enable or disable the autologout feature",
-                    "visibility": "frontend",
-                    "type": "boolean"
-                  },
-                  "idleTimeoutMinutes": {
-                    "description": "Number of minutes after which the inactive user is logged out automatically.\nDefault is 60 minutes (1 hour)",
-                    "visibility": "frontend",
-                    "type": "number"
-                  },
-                  "promptBeforeIdleSeconds": {
-                    "description": "Number of seconds before the idle timeout where the user will be asked if it's still active.\nA dialog will be shown.\nDefault is 10 seconds.\nSet to 0 seconds to disable the prompt.",
-                    "visibility": "frontend",
-                    "type": "number"
-                  },
-                  "useWorkerTimers": {
-                    "description": "Enable/disable the usage of worker thread timers instead of main thread timers.\nDefault is true.\nIf you experience some browser incompatibility, you may try to set this to false.",
-                    "visibility": "frontend",
-                    "type": "boolean"
-                  },
-                  "logoutIfDisconnected": {
-                    "description": "Enable/disable the automatic logout also on users that are logged in but with no Backstage tabs open.\nDefault is true.",
-                    "visibility": "frontend",
-                    "type": "boolean"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "$schema": "http://json-schema.org/draft-07/schema#"
-      },
-      "packageName": "@backstage/core-components"
-    },
-    {
-      "path": "node_modules/@backstage-community/plugin-rbac/node_modules/@backstage/plugin-permission-common/config.d.ts",
-      "value": {
-        "type": "object",
-        "properties": {
-          "permission": {
-            "description": "Configuration options for Backstage permissions and authorization",
-            "type": "object",
-            "properties": {
-              "enabled": {
-                "description": "Whether authorization is enabled in Backstage. Defaults to false, which means authorization\nrequests will be automatically allowed without invoking the authorization policy.",
-                "visibility": "frontend",
-                "type": "boolean"
-              },
-              "EXPERIMENTAL_enableBatchedRequests": {
-                "visibility": "frontend",
-                "type": "boolean"
-              }
-            }
-          }
-        },
-        "$schema": "http://json-schema.org/draft-07/schema#"
-      },
-      "packageName": "@backstage/plugin-permission-common"
-    },
-    {
-      "path": "node_modules/@backstage/plugin-auth-backend-module-guest-provider/config.d.ts",
-      "value": {
-        "type": "object",
-        "properties": {
-          "auth": {
-            "description": "Configuration options for the auth plugin",
-            "type": "object",
-            "properties": {
-              "providers": {
-                "type": "object",
-                "properties": {
-                  "guest": {
-                    "type": "object",
-                    "properties": {
-                      "userEntityRef": {
-                        "description": "The entity reference to use for the guest user.",
-                        "default": "user:development/guest",
-                        "type": "string"
-                      },
-                      "ownershipEntityRefs": {
-                        "description": "A list of entity references to user for ownership of the guest user if the user\n is not found in the catalog.",
-                        "default": "[userEntityRef]",
-                        "type": "array",
-                        "items": {
-                          "type": "string"
-                        }
-                      },
-                      "dangerouslyAllowOutsideDevelopment": {
-                        "description": "Allow users to sign in with the guest provider outside of their development environments.",
-                        "type": "boolean"
-                      }
-                    }
-                  }
-                }
-              }
-            },
-            "required": [
-              "providers"
-            ]
-          }
-        },
-        "$schema": "http://json-schema.org/draft-07/schema#"
-      },
-      "packageName": "@backstage/plugin-auth-backend-module-guest-provider"
-    },
-    {
       "path": "node_modules/@backstage/plugin-auth-backend/config.d.ts",
       "value": {
         "type": "object",
@@ -2494,6 +2448,52 @@
         "$schema": "http://json-schema.org/draft-07/schema#"
       },
       "packageName": "@backstage/plugin-auth-backend"
+    },
+    {
+      "path": "node_modules/@backstage/plugin-auth-backend-module-guest-provider/config.d.ts",
+      "value": {
+        "type": "object",
+        "properties": {
+          "auth": {
+            "description": "Configuration options for the auth plugin",
+            "type": "object",
+            "properties": {
+              "providers": {
+                "type": "object",
+                "properties": {
+                  "guest": {
+                    "type": "object",
+                    "properties": {
+                      "userEntityRef": {
+                        "description": "The entity reference to use for the guest user.",
+                        "default": "user:development/guest",
+                        "type": "string"
+                      },
+                      "ownershipEntityRefs": {
+                        "description": "A list of entity references to user for ownership of the guest user if the user\n is not found in the catalog.",
+                        "default": "[userEntityRef]",
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "dangerouslyAllowOutsideDevelopment": {
+                        "description": "Allow users to sign in with the guest provider outside of their development environments.",
+                        "type": "boolean"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "required": [
+              "providers"
+            ]
+          }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "packageName": "@backstage/plugin-auth-backend-module-guest-provider"
     },
     {
       "path": "node_modules/@backstage/integration-react/node_modules/@backstage/integration/config.d.ts",
@@ -3274,50 +3274,30 @@
       "packageName": "@backstage/frontend-app-api"
     },
     {
-      "path": "node_modules/@backstage/plugin-search-backend-module-catalog/config.d.ts",
+      "path": "node_modules/@backstage/plugin-search-backend/config.d.ts",
       "value": {
         "type": "object",
         "properties": {
           "search": {
+            "description": "Configuration options for the search plugin",
             "type": "object",
             "properties": {
-              "collators": {
+              "maxPageLimit": {
+                "description": "Sets the maximum max page limit size. Defaults to 100.",
+                "type": "number"
+              },
+              "maxTermLength": {
+                "description": "Sets the maximum term length for the search string. Defaults to 100.",
+                "type": "number"
+              },
+              "permissions": {
+                "description": "Options related to the search integration with the Backstage permissions system",
                 "type": "object",
                 "properties": {
-                  "catalog": {
-                    "description": "Configuration options for `@backstage/plugin-search-backend-module-catalog`",
-                    "type": "object",
-                    "properties": {
-                      "locationTemplate": {
-                        "description": "A templating string with placeholders, to form the final location of\nthe entity.\n\nDefaults to '/catalog/:namespace/:kind/:name'",
-                        "type": "string"
-                      },
-                      "filter": {
-                        "description": "A filter expression passed to the catalog client, to select what\nentities to collate.\n\nDefaults to no filter, ie indexing all entities.",
-                        "anyOf": [
-                          {
-                            "type": "object",
-                            "properties": {},
-                            "additionalProperties": true
-                          },
-                          {
-                            "type": "array",
-                            "items": {
-                              "type": "object",
-                              "properties": {},
-                              "additionalProperties": true
-                            }
-                          }
-                        ]
-                      },
-                      "batchSize": {
-                        "description": "The number of entities to process at a time. Keep this at a\nreasonable number to avoid overloading either the catalog or the\nsearch backend.\n\nDefaults to 500",
-                        "type": "number"
-                      },
-                      "schedule": {
-                        "description": "The schedule for how often to run the collation job."
-                      }
-                    }
+                  "queryLatencyBudgetMs": {
+                    "description": "Limits the amount of time the search backend will spend retrieving and\nauthorizing results from the search engine when permissions are\nenabled. When the latency of the query endpoint reaches this threshold,\nthe results obtained up until that point will be returned, even if the\npage is incomplete.\n\nThis limit is only expected to be hit for broad queries from users with\nextremely restrictive visibility, or for very high page offsets.",
+                    "default": 1000,
+                    "type": "number"
                   }
                 }
               }
@@ -3326,7 +3306,7 @@
         },
         "$schema": "http://json-schema.org/draft-07/schema#"
       },
-      "packageName": "@backstage/plugin-search-backend-module-catalog"
+      "packageName": "@backstage/plugin-search-backend"
     },
     {
       "path": "node_modules/@backstage/plugin-search-backend-module-pg/config.d.ts",
@@ -3396,30 +3376,50 @@
       "packageName": "@backstage/plugin-search-backend-module-pg"
     },
     {
-      "path": "node_modules/@backstage/plugin-search-backend/config.d.ts",
+      "path": "node_modules/@backstage/plugin-search-backend-module-catalog/config.d.ts",
       "value": {
         "type": "object",
         "properties": {
           "search": {
-            "description": "Configuration options for the search plugin",
             "type": "object",
             "properties": {
-              "maxPageLimit": {
-                "description": "Sets the maximum max page limit size. Defaults to 100.",
-                "type": "number"
-              },
-              "maxTermLength": {
-                "description": "Sets the maximum term length for the search string. Defaults to 100.",
-                "type": "number"
-              },
-              "permissions": {
-                "description": "Options related to the search integration with the Backstage permissions system",
+              "collators": {
                 "type": "object",
                 "properties": {
-                  "queryLatencyBudgetMs": {
-                    "description": "Limits the amount of time the search backend will spend retrieving and\nauthorizing results from the search engine when permissions are\nenabled. When the latency of the query endpoint reaches this threshold,\nthe results obtained up until that point will be returned, even if the\npage is incomplete.\n\nThis limit is only expected to be hit for broad queries from users with\nextremely restrictive visibility, or for very high page offsets.",
-                    "default": 1000,
-                    "type": "number"
+                  "catalog": {
+                    "description": "Configuration options for `@backstage/plugin-search-backend-module-catalog`",
+                    "type": "object",
+                    "properties": {
+                      "locationTemplate": {
+                        "description": "A templating string with placeholders, to form the final location of\nthe entity.\n\nDefaults to '/catalog/:namespace/:kind/:name'",
+                        "type": "string"
+                      },
+                      "filter": {
+                        "description": "A filter expression passed to the catalog client, to select what\nentities to collate.\n\nDefaults to no filter, ie indexing all entities.",
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "properties": {},
+                            "additionalProperties": true
+                          },
+                          {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {},
+                              "additionalProperties": true
+                            }
+                          }
+                        ]
+                      },
+                      "batchSize": {
+                        "description": "The number of entities to process at a time. Keep this at a\nreasonable number to avoid overloading either the catalog or the\nsearch backend.\n\nDefaults to 500",
+                        "type": "number"
+                      },
+                      "schedule": {
+                        "description": "The schedule for how often to run the collation job."
+                      }
+                    }
                   }
                 }
               }
@@ -3428,7 +3428,7 @@
         },
         "$schema": "http://json-schema.org/draft-07/schema#"
       },
-      "packageName": "@backstage/plugin-search-backend"
+      "packageName": "@backstage/plugin-search-backend-module-catalog"
     },
     {
       "path": "node_modules/@backstage/plugin-search-backend-module-techdocs/config.d.ts",
@@ -5143,6 +5143,37 @@
       "packageName": "@backstage/backend-defaults"
     },
     {
+      "path": "node_modules/@backstage/plugin-events-backend/config.d.ts",
+      "value": {
+        "type": "object",
+        "properties": {
+          "events": {
+            "type": "object",
+            "properties": {
+              "notifyTimeoutMs": {
+                "description": "Timeout in milliseconds for how long to wait before closing subscription events\nrequests to ensure they don't stall or that events get stuck. Defaults to 55 seconds.",
+                "type": "number"
+              },
+              "http": {
+                "type": "object",
+                "properties": {
+                  "topics": {
+                    "description": "Topics for which a route has to be registered\nat which we can receive events via HTTP POST requests\n(i.e. received from webhooks).",
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "packageName": "@backstage/plugin-events-backend"
+    },
+    {
       "path": "node_modules/@backstage/backend-dynamic-feature-service/node_modules/@backstage/plugin-catalog-backend/config.d.ts",
       "value": {
         "type": "object",
@@ -5413,37 +5444,6 @@
         "$schema": "http://json-schema.org/draft-07/schema#"
       },
       "packageName": "@backstage/plugin-events-node"
-    },
-    {
-      "path": "node_modules/@backstage/plugin-events-backend/config.d.ts",
-      "value": {
-        "type": "object",
-        "properties": {
-          "events": {
-            "type": "object",
-            "properties": {
-              "notifyTimeoutMs": {
-                "description": "Timeout in milliseconds for how long to wait before closing subscription events\nrequests to ensure they don't stall or that events get stuck. Defaults to 55 seconds.",
-                "type": "number"
-              },
-              "http": {
-                "type": "object",
-                "properties": {
-                  "topics": {
-                    "description": "Topics for which a route has to be registered\nat which we can receive events via HTTP POST requests\n(i.e. received from webhooks).",
-                    "type": "array",
-                    "items": {
-                      "type": "string"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "$schema": "http://json-schema.org/draft-07/schema#"
-      },
-      "packageName": "@backstage/plugin-events-backend"
     },
     {
       "path": "node_modules/@backstage/backend-app-api/config.d.ts",
