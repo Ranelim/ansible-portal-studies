@@ -18,6 +18,10 @@ import {
   useCaptureGlobalShellReturn,
 } from './GlobalShellResumeBar';
 import {
+  AutomateFullPageChrome,
+  isAutomateFullPagePath,
+} from './AutomateFullPageChrome';
+import {
   CHROME_TOP_BASE,
   MASTHEAD_HEIGHT,
   chromeTopForAdminSync,
@@ -151,14 +155,33 @@ export const Root = ({ children }: PropsWithChildren<{}>) => {
   const { experience, setExperience } = useNavIaModel();
   const isSetup = location.pathname.includes('/setup');
   const onBridge = isBridgePath(location.pathname);
-  const onGlobalShell = isGlobalShellPath(location.pathname);
-  const railLess = onBridge || onGlobalShell;
+  const onGlobalShell = isGlobalShellPath(
+    location.pathname,
+    location.search,
+  );
+  const onAutomatePaths = isAutomateFullPagePath(
+    location.pathname,
+    location.search,
+  );
+  /**
+   * Automate = rail-less marketplace (tabs). Other experiences keep their rail
+   * on the same Templates/Activity URLs — gate on experience, not path alone.
+   * `all` + Automate paths → treat as Automate (deep-link / refresh after Bridge).
+   */
+  const onAutomateFull =
+    onAutomatePaths &&
+    (experience === 'automate' || experience === 'all');
+  const railLess = onBridge || onGlobalShell || onAutomateFull;
   // Magenta compare bar parked while Opt 1 is forced (Taufique).
   const showAdminSyncBar =
     experience === 'admin' && !isSetup && FORCED_ADMIN_SYNC_IA === null;
   const chromeTop = chromeTopForAdminSync(showAdminSyncBar);
 
-  useCaptureGlobalShellReturn(location.pathname);
+  useCaptureGlobalShellReturn(
+    location.pathname,
+    location.search,
+    experience,
+  );
 
   // Only the Experiences catalog / Assistant reset domain to Bridge 'all'.
   // Settings / My profile / notifications keep the last experience for Back.
@@ -167,6 +190,13 @@ export const Root = ({ children }: PropsWithChildren<{}>) => {
     setExperience('all');
     writeNavExperience('all');
   }, [onBridge, setExperience]);
+
+  // Persist Automate when full-page paths resolve under Bridge 'all'.
+  useEffect(() => {
+    if (!onAutomateFull || experience === 'automate') return;
+    setExperience('automate');
+    writeNavExperience('automate');
+  }, [onAutomateFull, experience, setExperience]);
 
   useEffect(() => {
     document.documentElement.style.setProperty(
@@ -184,13 +214,14 @@ export const Root = ({ children }: PropsWithChildren<{}>) => {
     return <>{children}</>;
   }
 
-  // Rail-less: Bridge catalog, Assistant, account pages, notifications
+  // Rail-less: Bridge, global shell (Create all / Search / account), Automate full-page
   if (railLess) {
     return (
       <RestartProvider>
         <div className={rootClasses.fixedHeaderOffset} style={chromeOffsetStyle}>
           <NavIaRouteGuard />
           <GlobalRestartBanner />
+          {onAutomateFull && <AutomateFullPageChrome />}
           {onGlobalShell && <GlobalShellResumeBar />}
           <div className={rootClasses.bridgeContent}>{children}</div>
         </div>

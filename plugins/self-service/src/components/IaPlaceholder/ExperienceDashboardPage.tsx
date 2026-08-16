@@ -84,7 +84,7 @@ const COPY: Partial<Record<NavExperience, DashCopy>> = {
       { label: 'Git Repositories', href: '/self-service/repositories' },
       { label: 'Collections', href: '/self-service/collections' },
       { label: 'Execution Environments', href: '/self-service/ee' },
-      { label: 'Templates', href: '/create' },
+      { label: 'Templates', href: '/create?scope=experience' },
     ],
   },
   compliance: {
@@ -103,7 +103,7 @@ const COPY: Partial<Record<NavExperience, DashCopy>> = {
     ],
     shortcuts: [
       { label: 'Inventories', href: '/self-service/inventories' },
-      { label: 'Templates', href: '/create' },
+      { label: 'Templates', href: '/create?scope=experience' },
       { label: 'Activity', href: '/self-service/create/tasks' },
     ],
   },
@@ -123,7 +123,7 @@ const COPY: Partial<Record<NavExperience, DashCopy>> = {
     ],
     shortcuts: [
       { label: 'Edge fleets', href: '/self-service/edge-fleets' },
-      { label: 'Templates', href: '/create' },
+      { label: 'Templates', href: '/create?scope=experience' },
       { label: 'Activity', href: '/self-service/create/tasks' },
     ],
   },

@@ -14,7 +14,7 @@ function readSeatRole(): string {
 /** Experiences shell: SME → Automate; multi-experience → Bridge catalog. */
 export function modelHomePath(_model?: NavIaModel): string {
   if (readSeatRole() === 'sme') {
-    return '/create';
+    return '/create?scope=experience';
   }
   return '/self-service/experiences';
 }
@@ -41,7 +41,7 @@ export function curatedLandingPath(): string {
     if (compliance) return '/self-service/inventories';
     if (rhem) return '/self-service/edge-fleets';
   }
-  return '/create';
+  return '/create?scope=experience';
 }
 
 /**
@@ -60,7 +60,7 @@ export function mismatchedModelRedirect(
   const sme = readSeatRole() === 'sme';
 
   if (sme && onBridge) {
-    return '/create';
+    return '/create?scope=experience';
   }
   if (onFlatHome || onOutcomes || onHomeDashboard) {
     return modelHomePath();

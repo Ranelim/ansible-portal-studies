@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Page, Header, Content, Link } from '@backstage/core-components';
 import { CatalogFilterLayout } from '@backstage/plugin-catalog-react';
 import {
@@ -107,15 +107,30 @@ const useStyles = makeStyles(theme => ({
 export const PluginsPage = () => {
   const classes = useStyles();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const experienceFromQuery = (() => {
+    try {
+      const raw = new URLSearchParams(location.search).get('experience');
+      if (raw && (EXPERIENCES as readonly string[]).includes(raw)) return raw;
+    } catch {
+      /* ignore */
+    }
+    return 'all';
+  })();
 
   const [tab, setTab] = useState<'catalog' | 'installed'>('catalog');
-  const [experience, setExperience] = useState<string>('all');
+  const [experience, setExperience] = useState<string>(experienceFromQuery);
   const [host, setHost] = useState<string>('all');
   const [query, setQuery] = useState('');
   const [selectedName, setSelectedName] = useState<string | null>(null);
   const [overrides, setOverrides] = useState<
     Record<string, ExtensionsPluginInstallStatus>
   >({});
+
+  useEffect(() => {
+    setExperience(experienceFromQuery);
+  }, [experienceFromQuery]);
 
   const catalog = useMemo(() => {
     return PORTAL_CATALOG.map(entry => {

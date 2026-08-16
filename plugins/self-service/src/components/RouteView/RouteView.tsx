@@ -53,6 +53,8 @@ import { SetupWizardPage } from '../Setup/SetupWizardPage';
 import { GeneralPage } from '../Admin/GeneralPage';
 import { DevSpacesDetailPage } from '../Admin/DevSpacesDetailPage';
 import { PluginsPage } from '../Admin/PluginsPage';
+import { ExperiencesAdminPage } from '../Admin/ExperiencesAdminPage';
+import { NotificationsAdminPage } from '../Admin/NotificationsAdminPage';
 import {
   NotificationProvider,
   NotificationStack,
@@ -246,7 +248,12 @@ const RouteViewContent = () => {
           path="admin/general"
           element={<Navigate to="/self-service/admin/overview" replace />}
         />
+        <Route path="admin/experiences" element={<ExperiencesAdminPage />} />
         <Route path="admin/plugins" element={<PluginsPage />} />
+        <Route
+          path="admin/notifications"
+          element={<NotificationsAdminPage />}
+        />
         <Route path="admin/integrations" element={<ConnectionsPage />} />
         <Route path="admin/integrations/devspaces" element={<DevSpacesDetailPage />} />
         <Route path="admin/integrations/:providerId" element={<ConnectionDetailPage />} />

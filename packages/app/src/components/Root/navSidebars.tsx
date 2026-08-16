@@ -45,6 +45,8 @@ import LinkIcon from '@material-ui/icons/Link';
 import VpnKeyIcon from '@material-ui/icons/VpnKey';
 import SyncIcon from '@material-ui/icons/Sync';
 import ExtensionIcon from '@material-ui/icons/Extension';
+import AppsIcon from '@material-ui/icons/Apps';
+import NotificationsIcon from '@material-ui/icons/Notifications';
 import ViewListIcon from '@material-ui/icons/ViewList';
 import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
 import ExpandLessIcon from '@material-ui/icons/ExpandLess';
@@ -205,7 +207,11 @@ const SearchAndMenu = ({
 
 const AutomateItems = () => (
   <>
-    <SidebarItem icon={AddCircleOutlineIcon} to="/create" text="Templates" />
+    <SidebarItem
+      icon={AddCircleOutlineIcon}
+      to="/create?scope=experience"
+      text="Templates"
+    />
     <SidebarItem
       icon={HistoryIcon}
       to="/self-service/create/tasks"
@@ -250,9 +256,19 @@ const AdminItems = () => {
       )}
       <SidebarItem icon={VpnKeyIcon} to="rbac" text="Access Control" />
       <SidebarItem
+        icon={AppsIcon}
+        to="/self-service/admin/experiences"
+        text="Experiences"
+      />
+      <SidebarItem
         icon={ExtensionIcon}
         to="/self-service/admin/plugins"
         text="Plugins"
+      />
+      <SidebarItem
+        icon={NotificationsIcon}
+        to="/self-service/admin/notifications"
+        text="Notifications"
       />
     </>
   );
@@ -435,7 +451,11 @@ export const FlatNavSidebar = () => {
           text="Catalog"
         />
       )}
-      <SidebarItem icon={AddCircleOutlineIcon} to="/create" text="Templates" />
+      <SidebarItem
+        icon={AddCircleOutlineIcon}
+        to="/create?scope=experience"
+        text="Templates"
+      />
       <SidebarItem
         icon={HistoryIcon}
         to="/self-service/create/tasks"
@@ -589,7 +609,11 @@ const EXPERIENCE_DASHBOARD = '/self-service/experience-dashboard';
 /** Run pair — Templates + Activity (same labels as curated Run band). */
 const RunItems = () => (
   <>
-    <SidebarItem icon={AddCircleOutlineIcon} to="/create" text="Templates" />
+    <SidebarItem
+      icon={AddCircleOutlineIcon}
+      to="/create?scope=experience"
+      text="Templates"
+    />
     <SidebarItem
       icon={HistoryIcon}
       to="/self-service/create/tasks"
@@ -821,16 +845,8 @@ export const ExperiencesSidebar = () => {
       {/* A keeps a normal section label under the quiet return. */}
       {showQuietReturn && <SidebarSectionLabel text={experienceLabel} />}
 
-      {domain === 'automate' && (
-        <>
-          <RunItems />
-          <SidebarItem
-            icon={ViewListIcon}
-            to="/self-service/resources"
-            text="Catalog"
-          />
-        </>
-      )}
+      {/* Automate is rail-less (full-page tabs). Fallback if chrome misses: Templates ∥ Activity only — no Catalog. */}
+      {domain === 'automate' && <RunItems />}
 
       {domain === 'develop' && (
         <>
@@ -851,6 +867,8 @@ export const ExperiencesSidebar = () => {
             to="/self-service/ee"
             text="Execution Environments"
           />
+          <hr className={quietClasses.softDiv} />
+          <LearnItems />
         </>
       )}
 
@@ -863,6 +881,8 @@ export const ExperiencesSidebar = () => {
             to="/self-service/inventories"
             text="Inventories"
           />
+          <hr className={quietClasses.softDiv} />
+          <LearnItems />
         </>
       )}
 
@@ -875,6 +895,8 @@ export const ExperiencesSidebar = () => {
             to="/self-service/edge-fleets"
             text="Edge fleets"
           />
+          <hr className={quietClasses.softDiv} />
+          <LearnItems />
         </>
       )}
 

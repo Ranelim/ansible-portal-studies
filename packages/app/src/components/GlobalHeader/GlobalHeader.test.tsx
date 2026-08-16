@@ -54,7 +54,7 @@ jest.mock('./PortalHeaderSearch', () => ({
 
 jest.mock('./PortalCreateButton', () => ({
   PortalCreateButton: () => (
-    <button type="button" title="Create..." aria-label="Create...">
+    <button type="button" title="All templates" aria-label="All templates">
       Create
     </button>
   ),
@@ -98,7 +98,7 @@ describe('GlobalHeader', () => {
     expect(screen.getByText('Automation Portal')).toBeInTheDocument();
     expect(screen.getByPlaceholderText('Search...')).toBeInTheDocument();
     expect(screen.queryByText(/Error fetching results/i)).not.toBeInTheDocument();
-    expect(screen.getByTitle('Create...')).toBeInTheDocument();
+    expect(screen.getByTitle('All templates')).toBeInTheDocument();
     expect(screen.getByLabelText('Notifications')).toBeInTheDocument();
     expect(screen.getByLabelText('Profile')).toBeInTheDocument();
   });

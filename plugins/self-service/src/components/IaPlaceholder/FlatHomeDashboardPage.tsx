@@ -43,7 +43,7 @@ const SNIPPETS: Record<
     summary: 'Run templates and track recent job activity.',
     metric: '24',
     metricLabel: 'runs (7d)',
-    href: '/create',
+    href: '/create?scope=experience',
     highlights: ['12 succeeded', '2 failed', '1 running'],
   },
   develop: {
@@ -208,7 +208,7 @@ export const FlatHomeDashboardPage = () => {
         value: '18',
         label: 'Templates',
         hint: 'Available to this seat',
-        href: '/create',
+        href: '/create?scope=experience',
       },
     ];
     if (available.includes('develop')) {

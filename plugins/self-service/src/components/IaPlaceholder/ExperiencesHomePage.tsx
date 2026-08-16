@@ -64,7 +64,7 @@ const EXPERIENCE_BLURB: Record<ExperienceId, string> = {
 };
 
 const EXPERIENCE_LANDING: Record<ExperienceId, string> = {
-  automate: '/create',
+  automate: '/create?scope=experience',
   develop: '/self-service/experience-dashboard',
   compliance: '/self-service/experience-dashboard',
   edge: '/self-service/experience-dashboard',

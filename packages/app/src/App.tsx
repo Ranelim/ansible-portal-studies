@@ -1,5 +1,5 @@
 import React from 'react';
-import { Navigate, Route, useNavigate } from 'react-router-dom';
+import { Navigate, Route, useNavigate, useLocation } from 'react-router-dom';
 import { useUserRole, useUserRoleContext, UserRoleContext } from '@ansible/plugin-backstage-self-service';
 import { apiDocsPlugin, ApiExplorerPage } from '@backstage/plugin-api-docs';
 import {
@@ -128,6 +128,9 @@ const useStaticTemplateStyles = makeStyles(theme => ({
 const StaticScaffolderFallback = () => {
   const classes = useStaticTemplateStyles();
   const navigate = useNavigate();
+  const { search } = useLocation();
+  const experienceScoped =
+    new URLSearchParams(search).get('scope') === 'experience';
   const [categoryFilter, setCategoryFilter] = React.useState('');
 
   const categories = React.useMemo(() => {
@@ -142,7 +145,11 @@ const StaticScaffolderFallback = () => {
   return (
     <Box className={classes.root}>
       <Typography className={classes.pageTitle}>Templates</Typography>
-      <Typography className={classes.pageSubtitle}>Create new projects and automation content from curated templates</Typography>
+      <Typography className={classes.pageSubtitle}>
+        {experienceScoped
+          ? 'Templates for this experience.'
+          : 'All templates you can run across Automation Portal.'}
+      </Typography>
       <Box className={classes.topRow}>
         <Button variant="outlined" className={classes.registerBtn}>Register Existing Component</Button>
       </Box>
@@ -249,9 +256,33 @@ const app = createApp({
 const RoleLandingRedirect = () => {
   const { role, loading } = useUserRoleContext();
   if (loading) return null;
-  // Experiences shell: SME → Automate; multi-experience → Bridge catalog
-  const target = role === 'sme' ? '/create' : '/self-service/experiences';
+  // Experiences shell: SME → Automate Templates; multi-experience → Bridge catalog
+  const target =
+    role === 'sme' ? '/create?scope=experience' : '/self-service/experiences';
   return <Navigate to={target} replace />;
+};
+
+/** Scope cue only — must not wrap ScaffolderPage (Backstage routable extension). */
+const TemplatesScopeBanner = () => {
+  const { search } = useLocation();
+  const experienceScoped =
+    new URLSearchParams(search).get('scope') === 'experience';
+
+  return (
+    <Box
+      px={3}
+      pt={2}
+      style={{
+        fontSize: 13,
+        color: 'inherit',
+        opacity: 0.85,
+      }}
+    >
+      {experienceScoped
+        ? 'Showing templates for this experience. Masthead + opens all templates.'
+        : 'Showing all templates you can run across Automation Portal.'}
+    </Box>
+  );
 };
 
 const routes = (
@@ -280,6 +311,7 @@ const routes = (
           <StaticScaffolderFallback />
         ) : (
           <>
+            <TemplatesScopeBanner />
             <WorkflowApprovalBanner />
             <ScaffolderPage
               headerOptions={{

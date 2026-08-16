@@ -24,8 +24,10 @@ Build the **Experience Bridge** shell from the Aug 11 stakeholder direction:
 | **Bridge** (`/self-service/experiences`) | Masthead only | Experiences cards · search · sort · **Administration** button (admins, top-right — not a card) |
 | **Assistant** (`/self-service/assistant`) | Masthead only | Chat skeleton (TBD) |
 | **Global account** (`/settings`, catalog `user/*`, `/notifications`) | Masthead only | No experience rail; **preserves** last experience for Back |
-| **Inside experience** | Masthead + experience rail | Automate → Templates; others → Dashboard / entity home |
-| **SME** | Masthead + Automate rail | `/create` (never Bridge) |
+| **Inside experience** | Masthead + experience rail | Develop / Compliance / Edge → Dashboard / entity home |
+| **Automate** | Masthead + page tabs (no rail) | Templates \| Activity — marketplace-clean |
+| **Global Templates (`+`)** | Masthead + Back bar only | `/create` — all templates; does **not** enter Automate |
+| **SME** | Masthead + Automate tabs (no Back) | `/create?scope=experience` (never Bridge) |
 
 **Teasers (Aug 12):** Dashboard tab (deferred MVP), catalog search + Recent, AI Assistant experience (full page; masthead Lightspeed stays the quick drawer).
 
@@ -37,20 +39,21 @@ Not eng SoT until ADRs on `ansible-rhdh-plugins` `main`. Mirror: `.cursor/rules/
 
 ### Locked
 
-- **Rail order:** `[Dashboard?] → Templates → Activity → {Class A entities}` — quiet dividers, **no** end-user section labels (Overview / Run / Resources / Custom).
+- **Rail order:** `[Dashboard?] → Templates → Activity → {Class A entities} → [Documentation · Learning Paths]` — quiet dividers, **no** end-user section labels (Overview / Run / Resources / Learn / Custom).
 - **Templates ∥ Activity** siblings — never nest Activity under Templates.
 - **Experience Settings omitted** from Automate / Develop / Compliance / Edge rails until real personal prefs exist (prototype page route may remain; not in nav). Sync schedule → Administration; Sync now → object action.
 - **Develop objects:** Git Repositories · Collections · Execution Environments. APME = Quality on repos (Class B).
 - **Compliance object:** Inventories only. Profiles / Scans = host tabs — not rail, not Settings.
-- **One Templates catalog** — masthead + / experience Templates / object CTA = same list, different filters.
+- **Learn (Develop / Compliance / Edge):** after Class A objects — quiet divider, then **Documentation** + **Learning Paths** (no “Learn” rail label). Not on Automate or Admin.
+- **Automate = rail-less marketplace** — page tabs **Templates | Activity** only (Catalog dropped). Multi-seat: **Back to Experiences**. SME: no Back on Automate; Search → **Back to Automate**.
+- **Search = global shell** — not tied to the last experience rail; return bar resumes Bridge or prior experience (SME → Automate).
+- **One Templates catalog** — masthead **+** = **all** templates (rail-less `/create`, no experience chrome); Automate Templates tab = `?scope=experience`; object **Create** = filtered modal. **+ does not open Automate.**
 - **Object scaffolder = Create CTA → modal** (Aug 13) — Git Repositories, EEs, Inventories, Edge fleets. No trailing Scaffold / Templates / Create **tab** on the host for create. Import remains a secondary action where needed.
 - **Bridge Administration** (Aug 13, Taufique) — not an experience card; top-right **Administration** button for admins. Experience cards get info ⓘ → popover + docs link.
 
 ### Open
 
-- Automate **Catalog** (exploration)
 - **Remediations** placement; Massimo **dynamic profile tabs**
-- Rail-less SME Automate (page tabs Templates \| Activity)
 - When experience **Settings** returns
 - **Resources** rail header for Class A only? (Taufique Aug 13 meeting OK — conflicts with “no section labels” quiet lock; decide next)
 - Nested experience nav pattern (PF drawer) for future plugins
@@ -64,7 +67,7 @@ Not eng SoT until ADRs on `ansible-rhdh-plugins` `main`. Mirror: `.cursor/rules/
 | Next | Stakeholder **login → intro → Experiences** flow |
 | Next | Account chrome: **Back** (not “Developer”) |
 | Done (park) | Admin Sync **Option 1** forced (`FORCED_ADMIN_SYNC_IA = 'opt1'`); magenta compare bar hidden; Overview **Sync health** card removed. Opt 2 code kept for revive. Still open under Opt 1: tab **Sync settings**; modal→history; drop Quality from Integrations |
-| Done | Admin **Dashboard** = first rail item (Usage/Metrics placeholder cards); Bridge **Administration** still lands there. Not an Experience. |
+| Done | Admin **Experiences** beside **Plugins**; **Notifications** admin shell (platform defaults — personal prefs stay in profile). |
 | Decide | **Resources** header on experience rails for Class A only |
 | Later | Real usage metrics + uninstall; nested-nav example; Cate/Kate APME feedback |
 
