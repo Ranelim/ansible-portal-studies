@@ -25,7 +25,6 @@ const EXPERIENCE_RESUME: Record<
 > = {
   automate: '/create?scope=experience',
   'develop-tabs': '/self-service/repositories/list',
-  'develop-section': '/self-service/repositories/list',
   'develop-drawer': '/self-service/repositories/list',
   compliance: '/self-service/experience-dashboard',
   edge: '/self-service/experience-dashboard',
@@ -95,7 +94,6 @@ function readStoredExperience(): NavExperience {
     if (
       raw === 'automate' ||
       raw === 'develop-tabs' ||
-      raw === 'develop-section' ||
       raw === 'develop-drawer' ||
       raw === 'compliance' ||
       raw === 'edge' ||
@@ -104,7 +102,7 @@ function readStoredExperience(): NavExperience {
     ) {
       return raw;
     }
-    if (raw === 'develop') return 'develop-tabs';
+    if (raw === 'develop' || raw === 'develop-section') return 'develop-tabs';
   } catch {
     /* ignore */
   }

@@ -60,10 +60,8 @@ const EXPERIENCE_BLURB: Record<ExperienceId, string> = {
   automate: 'Run job templates and track recent activity.',
   'develop-tabs':
     'A — Git Repositories pin; tabs: Repositories · Quality · Remediations · Pipeline.',
-  'develop-section':
-    'B — Git repositories section (Repositories · Quality · Remediations); closed with a rail divider before Collections.',
   'develop-drawer':
-    'C — Same as B, with Git repositories in a collapsible drawer open by default.',
+    'B — Git Repositories expandable item; Repositories · Quality · Remediations indented.',
   compliance: 'Scan inventories, review findings, and remediate hosts.',
   edge: 'Manage edge device fleets, updates, and desired state.',
 };
@@ -71,7 +69,6 @@ const EXPERIENCE_BLURB: Record<ExperienceId, string> = {
 const EXPERIENCE_LANDING: Record<ExperienceId, string> = {
   automate: '/create?scope=experience',
   'develop-tabs': '/self-service/repositories/list',
-  'develop-section': '/self-service/repositories/list',
   'develop-drawer': '/self-service/repositories/list',
   compliance: '/self-service/experience-dashboard',
   edge: '/self-service/experience-dashboard',
@@ -80,7 +77,6 @@ const EXPERIENCE_LANDING: Record<ExperienceId, string> = {
 const EXPERIENCE_ACCENT: Record<ExperienceId, string> = {
   automate: '#0066CC',
   'develop-tabs': '#3D1C7C',
-  'develop-section': '#5E2B9F',
   'develop-drawer': '#7B3DB8',
   compliance: '#C46100',
   edge: '#147EBC',
@@ -106,15 +102,9 @@ const EXPERIENCE_DOCS: Record<
     href: 'https://docs.redhat.com/en/documentation/red_hat_ansible_automation_platform/2.6/html/using_self-service_automation_portal/index',
     linkLabel: 'View Develop documentation',
   },
-  'develop-section': {
-    summary:
-      'Review B: Git repositories section with Repositories, Quality, and Remediations as sibling rail items (list-first).',
-    href: 'https://docs.redhat.com/en/documentation/red_hat_ansible_automation_platform/2.6/html/using_self-service_automation_portal/index',
-    linkLabel: 'View Develop documentation',
-  },
   'develop-drawer': {
     summary:
-      'Review C: same Git repositories cluster as B, nested in an open-by-default collapsible drawer.',
+      'Review B: Git Repositories expandable rail item with Repositories, Quality, and Remediations indented.',
     href: 'https://docs.redhat.com/en/documentation/red_hat_ansible_automation_platform/2.6/html/using_self-service_automation_portal/index',
     linkLabel: 'View Develop documentation',
   },
@@ -144,7 +134,6 @@ function experienceIcon(id: ExperienceId | 'assistant'): ReactNode {
     case 'automate':
       return <PlayArrowIcon {...props} />;
     case 'develop-tabs':
-    case 'develop-section':
     case 'develop-drawer':
       return <CodeIcon {...props} />;
     case 'compliance':
@@ -166,7 +155,6 @@ function readRecent(): ExperienceId[] {
       [
         'automate',
         'develop-tabs',
-        'develop-section',
         'develop-drawer',
         'compliance',
         'edge',

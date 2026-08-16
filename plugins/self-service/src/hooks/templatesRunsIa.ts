@@ -4,8 +4,12 @@ export type TemplatesRunsIaVariant = 'automate-rail' | 'masthead-plus';
 
 export const TEMPLATES_RUNS_IA_KEY = 'portal-templates-runs-ia';
 
-/** Set to force one option and hide the magenta bar. Null = compare UI on. */
-export const FORCED_TEMPLATES_RUNS_IA: TemplatesRunsIaVariant | null = null;
+/**
+ * Lock Option B — Automate as one rail item; Templates | Runs as page tabs.
+ * Magenta A/B toggle stays hidden while this is set.
+ */
+export const FORCED_TEMPLATES_RUNS_IA: TemplatesRunsIaVariant | null =
+  'masthead-plus';
 
 const listeners = new Set<() => void>();
 
@@ -29,7 +33,7 @@ export function readTemplatesRunsIa(): TemplatesRunsIaVariant {
   } catch {
     /* ignore */
   }
-  return 'automate-rail';
+  return 'masthead-plus';
 }
 
 export function writeTemplatesRunsIa(next: TemplatesRunsIaVariant) {

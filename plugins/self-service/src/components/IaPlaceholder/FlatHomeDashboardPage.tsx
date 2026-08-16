@@ -53,15 +53,8 @@ const SNIPPETS: Record<
     href: '/self-service/repositories/list',
     highlights: ['3 need attention', 'Quality avg 78'],
   },
-  'develop-section': {
-    summary: 'Git repositories section — list-first + Quality (review B).',
-    metric: '12',
-    metricLabel: 'repos',
-    href: '/self-service/repositories/list',
-    highlights: ['3 need attention', 'Quality avg 78'],
-  },
   'develop-drawer': {
-    summary: 'Git repositories drawer — Quality nest open by default (review C).',
+    summary: 'Git Repositories expandable item — Quality nest (review B).',
     metric: '12',
     metricLabel: 'repos',
     href: '/self-service/repositories/list',
@@ -227,7 +220,6 @@ export const FlatHomeDashboardPage = () => {
     ];
     if (
       available.includes('develop-tabs') ||
-      available.includes('develop-section') ||
       available.includes('develop-drawer')
     ) {
       items.push({
@@ -268,7 +260,6 @@ export const FlatHomeDashboardPage = () => {
     ];
     if (
       available.includes('develop-tabs') ||
-      available.includes('develop-section') ||
       available.includes('develop-drawer')
     ) {
       rows.push({ label: 'EEs in use', value: '6' });

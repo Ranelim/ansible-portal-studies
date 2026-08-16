@@ -46,14 +46,13 @@ const getTabIndexFromPath = (pathname: string): number => {
 /**
  * Git Repositories host.
  * - Develop (tabs): Repositories | Quality | Remediations | Pipeline activity
- * - Develop (section/drawer): no host tabs — rail picks Repositories / Quality / Remediations
+ * - Develop (drawer): no host tabs — rail picks Repositories / Quality / Remediations
  */
 export const ProjectsTabs: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { experience } = useNavIaModel();
-  const sectionMode =
-    experience === 'develop-section' || experience === 'develop-drawer';
+  const sectionMode = experience === 'develop-drawer';
   const [createOpen, setCreateOpen] = useState(false);
 
   useEffect(() => {

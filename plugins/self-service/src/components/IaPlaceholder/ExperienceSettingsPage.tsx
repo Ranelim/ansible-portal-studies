@@ -61,15 +61,6 @@ const COPY: Partial<
       'Preferred scaffold template',
     ],
   },
-  'develop-section': {
-    purpose:
-      'Content-developer preferences for Git Repositories, Collections, and Execution Environments.',
-    examples: [
-      'Default repo list columns',
-      'Quality scan notifications',
-      'Preferred scaffold template',
-    ],
-  },
   'develop-drawer': {
     purpose:
       'Content-developer preferences for Git Repositories, Collections, and Execution Environments.',
@@ -106,10 +97,6 @@ const ADMIN_ESCAPES: Partial<
     { label: 'Integrations', to: '/self-service/admin/integrations' },
   ],
   'develop-tabs': [
-    { label: 'Integrations', to: '/self-service/admin/integrations' },
-    { label: 'Content sources / Sync', to: '/self-service/admin/sync-activity' },
-  ],
-  'develop-section': [
     { label: 'Integrations', to: '/self-service/admin/integrations' },
     { label: 'Content sources / Sync', to: '/self-service/admin/sync-activity' },
   ],

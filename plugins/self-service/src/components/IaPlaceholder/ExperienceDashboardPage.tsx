@@ -22,7 +22,6 @@ const DEVELOP_PURPOSE =
 /** Concept-page purpose only — no KPI / attention / shortcut mock content. */
 const PURPOSE: Partial<Record<NavExperience, string>> = {
   'develop-tabs': DEVELOP_PURPOSE,
-  'develop-section': DEVELOP_PURPOSE,
   'develop-drawer': DEVELOP_PURPOSE,
   compliance:
     'Experience overview for Compliance — posture across inventories. Inventories in the rail opens the list; overview lives here so the entity page stays list-first.',

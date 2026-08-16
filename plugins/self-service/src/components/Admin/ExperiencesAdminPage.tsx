@@ -98,20 +98,10 @@ const ADMIN_EXPERIENCES: AdminExperience[] = [
     defaultVisible: true,
   },
   {
-    id: 'develop-section',
-    label: 'Develop (section)',
-    description:
-      'APME review B — Git repositories section; Repositories + Quality + Remediations pins (list-first).',
-    pluginsFilter: 'Develop',
-    seatsSummary: 'Developer, Admin',
-    pluginsSummary: 'Self-service, APME Quality Scanning',
-    defaultVisible: true,
-  },
-  {
     id: 'develop-drawer',
     label: 'Develop (drawer)',
     description:
-      'APME review C — same as section, with Git repositories in an open-by-default drawer.',
+      'APME review B — Git Repositories expandable item; Repositories · Quality · Remediations indented.',
     pluginsFilter: 'Develop',
     seatsSummary: 'Developer, Admin',
     pluginsSummary: 'Self-service, APME Quality Scanning',

@@ -130,7 +130,6 @@ const INITIAL_ITEMS: DemoItem[] = [
 const FILTER_EXPERIENCES: Array<Exclude<NavExperience, 'all'>> = [
   'automate',
   'develop-tabs',
-  'develop-section',
   'develop-drawer',
   'compliance',
   'edge',
@@ -143,7 +142,6 @@ function readLastExperience(): Exclude<NavExperience, 'all'> | null {
     if (
       raw === 'automate' ||
       raw === 'develop-tabs' ||
-      raw === 'develop-section' ||
       raw === 'develop-drawer' ||
       raw === 'compliance' ||
       raw === 'edge' ||
@@ -151,7 +149,7 @@ function readLastExperience(): Exclude<NavExperience, 'all'> | null {
     ) {
       return raw;
     }
-    if (raw === 'develop') return 'develop-tabs';
+    if (raw === 'develop' || raw === 'develop-section') return 'develop-tabs';
   } catch {
     /* ignore */
   }
@@ -170,7 +168,6 @@ function readReturnExperience(): Exclude<NavExperience, 'all'> | null {
       parsed?.kind === 'experience' &&
       (parsed.experience === 'automate' ||
         parsed.experience === 'develop-tabs' ||
-        parsed.experience === 'develop-section' ||
         parsed.experience === 'develop-drawer' ||
         parsed.experience === 'compliance' ||
         parsed.experience === 'edge' ||
@@ -178,7 +175,11 @@ function readReturnExperience(): Exclude<NavExperience, 'all'> | null {
     ) {
       return parsed.experience;
     }
-    if (parsed?.kind === 'experience' && parsed.experience === 'develop') {
+    if (
+      parsed?.kind === 'experience' &&
+      (parsed.experience === 'develop' ||
+        parsed.experience === 'develop-section')
+    ) {
       return 'develop-tabs';
     }
   } catch {

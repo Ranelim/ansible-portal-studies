@@ -1,5 +1,5 @@
-import { useEffect, useState, type ReactNode } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useEffect, useState, type ElementType, type ReactNode } from 'react';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import {
   useUserRoleContext,
   useNavPlugins,
@@ -41,8 +41,6 @@ import MemoryIcon from '@material-ui/icons/Memory';
 import StorageIcon from '@material-ui/icons/Storage';
 import RouterIcon from '@material-ui/icons/Router';
 import DashboardIcon from '@material-ui/icons/Dashboard';
-import AssessmentIcon from '@material-ui/icons/Assessment';
-import AssignmentIcon from '@material-ui/icons/Assignment';
 import LibraryBooks from '@material-ui/icons/LibraryBooks';
 import SchoolIcon from '@material-ui/icons/School';
 import LinkIcon from '@material-ui/icons/Link';
@@ -54,6 +52,7 @@ import NotificationsIcon from '@material-ui/icons/Notifications';
 import ViewListIcon from '@material-ui/icons/ViewList';
 import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
 import ExpandLessIcon from '@material-ui/icons/ExpandLess';
+import ChevronRightIcon from '@material-ui/icons/ChevronRight';
 import HomeIcon from '@material-ui/icons/Home';
 import ArrowBackIcon from '@material-ui/icons/ArrowBack';
 import ChevronLeftIcon from '@material-ui/icons/ChevronLeft';
@@ -104,6 +103,252 @@ const useDrawerStyles = makeStyles(theme => ({
     color: theme.palette.text.secondary,
   },
 }));
+
+/**
+ * Expandable rail item — match RHDH BackstageSidebarItem chrome (inset pill hover),
+ * PF6-inspired chevron disclosure. Children indent under the parent.
+ */
+const useExpandableNavItemStyles = makeStyles(theme => {
+  const nav = theme.palette.navigation ?? {};
+  const rhdhGeneral = (theme.palette as any).rhdh?.general ?? {};
+  const selectedBg =
+    rhdhGeneral.sidebarItemSelectedBackgroundColor ??
+    nav.navItem?.hoverBackground ??
+    theme.palette.background.paper;
+
+  return {
+    root: {
+      width: '100%',
+    },
+    // Mirror RHDH theme BackstageSidebarItem root (createComponents.esm.js).
+    button: {
+      display: 'flex',
+      flexFlow: 'row nowrap',
+      alignItems: 'center',
+      height: 48,
+      width: 'calc(100% - 0.5rem) !important',
+      marginLeft: '0.5rem !important',
+      marginRight: 0,
+      marginTop: 0,
+      marginBottom: 0,
+      padding: 0,
+      border: 'none',
+      borderRadius: 6,
+      background: 'none',
+      cursor: 'pointer',
+      textAlign: 'left',
+      font: 'inherit',
+      textTransform: 'none',
+      textDecorationLine: 'none',
+      color: nav.color ?? theme.palette.text.primary,
+      boxSizing: 'border-box',
+      '&:hover, &:focus-visible': {
+        backgroundColor: selectedBg,
+      },
+      '&:focus-visible': {
+        outline: `2px solid ${theme.palette.primary.main}`,
+        outlineOffset: 0,
+      },
+    },
+    buttonActive: {
+      backgroundColor: selectedBg,
+      color: nav.selectedColor ?? theme.palette.text.primary,
+    },
+    iconContainer: {
+      boxSizing: 'border-box',
+      height: '100%',
+      width: sidebarConfig.iconContainerWidth,
+      // Same as Backstage SidebarItem — keeps glyph on the shared icon column.
+      marginRight: -theme.spacing(2),
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      lineHeight: 0,
+      flexShrink: 0,
+      color: 'inherit',
+    },
+    label: {
+      fontWeight: theme.typography.fontWeightRegular,
+      whiteSpace: 'nowrap',
+      flex: '3 1 auto',
+      minWidth: 0,
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+      fontSize: theme.typography.fontSize,
+      lineHeight: 1.4,
+    },
+    chevron: {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexShrink: 0,
+      width: theme.spacing(4),
+      marginRight: theme.spacing(0.5),
+      color: 'inherit',
+      opacity: 0.7,
+    },
+    children: {
+      // Nest under parent label (PF6 expandable) — text-only children, no icons.
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '0.25rem',
+      paddingTop: 2,
+      paddingBottom: 2,
+      boxSizing: 'border-box',
+      width: '100%',
+    },
+    childLink: {
+      display: 'flex',
+      alignItems: 'center',
+      height: 40,
+      width: 'calc(100% - 0.5rem) !important',
+      marginLeft: '0.5rem !important',
+      // Sit under parent label (past the shared icon column).
+      paddingLeft: sidebarConfig.iconContainerWidth - theme.spacing(2),
+      paddingRight: theme.spacing(1),
+      borderRadius: 6,
+      boxSizing: 'border-box',
+      color: nav.color ?? theme.palette.text.primary,
+      textDecoration: 'none',
+      fontSize: theme.typography.fontSize,
+      fontWeight: theme.typography.fontWeightRegular,
+      whiteSpace: 'nowrap',
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+      '&:hover, &:focus-visible': {
+        backgroundColor: selectedBg,
+      },
+      '&:focus-visible': {
+        outline: `2px solid ${theme.palette.primary.main}`,
+        outlineOffset: 0,
+      },
+    },
+    childLinkActive: {
+      backgroundColor: selectedBg,
+      color: nav.selectedColor ?? theme.palette.text.primary,
+    },
+  };
+});
+
+type ExpandableNavChildProps = {
+  to: string;
+  text: string;
+};
+
+/** Text-only nested rail link — no icon (hierarchy from indent). */
+const ExpandableNavChild = ({ to, text }: ExpandableNavChildProps) => {
+  const classes = useExpandableNavItemStyles();
+  const { pathname } = useLocation();
+  const base = to.split('?')[0] ?? to;
+  const selected =
+    pathname === base ||
+    (base.endsWith('/list') &&
+      (pathname === '/self-service/repositories' ||
+        pathname.endsWith('/repositories/list'))) ||
+    (base.endsWith('/dashboard') && pathname.includes('/repositories/dashboard')) ||
+    (base.endsWith('/remediations') &&
+      pathname.includes('/repositories/remediations'));
+
+  return (
+    <Link
+      to={to}
+      className={`${classes.childLink}${
+        selected ? ` ${classes.childLinkActive}` : ''
+      }`}
+      aria-current={selected ? 'page' : undefined}
+    >
+      {text}
+    </Link>
+  );
+};
+
+type ExpandableNavItemProps = {
+  id: string;
+  text: string;
+  icon: ElementType;
+  defaultOpen?: boolean;
+  /** Highlight parent when location matches (child routes). */
+  activePathPrefix?: string;
+  children: ReactNode;
+};
+
+const ExpandableNavItem = ({
+  id,
+  text,
+  icon: Icon,
+  defaultOpen = true,
+  activePathPrefix,
+  children,
+}: ExpandableNavItemProps) => {
+  const classes = useExpandableNavItemStyles();
+  const { pathname } = useLocation();
+  const childActive = Boolean(
+    activePathPrefix && pathname.startsWith(activePathPrefix),
+  );
+
+  const [open, setOpen] = useState(() => {
+    try {
+      const raw = localStorage.getItem(DRAWER_STORAGE_KEY);
+      if (!raw) return defaultOpen || childActive;
+      const map = JSON.parse(raw) as Record<string, boolean>;
+      if (typeof map[id] === 'boolean') return map[id];
+      return defaultOpen || childActive;
+    } catch {
+      return defaultOpen || childActive;
+    }
+  });
+
+  // Keep open when navigating into a child route.
+  useEffect(() => {
+    if (childActive) setOpen(true);
+  }, [childActive]);
+
+  const toggle = () => {
+    setOpen(prev => {
+      const next = !prev;
+      try {
+        const raw = localStorage.getItem(DRAWER_STORAGE_KEY);
+        const map = raw ? (JSON.parse(raw) as Record<string, boolean>) : {};
+        map[id] = next;
+        localStorage.setItem(DRAWER_STORAGE_KEY, JSON.stringify(map));
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  };
+
+  return (
+    <Box className={classes.root}>
+      <button
+        type="button"
+        className={`${classes.button}${
+          childActive ? ` ${classes.buttonActive}` : ''
+        }`}
+        onClick={toggle}
+        aria-expanded={open}
+        aria-controls={`nav-expandable-${id}`}
+      >
+        <span className={classes.iconContainer} aria-hidden>
+          <Icon fontSize="small" />
+        </span>
+        <Typography className={classes.label} component="span">
+          {text}
+        </Typography>
+        <span className={classes.chevron} aria-hidden>
+          {open ? (
+            <ExpandMoreIcon fontSize="small" />
+          ) : (
+            <ChevronRightIcon fontSize="small" />
+          )}
+        </span>
+      </button>
+      <Collapse in={open} id={`nav-expandable-${id}`}>
+        <Box className={classes.children}>{children}</Box>
+      </Collapse>
+    </Box>
+  );
+};
 
 /** Collapsible section drawer (job/theme band) — used by flat Admin + experiences Admin. */
 const SectionDrawer = ({
@@ -196,7 +441,21 @@ const SearchAndMenu = ({
       </SidebarGroup>
     )}
     <SidebarGroup label="Menu" icon={<MenuIcon />}>
-      {children}
+      {/* Long experience rails (Develop section/drawer) must scroll — stock
+          drawer uses flexShrink:0 + hidden scrollbar and clips overflow. */}
+      <Box
+        data-portal-sidebar-scroll=""
+        sx={{
+          flex: '1 1 auto',
+          minHeight: 0,
+          width: '100%',
+          overflowX: 'hidden',
+          overflowY: 'auto',
+          scrollbarWidth: 'thin',
+        }}
+      >
+        {children}
+      </Box>
       {footer ? (
         <>
           <SidebarSpace />
@@ -825,18 +1084,17 @@ export const ExperiencesSidebar = () => {
 
   const goExperiences = () => navigate('/self-service/experiences');
 
-  /** A: sibling Templates · Runs. B: one Automate item → page tabs (other experiences). */
+  /** Templates · Runs (or bundled Automate) — soft gap only, no hard rules. */
   const ExperienceRunPair =
     runPairIa === 'masthead-plus' ? (
       <>
         <BundledAutomateRailItem />
-        <SidebarDivider />
+        <SidebarSpacer />
       </>
     ) : (
       <>
-        <SidebarDivider />
         <RunItems />
-        <SidebarDivider />
+        <SidebarSpacer />
       </>
     );
 
@@ -859,28 +1117,25 @@ export const ExperiencesSidebar = () => {
 
       {/* B — left chevron beside experience name (icon-column aligned). */}
       {showLabelReturn ? (
-        <>
-          <Box className={quietClasses.labelReturnRow}>
-            <span className={quietClasses.iconCol}>
-              <button
-                type="button"
-                className={quietClasses.labelReturnBtn}
-                onClick={goExperiences}
-                aria-label="Back to Experiences"
-                title="Back to Experiences"
-              >
-                <ChevronLeftIcon className={quietClasses.labelReturnChevron} />
-              </button>
-            </span>
-            <Typography
-              className={quietClasses.labelReturnText}
-              component="span"
+        <Box className={quietClasses.labelReturnRow}>
+          <span className={quietClasses.iconCol}>
+            <button
+              type="button"
+              className={quietClasses.labelReturnBtn}
+              onClick={goExperiences}
+              aria-label="Back to Experiences"
+              title="Back to Experiences"
             >
-              {experienceLabel}
-            </Typography>
-          </Box>
-          <hr className={quietClasses.softDiv} />
-        </>
+              <ChevronLeftIcon className={quietClasses.labelReturnChevron} />
+            </button>
+          </span>
+          <Typography
+            className={quietClasses.labelReturnText}
+            component="span"
+          >
+            {experienceLabel}
+          </Typography>
+        </Box>
       ) : (
         !showQuietReturn && <SidebarSectionLabel text={experienceLabel} />
       )}
@@ -911,75 +1166,36 @@ export const ExperiencesSidebar = () => {
             to="/self-service/ee"
             text="Execution Environments"
           />
-          <hr className={quietClasses.softDiv} />
+          <SidebarSpacer />
           <LearnItems />
         </>
       )}
 
-      {/* B — list-first: Repositories → Quality → Remediations. */}
-      {domain === 'develop-section' && (
-        <>
-          {ExperienceDashboardItem}
-          {ExperienceRunPair}
-          <SidebarSectionLabel text="Git repositories" />
-          <SidebarItem
-            icon={CodeIcon}
-            to="/self-service/repositories/list"
-            text="Repositories"
-          />
-          <SidebarItem
-            icon={AssessmentIcon}
-            to="/self-service/repositories/dashboard"
-            text="Quality"
-          />
-          <SidebarItem
-            icon={AssignmentIcon}
-            to="/self-service/repositories/remediations"
-            text="Remediations"
-          />
-          <SidebarDivider />
-          <SidebarItem
-            icon={CategoryIcon}
-            to="/self-service/collections"
-            text="Collections"
-          />
-          <SidebarItem
-            icon={MemoryIcon}
-            to="/self-service/ee"
-            text="Execution Environments"
-          />
-          <hr className={quietClasses.softDiv} />
-          <LearnItems />
-        </>
-      )}
-
-      {/* C — same as B, but Git repositories nest in an open-by-default drawer. */}
+      {/* B — Git Repositories as expandable nav item (chevron), children indented. */}
       {domain === 'develop-drawer' && (
         <>
           {ExperienceDashboardItem}
           {ExperienceRunPair}
-          <SectionDrawer
+          <ExpandableNavItem
             id="develop-git-repos"
-            label="Git repositories"
+            icon={CodeIcon}
+            text="Git Repositories"
+            activePathPrefix="/self-service/repositories"
             defaultOpen
           >
-            <SidebarItem
-              icon={CodeIcon}
+            <ExpandableNavChild
               to="/self-service/repositories/list"
               text="Repositories"
             />
-            <SidebarItem
-              icon={AssessmentIcon}
+            <ExpandableNavChild
               to="/self-service/repositories/dashboard"
               text="Quality"
             />
-            <SidebarItem
-              icon={AssignmentIcon}
+            <ExpandableNavChild
               to="/self-service/repositories/remediations"
               text="Remediations"
             />
-          </SectionDrawer>
-          <SidebarDivider />
+          </ExpandableNavItem>
           <SidebarItem
             icon={CategoryIcon}
             to="/self-service/collections"
@@ -990,7 +1206,7 @@ export const ExperiencesSidebar = () => {
             to="/self-service/ee"
             text="Execution Environments"
           />
-          <hr className={quietClasses.softDiv} />
+          <SidebarSpacer />
           <LearnItems />
         </>
       )}
@@ -1004,7 +1220,7 @@ export const ExperiencesSidebar = () => {
             to="/self-service/inventories"
             text="Inventories"
           />
-          <hr className={quietClasses.softDiv} />
+          <SidebarSpacer />
           <LearnItems />
         </>
       )}
@@ -1018,7 +1234,7 @@ export const ExperiencesSidebar = () => {
             to="/self-service/edge-fleets"
             text="Edge fleets"
           />
-          <hr className={quietClasses.softDiv} />
+          <SidebarSpacer />
           <LearnItems />
         </>
       )}

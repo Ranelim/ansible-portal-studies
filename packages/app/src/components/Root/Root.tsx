@@ -129,13 +129,49 @@ const useRootStyles = makeStyles(theme => {
     // so the rail clears the masthead (+ Admin Sync bar when --portal-chrome-top is set).
     '[class*="BackstageSidebar-root"]': {
       top: `var(--portal-chrome-top, ${CHROME_TOP_BASE}px) !important`,
-      height: `calc(100% - var(--portal-chrome-top, ${CHROME_TOP_BASE}px)) !important`,
+      bottom: '0 !important',
+      height: 'auto !important',
     },
-    // Drawer is position:absolute inside root — keep top:0 relative to root
+    // Drawer is position:absolute inside root — pin to root edges and scroll.
+    // Stock Backstage: flexShrink:0 children + scrollbarWidth:none → long rails clip.
     '[class*="BackstageSidebar-drawer"]': {
       top: '0 !important',
-      height: '100% !important',
+      bottom: '0 !important',
+      height: 'auto !important',
+      maxHeight: '100% !important',
+      overflowX: 'hidden !important' as any,
       overflowY: 'auto !important' as any,
+      scrollbarWidth: 'thin' as any,
+      '&::-webkit-scrollbar': {
+        display: 'block !important',
+        width: 6,
+      },
+      '&::-webkit-scrollbar-thumb': {
+        backgroundColor: theme.palette.action.disabled,
+        borderRadius: 3,
+      },
+    },
+    // Always-on scroll region for long experience menus.
+    '[class*="BackstageSidebar-drawer"] [data-portal-sidebar-scroll]': {
+      flex: '1 1 auto !important',
+      flexShrink: '1 !important' as any,
+      minHeight: '0 !important',
+      maxHeight: '100%',
+      overflowY: 'auto !important' as any,
+      overflowX: 'hidden !important' as any,
+      scrollbarWidth: 'thin' as any,
+      '&::-webkit-scrollbar': {
+        display: 'block !important',
+        width: 6,
+      },
+      '&::-webkit-scrollbar-thumb': {
+        backgroundColor: theme.palette.action.disabled,
+        borderRadius: 3,
+      },
+    },
+    '[class*="BackstageSidebar-drawer"] [class*="BackstageSidebarSpace"]': {
+      flexShrink: '1 !important' as any,
+      minHeight: '0 !important',
     },
     'body, html': {
       backgroundColor: `${theme.palette.background.default} !important`,
