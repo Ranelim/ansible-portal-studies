@@ -11,21 +11,33 @@ function readSeatRole(): string {
   }
 }
 
-/** Experiences shell: SME → Automate; multi-experience → Bridge catalog. */
+function readAutomateShellVariant(): string {
+  try {
+    const raw = localStorage.getItem('portal-templates-runs-ia');
+    if (raw === 'masthead-plus' || raw === 'bundled') return 'masthead-plus';
+    return 'automate-rail';
+  } catch {
+    return 'automate-rail';
+  }
+}
+
+/** Experiences shell: SME → Automate (or masthead + on Option B); multi-seat → Bridge. */
 export function modelHomePath(_model?: NavIaModel): string {
   if (readSeatRole() === 'sme') {
-    return '/create?scope=experience';
+    return readAutomateShellVariant() === 'masthead-plus'
+      ? '/create'
+      : '/create?scope=experience';
   }
   return '/self-service/experiences';
 }
 
 /** Seat-aware fallback used by RoleLandingRedirect for operator plugins. */
 export function curatedLandingPath(): string {
-  let role = 'sme';
+  let role = 'admin';
   let compliance = false;
   let rhem = false;
   try {
-    role = localStorage.getItem('portal-user-role') || 'sme';
+    role = localStorage.getItem('portal-user-role') || 'admin';
     const plugins = JSON.parse(
       localStorage.getItem('portal-nav-plugins') || '{}',
     );
@@ -41,11 +53,13 @@ export function curatedLandingPath(): string {
     if (compliance) return '/self-service/inventories';
     if (rhem) return '/self-service/edge-fleets';
   }
-  return '/create?scope=experience';
+  return modelHomePath();
 }
 
 /**
- * Experiences shell — leave bakeoff-only surfaces; SME never stays on Bridge.
+ * Experiences shell — leave bakeoff-only surfaces.
+ * Option B: SME may visit Bridge (no Automate card) for compare.
+ * Option A: SME never stays on Bridge.
  */
 export function mismatchedModelRedirect(
   _model: NavIaModel,
@@ -59,7 +73,7 @@ export function mismatchedModelRedirect(
   const onHomeDashboard = pathname.startsWith('/self-service/home-dashboard');
   const sme = readSeatRole() === 'sme';
 
-  if (sme && onBridge) {
+  if (sme && onBridge && readAutomateShellVariant() === 'automate-rail') {
     return '/create?scope=experience';
   }
   if (onFlatHome || onOutcomes || onHomeDashboard) {

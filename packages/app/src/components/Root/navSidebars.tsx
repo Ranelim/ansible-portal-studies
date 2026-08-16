@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   useUserRoleContext,
   useNavPlugins,
@@ -10,6 +10,7 @@ import {
   NAV_IA_REVIEW_MODS,
   isSmeRole,
   useAdminSyncIa,
+  useTemplatesRunsIa,
   type NavExperience,
 } from '@ansible/plugin-backstage-self-service';
 import { SidebarSectionLabel } from '@ansible/plugin-backstage-rhaap';
@@ -32,6 +33,7 @@ import {
 import MenuIcon from '@material-ui/icons/Menu';
 import SearchIcon from '@material-ui/icons/Search';
 import AddCircleOutlineIcon from '@material-ui/icons/AddCircleOutline';
+import PlayArrowIcon from '@material-ui/icons/PlayArrow';
 import HistoryIcon from '@material-ui/icons/History';
 import CodeIcon from '@material-ui/icons/Code';
 import CategoryIcon from '@material-ui/icons/Category';
@@ -215,7 +217,7 @@ const AutomateItems = () => (
     <SidebarItem
       icon={HistoryIcon}
       to="/self-service/create/tasks"
-      text="Activity"
+      text="Runs"
     />
   </>
 );
@@ -459,7 +461,7 @@ export const FlatNavSidebar = () => {
       <SidebarItem
         icon={HistoryIcon}
         to="/self-service/create/tasks"
-        text="Activity"
+        text="Runs"
       />
       <SidebarItem icon={LibraryBooks} to="docs" text="Documentation" />
       <SidebarItem
@@ -606,7 +608,7 @@ export const HomeBandSidebar = () => {
 
 const EXPERIENCE_DASHBOARD = '/self-service/experience-dashboard';
 
-/** Run pair — Templates + Activity (same labels as curated Run band). */
+/** Run pair — Templates + Runs (siblings). Grouped in rail via runPairCluster. */
 const RunItems = () => (
   <>
     <SidebarItem
@@ -617,10 +619,31 @@ const RunItems = () => (
     <SidebarItem
       icon={HistoryIcon}
       to="/self-service/create/tasks"
-      text="Activity"
+      text="Runs"
     />
   </>
 );
+
+/**
+ * Bundled option — one Automate rail item; page tabs Templates | Runs.
+ * `to` follows the active path so the item stays highlighted on Runs.
+ */
+const BundledAutomateRailItem = () => {
+  const { pathname } = useLocation();
+  const onRuns = pathname.startsWith('/self-service/create/tasks');
+
+  return (
+    <SidebarItem
+      icon={PlayArrowIcon}
+      to={
+        onRuns
+          ? '/self-service/create/tasks'
+          : '/create?scope=experience'
+      }
+      text="Automate"
+    />
+  );
+};
 
 const useQuietReturnStyles = makeStyles(theme => ({
   /** Option A — “← Experiences” aligned to the SidebarItem icon column. */
@@ -648,11 +671,12 @@ const useQuietReturnStyles = makeStyles(theme => ({
       outlineOffset: -2,
     },
   },
-  /** Matches Backstage SidebarItem iconContainer (72px, centered). */
+  /** Matches SidebarItem iconContainer: 8px item inset + centered 24px hit (= icon gutter 32). */
   iconCol: {
     boxSizing: 'border-box' as const,
     width: sidebarConfig.iconContainerWidth,
     minWidth: sidebarConfig.iconContainerWidth,
+    marginLeft: 8,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -740,6 +764,8 @@ export const ExperiencesSidebar = () => {
   const { plugins } = useNavPlugins();
   const { experience, setExperience } = useNavIaModel();
   const { variant: returnChrome } = useExperienceReturnChrome();
+  const { variant: runPairIa } = useTemplatesRunsIa();
+  const keepAutomate = runPairIa === 'automate-rail';
   const isAdmin = hasRole('admin');
   const smeLocked = isSmeRole(role);
   const available = availableExperiences({
@@ -747,26 +773,29 @@ export const ExperiencesSidebar = () => {
     isAdmin,
     compliance: plugins.compliance,
     rhem: plugins.rhem,
+    includeAutomate: keepAutomate,
   });
 
   const active: NavExperience = available.includes(experience)
     ? experience
-    : available[0] ?? 'automate';
+    : available[0] ?? (keepAutomate ? 'automate' : 'develop');
 
-  // SME: force Automate. Multi-seat: coerce invalid experience away from Bridge 'all'.
+  // SME: force Automate when Option A. Multi-seat: coerce invalid away from Bridge 'all'.
   useEffect(() => {
     let next = active;
-    if (next === 'all') {
+    if (next === 'all' || (!keepAutomate && next === 'automate')) {
       next =
-        smeLocked
+        smeLocked && keepAutomate
           ? 'automate'
-          : available.find(id => id !== 'all') ?? 'automate';
+          : available.find(id => id !== 'all' && id !== 'automate') ??
+            available.find(id => id !== 'all') ??
+            (keepAutomate ? 'automate' : 'develop');
     }
     if (next !== experience) {
       setExperience(next);
       writeNavExperience(next);
     }
-  }, [active, experience, setExperience, smeLocked, available]);
+  }, [active, experience, setExperience, smeLocked, available, keepAutomate]);
 
   /**
    * Experience Settings rail omitted until real personal prefs exist.
@@ -784,18 +813,35 @@ export const ExperiencesSidebar = () => {
 
   const domain =
     active === 'all'
-      ? smeLocked
+      ? smeLocked && keepAutomate
         ? 'automate'
-        : available.find(id => id !== 'all') ?? 'automate'
+        : available.find(id => id !== 'all' && id !== 'automate') ??
+          available.find(id => id !== 'all') ??
+          (keepAutomate ? 'automate' : 'develop')
       : active;
 
   const experienceLabel =
-    EXPERIENCE_LABELS[domain] ?? EXPERIENCE_LABELS.automate;
+    EXPERIENCE_LABELS[domain] ?? EXPERIENCE_LABELS.develop;
 
   const showQuietReturn = !smeLocked && returnChrome === 'quiet';
   const showLabelReturn = !smeLocked && returnChrome === 'waffle';
 
   const goExperiences = () => navigate('/self-service/experiences');
+
+  /** Option A: sibling Templates · Runs + dividers. Option B: one Automate item. */
+  const ExperienceRunPair =
+    runPairIa === 'masthead-plus' ? (
+      <>
+        <BundledAutomateRailItem />
+        <SidebarDivider />
+      </>
+    ) : (
+      <>
+        <SidebarDivider />
+        <RunItems />
+        <SidebarDivider />
+      </>
+    );
 
   return (
     <SearchAndMenu showSearch={false}>
@@ -845,13 +891,18 @@ export const ExperiencesSidebar = () => {
       {/* A keeps a normal section label under the quiet return. */}
       {showQuietReturn && <SidebarSectionLabel text={experienceLabel} />}
 
-      {/* Automate is rail-less (full-page tabs). Fallback if chrome misses: Templates ∥ Activity only — no Catalog. */}
-      {domain === 'automate' && <RunItems />}
+      {/* Option A: Automate experience = Templates · Runs (+ Learn). */}
+      {domain === 'automate' && keepAutomate && (
+        <>
+          {ExperienceRunPair}
+          <LearnItems />
+        </>
+      )}
 
       {domain === 'develop' && (
         <>
           {ExperienceDashboardItem}
-          <RunItems />
+          {ExperienceRunPair}
           <SidebarItem
             icon={CodeIcon}
             to="/self-service/repositories"
@@ -875,7 +926,7 @@ export const ExperiencesSidebar = () => {
       {domain === 'compliance' && (
         <>
           {ExperienceDashboardItem}
-          <RunItems />
+          {ExperienceRunPair}
           <SidebarItem
             icon={StorageIcon}
             to="/self-service/inventories"
@@ -889,7 +940,7 @@ export const ExperiencesSidebar = () => {
       {domain === 'edge' && (
         <>
           {ExperienceDashboardItem}
-          <RunItems />
+          {ExperienceRunPair}
           <SidebarItem
             icon={RouterIcon}
             to="/self-service/edge-fleets"

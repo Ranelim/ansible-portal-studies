@@ -6,6 +6,7 @@ import {
   EXPERIENCE_LABELS,
   isSmeRole,
   useUserRoleContext,
+  useTemplatesRunsIa,
   type NavExperience,
 } from '@ansible/plugin-backstage-self-service';
 
@@ -36,9 +37,9 @@ export function isBridgePath(pathname: string): boolean {
 }
 
 /**
- * Rail-less chrome: account, notifications, search, and masthead Create (all templates).
- * Experience-scoped Templates (`?scope=experience`) stay out of this helper —
- * Automate full-page chrome handles those in Root via AutomateFullPageChrome.
+ * Rail-less chrome: account, notifications, search, and masthead Create.
+ * Experience-scoped Templates (`?scope=experience`) keep the experience rail.
+ * Option B global Runs: `/self-service/create/tasks?scope=all`.
  */
 export function isGlobalShellPath(pathname: string, search = ''): boolean {
   if (pathname === '/settings' || pathname.startsWith('/settings/')) {
@@ -56,6 +57,29 @@ export function isGlobalShellPath(pathname: string, search = ''): boolean {
   if (pathname === '/create' || pathname.startsWith('/create/')) {
     const scope = new URLSearchParams(search).get('scope');
     return scope !== 'experience';
+  }
+  if (
+    pathname === '/self-service/create/tasks' ||
+    pathname.startsWith('/self-service/create/tasks/')
+  ) {
+    return new URLSearchParams(search).get('scope') === 'all';
+  }
+  return false;
+}
+
+/** Masthead + Templates | Runs surface (Option B), excluding account/search. */
+export function isGlobalTemplatesRunsPath(
+  pathname: string,
+  search = '',
+): boolean {
+  if (pathname === '/create' || pathname.startsWith('/create/')) {
+    return new URLSearchParams(search).get('scope') !== 'experience';
+  }
+  if (
+    pathname === '/self-service/create/tasks' ||
+    pathname.startsWith('/self-service/create/tasks/')
+  ) {
+    return new URLSearchParams(search).get('scope') === 'all';
   }
   return false;
 }
@@ -180,6 +204,7 @@ export const GlobalShellResumeBar = () => {
   const navigate = useNavigate();
   const { pathname, search } = useLocation();
   const { role } = useUserRoleContext();
+  const { variant: runPairIa } = useTemplatesRunsIa();
   const [ret, setRet] = useState<GlobalReturn | null>(() => readReturn());
 
   useEffect(() => {
@@ -187,23 +212,45 @@ export const GlobalShellResumeBar = () => {
     setRet(readReturn());
   }, [pathname, search]);
 
-  // SME: Automate-only — no Bridge return on account / masthead Create.
-  // On Search, SME still needs a way back → Automate (not Experiences).
-  if (isSmeRole(role)) {
-    const onSearch =
-      pathname === '/search' || pathname.startsWith('/search/');
-    if (!onSearch) {
-      return null;
-    }
+  const onGlobalTemplatesRuns = isGlobalTemplatesRunsPath(pathname, search);
+  const mastheadPlus = runPairIa === 'masthead-plus';
+
+  // Option B masthead + surface — always return to Experiences catalog.
+  if (mastheadPlus && onGlobalTemplatesRuns) {
     return (
       <Box className={classes.bar} role="navigation" aria-label="Return">
         <Button
           className={classes.button}
           size="small"
           startIcon={<ArrowBackIcon fontSize="small" />}
-          onClick={() => navigate('/create?scope=experience')}
+          onClick={() => navigate('/self-service/experiences')}
         >
-          Back to Automate
+          Back to Experiences
+        </Button>
+      </Box>
+    );
+  }
+
+  // SME: no Bridge on other global pages. Search → back to Automate / Templates home.
+  if (isSmeRole(role)) {
+    const onSearch =
+      pathname === '/search' || pathname.startsWith('/search/');
+    if (!onSearch) {
+      return null;
+    }
+    const smeHome =
+      runPairIa === 'masthead-plus' ? '/create' : '/create?scope=experience';
+    const smeLabel =
+      runPairIa === 'masthead-plus' ? 'Back to Templates' : 'Back to Automate';
+    return (
+      <Box className={classes.bar} role="navigation" aria-label="Return">
+        <Button
+          className={classes.button}
+          size="small"
+          startIcon={<ArrowBackIcon fontSize="small" />}
+          onClick={() => navigate(smeHome)}
+        >
+          {smeLabel}
         </Button>
       </Box>
     );

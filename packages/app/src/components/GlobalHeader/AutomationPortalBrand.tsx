@@ -2,9 +2,23 @@ import { Link } from '@backstage/core-components';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import { useTheme } from '@mui/material/styles';
+import {
+  isSmeRole,
+  useTemplatesRunsIa,
+  useUserRoleContext,
+} from '@ansible/plugin-backstage-self-service';
+import {
+  ExperiencesWaffleButton,
+  SHOW_EXPERIENCES_WAFFLE,
+} from './ExperiencesWaffleButton';
+import {
+  MASTHEAD_TOOLBAR_GUTTER_PX,
+  RAIL_ICON_GUTTER_PX,
+} from '../IaPrototype/chromeHeights';
 
 /** Matches Backstage/RHDH open sidebar — brand column = rail width so search hits the gutter. */
 export const SIDEBAR_WIDTH_OPEN = 224;
+
 
 /**
  * Transparent fedora (RHDH DefaultLogo hat paths) — no black plate like the PNG asset.
@@ -36,6 +50,14 @@ const RedHatFedora = ({ size = 36 }: { size?: number }) => (
 export const AutomationPortalBrand = () => {
   const theme = useTheme();
   const ink = theme.palette.text.primary;
+  const { role } = useUserRoleContext();
+  const { variant } = useTemplatesRunsIa();
+
+  const homeTo = isSmeRole(role)
+    ? variant === 'masthead-plus'
+      ? '/create'
+      : '/create?scope=experience'
+    : '/self-service/experiences';
 
   return (
     <Box
@@ -50,12 +72,20 @@ export const AutomationPortalBrand = () => {
         alignItems: 'center',
         flexShrink: 0,
         boxSizing: 'border-box',
-        pl: 1.5,
+        // Toolbar gutter is 24px; pad to RAIL_ICON_GUTTER (32) so waffle hit
+        // aligns with sidebar menu icons (and Back / magenta TEMP).
+        ml: 0,
+        pl: SHOW_EXPERIENCES_WAFFLE
+          ? `${RAIL_ICON_GUTTER_PX - MASTHEAD_TOOLBAR_GUTTER_PX}px`
+          : 1.5,
         pr: 1,
+        // Room between waffle pressed surface and fedora.
+        gap: SHOW_EXPERIENCES_WAFFLE ? 1.5 : 0,
       }}
     >
+      <ExperiencesWaffleButton />
       <Link
-        to="/"
+        to={homeTo}
         underline="none"
         color="inherit"
         aria-label="Home — Automation Portal"
@@ -92,7 +122,6 @@ export const AutomationPortalBrand = () => {
           >
             Red Hat
           </Typography>
-          {/* Secondary product line — RHDH-like hierarchy under bold Red Hat */}
           <Typography
             component="span"
             sx={{

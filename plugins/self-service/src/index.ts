@@ -52,3 +52,12 @@ export {
   readAdminSyncIa,
   writeAdminSyncIa,
 } from './components/Admin/adminSyncIa';
+export { useTemplatesRunsIa } from './hooks/useTemplatesRunsIa';
+export type { TemplatesRunsIaVariant } from './hooks/templatesRunsIa';
+export {
+  FORCED_TEMPLATES_RUNS_IA,
+  readTemplatesRunsIa,
+  writeTemplatesRunsIa,
+  isAutomateExperienceEnabled,
+} from './hooks/templatesRunsIa';
+

@@ -1,28 +1,42 @@
+import { useNavigate } from 'react-router-dom';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import Box from '@mui/material/Box';
 import MenuItem from '@mui/material/MenuItem';
 import ListItemText from '@mui/material/ListItemText';
-import { Link } from '@backstage/core-components';
 import { HeaderDropdownComponent } from '@red-hat-developer-hub/backstage-plugin-global-header/dist/components/HeaderDropdownComponent/HeaderDropdownComponent.esm.js';
 import { useDropdownManager } from '@red-hat-developer-hub/backstage-plugin-global-header/dist/hooks/useDropdownManager.esm.js';
+import { mastheadIconButtonSx } from './mastheadIconSx';
 
-/** Match profile menu — body text, not link-blue. */
+/**
+ * Dark body text like Profile menu — never Backstage Link primary blue.
+ * RHDH/MUI focus the first item on open for keyboard users; keep that focus
+ * ring-free for pointer opens (`:focus` transparent, `:focus-visible` = hover).
+ */
 const menuItemSx = {
   color: 'text.primary',
   textDecoration: 'none',
-  '&:hover': {
+  '&:focus': {
+    color: 'text.primary',
+    backgroundColor: 'transparent',
+  },
+  '&:hover, &:focus-visible, &.Mui-focusVisible': {
     color: 'text.primary',
     textDecoration: 'none',
+    backgroundColor: 'action.hover',
   },
-  '& .MuiListItemText-primary': {
+  '&.Mui-selected, &.Mui-selected:hover': {
+    color: 'text.primary',
+    backgroundColor: 'action.hover',
+  },
+  '& .MuiListItemText-primary, & .MuiListItemText-primary span': {
     color: 'text.primary',
   },
   '& .MuiListItemText-secondary': {
     color: 'text.secondary',
   },
-  '& .MuiListItemIcon-root': {
+  '& .MuiListItemIcon-root, & .MuiSvgIcon-root': {
     color: 'text.secondary',
-    minWidth: 36,
   },
 } as const;
 
@@ -31,44 +45,57 @@ const menuItemSx = {
  * (that module circular-imports CreateDropdown and crashes this static app).
  */
 export const PortalHelpMenu = () => {
+  const navigate = useNavigate();
   const { anchorEl, handleOpen, handleClose } = useDropdownManager();
+  const open = Boolean(anchorEl);
+
+  const goDocs = () => {
+    handleClose();
+    navigate('/docs');
+  };
+
+  const goSupport = () => {
+    handleClose();
+    window.open(
+      'https://access.redhat.com/support',
+      '_blank',
+      'noopener,noreferrer',
+    );
+  };
 
   return (
-    <HeaderDropdownComponent
-      isIconButton
-      tooltip="Help"
-      buttonContent={<HelpOutlineIcon />}
-      buttonProps={{ color: 'inherit' }}
-      onOpen={handleOpen}
-      onClose={handleClose}
-      anchorEl={anchorEl}
-    >
-      <MenuItem
-        component={Link}
-        to="/docs"
-        onClick={handleClose}
-        sx={menuItemSx}
-      >
-        <ListItemText primary="Documentation" secondary="Guides and reference" />
-      </MenuItem>
-      <MenuItem
-        component="a"
-        href="https://access.redhat.com/support"
-        target="_blank"
-        rel="noopener noreferrer"
-        onClick={handleClose}
-        sx={{
-          ...menuItemSx,
-          justifyContent: 'space-between',
+    <Box data-masthead-menu-open={open ? 'true' : undefined}>
+      <HeaderDropdownComponent
+        isIconButton
+        tooltip="Help"
+        buttonContent={<HelpOutlineIcon fontSize="small" />}
+        buttonProps={{
+          color: 'inherit',
+          'aria-label': 'Help',
+          sx: mastheadIconButtonSx(false),
         }}
+        onOpen={handleOpen}
+        onClose={handleClose}
+        anchorEl={anchorEl}
       >
-        <ListItemText primary="Red Hat Support" secondary="Open a support case" />
-        <OpenInNewIcon
-          fontSize="small"
-          aria-label="Opens in a new tab"
-          sx={{ color: 'text.secondary', ml: 1, flexShrink: 0 }}
-        />
-      </MenuItem>
-    </HeaderDropdownComponent>
+        <MenuItem onClick={goDocs} sx={menuItemSx}>
+          <ListItemText
+            primary="Documentation"
+            secondary="Guides and reference"
+          />
+        </MenuItem>
+        <MenuItem onClick={goSupport} sx={menuItemSx}>
+          <ListItemText
+            primary="Red Hat Support"
+            secondary="Open a support case"
+          />
+          <OpenInNewIcon
+            fontSize="small"
+            aria-label="Opens in a new tab"
+            sx={{ color: 'text.secondary', ml: 1, flexShrink: 0 }}
+          />
+        </MenuItem>
+      </HeaderDropdownComponent>
+    </Box>
   );
 };

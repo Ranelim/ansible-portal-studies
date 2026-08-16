@@ -34,6 +34,7 @@ import {
   writeNavExperience,
   type NavExperience,
 } from '../../hooks/useNavIaModel';
+import { useTemplatesRunsIa } from '../../hooks/useTemplatesRunsIa';
 import { useNavPlugins } from '../../hooks/useNavPlugins';
 import { useUserRoleContext } from '../../hooks/useUserRole';
 
@@ -476,6 +477,24 @@ const useStyles = makeStyles(theme => ({
     color: theme.palette.text.secondary,
     padding: theme.spacing(3, 0),
   },
+  /** Option B + SME: Automate removed — Bridge has no job-mode cards. */
+  emptyCallout: {
+    marginBottom: theme.spacing(2),
+    padding: theme.spacing(2, 2.5),
+    borderRadius: 4,
+    border: `1px solid ${theme.palette.divider}`,
+    backgroundColor: theme.palette.background.default,
+  },
+  emptyCalloutTitle: {
+    fontWeight: 600,
+    marginBottom: theme.spacing(0.5),
+  },
+  emptyCalloutBody: {
+    fontSize: 14,
+    lineHeight: 1.5,
+    color: theme.palette.text.secondary,
+    marginBottom: theme.spacing(1.5),
+  },
 }));
 
 /** PF-aligned: click info icon → popover with short copy + docs link (MUI implementation). */
@@ -546,6 +565,8 @@ export const ExperiencesHomePage = () => {
   const { role, hasRole } = useUserRoleContext();
   const { plugins } = useNavPlugins();
   const { setExperience } = useNavIaModel();
+  const { variant: runPairIa } = useTemplatesRunsIa();
+  const keepAutomate = runPairIa === 'automate-rail';
   const isAdmin = hasRole('admin');
 
   const [query, setQuery] = useState('');
@@ -560,11 +581,12 @@ export const ExperiencesHomePage = () => {
         isAdmin,
         compliance: plugins.compliance,
         rhem: plugins.rhem,
+        includeAutomate: keepAutomate,
       }).filter(
         (id): id is ExperienceId =>
           id !== 'all' && id !== 'admin',
       ),
-    [role, isAdmin, plugins.compliance, plugins.rhem],
+    [role, isAdmin, plugins.compliance, plugins.rhem, keepAutomate],
   );
 
   // Old /experiences/dashboard bookmark → catalog
@@ -924,9 +946,31 @@ export const ExperiencesHomePage = () => {
           </FormControl>
         </Box>
 
+        {!keepAutomate && available.length === 0 && (
+          <Box className={classes.emptyCallout} role="status">
+            <Typography className={classes.emptyCalloutTitle}>
+              No job-mode experiences for this seat
+            </Typography>
+            <Typography className={classes.emptyCalloutBody}>
+              Option B removes Automate from this catalog — Templates and Runs
+              live under the masthead +. Switch seat (Guest menu → Admin or
+              Developer) to browse Develop, Compliance, and Edge.
+            </Typography>
+            <Button
+              variant="contained"
+              color="primary"
+              size="small"
+              onClick={() => navigate('/create')}
+              style={{ textTransform: 'none', borderRadius: 20 }}
+            >
+              Open Templates
+            </Button>
+          </Box>
+        )}
+
         {cardStyle === 'hub' ? renderHubCards() : renderAccentCards()}
 
-        {sortedFiltered.length === 0 && !assistantMatches && (
+        {sortedFiltered.length === 0 && !assistantMatches && available.length > 0 && (
           <Typography className={classes.empty}>
             No experiences match “{query}”.
           </Typography>

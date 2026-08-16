@@ -4,10 +4,14 @@ import WarningIcon from '@material-ui/icons/Warning';
 import { useLocation } from 'react-router-dom';
 import {
   FORCED_ADMIN_SYNC_IA,
+  FORCED_TEMPLATES_RUNS_IA,
   RestartProvider,
   useRestartRequired,
   useNavIaModel,
   writeNavExperience,
+  useTemplatesRunsIa,
+  useUserRoleContext,
+  isSmeRole,
 } from '@ansible/plugin-backstage-self-service';
 import { SidebarPage } from '@backstage/core-components';
 import { ExperiencesSidebar } from './navSidebars';
@@ -15,18 +19,17 @@ import {
   GlobalShellResumeBar,
   isBridgePath,
   isGlobalShellPath,
+  isGlobalTemplatesRunsPath,
   useCaptureGlobalShellReturn,
 } from './GlobalShellResumeBar';
-import {
-  AutomateFullPageChrome,
-  isAutomateFullPagePath,
-} from './AutomateFullPageChrome';
+import { isAutomateFullPagePath } from './AutomateFullPageChrome';
 import {
   CHROME_TOP_BASE,
   MASTHEAD_HEIGHT,
-  chromeTopForAdminSync,
+  chromeTopForPrototypeBars,
   NavIaRouteGuard,
 } from '../IaPrototype';
+import { ExperienceRunPairTabs } from '../IaPrototype/ExperienceRunPairTabs';
 
 const useRootStyles = makeStyles(theme => {
   const rhdhGeneral = (theme.palette as any).rhdh?.general ?? {};
@@ -66,14 +69,27 @@ const useRootStyles = makeStyles(theme => {
           color: theme.palette.text.primary,
           backgroundColor: theme.palette.action.hover,
         },
+      // Route-active — prefer data-masthead-active (Tooltip freezes IconButton props).
+      '& [data-masthead-active="true"], & [data-masthead-active="true"] [class*="MuiIconButton-root"]':
+        {
+          color: `${theme.palette.text.primary} !important`,
+          backgroundColor: `${theme.palette.action.selected} !important`,
+        },
+      // Open Starred / Help — wrapper flag (Menu portals; Tooltip freezes sx).
+      '& [data-masthead-menu-open="true"] [class*="MuiIconButton-root"]': {
+        color: `${theme.palette.text.primary} !important`,
+        backgroundColor: `${theme.palette.action.selected} !important`,
+      },
       '& .MuiSvgIcon-root, & [class*="MuiSvgIcon-root"]': {
         color: 'inherit',
       },
-      // Backstage Link paints primary blue — kill that inside the masthead
-      '& a, & a:hover, & a:visited': {
-        color: 'inherit',
-        textDecoration: 'none',
-      },
+      // Backstage Link paints primary blue — kill that inside the masthead.
+      // Do not restyle IconButtons that happen to be anchors (inherit would force ink black).
+      '& a:not([class*="MuiIconButton"]), & a:not([class*="MuiIconButton"]):hover, & a:not([class*="MuiIconButton"]):visited':
+        {
+          color: 'inherit',
+          textDecoration: 'none',
+        },
     },
     // JSS hashes class names (e.g. BackstageSidebar-root-83) — use substring match
     // so the rail clears the masthead (+ Admin Sync bar when --portal-chrome-top is set).
@@ -105,6 +121,17 @@ const useRootStyles = makeStyles(theme => {
   /** Bridge: masthead only — full-width content, no experience rail. */
   bridgeContent: {
     minHeight: `calc(100vh - var(--portal-chrome-top, ${CHROME_TOP_BASE}px))`,
+  },
+  /**
+   * Automate host owns Header (title Automate) + HeaderTabs.
+   * Hide nested Scaffolder / TaskList Page headers so tab body is content-only
+   * (same as Git Repositories list content under ProjectsTabs).
+   * MUI JSS suffixes the class (`BackstageHeader-header-123`) — match by prefix.
+   */
+  hideNestedPageHeader: {
+    '& header[class*="BackstageHeader-header"]': {
+      display: 'none !important',
+    },
   },
 };
 });
@@ -153,29 +180,49 @@ export const Root = ({ children }: PropsWithChildren<{}>) => {
   const rootClasses = useRootStyles();
   const location = useLocation();
   const { experience, setExperience } = useNavIaModel();
+  const { role } = useUserRoleContext();
+  const { variant: runPairIa } = useTemplatesRunsIa();
+  const keepAutomate = runPairIa === 'automate-rail';
+  const killAutomate = runPairIa === 'masthead-plus';
+  const smeMastheadPlus = isSmeRole(role) && killAutomate;
   const isSetup = location.pathname.includes('/setup');
   const onBridge = isBridgePath(location.pathname);
   const onGlobalShell = isGlobalShellPath(
     location.pathname,
     location.search,
   );
-  const onAutomatePaths = isAutomateFullPagePath(
+  const onExperienceRunPaths = isAutomateFullPagePath(
     location.pathname,
     location.search,
   );
-  /**
-   * Automate = rail-less marketplace (tabs). Other experiences keep their rail
-   * on the same Templates/Activity URLs — gate on experience, not path alone.
-   * `all` + Automate paths → treat as Automate (deep-link / refresh after Bridge).
-   */
-  const onAutomateFull =
-    onAutomatePaths &&
-    (experience === 'automate' || experience === 'all');
-  const railLess = onBridge || onGlobalShell || onAutomateFull;
-  // Magenta compare bar parked while Opt 1 is forced (Taufique).
+  const onGlobalTemplatesRuns = isGlobalTemplatesRunsPath(
+    location.pathname,
+    location.search,
+  );
+
+  // Option A: Automate uses the experience rail (never rail-less full-page).
+  // Option B: Automate experience gone — masthead + is the global Templates|Runs shell.
+  // SME + Option B: no experience rail at all (home = masthead +).
+  const railLess = onBridge || onGlobalShell || smeMastheadPlus;
+
   const showAdminSyncBar =
     experience === 'admin' && !isSetup && FORCED_ADMIN_SYNC_IA === null;
-  const chromeTop = chromeTopForAdminSync(showAdminSyncBar);
+  const showTemplatesRunsBar = !isSetup && FORCED_TEMPLATES_RUNS_IA === null;
+  const showGlobalRunPairTabs = killAutomate && onGlobalTemplatesRuns;
+  const showExperienceRunPairTabs =
+    killAutomate &&
+    !railLess &&
+    onExperienceRunPaths &&
+    (experience === 'develop' ||
+      experience === 'compliance' ||
+      experience === 'edge');
+  const showAutomateHostChrome =
+    showGlobalRunPairTabs || showExperienceRunPairTabs;
+
+  const chromeTop = chromeTopForPrototypeBars({
+    showAdminSyncBar,
+    showTemplatesRunsBar,
+  });
 
   useCaptureGlobalShellReturn(
     location.pathname,
@@ -183,20 +230,18 @@ export const Root = ({ children }: PropsWithChildren<{}>) => {
     experience,
   );
 
-  // Only the Experiences catalog / Assistant reset domain to Bridge 'all'.
-  // Settings / My profile / notifications keep the last experience for Back.
   useEffect(() => {
     if (!onBridge) return;
     setExperience('all');
     writeNavExperience('all');
   }, [onBridge, setExperience]);
 
-  // Persist Automate when full-page paths resolve under Bridge 'all'.
+  // Option B: leave Automate experience if it was sticky from Option A.
   useEffect(() => {
-    if (!onAutomateFull || experience === 'automate') return;
-    setExperience('automate');
-    writeNavExperience('automate');
-  }, [onAutomateFull, experience, setExperience]);
+    if (keepAutomate || experience !== 'automate') return;
+    setExperience('all');
+    writeNavExperience('all');
+  }, [keepAutomate, experience, setExperience]);
 
   useEffect(() => {
     document.documentElement.style.setProperty(
@@ -214,16 +259,23 @@ export const Root = ({ children }: PropsWithChildren<{}>) => {
     return <>{children}</>;
   }
 
-  // Rail-less: Bridge, global shell (Create all / Search / account), Automate full-page
   if (railLess) {
     return (
       <RestartProvider>
         <div className={rootClasses.fixedHeaderOffset} style={chromeOffsetStyle}>
           <NavIaRouteGuard />
           <GlobalRestartBanner />
-          {onAutomateFull && <AutomateFullPageChrome />}
           {onGlobalShell && <GlobalShellResumeBar />}
-          <div className={rootClasses.bridgeContent}>{children}</div>
+          {showGlobalRunPairTabs && <ExperienceRunPairTabs mode="global" />}
+          <div
+            className={`${rootClasses.bridgeContent}${
+              showAutomateHostChrome
+                ? ` ${rootClasses.hideNestedPageHeader}`
+                : ''
+            }`}
+          >
+            {children}
+          </div>
         </div>
       </RestartProvider>
     );
@@ -236,7 +288,18 @@ export const Root = ({ children }: PropsWithChildren<{}>) => {
         <SidebarPage>
           <ExperiencesSidebar />
           <GlobalRestartBanner />
-          {children}
+          {showExperienceRunPairTabs && (
+            <ExperienceRunPairTabs mode="experience" />
+          )}
+          <div
+            className={
+              showAutomateHostChrome
+                ? rootClasses.hideNestedPageHeader
+                : undefined
+            }
+          >
+            {children}
+          </div>
         </SidebarPage>
       </div>
     </RestartProvider>

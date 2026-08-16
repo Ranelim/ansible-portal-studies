@@ -1,6 +1,6 @@
 import React from 'react';
 import { Navigate, Route, useNavigate, useLocation } from 'react-router-dom';
-import { useUserRole, useUserRoleContext, UserRoleContext } from '@ansible/plugin-backstage-self-service';
+import { useUserRole, useUserRoleContext, UserRoleContext, useTemplatesRunsIa } from '@ansible/plugin-backstage-self-service';
 import { apiDocsPlugin, ApiExplorerPage } from '@backstage/plugin-api-docs';
 import {
   CatalogEntityPage,
@@ -34,6 +34,7 @@ import { Root } from './components/Root';
 import { GlobalHeader } from './components/GlobalHeader';
 // import { ExperienceReturnCompareBar } from './components/IaPrototype'; // kept — remount when comparing A again
 import { AdminSyncIaCompareBar } from './components/IaPrototype';
+import { TemplatesRunsIaCompareBar } from './components/IaPrototype';
 import { PortalNotificationsPage } from './components/Notifications/PortalNotificationsPage';
 import { PortalNotificationSettings } from './components/Notifications/PortalNotificationSettings';
 import { LightspeedProvider, LightspeedPanel } from './components/Lightspeed';
@@ -255,34 +256,17 @@ const app = createApp({
 
 const RoleLandingRedirect = () => {
   const { role, loading } = useUserRoleContext();
+  const { variant } = useTemplatesRunsIa();
   if (loading) return null;
-  // Experiences shell: SME → Automate Templates; multi-experience → Bridge catalog
+  // Option A SME → Automate Templates; Option B SME → masthead + Templates|Runs
+  // Multi-seat → Bridge catalog
   const target =
-    role === 'sme' ? '/create?scope=experience' : '/self-service/experiences';
+    role === 'sme'
+      ? variant === 'masthead-plus'
+        ? '/create'
+        : '/create?scope=experience'
+      : '/self-service/experiences';
   return <Navigate to={target} replace />;
-};
-
-/** Scope cue only — must not wrap ScaffolderPage (Backstage routable extension). */
-const TemplatesScopeBanner = () => {
-  const { search } = useLocation();
-  const experienceScoped =
-    new URLSearchParams(search).get('scope') === 'experience';
-
-  return (
-    <Box
-      px={3}
-      pt={2}
-      style={{
-        fontSize: 13,
-        color: 'inherit',
-        opacity: 0.85,
-      }}
-    >
-      {experienceScoped
-        ? 'Showing templates for this experience. Masthead + opens all templates.'
-        : 'Showing all templates you can run across Automation Portal.'}
-    </Box>
-  );
 };
 
 const routes = (
@@ -311,7 +295,6 @@ const routes = (
           <StaticScaffolderFallback />
         ) : (
           <>
-            <TemplatesScopeBanner />
             <WorkflowApprovalBanner />
             <ScaffolderPage
               headerOptions={{
@@ -392,6 +375,7 @@ export default app.createRoot(
             <GlobalHeader />
             {/* <ExperienceReturnCompareBar /> — B forced; remount to compare A */}
             <AdminSyncIaCompareBar />
+            <TemplatesRunsIaCompareBar />
             <Root>{routes}</Root>
             <LightspeedPanel />
             <QuickstartPanel />

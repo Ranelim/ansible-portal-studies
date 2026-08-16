@@ -72,7 +72,7 @@ function tabFromLocation(pathname: string, search: string): AutomateTab {
 /**
  * Automate = rail-less marketplace experience.
  * Multi-seat: Back to Experiences. SME: no Back (Automate is their only world).
- * Primary nav = page tabs Templates | Activity (no Catalog).
+ * Primary nav = page tabs Templates | Runs (no Catalog).
  * Masthead + stays global All templates — not this experience.
  */
 export const AutomateFullPageChrome = () => {
@@ -119,7 +119,7 @@ export const AutomateFullPageChrome = () => {
         aria-label="Automate"
       >
         <Tab className={classes.tab} value="templates" label="Templates" />
-        <Tab className={classes.tab} value="activity" label="Activity" />
+        <Tab className={classes.tab} value="activity" label="Runs" />
       </Tabs>
     </Box>
   );

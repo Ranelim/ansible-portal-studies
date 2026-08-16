@@ -25,6 +25,11 @@ jest.mock(
   () => ({ Spacer: () => null }),
 );
 
+jest.mock('./PortalStarredMenu', () => ({
+  PortalStarredMenu: () =>
+    React.createElement('button', { 'aria-label': 'Starred' }, 'Starred'),
+}));
+
 jest.mock(
   '@red-hat-developer-hub/backstage-plugin-global-header/dist/components/HeaderDropdownComponent/StarredDropdown.esm.js',
   () => ({

@@ -39,8 +39,10 @@ Not eng SoT until ADRs on `ansible-rhdh-plugins` `main`. Mirror: `.cursor/rules/
 
 ### Locked
 
-- **Rail order:** `[Dashboard?] → Templates → Activity → {Class A entities} → [Documentation · Learning Paths]` — quiet dividers, **no** end-user section labels (Overview / Run / Resources / Learn / Custom).
-- **Templates ∥ Activity** siblings — never nest Activity under Templates.
+- **Rail order:** `[Dashboard?] → Templates → Runs → {Class A entities} → [Documentation · Learning Paths]` — quiet dividers, **no** end-user section labels (Overview / Run / Resources / Learn / Custom). Compare bar may swap Templates/Runs for one Templates rail item + page tabs.
+- **Automate shell compare (magenta bar):**
+  - **A — Automate experience + rail:** Automate stays on Bridge; side rail; all experiences use sibling **Templates · Runs** with `SidebarDivider`.
+  - **B — No Automate; masthead + tabs:** Automate experience removed; masthead **+** = Templates \| Runs tabs; Develop/Compliance/Edge get one **Automate** rail item + page tabs.
 - **Experience Settings omitted** from Automate / Develop / Compliance / Edge rails until real personal prefs exist (prototype page route may remain; not in nav). Sync schedule → Administration; Sync now → object action.
 - **Develop objects:** Git Repositories · Collections · Execution Environments. APME = Quality on repos (Class B).
 - **Compliance object:** Inventories only. Profiles / Scans = host tabs — not rail, not Settings.
