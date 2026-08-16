@@ -2,6 +2,7 @@ import { Page, Header, Content } from '@backstage/core-components';
 import { Box, Typography, makeStyles } from '@material-ui/core';
 import {
   EXPERIENCE_LABELS,
+  isDevelopExperience,
   useNavIaModel,
   type NavExperience,
 } from '../../hooks/useNavIaModel';
@@ -15,10 +16,13 @@ const useStyles = makeStyles(theme => ({
   },
 }));
 
+const DEVELOP_PURPOSE =
+  'Cross-entity overview for Develop — repos, collections, and execution environments. Entity rail items open the lists; this page is posture and attention only.';
+
 /** Concept-page purpose only — no KPI / attention / shortcut mock content. */
 const PURPOSE: Partial<Record<NavExperience, string>> = {
-  develop:
-    'Cross-entity overview for Develop — repos, collections, and execution environments. Entity rail items open the lists; this page is posture and attention only.',
+  'develop-tabs': DEVELOP_PURPOSE,
+  'develop-section': DEVELOP_PURPOSE,
   compliance:
     'Experience overview for Compliance — posture across inventories. Inventories in the rail opens the list; overview lives here so the entity page stays list-first.',
   edge:
@@ -32,11 +36,15 @@ export const ExperienceDashboardPage = () => {
   const classes = useStyles();
   const { experience } = useNavIaModel();
   const scoped: NavExperience =
-    experience === 'admin' || experience === 'all' || experience === 'automate'
-      ? 'develop'
+    experience === 'admin' ||
+    experience === 'all' ||
+    experience === 'automate'
+      ? 'develop-tabs'
       : experience;
-  const label = EXPERIENCE_LABELS[scoped] ?? scoped;
-  const purpose = PURPOSE[scoped] ?? PURPOSE.develop!;
+  const label = isDevelopExperience(scoped)
+    ? 'Develop'
+    : EXPERIENCE_LABELS[scoped] ?? scoped;
+  const purpose = PURPOSE[scoped] ?? DEVELOP_PURPOSE;
 
   return (
     <Page themeId="tool">

@@ -146,6 +146,8 @@ const RouteViewContent = () => {
         <Route path="repositories">
           <Route index element={<ProjectsTabs />} />
           <Route path="list" element={<ProjectsTabs />} />
+          <Route path="dashboard" element={<ProjectsTabs />} />
+          <Route path="remediations" element={<ProjectsTabs />} />
           <Route path="quality" element={<ProjectsTabs />} />
           <Route path="ci-activity" element={<ProjectsTabs />} />
           <Route path="create" element={<ProjectsTabs />} />
@@ -153,8 +155,11 @@ const RouteViewContent = () => {
         </Route>
         {/* Legacy /projects path — redirect to /repositories */}
         <Route path="projects/*" element={<Navigate to="/self-service/repositories" replace />} />
-        {/* Quality now lives under Git Repositories > Quality tab */}
-        <Route path="quality" element={<Navigate to="/self-service/repositories/quality" replace />} />
+        {/* Legacy Quality → Dashboard on Git Repositories host */}
+        <Route
+          path="quality"
+          element={<Navigate to="/self-service/repositories/dashboard" replace />}
+        />
         <Route path="collections" element={<CollectionsCatalogPage />} />
         <Route
           path="collections/:collectionName"

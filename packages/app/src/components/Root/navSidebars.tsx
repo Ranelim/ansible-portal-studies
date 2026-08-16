@@ -41,6 +41,7 @@ import MemoryIcon from '@material-ui/icons/Memory';
 import StorageIcon from '@material-ui/icons/Storage';
 import RouterIcon from '@material-ui/icons/Router';
 import DashboardIcon from '@material-ui/icons/Dashboard';
+import AssessmentIcon from '@material-ui/icons/Assessment';
 import LibraryBooks from '@material-ui/icons/LibraryBooks';
 import SchoolIcon from '@material-ui/icons/School';
 import LinkIcon from '@material-ui/icons/Link';
@@ -778,7 +779,7 @@ export const ExperiencesSidebar = () => {
 
   const active: NavExperience = available.includes(experience)
     ? experience
-    : available[0] ?? (keepAutomate ? 'automate' : 'develop');
+    : available[0] ?? (keepAutomate ? 'automate' : 'develop-tabs');
 
   // SME: force Automate when Option A. Multi-seat: coerce invalid away from Bridge 'all'.
   useEffect(() => {
@@ -789,7 +790,7 @@ export const ExperiencesSidebar = () => {
           ? 'automate'
           : available.find(id => id !== 'all' && id !== 'automate') ??
             available.find(id => id !== 'all') ??
-            (keepAutomate ? 'automate' : 'develop');
+            (keepAutomate ? 'automate' : 'develop-tabs');
     }
     if (next !== experience) {
       setExperience(next);
@@ -817,11 +818,11 @@ export const ExperiencesSidebar = () => {
         ? 'automate'
         : available.find(id => id !== 'all' && id !== 'automate') ??
           available.find(id => id !== 'all') ??
-          (keepAutomate ? 'automate' : 'develop')
+          (keepAutomate ? 'automate' : 'develop-tabs')
       : active;
 
   const experienceLabel =
-    EXPERIENCE_LABELS[domain] ?? EXPERIENCE_LABELS.develop;
+    EXPERIENCE_LABELS[domain] ?? EXPERIENCE_LABELS['develop-tabs'];
 
   const showQuietReturn = !smeLocked && returnChrome === 'quiet';
   const showLabelReturn = !smeLocked && returnChrome === 'waffle';
@@ -899,7 +900,8 @@ export const ExperiencesSidebar = () => {
         </>
       )}
 
-      {domain === 'develop' && (
+      {/* A — one Git Repositories pin; Quality lives as a host tab. */}
+      {domain === 'develop-tabs' && (
         <>
           {ExperienceDashboardItem}
           {ExperienceRunPair}
@@ -908,6 +910,43 @@ export const ExperiencesSidebar = () => {
             to="/self-service/repositories"
             text="Git Repositories"
           />
+          <SidebarItem
+            icon={CategoryIcon}
+            to="/self-service/collections"
+            text="Collections"
+          />
+          <SidebarItem
+            icon={MemoryIcon}
+            to="/self-service/ee"
+            text="Execution Environments"
+          />
+          <hr className={quietClasses.softDiv} />
+          <LearnItems />
+        </>
+      )}
+
+      {/* B — object-named section: Repositories + Quality as sibling pins. */}
+      {domain === 'develop-section' && (
+        <>
+          {ExperienceDashboardItem}
+          {ExperienceRunPair}
+          <SidebarSectionLabel text="Git repositories" />
+          <SidebarItem
+            icon={CodeIcon}
+            to="/self-service/repositories/list"
+            text="Repositories"
+          />
+          <SidebarItem
+            icon={DashboardIcon}
+            to="/self-service/repositories/dashboard"
+            text="Dashboard"
+          />
+          <SidebarItem
+            icon={AssessmentIcon}
+            to="/self-service/repositories/remediations"
+            text="Remediations"
+          />
+          <hr className={quietClasses.softDiv} />
           <SidebarItem
             icon={CategoryIcon}
             to="/self-service/collections"

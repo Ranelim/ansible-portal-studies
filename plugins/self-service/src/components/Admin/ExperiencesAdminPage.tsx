@@ -88,9 +88,20 @@ const ADMIN_EXPERIENCES: AdminExperience[] = [
     defaultVisible: true,
   },
   {
-    id: 'develop',
-    label: 'Develop',
-    description: 'Build and manage automation content — repos, collections, and EEs.',
+    id: 'develop-tabs',
+    label: 'Develop (tabs)',
+    description:
+      'APME review A — Git Repositories pin; Dashboard + Remediations host tabs.',
+    pluginsFilter: 'Develop',
+    seatsSummary: 'Developer, Admin',
+    pluginsSummary: 'Self-service, APME Quality Scanning',
+    defaultVisible: true,
+  },
+  {
+    id: 'develop-section',
+    label: 'Develop (section)',
+    description:
+      'APME review B — Git repositories section; Repositories + Dashboard + Remediations pins.',
     pluginsFilter: 'Develop',
     seatsSummary: 'Developer, Admin',
     pluginsSummary: 'Self-service, APME Quality Scanning',

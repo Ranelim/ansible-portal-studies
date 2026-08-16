@@ -22,7 +22,8 @@ const EXPERIENCE_RESUME: Record<
   string
 > = {
   automate: '/create?scope=experience',
-  develop: '/self-service/experience-dashboard',
+  'develop-tabs': '/self-service/repositories/list',
+  'develop-section': '/self-service/repositories/list',
   compliance: '/self-service/experience-dashboard',
   edge: '/self-service/experience-dashboard',
   admin: '/self-service/admin/overview',
@@ -90,7 +91,8 @@ function readStoredExperience(): NavExperience {
     const raw = localStorage.getItem('portal-nav-experience');
     if (
       raw === 'automate' ||
-      raw === 'develop' ||
+      raw === 'develop-tabs' ||
+      raw === 'develop-section' ||
       raw === 'compliance' ||
       raw === 'edge' ||
       raw === 'admin' ||
@@ -98,6 +100,7 @@ function readStoredExperience(): NavExperience {
     ) {
       return raw;
     }
+    if (raw === 'develop') return 'develop-tabs';
   } catch {
     /* ignore */
   }

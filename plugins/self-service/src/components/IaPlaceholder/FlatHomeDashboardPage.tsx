@@ -46,11 +46,18 @@ const SNIPPETS: Record<
     href: '/create?scope=experience',
     highlights: ['12 succeeded', '2 failed', '1 running'],
   },
-  develop: {
-    summary: 'Git repositories, collections, and execution environments.',
+  'develop-tabs': {
+    summary: 'Git repositories host — Quality as tabs (review A).',
     metric: '12',
     metricLabel: 'repos',
-    href: '/self-service/repositories',
+    href: '/self-service/repositories/list',
+    highlights: ['3 need attention', 'Quality avg 78'],
+  },
+  'develop-section': {
+    summary: 'Git repositories section — Quality rail pin (review B).',
+    metric: '12',
+    metricLabel: 'repos',
+    href: '/self-service/repositories/list',
     highlights: ['3 need attention', 'Quality avg 78'],
   },
   compliance: {
@@ -211,7 +218,7 @@ export const FlatHomeDashboardPage = () => {
         href: '/create?scope=experience',
       },
     ];
-    if (available.includes('develop')) {
+    if (available.includes('develop-tabs') || available.includes('develop-section')) {
       items.push({
         id: 'quality',
         value: '78',
@@ -248,7 +255,7 @@ export const FlatHomeDashboardPage = () => {
       { label: 'Catalog resources', value: '86' },
       { label: 'Failed syncs (24h)', value: available.includes('admin') ? '1' : '0' },
     ];
-    if (available.includes('develop')) {
+    if (available.includes('develop-tabs') || available.includes('develop-section')) {
       rows.push({ label: 'EEs in use', value: '6' });
     }
     if (available.includes('compliance')) {

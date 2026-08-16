@@ -90,7 +90,7 @@ const INITIAL_ITEMS: DemoItem[] = [
     detail:
       'APME reported new high-severity findings in roles/firewall. Score impact is concentrated in policy and security validators. Open the repository Quality tab to triage findings.',
     entity: 'edge-firewall',
-    experience: 'develop',
+    experience: 'develop-tabs',
     eventType: 'quality-alerts',
     when: '1 hour ago',
     severity: 'Important',
@@ -129,7 +129,8 @@ const INITIAL_ITEMS: DemoItem[] = [
 
 const FILTER_EXPERIENCES: Array<Exclude<NavExperience, 'all'>> = [
   'automate',
-  'develop',
+  'develop-tabs',
+  'develop-section',
   'compliance',
   'edge',
   'admin',
@@ -140,13 +141,15 @@ function readLastExperience(): Exclude<NavExperience, 'all'> | null {
     const raw = localStorage.getItem('portal-nav-experience');
     if (
       raw === 'automate' ||
-      raw === 'develop' ||
+      raw === 'develop-tabs' ||
+      raw === 'develop-section' ||
       raw === 'compliance' ||
       raw === 'edge' ||
       raw === 'admin'
     ) {
       return raw;
     }
+    if (raw === 'develop') return 'develop-tabs';
   } catch {
     /* ignore */
   }
@@ -164,12 +167,16 @@ function readReturnExperience(): Exclude<NavExperience, 'all'> | null {
     if (
       parsed?.kind === 'experience' &&
       (parsed.experience === 'automate' ||
-        parsed.experience === 'develop' ||
+        parsed.experience === 'develop-tabs' ||
+        parsed.experience === 'develop-section' ||
         parsed.experience === 'compliance' ||
         parsed.experience === 'edge' ||
         parsed.experience === 'admin')
     ) {
       return parsed.experience;
+    }
+    if (parsed?.kind === 'experience' && parsed.experience === 'develop') {
+      return 'develop-tabs';
     }
   } catch {
     /* ignore */

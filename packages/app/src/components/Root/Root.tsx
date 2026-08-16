@@ -12,6 +12,7 @@ import {
   useTemplatesRunsIa,
   useUserRoleContext,
   isSmeRole,
+  isDevelopExperience,
 } from '@ansible/plugin-backstage-self-service';
 import { SidebarPage } from '@backstage/core-components';
 import { ExperiencesSidebar } from './navSidebars';
@@ -245,7 +246,7 @@ export const Root = ({ children }: PropsWithChildren<{}>) => {
     killAutomate &&
     !railLess &&
     onExperienceRunPaths &&
-    (experience === 'develop' ||
+    (isDevelopExperience(experience) ||
       experience === 'compliance' ||
       experience === 'edge');
   const showAutomateHostChrome =

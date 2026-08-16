@@ -59,21 +59,26 @@ const FORCED_CARD_STYLE: CardStyle | null = 'hub';
 /** User-facing experience blurbs — not IA documentation. */
 const EXPERIENCE_BLURB: Record<ExperienceId, string> = {
   automate: 'Run job templates and track recent activity.',
-  develop: 'Build and manage automation content — repos, collections, and EEs.',
+  'develop-tabs':
+    'A — Git Repositories pin; tabs: Repositories · Dashboard · Remediations · Pipeline.',
+  'develop-section':
+    'B — Git repositories section; Repositories, Dashboard, and Remediations as sibling rail items.',
   compliance: 'Scan inventories, review findings, and remediate hosts.',
   edge: 'Manage edge device fleets, updates, and desired state.',
 };
 
 const EXPERIENCE_LANDING: Record<ExperienceId, string> = {
   automate: '/create?scope=experience',
-  develop: '/self-service/experience-dashboard',
+  'develop-tabs': '/self-service/repositories/list',
+  'develop-section': '/self-service/repositories/list',
   compliance: '/self-service/experience-dashboard',
   edge: '/self-service/experience-dashboard',
 };
 
 const EXPERIENCE_ACCENT: Record<ExperienceId, string> = {
   automate: '#0066CC',
-  develop: '#3D1C7C',
+  'develop-tabs': '#3D1C7C',
+  'develop-section': '#5E2B9F',
   compliance: '#C46100',
   edge: '#147EBC',
 };
@@ -92,9 +97,15 @@ const EXPERIENCE_DOCS: Record<
     href: 'https://docs.redhat.com/en/documentation/red_hat_ansible_automation_platform/2.6/html/using_self-service_automation_portal/self-service-working-templates_aap-self-service-using',
     linkLabel: 'View Automate documentation',
   },
-  develop: {
+  'develop-tabs': {
     summary:
-      'Develop is for creating and managing automation content — Git repositories, collections, and execution environments.',
+      'Review A: one Git Repositories rail item. Tabs: Repositories, Dashboard, Remediations, Pipeline activity.',
+    href: 'https://docs.redhat.com/en/documentation/red_hat_ansible_automation_platform/2.6/html/using_self-service_automation_portal/index',
+    linkLabel: 'View Develop documentation',
+  },
+  'develop-section': {
+    summary:
+      'Review B: Git repositories section with Repositories, Dashboard, and Remediations as sibling rail items.',
     href: 'https://docs.redhat.com/en/documentation/red_hat_ansible_automation_platform/2.6/html/using_self-service_automation_portal/index',
     linkLabel: 'View Develop documentation',
   },
@@ -123,7 +134,8 @@ function experienceIcon(id: ExperienceId | 'assistant'): ReactNode {
   switch (id) {
     case 'automate':
       return <PlayArrowIcon {...props} />;
-    case 'develop':
+    case 'develop-tabs':
+    case 'develop-section':
       return <CodeIcon {...props} />;
     case 'compliance':
       return <VerifiedUserIcon {...props} />;
@@ -141,7 +153,13 @@ function readRecent(): ExperienceId[] {
     const raw = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]');
     if (!Array.isArray(raw)) return [];
     return raw.filter((id): id is ExperienceId =>
-      ['automate', 'develop', 'compliance', 'edge'].includes(id),
+      [
+        'automate',
+        'develop-tabs',
+        'develop-section',
+        'compliance',
+        'edge',
+      ].includes(id),
     );
   } catch {
     return [];

@@ -11,11 +11,16 @@ export type NavIaModel =
 /**
  * Experiences for Option 5 (toggle). Availability depends on seat + plugins.
  * Templates/Activity are duplicated inside each experience's rail.
+ *
+ * Develop is split for APME IA review:
+ * - develop-tabs — one Git Repositories pin; Quality as host tab
+ * - develop-section — "Git repositories" section + Repositories | Quality pins
  */
 export type NavExperience =
   | 'all'
   | 'automate'
-  | 'develop'
+  | 'develop-tabs'
+  | 'develop-section'
   | 'compliance'
   | 'edge'
   | 'admin';
@@ -46,23 +51,29 @@ function readModel(): NavIaModel {
   return DEFAULT_MODEL;
 }
 
+function normalizeExperience(raw: string | null): NavExperience | null {
+  if (
+    raw === 'all' ||
+    raw === 'automate' ||
+    raw === 'develop-tabs' ||
+    raw === 'develop-section' ||
+    raw === 'compliance' ||
+    raw === 'edge' ||
+    raw === 'admin'
+  ) {
+    return raw;
+  }
+  // Legacy single Develop → tabs variant
+  if (raw === 'develop') return 'develop-tabs';
+  return null;
+}
+
 function readExperience(): NavExperience {
   try {
-    const raw = localStorage.getItem(EXPERIENCE_KEY);
-    if (
-      raw === 'all' ||
-      raw === 'automate' ||
-      raw === 'develop' ||
-      raw === 'compliance' ||
-      raw === 'edge' ||
-      raw === 'admin'
-    ) {
-      return raw;
-    }
+    return normalizeExperience(localStorage.getItem(EXPERIENCE_KEY)) ?? DEFAULT_EXPERIENCE;
   } catch {
-    /* ignore */
+    return DEFAULT_EXPERIENCE;
   }
-  return DEFAULT_EXPERIENCE;
 }
 
 export function writeNavIaModel(model: NavIaModel) {
@@ -73,6 +84,11 @@ export function writeNavIaModel(model: NavIaModel) {
 export function writeNavExperience(experience: NavExperience) {
   localStorage.setItem(EXPERIENCE_KEY, experience);
   notify();
+}
+
+/** Either Develop A/B review variant. */
+export function isDevelopExperience(experience: NavExperience): boolean {
+  return experience === 'develop-tabs' || experience === 'develop-section';
 }
 
 export function availableExperiences(args: {
@@ -90,7 +106,9 @@ export function availableExperiences(args: {
   }
   const list: NavExperience[] = ['all'];
   if (includeAutomate) list.push('automate');
-  if (args.role === 'developer' || args.isAdmin) list.push('develop');
+  if (args.role === 'developer' || args.isAdmin) {
+    list.push('develop-tabs', 'develop-section');
+  }
   if ((args.role === 'operator' || args.isAdmin) && args.compliance) {
     list.push('compliance');
   }
@@ -104,7 +122,8 @@ export function availableExperiences(args: {
 export const EXPERIENCE_LABELS: Record<NavExperience, string> = {
   all: 'Experiences',
   automate: 'Automate',
-  develop: 'Develop',
+  'develop-tabs': 'Develop (tabs)',
+  'develop-section': 'Develop (section)',
   compliance: 'Compliance',
   edge: 'Edge',
   admin: 'Administration',

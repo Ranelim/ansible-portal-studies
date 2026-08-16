@@ -37,6 +37,7 @@ export {
   writeNavExperience,
   availableExperiences,
   EXPERIENCE_LABELS,
+  isDevelopExperience,
   type NavIaModel,
   type NavExperience,
 } from './hooks/useNavIaModel';
