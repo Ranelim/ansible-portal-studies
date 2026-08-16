@@ -11,14 +11,15 @@ import { useMagentaIaBarVisible } from './useMagentaIaBarVisible';
 const MAGENTA = '#BE0098';
 
 const OPTIONS: Array<{ id: TemplatesRunsIaVariant; label: string }> = [
-  { id: 'automate-rail', label: 'A — Automate + rail' },
-  { id: 'masthead-plus', label: 'B — Masthead + only' },
+  { id: 'automate-rail', label: 'A — Automate rail' },
+  { id: 'masthead-plus', label: 'B — Automate tabs' },
 ];
 
 const HINTS: Record<TemplatesRunsIaVariant, string> = {
-  'automate-rail': 'Automate experience + rail; Templates · Runs siblings everywhere.',
+  'automate-rail':
+    'Automate experience · Templates · Runs on the rail · rail Back to Experiences.',
   'masthead-plus':
-    'No Automate experience; + = Templates | Runs; experiences get Automate item + tabs.',
+    'Automate experience · rail-less page tabs · multi-seat return = waffle (SME: none).',
 };
 
 const useStyles = makeStyles({
@@ -91,7 +92,7 @@ const useStyles = makeStyles({
 });
 
 /**
- * Temp design compare — Automate as experience + rail vs masthead-only Automate.
+ * Temp design compare — Automate experience always on; A/B = Templates/Runs chrome.
  * Sits above the masthead; toggle via masthead eye (left of Create).
  */
 export const TemplatesRunsIaCompareBar = () => {

@@ -11,22 +11,10 @@ function readSeatRole(): string {
   }
 }
 
-function readAutomateShellVariant(): string {
-  try {
-    const raw = localStorage.getItem('portal-templates-runs-ia');
-    if (raw === 'masthead-plus' || raw === 'bundled') return 'masthead-plus';
-    return 'automate-rail';
-  } catch {
-    return 'automate-rail';
-  }
-}
-
-/** Experiences shell: SME → Automate (or masthead + on Option B); multi-seat → Bridge. */
+/** Experiences shell: SME → Automate; multi-seat → Bridge. */
 export function modelHomePath(_model?: NavIaModel): string {
   if (readSeatRole() === 'sme') {
-    return readAutomateShellVariant() === 'masthead-plus'
-      ? '/create'
-      : '/create?scope=experience';
+    return '/create?scope=experience';
   }
   return '/self-service/experiences';
 }

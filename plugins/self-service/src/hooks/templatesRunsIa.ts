@@ -1,4 +1,4 @@
-/** Temp Automate shell compare — keep Automate experience + rail vs masthead +. */
+/** Temp Automate shell compare — how Templates · Runs execute inside Automate. */
 
 export type TemplatesRunsIaVariant = 'automate-rail' | 'masthead-plus';
 
@@ -48,8 +48,12 @@ export function subscribeTemplatesRunsIa(fn: () => void) {
   };
 }
 
+/**
+ * Automate is always an experience (Bridge card + admin governable).
+ * A/B only changes Templates/Runs chrome — not whether Automate exists.
+ */
 export function isAutomateExperienceEnabled(
-  variant: TemplatesRunsIaVariant = readTemplatesRunsIa(),
+  _variant: TemplatesRunsIaVariant = readTemplatesRunsIa(),
 ): boolean {
-  return variant === 'automate-rail';
+  return true;
 }

@@ -110,16 +110,17 @@ export function availableExperiences(args: {
   isAdmin: boolean;
   compliance: boolean;
   rhem: boolean;
-  /** Option B (masthead-plus): omit Automate experience. Default true. */
+  /**
+   * @deprecated Automate is always an experience. Kept for call-site compat; ignored.
+   */
   includeAutomate?: boolean;
 }): NavExperience[] {
-  const includeAutomate = args.includeAutomate !== false;
-  // SME locked to Automate when that experience exists; else no experience list.
+  // SME locked to Automate.
   if (args.role === 'sme') {
-    return includeAutomate ? ['automate'] : [];
+    return ['automate'];
   }
   const list: NavExperience[] = ['all'];
-  if (includeAutomate) list.push('automate');
+  list.push('automate');
   if (args.role === 'developer' || args.isAdmin) {
     list.push('develop-tabs', 'develop-section', 'develop-drawer');
   }

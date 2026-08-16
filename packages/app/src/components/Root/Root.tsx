@@ -34,6 +34,7 @@ import {
 } from '../IaPrototype';
 import { useMagentaIaBarVisible } from '../IaPrototype/useMagentaIaBarVisible';
 import { ExperienceRunPairTabs } from '../IaPrototype/ExperienceRunPairTabs';
+import { SHOW_EXPERIENCES_WAFFLE } from '../GlobalHeader/ExperiencesWaffleButton';
 
 const useRootStyles = makeStyles(theme => {
   const rhdhGeneral = (theme.palette as any).rhdh?.general ?? {};
@@ -91,16 +92,27 @@ const useRootStyles = makeStyles(theme => {
           color: theme.palette.text.primary,
           backgroundColor: theme.palette.action.hover,
         },
-      // Route-active — prefer data-masthead-active (Tooltip freezes IconButton props).
-      '& [data-masthead-active="true"], & [data-masthead-active="true"] [class*="MuiIconButton-root"]':
-        {
-          color: `${theme.palette.text.primary} !important`,
-          backgroundColor: `${theme.palette.action.selected} !important`,
-        },
+      // Route-active — paint the IconButton only. The Tooltip wrapper holds
+      // data-masthead-active (Tooltip freezes IconButton props); painting both
+      // layers = stacked sharp squares.
+      '& [data-masthead-active="true"]': {
+        backgroundColor: 'transparent !important',
+      },
+      '& [data-masthead-active="true"] [class*="MuiIconButton-root"]': {
+        color: `${theme.palette.text.primary} !important`,
+        backgroundColor: `${theme.palette.action.selected} !important`,
+      },
       // Open Starred / Help — wrapper flag (Menu portals; Tooltip freezes sx).
+      '& [data-masthead-menu-open="true"]': {
+        backgroundColor: 'transparent !important',
+      },
       '& [data-masthead-menu-open="true"] [class*="MuiIconButton-root"]': {
         color: `${theme.palette.text.primary} !important`,
         backgroundColor: `${theme.palette.action.selected} !important`,
+      },
+      // One rounded hit surface for every masthead icon action.
+      '& [class*="MuiToolbar-root"] [class*="MuiIconButton-root"]': {
+        borderRadius: 6,
       },
       '& .MuiSvgIcon-root, & [class*="MuiSvgIcon-root"]': {
         color: 'inherit',
@@ -218,9 +230,8 @@ export const Root = ({ children }: PropsWithChildren<{}>) => {
   const { experience, setExperience } = useNavIaModel();
   const { role } = useUserRoleContext();
   const { variant: runPairIa } = useTemplatesRunsIa();
-  const keepAutomate = runPairIa === 'automate-rail';
-  const killAutomate = runPairIa === 'masthead-plus';
-  const smeMastheadPlus = isSmeRole(role) && killAutomate;
+  const mastheadPlus = runPairIa === 'masthead-plus';
+  const sme = isSmeRole(role);
   const isSetup = location.pathname.includes('/setup');
   const onBridge = isBridgePath(location.pathname);
   const onGlobalShell = isGlobalShellPath(
@@ -236,10 +247,20 @@ export const Root = ({ children }: PropsWithChildren<{}>) => {
     location.search,
   );
 
-  // Option A: Automate uses the experience rail (never rail-less full-page).
-  // Option B: Automate experience gone — masthead + is the global Templates|Runs shell.
-  // SME + Option B: no experience rail at all (home = masthead +).
-  const railLess = onBridge || onGlobalShell || smeMastheadPlus;
+  // A: Automate rail (≥2 items) — Templates · Runs.
+  // B: unified Automate host — rail-less page tabs; multi-seat return = waffle (no Back).
+  const inAutomateExperience = experience === 'automate' || (sme && mastheadPlus);
+  const railLess =
+    onBridge ||
+    onGlobalShell ||
+    (mastheadPlus && inAutomateExperience);
+
+  /** Waffle replaces Back on Automate B / global shell for multi-seat. */
+  const showResumeBar =
+    !sme &&
+    !SHOW_EXPERIENCES_WAFFLE &&
+    ((onGlobalShell && !inAutomateExperience) ||
+      (mastheadPlus && inAutomateExperience));
 
   const { visible: magentaBarVisible } = useMagentaIaBarVisible();
   const showAdminSyncBar =
@@ -247,16 +268,30 @@ export const Root = ({ children }: PropsWithChildren<{}>) => {
   const templatesRunsBarEligible =
     !isSetup && FORCED_TEMPLATES_RUNS_IA === null;
   const showTemplatesRunsBar = templatesRunsBarEligible && magentaBarVisible;
-  const showGlobalRunPairTabs = killAutomate && onGlobalTemplatesRuns;
+
+  /** Option B masthead + global surface (not inside Automate experience). */
+  const showGlobalRunPairTabs =
+    mastheadPlus && onGlobalTemplatesRuns && !inAutomateExperience;
+
+  /** Option B Automate experience host — page tabs Templates | Runs. */
+  const showAutomateExperienceHostTabs =
+    mastheadPlus &&
+    inAutomateExperience &&
+    (onExperienceRunPaths || onGlobalTemplatesRuns);
+
+  /** Option B: Automate pin inside Develop/Compliance/Edge → same host tabs. */
   const showExperienceRunPairTabs =
-    killAutomate &&
+    mastheadPlus &&
     !railLess &&
     onExperienceRunPaths &&
     (isDevelopExperience(experience) ||
       experience === 'compliance' ||
       experience === 'edge');
+
   const showAutomateHostChrome =
-    showGlobalRunPairTabs || showExperienceRunPairTabs;
+    showGlobalRunPairTabs ||
+    showAutomateExperienceHostTabs ||
+    showExperienceRunPairTabs;
 
   const chromeTop = chromeTopForPrototypeBars({
     showAdminSyncBar,
@@ -272,16 +307,19 @@ export const Root = ({ children }: PropsWithChildren<{}>) => {
 
   useEffect(() => {
     if (!onBridge) return;
+    // SME has no Bridge — don't clear Automate while on catalog routes by mistake.
+    if (sme) return;
     setExperience('all');
     writeNavExperience('all');
-  }, [onBridge, setExperience]);
+  }, [onBridge, sme, setExperience]);
 
-  // Option B: leave Automate experience if it was sticky from Option A.
+  // SME always lives in Automate (both A and B).
   useEffect(() => {
-    if (keepAutomate || experience !== 'automate') return;
-    setExperience('all');
-    writeNavExperience('all');
-  }, [keepAutomate, experience, setExperience]);
+    if (!sme || isSetup) return;
+    if (experience === 'automate') return;
+    setExperience('automate');
+    writeNavExperience('automate');
+  }, [sme, isSetup, experience, setExperience]);
 
   useEffect(() => {
     document.documentElement.style.setProperty(
@@ -304,13 +342,20 @@ export const Root = ({ children }: PropsWithChildren<{}>) => {
   }
 
   if (railLess) {
+    const runPairMode = inAutomateExperience ? 'experience' : 'global';
     return (
       <RestartProvider>
         <div className={rootClasses.fixedHeaderOffset} style={chromeOffsetStyle}>
           <NavIaRouteGuard />
           <GlobalRestartBanner />
-          {onGlobalShell && <GlobalShellResumeBar />}
-          {showGlobalRunPairTabs && <ExperienceRunPairTabs mode="global" />}
+          {showResumeBar && <GlobalShellResumeBar />}
+          {/* SME Search still needs a resume path — only that case uses the bar. */}
+          {sme && onGlobalShell && !showAutomateExperienceHostTabs && (
+            <GlobalShellResumeBar />
+          )}
+          {(showGlobalRunPairTabs || showAutomateExperienceHostTabs) && (
+            <ExperienceRunPairTabs mode={runPairMode} />
+          )}
           <div
             className={`${rootClasses.bridgeContent}${
               showAutomateHostChrome

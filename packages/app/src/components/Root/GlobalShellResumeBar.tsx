@@ -5,11 +5,13 @@ import ArrowBackIcon from '@material-ui/icons/ArrowBack';
 import {
   EXPERIENCE_LABELS,
   isSmeRole,
-  useUserRoleContext,
+  useNavIaModel,
   useTemplatesRunsIa,
+  useUserRoleContext,
   type NavExperience,
 } from '@ansible/plugin-backstage-self-service';
 import { RAIL_ICON_GUTTER_PX } from '../IaPrototype/chromeHeights';
+import { isAutomateFullPagePath } from './AutomateFullPageChrome';
 
 const RETURN_KEY = 'portal-global-shell-return';
 
@@ -219,6 +221,7 @@ export const GlobalShellResumeBar = () => {
   const navigate = useNavigate();
   const { pathname, search } = useLocation();
   const { role } = useUserRoleContext();
+  const { experience } = useNavIaModel();
   const { variant: runPairIa } = useTemplatesRunsIa();
   const [ret, setRet] = useState<GlobalReturn | null>(() => readReturn());
 
@@ -229,8 +232,31 @@ export const GlobalShellResumeBar = () => {
 
   const onGlobalTemplatesRuns = isGlobalTemplatesRunsPath(pathname, search);
   const mastheadPlus = runPairIa === 'masthead-plus';
+  const onAutomateHost =
+    isAutomateFullPagePath(pathname, search) || onGlobalTemplatesRuns;
 
-  // Option B masthead + surface — always return to Experiences catalog.
+  // Option B Automate experience (rail-less) — return to Bridge.
+  if (
+    mastheadPlus &&
+    experience === 'automate' &&
+    !isSmeRole(role) &&
+    onAutomateHost
+  ) {
+    return (
+      <Box className={classes.bar} role="navigation" aria-label="Return">
+        <Button
+          className={classes.button}
+          size="small"
+          startIcon={<ArrowBackIcon fontSize="small" />}
+          onClick={() => navigate('/self-service/experiences')}
+        >
+          Back to Experiences
+        </Button>
+      </Box>
+    );
+  }
+
+  // Option B masthead + global surface — always return to Experiences catalog.
   if (mastheadPlus && onGlobalTemplatesRuns) {
     return (
       <Box className={classes.bar} role="navigation" aria-label="Return">
@@ -246,26 +272,22 @@ export const GlobalShellResumeBar = () => {
     );
   }
 
-  // SME: no Bridge on other global pages. Search → back to Automate / Templates home.
+  // SME: no Bridge on other global pages. Search → back to Automate.
   if (isSmeRole(role)) {
     const onSearch =
       pathname === '/search' || pathname.startsWith('/search/');
     if (!onSearch) {
       return null;
     }
-    const smeHome =
-      runPairIa === 'masthead-plus' ? '/create' : '/create?scope=experience';
-    const smeLabel =
-      runPairIa === 'masthead-plus' ? 'Back to Templates' : 'Back to Automate';
     return (
       <Box className={classes.bar} role="navigation" aria-label="Return">
         <Button
           className={classes.button}
           size="small"
           startIcon={<ArrowBackIcon fontSize="small" />}
-          onClick={() => navigate(smeHome)}
+          onClick={() => navigate('/create?scope=experience')}
         >
-          {smeLabel}
+          Back to Automate
         </Button>
       </Box>
     );

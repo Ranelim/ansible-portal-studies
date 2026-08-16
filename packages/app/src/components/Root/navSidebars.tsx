@@ -767,7 +767,7 @@ export const ExperiencesSidebar = () => {
   const { experience, setExperience } = useNavIaModel();
   const { variant: returnChrome } = useExperienceReturnChrome();
   const { variant: runPairIa } = useTemplatesRunsIa();
-  const keepAutomate = runPairIa === 'automate-rail';
+  const automateRail = runPairIa === 'automate-rail';
   const isAdmin = hasRole('admin');
   const smeLocked = isSmeRole(role);
   const available = availableExperiences({
@@ -775,29 +775,26 @@ export const ExperiencesSidebar = () => {
     isAdmin,
     compliance: plugins.compliance,
     rhem: plugins.rhem,
-    includeAutomate: keepAutomate,
   });
 
   const active: NavExperience = available.includes(experience)
     ? experience
-    : available[0] ?? (keepAutomate ? 'automate' : 'develop-tabs');
+    : available[0] ?? 'automate';
 
-  // SME: force Automate when Option A. Multi-seat: coerce invalid away from Bridge 'all'.
+  // SME: force Automate. Multi-seat: coerce invalid away from Bridge 'all'.
   useEffect(() => {
     let next = active;
-    if (next === 'all' || (!keepAutomate && next === 'automate')) {
+    if (next === 'all') {
       next =
-        smeLocked && keepAutomate
+        smeLocked
           ? 'automate'
-          : available.find(id => id !== 'all' && id !== 'automate') ??
-            available.find(id => id !== 'all') ??
-            (keepAutomate ? 'automate' : 'develop-tabs');
+          : available.find(id => id !== 'all') ?? 'automate';
     }
     if (next !== experience) {
       setExperience(next);
       writeNavExperience(next);
     }
-  }, [active, experience, setExperience, smeLocked, available, keepAutomate]);
+  }, [active, experience, setExperience, smeLocked, available]);
 
   /**
    * Experience Settings rail omitted until real personal prefs exist.
@@ -815,11 +812,9 @@ export const ExperiencesSidebar = () => {
 
   const domain =
     active === 'all'
-      ? smeLocked && keepAutomate
+      ? smeLocked
         ? 'automate'
-        : available.find(id => id !== 'all' && id !== 'automate') ??
-          available.find(id => id !== 'all') ??
-          (keepAutomate ? 'automate' : 'develop-tabs')
+        : available.find(id => id !== 'all') ?? 'automate'
       : active;
 
   const experienceLabel =
@@ -830,7 +825,7 @@ export const ExperiencesSidebar = () => {
 
   const goExperiences = () => navigate('/self-service/experiences');
 
-  /** Option A: sibling Templates · Runs + dividers. Option B: one Automate item. */
+  /** A: sibling Templates · Runs. B: one Automate item → page tabs (other experiences). */
   const ExperienceRunPair =
     runPairIa === 'masthead-plus' ? (
       <>
@@ -893,13 +888,8 @@ export const ExperiencesSidebar = () => {
       {/* A keeps a normal section label under the quiet return. */}
       {showQuietReturn && <SidebarSectionLabel text={experienceLabel} />}
 
-      {/* Option A: Automate experience = Templates · Runs (+ Learn). */}
-      {domain === 'automate' && keepAutomate && (
-        <>
-          {ExperienceRunPair}
-          <LearnItems />
-        </>
-      )}
+      {/* A: Automate = Templates · Runs only (no Learn). B is rail-less — skip. */}
+      {domain === 'automate' && automateRail && <RunItems />}
 
       {/* A — one Git Repositories pin; Quality lives as a host tab. */}
       {domain === 'develop-tabs' && (

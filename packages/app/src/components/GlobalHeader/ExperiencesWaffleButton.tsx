@@ -4,13 +4,21 @@ import Box from '@mui/material/Box';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
 import {
+  isSmeRole,
+  useUserRoleContext,
+} from '@ansible/plugin-backstage-self-service';
+import {
   mastheadIconButtonSx,
   mastheadTooltipChildSx,
 } from './mastheadIconSx';
 
 const EXPERIENCES_HREF = '/self-service/experiences';
 
-/** Masthead Apps launcher → Experiences Bridge (left of brand). */
+/**
+ * Masthead Apps launcher → Experiences Bridge (left of brand).
+ * Multi-seat return path (replaces Back bar on Automate B / global shell).
+ * Hidden for SME — one Automate world, nowhere to return.
+ */
 export const SHOW_EXPERIENCES_WAFFLE = true;
 
 function isExperiencesPath(pathname: string): boolean {
@@ -27,7 +35,10 @@ function isExperiencesPath(pathname: string): boolean {
 export const ExperiencesWaffleButton = () => {
   const navigate = useNavigate();
   const { pathname } = useLocation();
+  const { role } = useUserRoleContext();
+
   if (!SHOW_EXPERIENCES_WAFFLE) return null;
+  if (isSmeRole(role)) return null;
 
   const active = isExperiencesPath(pathname);
 

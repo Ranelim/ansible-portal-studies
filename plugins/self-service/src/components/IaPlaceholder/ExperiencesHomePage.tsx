@@ -34,7 +34,6 @@ import {
   writeNavExperience,
   type NavExperience,
 } from '../../hooks/useNavIaModel';
-import { useTemplatesRunsIa } from '../../hooks/useTemplatesRunsIa';
 import { useNavPlugins } from '../../hooks/useNavPlugins';
 import { useUserRoleContext } from '../../hooks/useUserRole';
 
@@ -595,8 +594,6 @@ export const ExperiencesHomePage = () => {
   const { role, hasRole } = useUserRoleContext();
   const { plugins } = useNavPlugins();
   const { setExperience } = useNavIaModel();
-  const { variant: runPairIa } = useTemplatesRunsIa();
-  const keepAutomate = runPairIa === 'automate-rail';
   const isAdmin = hasRole('admin');
 
   const [query, setQuery] = useState('');
@@ -611,12 +608,11 @@ export const ExperiencesHomePage = () => {
         isAdmin,
         compliance: plugins.compliance,
         rhem: plugins.rhem,
-        includeAutomate: keepAutomate,
       }).filter(
         (id): id is ExperienceId =>
           id !== 'all' && id !== 'admin',
       ),
-    [role, isAdmin, plugins.compliance, plugins.rhem, keepAutomate],
+    [role, isAdmin, plugins.compliance, plugins.rhem],
   );
 
   // Old /experiences/dashboard bookmark → catalog
@@ -975,28 +971,6 @@ export const ExperiencesHomePage = () => {
             </Select>
           </FormControl>
         </Box>
-
-        {!keepAutomate && available.length === 0 && (
-          <Box className={classes.emptyCallout} role="status">
-            <Typography className={classes.emptyCalloutTitle}>
-              No job-mode experiences for this seat
-            </Typography>
-            <Typography className={classes.emptyCalloutBody}>
-              Option B removes Automate from this catalog — Templates and Runs
-              live under the masthead +. Switch seat (Guest menu → Admin or
-              Developer) to browse Develop, Compliance, and Edge.
-            </Typography>
-            <Button
-              variant="contained"
-              color="primary"
-              size="small"
-              onClick={() => navigate('/create')}
-              style={{ textTransform: 'none', borderRadius: 20 }}
-            >
-              Open Templates
-            </Button>
-          </Box>
-        )}
 
         {cardStyle === 'hub' ? renderHubCards() : renderAccentCards()}
 

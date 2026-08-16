@@ -6,6 +6,7 @@ import {
   useUserRoleContext,
   writeNavExperience,
 } from '@ansible/plugin-backstage-self-service';
+import { SHOW_EXPERIENCES_WAFFLE } from '../GlobalHeader/ExperiencesWaffleButton';
 
 const useStyles = makeStyles(theme => ({
   root: {
@@ -70,10 +71,10 @@ function tabFromLocation(pathname: string, search: string): AutomateTab {
 }
 
 /**
- * Automate = rail-less marketplace experience.
- * Multi-seat: Back to Experiences. SME: no Back (Automate is their only world).
+ * Automate = rail-less marketplace experience (Option B host chrome).
+ * Multi-seat return = masthead waffle when enabled; else Back button.
+ * SME: no Back / no waffle (Automate is their only world).
  * Primary nav = page tabs Templates | Runs (no Catalog).
- * Masthead + stays global All templates — not this experience.
  */
 export const AutomateFullPageChrome = () => {
   const classes = useStyles();
@@ -81,6 +82,7 @@ export const AutomateFullPageChrome = () => {
   const { pathname, search } = useLocation();
   const { role } = useUserRoleContext();
   const sme = isSmeRole(role);
+  const showBack = !sme && !SHOW_EXPERIENCES_WAFFLE;
   const tab = tabFromLocation(pathname, search);
 
   const goExperiences = () => {
@@ -96,7 +98,7 @@ export const AutomateFullPageChrome = () => {
   return (
     <Box className={classes.root} component="header">
       <Box className={classes.top}>
-        {!sme && (
+        {showBack && (
           <Button
             className={classes.back}
             size="small"

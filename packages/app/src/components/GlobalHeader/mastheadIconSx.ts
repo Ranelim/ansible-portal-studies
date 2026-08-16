@@ -23,7 +23,11 @@ export const mastheadIconSlotSx = {
   lineHeight: 0,
   verticalAlign: 'middle' as const,
   margin: 0,
+  padding: 0,
   boxSizing: 'border-box' as const,
+  // Slot only — never a second pressed surface (Root paints IconButton).
+  backgroundColor: 'transparent',
+  borderRadius: 6,
 };
 
 export function mastheadIconButtonSx(active = false): SxProps<Theme> {
@@ -34,7 +38,7 @@ export function mastheadIconButtonSx(active = false): SxProps<Theme> {
     minWidth: MASTHEAD_ICON_HIT_PX,
     padding: 0,
     margin: 0,
-    borderRadius: '4px',
+    borderRadius: 6,
     backgroundColor: active ? 'action.selected' : 'transparent',
     boxSizing: 'border-box',
     '&:hover': {

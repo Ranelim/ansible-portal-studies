@@ -81,7 +81,7 @@ const ADMIN_EXPERIENCES: AdminExperience[] = [
   {
     id: 'automate',
     label: 'Automate',
-    description: 'Run job templates and track activity.',
+    description: 'Run job templates and track activity. Always an experience — A/B only changes Templates/Runs chrome.',
     pluginsFilter: 'Cross-cutting',
     seatsSummary: 'All seats',
     pluginsSummary: 'Self-service (run surfaces)',

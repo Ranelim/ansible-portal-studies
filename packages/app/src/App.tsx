@@ -1,6 +1,6 @@
 import React from 'react';
 import { Navigate, Route, useNavigate, useLocation } from 'react-router-dom';
-import { useUserRole, useUserRoleContext, UserRoleContext, useTemplatesRunsIa } from '@ansible/plugin-backstage-self-service';
+import { useUserRole, useUserRoleContext, UserRoleContext, writeNavExperience } from '@ansible/plugin-backstage-self-service';
 import { apiDocsPlugin, ApiExplorerPage } from '@backstage/plugin-api-docs';
 import {
   CatalogEntityPage,
@@ -256,17 +256,14 @@ const app = createApp({
 
 const RoleLandingRedirect = () => {
   const { role, loading } = useUserRoleContext();
-  const { variant } = useTemplatesRunsIa();
   if (loading) return null;
-  // Option A SME → Automate Templates; Option B SME → masthead + Templates|Runs
+  // SME → Automate experience (A/B only changes Templates/Runs chrome).
   // Multi-seat → Bridge catalog
-  const target =
-    role === 'sme'
-      ? variant === 'masthead-plus'
-        ? '/create'
-        : '/create?scope=experience'
-      : '/self-service/experiences';
-  return <Navigate to={target} replace />;
+  if (role === 'sme') {
+    writeNavExperience('automate');
+    return <Navigate to="/create?scope=experience" replace />;
+  }
+  return <Navigate to="/self-service/experiences" replace />;
 };
 
 const routes = (

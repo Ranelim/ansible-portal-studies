@@ -4,7 +4,6 @@ import Typography from '@mui/material/Typography';
 import { useTheme } from '@mui/material/styles';
 import {
   isSmeRole,
-  useTemplatesRunsIa,
   useUserRoleContext,
 } from '@ansible/plugin-backstage-self-service';
 import {
@@ -47,12 +46,11 @@ export const AutomationPortalBrand = () => {
   const theme = useTheme();
   const ink = theme.palette.text.primary;
   const { role } = useUserRoleContext();
-  const { variant } = useTemplatesRunsIa();
+  const sme = isSmeRole(role);
+  const showWaffle = SHOW_EXPERIENCES_WAFFLE && !sme;
 
-  const homeTo = isSmeRole(role)
-    ? variant === 'masthead-plus'
-      ? '/create'
-      : '/create?scope=experience'
+  const homeTo = sme
+    ? '/create?scope=experience'
     : '/self-service/experiences';
 
   return (
@@ -71,10 +69,10 @@ export const AutomationPortalBrand = () => {
         // Toolbar left = RAIL_ICON_GUTTER (Root CSS). No extra brand pad — waffle
         // hit edge is the page gutter line (TEMP / Back / Header / Content).
         ml: 0,
-        pl: SHOW_EXPERIENCES_WAFFLE ? 0 : 1.5,
+        pl: showWaffle ? 0 : 1.5,
         pr: 1,
         // Room between waffle pressed surface and fedora.
-        gap: SHOW_EXPERIENCES_WAFFLE ? 1.5 : 0,
+        gap: showWaffle ? 1.5 : 0,
       }}
     >
       <ExperiencesWaffleButton />
