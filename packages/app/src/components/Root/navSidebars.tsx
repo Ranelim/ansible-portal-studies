@@ -1152,6 +1152,9 @@ const AssistantSidebarRail = () => {
 
       {showQuietReturn && <SidebarSectionLabel text="Assistant" />}
 
+      {/* Soft gap — experience name vs menu (same as other experience rails). */}
+      <SidebarSpacer />
+
       <button
         type="button"
         className={`${classes.row}${isNewChat ? ` ${classes.rowActive}` : ''}`}
@@ -1352,6 +1355,9 @@ const ExperiencesDomainSidebar = () => {
 
       {/* A keeps a normal section label under the quiet return. */}
       {showQuietReturn && <SidebarSectionLabel text={experienceLabel} />}
+
+      {/* Soft gap — experience name vs menu (invisible spacer, not a rule). */}
+      <SidebarSpacer />
 
       {/* A: Automate = Templates · Runs only (no Learn). B is rail-less — skip. */}
       {domain === 'automate' && automateRail && <RunItems />}
