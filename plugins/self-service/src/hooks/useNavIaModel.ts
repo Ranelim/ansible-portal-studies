@@ -14,13 +14,15 @@ export type NavIaModel =
  *
  * Develop is split for APME IA review:
  * - develop-tabs — one Git Repositories pin; Quality as host tab
- * - develop-section — "Git repositories" section + Repositories | Quality pins
+ * - develop-section — "Git repositories" section + Dashboard | Repositories | Remediations pins
+ * - develop-drawer — same cluster in an open-by-default collapsible drawer
  */
 export type NavExperience =
   | 'all'
   | 'automate'
   | 'develop-tabs'
   | 'develop-section'
+  | 'develop-drawer'
   | 'compliance'
   | 'edge'
   | 'admin';
@@ -57,6 +59,7 @@ function normalizeExperience(raw: string | null): NavExperience | null {
     raw === 'automate' ||
     raw === 'develop-tabs' ||
     raw === 'develop-section' ||
+    raw === 'develop-drawer' ||
     raw === 'compliance' ||
     raw === 'edge' ||
     raw === 'admin'
@@ -86,9 +89,20 @@ export function writeNavExperience(experience: NavExperience) {
   notify();
 }
 
-/** Either Develop A/B review variant. */
+/** Any Develop APME IA review variant. */
 export function isDevelopExperience(experience: NavExperience): boolean {
-  return experience === 'develop-tabs' || experience === 'develop-section';
+  return (
+    experience === 'develop-tabs' ||
+    experience === 'develop-section' ||
+    experience === 'develop-drawer'
+  );
+}
+
+/** Section or drawer — no host tabs; rail picks Dashboard / Repositories / Remediations. */
+export function isDevelopReposRailMode(experience: NavExperience): boolean {
+  return (
+    experience === 'develop-section' || experience === 'develop-drawer'
+  );
 }
 
 export function availableExperiences(args: {
@@ -107,7 +121,7 @@ export function availableExperiences(args: {
   const list: NavExperience[] = ['all'];
   if (includeAutomate) list.push('automate');
   if (args.role === 'developer' || args.isAdmin) {
-    list.push('develop-tabs', 'develop-section');
+    list.push('develop-tabs', 'develop-section', 'develop-drawer');
   }
   if ((args.role === 'operator' || args.isAdmin) && args.compliance) {
     list.push('compliance');
@@ -124,6 +138,7 @@ export const EXPERIENCE_LABELS: Record<NavExperience, string> = {
   automate: 'Automate',
   'develop-tabs': 'Develop (tabs)',
   'develop-section': 'Develop (section)',
+  'develop-drawer': 'Develop (drawer)',
   compliance: 'Compliance',
   edge: 'Edge',
   admin: 'Administration',

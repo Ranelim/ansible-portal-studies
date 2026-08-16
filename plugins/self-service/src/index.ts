@@ -38,6 +38,7 @@ export {
   availableExperiences,
   EXPERIENCE_LABELS,
   isDevelopExperience,
+  isDevelopReposRailMode,
   type NavIaModel,
   type NavExperience,
 } from './hooks/useNavIaModel';

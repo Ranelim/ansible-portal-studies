@@ -925,28 +925,70 @@ export const ExperiencesSidebar = () => {
         </>
       )}
 
-      {/* B — object-named section: Repositories + Quality as sibling pins. */}
+      {/* B — object-named section: Dashboard first, then list + remediations. */}
       {domain === 'develop-section' && (
         <>
           {ExperienceDashboardItem}
           {ExperienceRunPair}
           <SidebarSectionLabel text="Git repositories" />
           <SidebarItem
-            icon={CodeIcon}
-            to="/self-service/repositories/list"
-            text="Repositories"
-          />
-          <SidebarItem
             icon={DashboardIcon}
             to="/self-service/repositories/dashboard"
             text="Dashboard"
+          />
+          <SidebarItem
+            icon={CodeIcon}
+            to="/self-service/repositories/list"
+            text="Repositories"
           />
           <SidebarItem
             icon={AssessmentIcon}
             to="/self-service/repositories/remediations"
             text="Remediations"
           />
+          <SidebarDivider />
+          <SidebarItem
+            icon={CategoryIcon}
+            to="/self-service/collections"
+            text="Collections"
+          />
+          <SidebarItem
+            icon={MemoryIcon}
+            to="/self-service/ee"
+            text="Execution Environments"
+          />
           <hr className={quietClasses.softDiv} />
+          <LearnItems />
+        </>
+      )}
+
+      {/* C — same as B, but Git repositories nest in an open-by-default drawer. */}
+      {domain === 'develop-drawer' && (
+        <>
+          {ExperienceDashboardItem}
+          {ExperienceRunPair}
+          <SectionDrawer
+            id="develop-git-repos"
+            label="Git repositories"
+            defaultOpen
+          >
+            <SidebarItem
+              icon={DashboardIcon}
+              to="/self-service/repositories/dashboard"
+              text="Dashboard"
+            />
+            <SidebarItem
+              icon={CodeIcon}
+              to="/self-service/repositories/list"
+              text="Repositories"
+            />
+            <SidebarItem
+              icon={AssessmentIcon}
+              to="/self-service/repositories/remediations"
+              text="Remediations"
+            />
+          </SectionDrawer>
+          <SidebarDivider />
           <SidebarItem
             icon={CategoryIcon}
             to="/self-service/collections"

@@ -28,9 +28,11 @@ import {
   CHROME_TOP_BASE,
   MASTHEAD_HEIGHT,
   RAIL_ICON_GUTTER_PX,
+  TEMPLATES_RUNS_IA_BAR_HEIGHT,
   chromeTopForPrototypeBars,
   NavIaRouteGuard,
 } from '../IaPrototype';
+import { useMagentaIaBarVisible } from '../IaPrototype/useMagentaIaBarVisible';
 import { ExperienceRunPairTabs } from '../IaPrototype/ExperienceRunPairTabs';
 
 const useRootStyles = makeStyles(theme => {
@@ -49,7 +51,8 @@ const useRootStyles = makeStyles(theme => {
     // outside SidebarPage — pin fixed so rail/content clearances stay correct.
     '#global-header': {
       position: 'fixed !important' as any,
-      top: 0,
+      // Magenta TEMP bar sits above masthead when visible.
+      top: 'var(--portal-magenta-bar, 0px) !important',
       left: 0,
       right: 0,
       zIndex: theme.zIndex.drawer + 1,
@@ -238,9 +241,12 @@ export const Root = ({ children }: PropsWithChildren<{}>) => {
   // SME + Option B: no experience rail at all (home = masthead +).
   const railLess = onBridge || onGlobalShell || smeMastheadPlus;
 
+  const { visible: magentaBarVisible } = useMagentaIaBarVisible();
   const showAdminSyncBar =
     experience === 'admin' && !isSetup && FORCED_ADMIN_SYNC_IA === null;
-  const showTemplatesRunsBar = !isSetup && FORCED_TEMPLATES_RUNS_IA === null;
+  const templatesRunsBarEligible =
+    !isSetup && FORCED_TEMPLATES_RUNS_IA === null;
+  const showTemplatesRunsBar = templatesRunsBarEligible && magentaBarVisible;
   const showGlobalRunPairTabs = killAutomate && onGlobalTemplatesRuns;
   const showExperienceRunPairTabs =
     killAutomate &&
@@ -256,6 +262,7 @@ export const Root = ({ children }: PropsWithChildren<{}>) => {
     showAdminSyncBar,
     showTemplatesRunsBar,
   });
+  const magentaBarPx = showTemplatesRunsBar ? TEMPLATES_RUNS_IA_BAR_HEIGHT : 0;
 
   useCaptureGlobalShellReturn(
     location.pathname,
@@ -278,10 +285,14 @@ export const Root = ({ children }: PropsWithChildren<{}>) => {
 
   useEffect(() => {
     document.documentElement.style.setProperty(
+      '--portal-magenta-bar',
+      `${magentaBarPx}px`,
+    );
+    document.documentElement.style.setProperty(
       '--portal-chrome-top',
       `${chromeTop}px`,
     );
-  }, [chromeTop]);
+  }, [chromeTop, magentaBarPx]);
 
   const chromeOffsetStyle = {
     paddingTop: chromeTop,

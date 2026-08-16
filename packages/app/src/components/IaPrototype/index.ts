@@ -20,3 +20,7 @@ export {
 } from './chromeHeights';
 export { useExperienceReturnChrome } from './useExperienceReturnChrome';
 export type { ExperienceReturnChrome } from './experienceReturnChrome';
+export {
+  useMagentaIaBarVisible,
+  writeMagentaIaBarVisible,
+} from './useMagentaIaBarVisible';

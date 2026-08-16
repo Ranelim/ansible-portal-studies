@@ -62,7 +62,9 @@ const EXPERIENCE_BLURB: Record<ExperienceId, string> = {
   'develop-tabs':
     'A — Git Repositories pin; tabs: Repositories · Dashboard · Remediations · Pipeline.',
   'develop-section':
-    'B — Git repositories section; Repositories, Dashboard, and Remediations as sibling rail items.',
+    'B — Git repositories section (Dashboard · Repositories · Remediations); closed with a rail divider before Collections.',
+  'develop-drawer':
+    'C — Same as B, with Git repositories in a collapsible drawer open by default.',
   compliance: 'Scan inventories, review findings, and remediate hosts.',
   edge: 'Manage edge device fleets, updates, and desired state.',
 };
@@ -70,7 +72,8 @@ const EXPERIENCE_BLURB: Record<ExperienceId, string> = {
 const EXPERIENCE_LANDING: Record<ExperienceId, string> = {
   automate: '/create?scope=experience',
   'develop-tabs': '/self-service/repositories/list',
-  'develop-section': '/self-service/repositories/list',
+  'develop-section': '/self-service/repositories/dashboard',
+  'develop-drawer': '/self-service/repositories/dashboard',
   compliance: '/self-service/experience-dashboard',
   edge: '/self-service/experience-dashboard',
 };
@@ -79,6 +82,7 @@ const EXPERIENCE_ACCENT: Record<ExperienceId, string> = {
   automate: '#0066CC',
   'develop-tabs': '#3D1C7C',
   'develop-section': '#5E2B9F',
+  'develop-drawer': '#7B3DB8',
   compliance: '#C46100',
   edge: '#147EBC',
 };
@@ -109,6 +113,12 @@ const EXPERIENCE_DOCS: Record<
     href: 'https://docs.redhat.com/en/documentation/red_hat_ansible_automation_platform/2.6/html/using_self-service_automation_portal/index',
     linkLabel: 'View Develop documentation',
   },
+  'develop-drawer': {
+    summary:
+      'Review C: same Git repositories cluster as B, nested in an open-by-default collapsible drawer.',
+    href: 'https://docs.redhat.com/en/documentation/red_hat_ansible_automation_platform/2.6/html/using_self-service_automation_portal/index',
+    linkLabel: 'View Develop documentation',
+  },
   compliance: {
     summary:
       'Compliance helps you scan host inventories, review findings, and remediate against security baselines.',
@@ -136,6 +146,7 @@ function experienceIcon(id: ExperienceId | 'assistant'): ReactNode {
       return <PlayArrowIcon {...props} />;
     case 'develop-tabs':
     case 'develop-section':
+    case 'develop-drawer':
       return <CodeIcon {...props} />;
     case 'compliance':
       return <VerifiedUserIcon {...props} />;
@@ -157,6 +168,7 @@ function readRecent(): ExperienceId[] {
         'automate',
         'develop-tabs',
         'develop-section',
+        'develop-drawer',
         'compliance',
         'edge',
       ].includes(id),

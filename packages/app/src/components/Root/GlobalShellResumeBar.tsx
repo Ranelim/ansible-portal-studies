@@ -23,7 +23,8 @@ const EXPERIENCE_RESUME: Record<
 > = {
   automate: '/create?scope=experience',
   'develop-tabs': '/self-service/repositories/list',
-  'develop-section': '/self-service/repositories/list',
+  'develop-section': '/self-service/repositories/dashboard',
+  'develop-drawer': '/self-service/repositories/dashboard',
   compliance: '/self-service/experience-dashboard',
   edge: '/self-service/experience-dashboard',
   admin: '/self-service/admin/overview',
@@ -93,6 +94,7 @@ function readStoredExperience(): NavExperience {
       raw === 'automate' ||
       raw === 'develop-tabs' ||
       raw === 'develop-section' ||
+      raw === 'develop-drawer' ||
       raw === 'compliance' ||
       raw === 'edge' ||
       raw === 'admin' ||

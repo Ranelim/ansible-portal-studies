@@ -57,6 +57,14 @@ jest.mock('./PortalHeaderSearch', () => ({
   ),
 }));
 
+jest.mock('./PortalMagentaIaBarToggle', () => ({
+  PortalMagentaIaBarToggle: () => (
+    <button type="button" aria-label="Hide prototype compare bar">
+      Eye
+    </button>
+  ),
+}));
+
 jest.mock('./PortalCreateButton', () => ({
   PortalCreateButton: () => (
     <button type="button" title="All templates" aria-label="All templates">

@@ -9,6 +9,7 @@ import { Divider } from '@red-hat-developer-hub/backstage-plugin-global-header/d
 
 import { AutomationPortalBrand } from './AutomationPortalBrand';
 import { PortalHeaderSearch } from './PortalHeaderSearch';
+import { PortalMagentaIaBarToggle } from './PortalMagentaIaBarToggle';
 import { PortalCreateButton } from './PortalCreateButton';
 import { PortalNotificationButton } from './PortalNotificationButton';
 import { PortalHelpMenu } from './PortalHelpMenu';
@@ -17,7 +18,7 @@ import { PortalProfileMenu } from './PortalProfileMenu';
 
 /**
  * Brand (waffle + logo, 224 = sidebar) → Search → Spacer →
- * Create → Starred → Help → Bell → Divider → Profile
+ * Magenta eye → Create → Starred → Help → Bell → Divider → Profile
  *
  * Experiences waffle sits inside the brand column (tight, theme-ink — not a blue slice).
  */
@@ -40,6 +41,10 @@ export const GlobalHeader = () => {
           priority: 99,
           props: { growFactor: 1 },
         },
+      },
+      {
+        Component: PortalMagentaIaBarToggle,
+        config: { priority: 91 },
       },
       {
         Component: PortalCreateButton,

@@ -52,7 +52,8 @@ export const ProjectsTabs: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { experience } = useNavIaModel();
-  const sectionMode = experience === 'develop-section';
+  const sectionMode =
+    experience === 'develop-section' || experience === 'develop-drawer';
   const [createOpen, setCreateOpen] = useState(false);
 
   useEffect(() => {

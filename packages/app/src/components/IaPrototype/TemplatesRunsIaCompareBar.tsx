@@ -6,6 +6,7 @@ import {
   type TemplatesRunsIaVariant,
 } from '@ansible/plugin-backstage-self-service';
 import { TEMPLATES_RUNS_IA_BAR_HEIGHT, RAIL_ICON_GUTTER_PX } from './chromeHeights';
+import { useMagentaIaBarVisible } from './useMagentaIaBarVisible';
 
 const MAGENTA = '#BE0098';
 
@@ -23,11 +24,12 @@ const HINTS: Record<TemplatesRunsIaVariant, string> = {
 const useStyles = makeStyles({
   bar: {
     position: 'fixed',
-    top: 64,
+    // Above the masthead (masthead top = --portal-magenta-bar).
+    top: 0,
     left: 0,
     right: 0,
     height: TEMPLATES_RUNS_IA_BAR_HEIGHT,
-    zIndex: 1200,
+    zIndex: 1300,
     display: 'flex',
     alignItems: 'center',
     flexWrap: 'nowrap',
@@ -90,10 +92,12 @@ const useStyles = makeStyles({
 
 /**
  * Temp design compare — Automate as experience + rail vs masthead-only Automate.
+ * Sits above the masthead; toggle via masthead eye (left of Create).
  */
 export const TemplatesRunsIaCompareBar = () => {
   const classes = useStyles();
   const { variant, setVariant } = useTemplatesRunsIa();
+  const { visible } = useMagentaIaBarVisible();
   const location = useLocation();
 
   if (FORCED_TEMPLATES_RUNS_IA) {
@@ -101,6 +105,10 @@ export const TemplatesRunsIaCompareBar = () => {
   }
 
   if (location.pathname.includes('/setup')) {
+    return null;
+  }
+
+  if (!visible) {
     return null;
   }
 

@@ -60,6 +60,13 @@ const SNIPPETS: Record<
     href: '/self-service/repositories/list',
     highlights: ['3 need attention', 'Quality avg 78'],
   },
+  'develop-drawer': {
+    summary: 'Git repositories drawer — Quality nest open by default (review C).',
+    metric: '12',
+    metricLabel: 'repos',
+    href: '/self-service/repositories/dashboard',
+    highlights: ['3 need attention', 'Quality avg 78'],
+  },
   compliance: {
     summary: 'Inventory compliance posture and open findings.',
     metric: '86%',
@@ -218,7 +225,11 @@ export const FlatHomeDashboardPage = () => {
         href: '/create?scope=experience',
       },
     ];
-    if (available.includes('develop-tabs') || available.includes('develop-section')) {
+    if (
+      available.includes('develop-tabs') ||
+      available.includes('develop-section') ||
+      available.includes('develop-drawer')
+    ) {
       items.push({
         id: 'quality',
         value: '78',
@@ -255,7 +266,11 @@ export const FlatHomeDashboardPage = () => {
       { label: 'Catalog resources', value: '86' },
       { label: 'Failed syncs (24h)', value: available.includes('admin') ? '1' : '0' },
     ];
-    if (available.includes('develop-tabs') || available.includes('develop-section')) {
+    if (
+      available.includes('develop-tabs') ||
+      available.includes('develop-section') ||
+      available.includes('develop-drawer')
+    ) {
       rows.push({ label: 'EEs in use', value: '6' });
     }
     if (available.includes('compliance')) {
