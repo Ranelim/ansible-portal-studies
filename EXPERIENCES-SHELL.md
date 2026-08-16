@@ -22,7 +22,8 @@ Build the **Experience Bridge** shell from the Aug 11 stakeholder direction:
 | Surface | Chrome | Landing |
 |---|---|---|
 | **Bridge** (`/self-service/experiences`) | Masthead only | Experiences cards · search · sort · **Administration** button (admins, top-right — not a card) |
-| **Assistant** (`/self-service/assistant`) | Masthead only | Chat skeleton (TBD) |
+| **Assistant** (`/self-service/assistant`) | **Trial:** experience rail (return · New chat · history · Clear). **Rollback:** set `ASSISTANT_SIDE_NAV_TRIAL = false` in `plugins/self-service/.../assistantIaTrial.ts` → rail-less + page-header Back | Chat empty state + sticky composer |
+
 | **Global account** (`/settings`, catalog `user/*`, `/notifications`) | Masthead only | No experience rail; **preserves** last experience for Back |
 | **Inside experience** | Masthead + experience rail | Develop / Compliance / Edge → Dashboard / entity home |
 | **Automate** | Masthead + page tabs (no rail) | Templates \| Activity — marketplace-clean |

@@ -12,6 +12,9 @@ import {
   useAdminSyncIa,
   useTemplatesRunsIa,
   type NavExperience,
+  ASSISTANT_SIDE_NAV_TRIAL,
+  isAssistantPath,
+  useAssistantChatTrial,
 } from '@ansible/plugin-backstage-self-service';
 import { SidebarSectionLabel } from '@ansible/plugin-backstage-rhaap';
 import { SidebarSearchModal } from '@backstage/plugin-search';
@@ -56,6 +59,7 @@ import ChevronRightIcon from '@material-ui/icons/ChevronRight';
 import HomeIcon from '@material-ui/icons/Home';
 import ArrowBackIcon from '@material-ui/icons/ArrowBack';
 import ChevronLeftIcon from '@material-ui/icons/ChevronLeft';
+import DeleteOutlineIcon from '@material-ui/icons/DeleteOutline';
 import { useExperienceReturnChrome } from '../IaPrototype/useExperienceReturnChrome';
 
 const useSidebarLogoStyles = makeStyles({
@@ -1013,12 +1017,218 @@ const useQuietReturnStyles = makeStyles(theme => ({
   },
 }));
 
+const useAssistantRailStyles = makeStyles(theme => ({
+  /** Same icon column as return chevron / SidebarItem (gutter align). */
+  iconCol: {
+    boxSizing: 'border-box' as const,
+    width: sidebarConfig.iconContainerWidth,
+    minWidth: sidebarConfig.iconContainerWidth,
+    marginLeft: 8,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  row: {
+    display: 'flex',
+    alignItems: 'center',
+    width: '100%',
+    margin: theme.spacing(0.25, 0),
+    padding: theme.spacing(0.5, 1, 0.5, 0),
+    border: 'none',
+    borderRadius: 0,
+    background: 'transparent',
+    cursor: 'pointer',
+    textAlign: 'left' as const,
+    color: theme.palette.text.primary,
+    fontSize: 14,
+    lineHeight: 1.3,
+    boxSizing: 'border-box' as const,
+    '&:hover': {
+      backgroundColor: theme.palette.action.hover,
+    },
+    '&:focus-visible': {
+      outline: `2px solid ${theme.palette.primary.main}`,
+      outlineOffset: -2,
+    },
+  },
+  rowActive: {
+    // Gemini-like selected pill on the rail row.
+    marginLeft: 8,
+    marginRight: 8,
+    width: 'calc(100% - 16px)',
+    borderRadius: 20,
+    backgroundColor:
+      theme.palette.type === 'dark'
+        ? 'rgba(255,255,255,0.12)'
+        : 'rgba(255,255,255,0.72)',
+    fontWeight: 600,
+  },
+  rowLabel: {
+    flex: 1,
+    minWidth: 0,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap' as const,
+    // Match SidebarItem label pull toward icon column.
+    marginLeft: -theme.spacing(1),
+    paddingRight: theme.spacing(1),
+  },
+  historyLabel: {
+    display: 'block',
+    // Align with rowLabel (after icon column), not further indented.
+    padding: theme.spacing(1, 1, 0.5, 0),
+    marginLeft: 8 + sidebarConfig.iconContainerWidth - theme.spacing(1),
+    fontSize: 11,
+    fontWeight: 600,
+    letterSpacing: '0.04em',
+    textTransform: 'uppercase',
+    color: theme.palette.text.secondary,
+  },
+  threadTitle: {
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap' as const,
+  },
+}));
+
+/**
+ * Assistant side-nav trial — return chrome + New chat + history.
+ * ROLLBACK: `ASSISTANT_SIDE_NAV_TRIAL = false` in assistantIaTrial.ts
+ */
+const AssistantSidebarRail = () => {
+  const quietClasses = useQuietReturnStyles();
+  const classes = useAssistantRailStyles();
+  const navigate = useNavigate();
+  const { role } = useUserRoleContext();
+  const smeLocked = isSmeRole(role);
+  const { variant: returnChrome } = useExperienceReturnChrome();
+  const { activeId, isNewChat, recents, newChat, selectChat, clearHistory } =
+    useAssistantChatTrial();
+
+  const showQuietReturn = !smeLocked && returnChrome === 'quiet';
+  const showLabelReturn = !smeLocked && returnChrome === 'waffle';
+  const goExperiences = () => navigate('/self-service/experiences');
+
+  return (
+    <SearchAndMenu showSearch={false}>
+      {showQuietReturn && (
+        <button
+          type="button"
+          className={quietClasses.quietReturn}
+          onClick={goExperiences}
+          aria-label="Back to Experiences"
+        >
+          <span className={quietClasses.iconCol} aria-hidden>
+            <ArrowBackIcon className={quietClasses.quietIcon} />
+          </span>
+          Experiences
+        </button>
+      )}
+
+      {showLabelReturn ? (
+        <Box className={quietClasses.labelReturnRow}>
+          <span className={quietClasses.iconCol}>
+            <button
+              type="button"
+              className={quietClasses.labelReturnBtn}
+              onClick={goExperiences}
+              aria-label="Back to Experiences"
+              title="Back to Experiences"
+            >
+              <ChevronLeftIcon className={quietClasses.labelReturnChevron} />
+            </button>
+          </span>
+          <Typography
+            className={quietClasses.labelReturnText}
+            component="span"
+          >
+            Assistant
+          </Typography>
+        </Box>
+      ) : (
+        !showQuietReturn && <SidebarSectionLabel text="Assistant" />
+      )}
+
+      {showQuietReturn && <SidebarSectionLabel text="Assistant" />}
+
+      <button
+        type="button"
+        className={`${classes.row}${isNewChat ? ` ${classes.rowActive}` : ''}`}
+        onClick={() => {
+          newChat();
+          navigate('/self-service/assistant');
+        }}
+        aria-label="New chat"
+        aria-current={isNewChat ? 'page' : undefined}
+      >
+        <span className={classes.iconCol} aria-hidden>
+          <AddCircleOutlineIcon style={{ fontSize: 18 }} />
+        </span>
+        <span className={classes.rowLabel}>New chat</span>
+      </button>
+
+      {recents.length > 0 && (
+        <>
+          <SidebarSpacer />
+          <span className={classes.historyLabel}>Recents</span>
+          {recents.map(thread => (
+            <button
+              key={thread.id}
+              type="button"
+              className={`${classes.row}${
+                thread.id === activeId ? ` ${classes.rowActive}` : ''
+              }`}
+              onClick={() => {
+                selectChat(thread.id);
+                navigate('/self-service/assistant');
+              }}
+              aria-current={thread.id === activeId ? 'page' : undefined}
+            >
+              <span className={classes.iconCol} aria-hidden />
+              <span className={`${classes.rowLabel} ${classes.threadTitle}`}>
+                {thread.title}
+              </span>
+            </button>
+          ))}
+        </>
+      )}
+
+      {recents.length > 0 && (
+        <>
+          <SidebarSpacer />
+          <button
+            type="button"
+            className={classes.row}
+            onClick={() => clearHistory()}
+            aria-label="Clear chat history"
+            style={{ color: 'inherit', opacity: 0.85 }}
+          >
+            <span className={classes.iconCol} aria-hidden>
+              <DeleteOutlineIcon style={{ fontSize: 18 }} />
+            </span>
+            <span className={classes.rowLabel}>Clear history</span>
+          </button>
+        </>
+      )}
+    </SearchAndMenu>
+  );
+};
+
 /**
  * Experience domain rail (Bridge is rail-less — see Root).
  * Return chrome A/B via magenta compare bar (temp).
  * Section label = current experience (orientation; not a switcher).
  */
 export const ExperiencesSidebar = () => {
+  const { pathname } = useLocation();
+  if (ASSISTANT_SIDE_NAV_TRIAL && isAssistantPath(pathname)) {
+    return <AssistantSidebarRail />;
+  }
+  return <ExperiencesDomainSidebar />;
+};
+
+const ExperiencesDomainSidebar = () => {
   const quietClasses = useQuietReturnStyles();
   const navigate = useNavigate();
   const { role, hasRole } = useUserRoleContext();

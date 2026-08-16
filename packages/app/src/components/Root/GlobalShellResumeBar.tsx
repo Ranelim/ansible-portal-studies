@@ -9,6 +9,8 @@ import {
   useTemplatesRunsIa,
   useUserRoleContext,
   type NavExperience,
+  ASSISTANT_SIDE_NAV_TRIAL,
+  isAssistantPath,
 } from '@ansible/plugin-backstage-self-service';
 import { RAIL_ICON_GUTTER_PX } from '../IaPrototype/chromeHeights';
 import { isAutomateFullPagePath } from './AutomateFullPageChrome';
@@ -32,12 +34,17 @@ const EXPERIENCE_RESUME: Record<
 };
 
 export function isBridgePath(pathname: string): boolean {
-  return (
+  if (
     pathname === '/self-service/experiences' ||
-    pathname.startsWith('/self-service/experiences/') ||
-    pathname === '/self-service/assistant' ||
-    pathname.startsWith('/self-service/assistant/')
-  );
+    pathname.startsWith('/self-service/experiences/')
+  ) {
+    return true;
+  }
+  // Assistant: rail-less Bridge sibling unless side-nav trial is on.
+  if (isAssistantPath(pathname)) {
+    return !ASSISTANT_SIDE_NAV_TRIAL;
+  }
+  return false;
 }
 
 /**

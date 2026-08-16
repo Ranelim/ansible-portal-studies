@@ -35,6 +35,7 @@ import {
 import { useMagentaIaBarVisible } from '../IaPrototype/useMagentaIaBarVisible';
 import { ExperienceRunPairTabs } from '../IaPrototype/ExperienceRunPairTabs';
 import { SHOW_EXPERIENCES_WAFFLE } from '../GlobalHeader/ExperiencesWaffleButton';
+import { ExperiencesHeaderBackPortal } from './ExperiencesHeaderBackPortal';
 
 const useRootStyles = makeStyles(theme => {
   const rhdhGeneral = (theme.palette as any).rhdh?.general ?? {};
@@ -45,6 +46,10 @@ const useRootStyles = makeStyles(theme => {
     (theme.palette.type === 'dark' ? '#151515' : '#f2f2f2');
   const appBarFg =
     rhdhGeneral.appBarForegroundColor ?? theme.palette.text.primary;
+  const sidebarBg =
+    rhdhGeneral.sidebarBackgroundColor ??
+    (theme.palette.type === 'dark' ? '#1b1d21' : '#f2f2f2');
+  const pageInset = rhdhGeneral.pageInset ?? '1.5rem';
 
   return {
   '@global': {
@@ -173,8 +178,60 @@ const useRootStyles = makeStyles(theme => {
       flexShrink: '1 !important' as any,
       minHeight: '0 !important',
     },
+    /**
+     * RHDH PF6 page inset — rounded white content card beside the rail.
+     * SidebarPage no longer wraps a direct `> main` (children are Sidebar + our
+     * wrapper); target nested Backstage Page `main` instead. Chrome-aware
+     * maxHeight so the card isn’t clipped square under the fixed masthead.
+     */
+    '[class*="BackstageSidebarPage-root"]': {
+      backgroundColor: `${sidebarBg} !important`,
+      '@media (min-width: 600px)': {
+        '& main[class*="BackstagePage-root"], & main[data-backstage-core-page]': {
+          clipPath: 'inset(0 round 1rem) !important',
+          borderRadius: '1rem !important',
+          overflow: 'auto !important',
+          // Top / right / bottom inset; left stays 0 — rail already pads the root.
+          marginTop: `${pageInset} !important`,
+          marginRight: `${pageInset} !important`,
+          marginBottom: `${pageInset} !important`,
+          marginLeft: '0 !important',
+          maxHeight: `calc(100vh - var(--portal-chrome-top, ${CHROME_TOP_BASE}px) - 2 * ${pageInset}) !important`,
+          height: 'auto !important',
+          backgroundColor: `${theme.palette.background.default} !important`,
+        },
+      },
+    },
+    /**
+     * Assistant chat trial — fill the content card and pin composer to its
+     * bottom (no gray page-inset strip under the input).
+     */
+    'html[data-portal-assistant-rail] [class*="BackstageSidebarPage-root"]': {
+      '@media (min-width: 600px)': {
+        '& main[class*="BackstagePage-root"], & main[data-backstage-core-page]': {
+          display: 'flex !important',
+          flexDirection: 'column !important',
+          height: `calc(100vh - var(--portal-chrome-top, ${CHROME_TOP_BASE}px) - ${pageInset}) !important`,
+          maxHeight: `calc(100vh - var(--portal-chrome-top, ${CHROME_TOP_BASE}px) - ${pageInset}) !important`,
+          marginBottom: '0 !important',
+          borderBottomLeftRadius: '0 !important',
+          borderBottomRightRadius: '0 !important',
+          clipPath: 'inset(0 round 1rem 1rem 0 0) !important',
+          overflow: 'hidden !important',
+        },
+      },
+    },
+    'html[data-portal-assistant-rail] [class*="BackstageSidebarPage-root"] main [class*="BackstageContent-root"]':
+      {
+        flex: '1 1 auto !important',
+        minHeight: '0 !important',
+        display: 'flex !important',
+        flexDirection: 'column !important',
+        padding: '0 !important',
+        overflow: 'hidden !important',
+      },
     'body, html': {
-      backgroundColor: `${theme.palette.background.default} !important`,
+      backgroundColor: `${sidebarBg} !important`,
     },
     // Page gutter = waffle / TEMP / rail-icon column (RAIL_ICON_GUTTER_PX).
     // Overrides Backstage Header (spacing 3 = 24) + Content (spacing 2/3).
@@ -194,17 +251,20 @@ const useRootStyles = makeStyles(theme => {
       paddingLeft: `var(--portal-page-gutter, ${RAIL_ICON_GUTTER_PX}px) !important`,
       paddingRight: `var(--portal-page-gutter, ${RAIL_ICON_GUTTER_PX}px) !important`,
     },
-    '.BackstagePage-root': {
+    '[class*="BackstagePage-root"]': {
       overflow: 'hidden',
     },
   },
   fixedHeaderOffset: {
     minHeight: '100vh',
-    backgroundColor: theme.palette.background.default,
+    // Same gray as RHDH SidebarPage so the rounded main inset reads against chrome.
+    backgroundColor: sidebarBg,
   },
   /** Bridge: masthead only — full-width content, no experience rail. */
   bridgeContent: {
     minHeight: `calc(100vh - var(--portal-chrome-top, ${CHROME_TOP_BASE}px))`,
+    // Bridge has no SidebarPage inset — keep page white under masthead.
+    backgroundColor: theme.palette.background.default,
   },
   /**
    * Automate host owns Header (title Automate) + HeaderTabs.
@@ -257,7 +317,8 @@ const GlobalRestartBanner = () => {
   );
 };
 
-/** Experiences catalog + Assistant — rail-less; clears domain to Bridge 'all'. */
+/** Experiences catalog — rail-less; clears domain to Bridge 'all'.
+ *  Assistant uses side nav when ASSISTANT_SIDE_NAV_TRIAL (see assistantIaTrial.ts). */
 // Path helpers live in GlobalShellResumeBar (shared with resume bar).
 
 export const Root = ({ children }: PropsWithChildren<{}>) => {
@@ -392,6 +453,8 @@ export const Root = ({ children }: PropsWithChildren<{}>) => {
           {(showGlobalRunPairTabs || showAutomateExperienceHostTabs) && (
             <ExperienceRunPairTabs mode={runPairMode} />
           )}
+          {/* Settings / Search / user / Notifications — ← in Header title */}
+          {!showAutomateHostChrome && <ExperiencesHeaderBackPortal />}
           <div
             className={`${rootClasses.bridgeContent}${
               showAutomateHostChrome

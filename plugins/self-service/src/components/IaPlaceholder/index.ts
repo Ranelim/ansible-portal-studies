@@ -14,3 +14,8 @@ export {
   type IaTab,
 } from './navIaPages';
 export { NAV_IA_REVIEW_MODS, isSmeRole } from './navIaReviewMods';
+export {
+  ASSISTANT_SIDE_NAV_TRIAL,
+  isAssistantPath,
+  assistantUsesSideNav,
+} from './assistantIaTrial';

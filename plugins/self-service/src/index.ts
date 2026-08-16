@@ -46,6 +46,12 @@ export {
   NAV_IA_REVIEW_MODS,
   isSmeRole,
 } from './components/IaPlaceholder/navIaReviewMods';
+export {
+  ASSISTANT_SIDE_NAV_TRIAL,
+  isAssistantPath,
+  assistantUsesSideNav,
+} from './components/IaPlaceholder/assistantIaTrial';
+export { useAssistantChatTrial } from './components/IaPlaceholder/assistantChatTrialStore';
 export type { UserRole, UseUserRoleResult } from './hooks/useUserRole';
 export { useAdminSyncIa } from './components/Admin/useAdminSyncIa';
 export type { AdminSyncIaVariant } from './components/Admin/adminSyncIa';

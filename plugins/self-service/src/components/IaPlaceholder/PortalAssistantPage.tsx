@@ -1,71 +1,38 @@
-import { useEffect } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { Page, Content } from '@backstage/core-components';
 import {
-  Box,
   IconButton,
   TextField,
   Typography,
   makeStyles,
 } from '@material-ui/core';
+import { Page, Content } from '@backstage/core-components';
 import SendIcon from '@material-ui/icons/Send';
 import ArrowBackIcon from '@material-ui/icons/ArrowBack';
+import { useUserRoleContext } from '../../hooks/useUserRole';
+import { isSmeRole } from './navIaReviewMods';
+import { ASSISTANT_SIDE_NAV_TRIAL } from './assistantIaTrial';
+import { useAssistantChatTrial } from './assistantChatTrialStore';
 
 const useStyles = makeStyles(theme => ({
-  shell: {
-    display: 'flex',
-    flexDirection: 'column',
-    height: 'calc(100vh - 120px)',
-    maxWidth: 800,
-    margin: '0 auto',
-    minHeight: 420,
-  },
-  topBar: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: theme.spacing(1),
-    marginBottom: theme.spacing(2),
-  },
   title: {
     fontWeight: 600,
+    fontSize: 20,
+    lineHeight: 1.3,
+    color: theme.palette.text.primary,
+  },
+  emptyTitle: {
+    fontWeight: 600,
     fontSize: 18,
-    flex: 1,
+    lineHeight: 1.35,
+    color: theme.palette.text.primary,
+    marginBottom: theme.spacing(1),
   },
-  thread: {
-    flex: 1,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: theme.spacing(2),
-    overflowY: 'auto',
-    padding: theme.spacing(1, 0),
-    marginBottom: theme.spacing(2),
-  },
-  bubbleAssistant: {
-    alignSelf: 'flex-start',
-    maxWidth: '85%',
-    backgroundColor: theme.palette.background.paper,
-    border: `1px solid ${theme.palette.divider}`,
-    borderRadius: '16px 16px 16px 4px',
-    padding: theme.spacing(1.5, 2),
+  emptyBody: {
     fontSize: 14,
     lineHeight: 1.55,
     color: theme.palette.text.secondary,
-  },
-  bubbleUser: {
-    alignSelf: 'flex-end',
-    maxWidth: '85%',
-    backgroundColor: theme.palette.action.hover,
-    borderRadius: '16px 16px 4px 16px',
-    padding: theme.spacing(1.5, 2),
-    fontSize: 14,
-    lineHeight: 1.55,
-    color: theme.palette.text.disabled,
-  },
-  composer: {
-    display: 'flex',
-    gap: theme.spacing(1),
-    alignItems: 'flex-end',
-    flexShrink: 0,
   },
   input: {
     flex: 1,
@@ -79,82 +46,294 @@ const useStyles = makeStyles(theme => ({
     height: 40,
     width: 40,
   },
-  footer: {
-    marginTop: theme.spacing(1),
-    textAlign: 'center',
-    color: theme.palette.text.secondary,
-    fontSize: 12,
-  },
 }));
 
+function readChromeTopPx(): number {
+  const raw = getComputedStyle(document.documentElement)
+    .getPropertyValue('--portal-chrome-top')
+    .trim();
+  const n = parseFloat(raw);
+  return Number.isFinite(n) ? n : 64;
+}
+
+type ShellBox = { top: number; height: number };
+
+function measureShellBox(): ShellBox {
+  const chrome = readChromeTopPx();
+  const vv = window.visualViewport;
+  const vh = vv?.height ?? window.innerHeight;
+  const offsetTop = vv?.offsetTop ?? 0;
+  return {
+    top: offsetTop + chrome,
+    height: Math.max(240, vh - chrome),
+  };
+}
+
+type AssistantBodyProps = {
+  showPageHeader: boolean;
+  sme: boolean;
+  onBack?: () => void;
+};
+
+const AssistantBody = ({
+  showPageHeader,
+  sme,
+  onBack,
+}: AssistantBodyProps) => {
+  const classes = useStyles();
+  const { threads, activeId, isNewChat } = useAssistantChatTrial();
+  const active = threads.find(t => t.id === activeId);
+
+  return (
+    <div
+      data-portal-assistant-shell=""
+      role="main"
+      aria-label="Assistant"
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        flex: '1 1 auto',
+        height: '100%',
+        minHeight: 0,
+        width: '100%',
+        boxSizing: 'border-box',
+        backgroundColor: 'var(--portal-assistant-bg, #fff)',
+        overflow: 'hidden',
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          flex: '1 1 auto',
+          minHeight: 0,
+          width: '100%',
+          maxWidth: 720,
+          margin: '0 auto',
+          padding: showPageHeader ? '16px 24px 0' : '8px 24px 0',
+          boxSizing: 'border-box',
+        }}
+      >
+        {showPageHeader && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+              flexShrink: 0,
+              paddingBottom: 12,
+            }}
+          >
+            {!sme && onBack && (
+              <IconButton
+                size="small"
+                aria-label="Back to Experiences"
+                onClick={onBack}
+              >
+                <ArrowBackIcon fontSize="small" />
+              </IconButton>
+            )}
+            <Typography className={classes.title} component="h1">
+              Assistant
+            </Typography>
+          </div>
+        )}
+
+        <div
+          style={{
+            flex: '1 1 auto',
+            minHeight: 0,
+            overflowY: 'auto',
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+          aria-label="Chat thread"
+        >
+          <div
+            style={{
+              flex: '1 1 auto',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              textAlign: 'center',
+              padding: '16px 16px 24px',
+              maxWidth: 440,
+              margin: '0 auto',
+            }}
+            role="status"
+          >
+            <Typography className={classes.emptyTitle} component="h2">
+              {isNewChat || !active
+                ? 'AI help for this console'
+                : active.title}
+            </Typography>
+            <Typography className={classes.emptyBody}>
+              Ask about anything in Automation Portal — find work, run
+              templates, check quality, or navigate experiences — without
+              leaving this page.
+            </Typography>
+          </div>
+        </div>
+      </div>
+
+      <div
+        data-portal-assistant-composer=""
+        style={{
+          flexShrink: 0,
+          display: 'flex',
+          justifyContent: 'center',
+          gap: 8,
+          alignItems: 'flex-end',
+          width: '100%',
+          padding: '12px 24px 16px',
+          borderTop: '1px solid rgba(0,0,0,0.12)',
+          backgroundColor: 'var(--portal-assistant-bg, #fff)',
+          boxSizing: 'border-box',
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            gap: 8,
+            alignItems: 'flex-end',
+            width: '100%',
+            maxWidth: 720,
+          }}
+        >
+          <TextField
+            className={classes.input}
+            size="small"
+            variant="outlined"
+            fullWidth
+            placeholder="Ask about Automation Portal…"
+            multiline
+            maxRows={4}
+            inputProps={{ 'aria-label': 'Message Assistant' }}
+          />
+          <IconButton
+            className={classes.send}
+            color="primary"
+            aria-label="Send"
+          >
+            <SendIcon fontSize="small" />
+          </IconButton>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 /**
- * Full-screen Assistant — Lightspeed-like chat skeleton (prototype).
- * Content is TBD placeholders only.
+ * Full-screen Assistant — cross-experience AI help (prototype).
+ *
+ * Side-nav trial: Page fills SidebarPage card; composer is flex footer.
+ * Flag off → rail-less portal + title Back (rollback).
  */
 export const PortalAssistantPage = () => {
-  const classes = useStyles();
   const navigate = useNavigate();
+  const { role } = useUserRoleContext();
+  const sme = isSmeRole(role);
+  const shellRef = useRef<HTMLDivElement>(null);
+  const [box, setBox] = useState<ShellBox>(() =>
+    typeof window !== 'undefined'
+      ? measureShellBox()
+      : { top: 64, height: 600 },
+  );
 
   useEffect(() => {
     document.title = 'Assistant | Automation Portal';
   }, []);
 
-  return (
-    <Page themeId="app">
-      <Content>
-        <Box className={classes.shell}>
-          <Box className={classes.topBar}>
-            <IconButton
-              size="small"
-              aria-label="Back to experiences"
-              onClick={() => navigate('/self-service/experiences')}
-            >
-              <ArrowBackIcon fontSize="small" />
-            </IconButton>
-            <Typography className={classes.title} component="h1">
-              Assistant
-            </Typography>
-          </Box>
+  useEffect(() => {
+    if (!ASSISTANT_SIDE_NAV_TRIAL) return undefined;
+    document.documentElement.setAttribute('data-portal-assistant-rail', '');
+    return () => {
+      document.documentElement.removeAttribute('data-portal-assistant-rail');
+    };
+  }, []);
 
-          <Box className={classes.thread} aria-label="Chat thread">
-            <Box className={classes.bubbleAssistant}>
-              TBD — Welcome / capabilities (cross-experience help)
-            </Box>
-            <Box className={classes.bubbleUser}>TBD — Example user message</Box>
-            <Box className={classes.bubbleAssistant}>
-              TBD — Example assistant reply
-            </Box>
-            <Box className={classes.bubbleAssistant}>
-              TBD — Suggested actions / tool results
-            </Box>
-          </Box>
+  useEffect(() => {
+    if (ASSISTANT_SIDE_NAV_TRIAL) return undefined;
+    const prevHtml = document.documentElement.style.overflow;
+    const prevBody = document.body.style.overflow;
+    document.documentElement.style.overflow = 'hidden';
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.documentElement.style.overflow = prevHtml;
+      document.body.style.overflow = prevBody;
+    };
+  }, []);
 
-          <Box className={classes.composer}>
-            <TextField
-              className={classes.input}
-              size="small"
-              variant="outlined"
-              fullWidth
-              disabled
-              placeholder="TBD — Message input"
-              multiline
-              maxRows={4}
-              inputProps={{ 'aria-label': 'Message (placeholder)' }}
-            />
-            <IconButton
-              className={classes.send}
-              color="primary"
-              disabled
-              aria-label="Send (placeholder)"
-            >
-              <SendIcon fontSize="small" />
-            </IconButton>
-          </Box>
-          <Typography className={classes.footer}>
-            Prototype skeleton · Full-screen chat · TBD
-          </Typography>
-        </Box>
-      </Content>
-    </Page>
+  useLayoutEffect(() => {
+    if (ASSISTANT_SIDE_NAV_TRIAL) return undefined;
+    const sync = () => setBox(measureShellBox());
+    sync();
+    const vv = window.visualViewport;
+    vv?.addEventListener('resize', sync);
+    vv?.addEventListener('scroll', sync);
+    window.addEventListener('resize', sync);
+    return () => {
+      vv?.removeEventListener('resize', sync);
+      vv?.removeEventListener('scroll', sync);
+      window.removeEventListener('resize', sync);
+    };
+  }, []);
+
+  useLayoutEffect(() => {
+    if (ASSISTANT_SIDE_NAV_TRIAL) return;
+    const el = shellRef.current;
+    if (!el) return;
+    el.style.setProperty('position', 'fixed', 'important');
+    el.style.setProperty('top', `${box.top}px`, 'important');
+    el.style.setProperty('left', '0', 'important');
+    el.style.setProperty('right', '0', 'important');
+    el.style.setProperty('bottom', 'auto', 'important');
+    el.style.setProperty('height', `${box.height}px`, 'important');
+    el.style.setProperty('width', '100%', 'important');
+    el.style.setProperty('z-index', '1200', 'important');
+    el.style.setProperty('display', 'flex', 'important');
+    el.style.setProperty('flex-direction', 'column', 'important');
+    el.style.setProperty('overflow', 'hidden', 'important');
+    el.style.setProperty(
+      'background-color',
+      'var(--portal-assistant-bg, #fff)',
+      'important',
+    );
+    el.style.setProperty('box-sizing', 'border-box', 'important');
+  }, [box]);
+
+  const goExperiences = () => navigate('/self-service/experiences');
+
+  if (ASSISTANT_SIDE_NAV_TRIAL) {
+    return (
+      <Page themeId="tool">
+        <Content noPadding>
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              flex: '1 1 auto',
+              height: '100%',
+              minHeight: 0,
+            }}
+          >
+            <AssistantBody showPageHeader={false} sme={sme} />
+          </div>
+        </Content>
+      </Page>
+    );
+  }
+
+  const ui = (
+    <div ref={shellRef}>
+      <AssistantBody
+        showPageHeader
+        sme={sme}
+        onBack={goExperiences}
+      />
+    </div>
   );
+
+  return createPortal(ui, document.body);
 };

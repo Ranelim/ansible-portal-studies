@@ -1,16 +1,30 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Header, HeaderTabs } from '@backstage/core-components';
-import { Box, makeStyles } from '@material-ui/core';
+import { Box, IconButton, makeStyles } from '@material-ui/core';
+import ArrowBackIcon from '@material-ui/icons/ArrowBack';
+import {
+  isSmeRole,
+  useUserRoleContext,
+  writeNavExperience,
+} from '@ansible/plugin-backstage-self-service';
 
-const useStyles = makeStyles({
+const useStyles = makeStyles(theme => ({
   /**
    * Host chrome matches Git Repositories (`ProjectsTabs`):
    * page Header → HeaderTabs → tab body (nested Page headers hidden by Root).
    */
-  root: {
-    // HeaderTabs sits flush under Header like entity hosts
+  root: {},
+  titleRow: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: theme.spacing(0.5),
   },
-});
+  back: {
+    marginLeft: theme.spacing(-0.5),
+    marginRight: theme.spacing(0.25),
+    color: 'inherit',
+  },
+}));
 
 const TABS = [
   { id: 'templates', label: 'Templates' },
@@ -51,6 +65,7 @@ function tabFromLocation(
 /**
  * Option B — Automate host page chrome (same pattern as Git Repositories).
  * Header title = Automate; tabs = Templates | Runs; tab body is the route child.
+ * Multi-seat experience mode: Back → Experiences (same pattern as Assistant).
  */
 export const ExperienceRunPairTabs = ({
   mode = 'experience',
@@ -58,8 +73,16 @@ export const ExperienceRunPairTabs = ({
   const classes = useStyles();
   const navigate = useNavigate();
   const { pathname, search } = useLocation();
+  const { role } = useUserRoleContext();
+  const sme = isSmeRole(role);
+  const showBack = mode === 'experience' && !sme;
   const tab = tabFromLocation(pathname, search, mode);
   const selectedIndex = tab === 'runs' ? 1 : 0;
+
+  const goExperiences = () => {
+    writeNavExperience('all');
+    navigate('/self-service/experiences');
+  };
 
   const onTabSelect = (index: number) => {
     const next = TABS[index]?.id as RunPairTab | undefined;
@@ -73,10 +96,27 @@ export const ExperienceRunPairTabs = ({
     else navigate('/self-service/create/tasks');
   };
 
+  const title = showBack ? (
+    <Box className={classes.titleRow}>
+      <IconButton
+        className={classes.back}
+        size="small"
+        color="inherit"
+        aria-label="Back to Experiences"
+        onClick={goExperiences}
+      >
+        <ArrowBackIcon fontSize="small" />
+      </IconButton>
+      Automate
+    </Box>
+  ) : (
+    'Automate'
+  );
+
   return (
     <Box className={classes.root}>
       <Header
-        title="Automate"
+        title={title}
         pageTitleOverride="Automate"
         subtitle={SUBTITLE[mode]}
       />
