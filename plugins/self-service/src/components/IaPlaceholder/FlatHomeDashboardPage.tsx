@@ -54,7 +54,7 @@ const SNIPPETS: Record<
     highlights: ['3 need attention', 'Quality avg 78'],
   },
   'develop-section': {
-    summary: 'Git repositories section — Quality rail pin (review B).',
+    summary: 'Git repositories section — list-first + Quality (review B).',
     metric: '12',
     metricLabel: 'repos',
     href: '/self-service/repositories/list',
@@ -64,7 +64,7 @@ const SNIPPETS: Record<
     summary: 'Git repositories drawer — Quality nest open by default (review C).',
     metric: '12',
     metricLabel: 'repos',
-    href: '/self-service/repositories/dashboard',
+    href: '/self-service/repositories/list',
     highlights: ['3 need attention', 'Quality avg 78'],
   },
   compliance: {

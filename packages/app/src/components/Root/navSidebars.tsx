@@ -42,6 +42,7 @@ import StorageIcon from '@material-ui/icons/Storage';
 import RouterIcon from '@material-ui/icons/Router';
 import DashboardIcon from '@material-ui/icons/Dashboard';
 import AssessmentIcon from '@material-ui/icons/Assessment';
+import AssignmentIcon from '@material-ui/icons/Assignment';
 import LibraryBooks from '@material-ui/icons/LibraryBooks';
 import SchoolIcon from '@material-ui/icons/School';
 import LinkIcon from '@material-ui/icons/Link';
@@ -925,17 +926,12 @@ export const ExperiencesSidebar = () => {
         </>
       )}
 
-      {/* B — object-named section: Dashboard first, then list + remediations. */}
+      {/* B — list-first: Repositories → Quality → Remediations. */}
       {domain === 'develop-section' && (
         <>
           {ExperienceDashboardItem}
           {ExperienceRunPair}
           <SidebarSectionLabel text="Git repositories" />
-          <SidebarItem
-            icon={DashboardIcon}
-            to="/self-service/repositories/dashboard"
-            text="Dashboard"
-          />
           <SidebarItem
             icon={CodeIcon}
             to="/self-service/repositories/list"
@@ -943,6 +939,11 @@ export const ExperiencesSidebar = () => {
           />
           <SidebarItem
             icon={AssessmentIcon}
+            to="/self-service/repositories/dashboard"
+            text="Quality"
+          />
+          <SidebarItem
+            icon={AssignmentIcon}
             to="/self-service/repositories/remediations"
             text="Remediations"
           />
@@ -973,17 +974,17 @@ export const ExperiencesSidebar = () => {
             defaultOpen
           >
             <SidebarItem
-              icon={DashboardIcon}
-              to="/self-service/repositories/dashboard"
-              text="Dashboard"
-            />
-            <SidebarItem
               icon={CodeIcon}
               to="/self-service/repositories/list"
               text="Repositories"
             />
             <SidebarItem
               icon={AssessmentIcon}
+              to="/self-service/repositories/dashboard"
+              text="Quality"
+            />
+            <SidebarItem
+              icon={AssignmentIcon}
               to="/self-service/repositories/remediations"
               text="Remediations"
             />

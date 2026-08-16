@@ -9,14 +9,14 @@ const useStyles = makeStyles(theme => ({
   },
 }));
 
-/** Cross-repo quality posture — host Dashboard tab. */
+/** Cross-repo quality posture — host Quality tab / rail item. */
 export const QualityDashboardTabContent = () => {
   const classes = useStyles();
   return (
     <Box>
       <Typography className={classes.hint}>
         Cross-repository quality posture. Open a repository for findings detail;
-        start or resume remediation from the Remediations tab or a repo CTA.
+        start or resume remediation from Remediations or a repo CTA.
       </Typography>
       <QualityOverviewContent />
     </Box>

@@ -13,10 +13,10 @@ import { QualityDashboardTabContent } from './quality/QualityDashboardTabContent
 import { RemediationsContent } from './quality/RemediationsContent';
 import { useNavIaModel } from '../../hooks/useNavIaModel';
 
-/** Develop (tabs): list → Dashboard → Remediations → pipeline. */
+/** Develop (tabs): list → Quality → Remediations → pipeline. */
 const HOST_TABS = [
   { id: 'repositories', label: 'Repositories', path: 'list' },
-  { id: 'dashboard', label: 'Dashboard', path: 'dashboard' },
+  { id: 'dashboard', label: 'Quality', path: 'dashboard' },
   { id: 'remediations', label: 'Remediations', path: 'remediations' },
   { id: 'ci-activity', label: 'Pipeline activity', path: 'ci-activity' },
 ];
@@ -45,8 +45,8 @@ const getTabIndexFromPath = (pathname: string): number => {
 
 /**
  * Git Repositories host.
- * - Develop (tabs): Repositories | Dashboard | Remediations | Pipeline activity
- * - Develop (section): no host tabs — rail picks Repositories / Dashboard / Remediations
+ * - Develop (tabs): Repositories | Quality | Remediations | Pipeline activity
+ * - Develop (section/drawer): no host tabs — rail picks Repositories / Quality / Remediations
  */
 export const ProjectsTabs: React.FC = () => {
   const location = useLocation();
@@ -63,7 +63,7 @@ export const ProjectsTabs: React.FC = () => {
     }
   }, [location.pathname, navigate]);
 
-  // Legacy Quality path → Dashboard
+  // Legacy Quality path → Quality surface (dashboard route)
   useEffect(() => {
     if (location.pathname.includes('/repositories/quality')) {
       navigate('/self-service/repositories/dashboard', { replace: true });
@@ -105,7 +105,7 @@ export const ProjectsTabs: React.FC = () => {
 
   const headerTitle =
     sectionMode && surface === 'dashboard'
-      ? 'Dashboard'
+      ? 'Quality'
       : sectionMode && surface === 'remediations'
         ? 'Remediations'
         : sectionMode && surface === 'ci-activity'

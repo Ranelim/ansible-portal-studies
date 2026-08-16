@@ -91,7 +91,7 @@ const ADMIN_EXPERIENCES: AdminExperience[] = [
     id: 'develop-tabs',
     label: 'Develop (tabs)',
     description:
-      'APME review A — Git Repositories pin; Dashboard + Remediations host tabs.',
+      'APME review A — Git Repositories pin; Quality + Remediations host tabs.',
     pluginsFilter: 'Develop',
     seatsSummary: 'Developer, Admin',
     pluginsSummary: 'Self-service, APME Quality Scanning',
@@ -101,7 +101,7 @@ const ADMIN_EXPERIENCES: AdminExperience[] = [
     id: 'develop-section',
     label: 'Develop (section)',
     description:
-      'APME review B — Git repositories section; Repositories + Dashboard + Remediations pins.',
+      'APME review B — Git repositories section; Repositories + Quality + Remediations pins (list-first).',
     pluginsFilter: 'Develop',
     seatsSummary: 'Developer, Admin',
     pluginsSummary: 'Self-service, APME Quality Scanning',

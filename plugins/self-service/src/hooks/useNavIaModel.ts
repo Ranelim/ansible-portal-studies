@@ -14,7 +14,7 @@ export type NavIaModel =
  *
  * Develop is split for APME IA review:
  * - develop-tabs — one Git Repositories pin; Quality as host tab
- * - develop-section — "Git repositories" section + Dashboard | Repositories | Remediations pins
+ * - develop-section — "Git repositories" section + Repositories | Quality | Remediations pins
  * - develop-drawer — same cluster in an open-by-default collapsible drawer
  */
 export type NavExperience =
@@ -98,7 +98,7 @@ export function isDevelopExperience(experience: NavExperience): boolean {
   );
 }
 
-/** Section or drawer — no host tabs; rail picks Dashboard / Repositories / Remediations. */
+/** Section or drawer — no host tabs; rail picks Repositories / Quality / Remediations. */
 export function isDevelopReposRailMode(experience: NavExperience): boolean {
   return (
     experience === 'develop-section' || experience === 'develop-drawer'

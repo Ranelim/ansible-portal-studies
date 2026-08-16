@@ -60,9 +60,9 @@ const FORCED_CARD_STYLE: CardStyle | null = 'hub';
 const EXPERIENCE_BLURB: Record<ExperienceId, string> = {
   automate: 'Run job templates and track recent activity.',
   'develop-tabs':
-    'A — Git Repositories pin; tabs: Repositories · Dashboard · Remediations · Pipeline.',
+    'A — Git Repositories pin; tabs: Repositories · Quality · Remediations · Pipeline.',
   'develop-section':
-    'B — Git repositories section (Dashboard · Repositories · Remediations); closed with a rail divider before Collections.',
+    'B — Git repositories section (Repositories · Quality · Remediations); closed with a rail divider before Collections.',
   'develop-drawer':
     'C — Same as B, with Git repositories in a collapsible drawer open by default.',
   compliance: 'Scan inventories, review findings, and remediate hosts.',
@@ -72,8 +72,8 @@ const EXPERIENCE_BLURB: Record<ExperienceId, string> = {
 const EXPERIENCE_LANDING: Record<ExperienceId, string> = {
   automate: '/create?scope=experience',
   'develop-tabs': '/self-service/repositories/list',
-  'develop-section': '/self-service/repositories/dashboard',
-  'develop-drawer': '/self-service/repositories/dashboard',
+  'develop-section': '/self-service/repositories/list',
+  'develop-drawer': '/self-service/repositories/list',
   compliance: '/self-service/experience-dashboard',
   edge: '/self-service/experience-dashboard',
 };
@@ -103,13 +103,13 @@ const EXPERIENCE_DOCS: Record<
   },
   'develop-tabs': {
     summary:
-      'Review A: one Git Repositories rail item. Tabs: Repositories, Dashboard, Remediations, Pipeline activity.',
+      'Review A: one Git Repositories rail item. Tabs: Repositories, Quality, Remediations, Pipeline activity.',
     href: 'https://docs.redhat.com/en/documentation/red_hat_ansible_automation_platform/2.6/html/using_self-service_automation_portal/index',
     linkLabel: 'View Develop documentation',
   },
   'develop-section': {
     summary:
-      'Review B: Git repositories section with Repositories, Dashboard, and Remediations as sibling rail items.',
+      'Review B: Git repositories section with Repositories, Quality, and Remediations as sibling rail items (list-first).',
     href: 'https://docs.redhat.com/en/documentation/red_hat_ansible_automation_platform/2.6/html/using_self-service_automation_portal/index',
     linkLabel: 'View Develop documentation',
   },

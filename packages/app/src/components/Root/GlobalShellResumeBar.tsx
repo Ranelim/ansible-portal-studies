@@ -23,8 +23,8 @@ const EXPERIENCE_RESUME: Record<
 > = {
   automate: '/create?scope=experience',
   'develop-tabs': '/self-service/repositories/list',
-  'develop-section': '/self-service/repositories/dashboard',
-  'develop-drawer': '/self-service/repositories/dashboard',
+  'develop-section': '/self-service/repositories/list',
+  'develop-drawer': '/self-service/repositories/list',
   compliance: '/self-service/experience-dashboard',
   edge: '/self-service/experience-dashboard',
   admin: '/self-service/admin/overview',
