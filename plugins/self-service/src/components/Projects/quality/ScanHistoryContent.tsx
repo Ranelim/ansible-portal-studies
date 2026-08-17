@@ -1,17 +1,21 @@
-import { useMemo, useCallback, useState, type ReactNode } from 'react';
+import { useMemo, useCallback, useState, useEffect, useRef, type ReactNode } from 'react';
 import {
   Box,
   Button,
   Chip,
   Drawer,
+  FormControl,
   IconButton,
+  InputLabel,
+  MenuItem,
+  Select,
   Tooltip,
   Typography,
   makeStyles,
 } from '@material-ui/core';
 import CloseIcon from '@material-ui/icons/Close';
 import { Table, TableColumn } from '@backstage/core-components';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   SEVERITY_COLORS,
   getProjectQuality,
@@ -26,6 +30,7 @@ type GlobalScanRow = ScanResult & {
   repoName: string;
   org: string;
   isLatest: boolean;
+  isAvailable: boolean;
 };
 
 const SEV_ORDER: SeverityClass[] = [
@@ -47,6 +52,15 @@ const useStyles = makeStyles(theme => ({
     fontSize: 13,
     marginBottom: theme.spacing(2),
     maxWidth: 720,
+  },
+  toolbar: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: theme.spacing(2),
+    marginBottom: theme.spacing(2),
+  },
+  repoFilter: {
+    minWidth: 260,
   },
   repoLink: {
     fontSize: 13,
@@ -208,19 +222,7 @@ function ScanSnapshotDrawer({
             <Typography variant="body2" color="textSecondary">
               {row.createdAt}
             </Typography>
-            {row.isLatest && (
-              <Chip
-                size="small"
-                label="Latest"
-                style={{
-                  height: 20,
-                  fontSize: 11,
-                  fontWeight: 600,
-                  backgroundColor: 'rgba(0, 102, 204, 0.12)',
-                  color: '#0066CC',
-                }}
-              />
-            )}
+            <StatusBadge available={row.isAvailable} />
           </Box>
           <Box mt={2} mb={2}>
             <Typography style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
@@ -243,14 +245,14 @@ function ScanSnapshotDrawer({
               Commit {row.commitHash}
             </Typography>
           </Box>
-          {!row.isLatest && (
+          {!row.isAvailable && (
             <Typography
               variant="body2"
               color="textSecondary"
               style={{ fontSize: 13, marginBottom: 16 }}
             >
-              This scan is read-only. Remediation starts from the latest scan
-              for this repository.
+              This scan is read-only. Resume a live remediation from an
+              Available scan, or start a new scan from Remediations.
             </Typography>
           )}
           <Box style={{ flex: 1, overflow: 'auto' }}>
@@ -296,27 +298,49 @@ function ScanSnapshotDrawer({
   );
 }
 
-/** Action is the repo’s current cycle — not this historical scan. */
-function workActionLabel(
-  status: RemediationStatus | undefined,
-  latestFindings: number,
-): { label: string; disabled: boolean; kind: 'session' | 'pr' | 'none' } {
-  if (status === 'pr-open') {
-    return { label: 'View pull request', disabled: false, kind: 'pr' };
-  }
-  if (status === 'in-progress' || status === 'proposals-ready') {
-    return { label: 'Resume', disabled: false, kind: 'session' };
-  }
-  if (latestFindings === 0) {
-    return { label: 'No findings', disabled: true, kind: 'none' };
-  }
-  return { label: 'Start remediation', disabled: false, kind: 'session' };
+function liveSession(status: RemediationStatus | undefined): boolean {
+  return status === 'in-progress' || status === 'proposals-ready';
+}
+
+function StatusBadge({ available }: { available: boolean }) {
+  return available ? (
+    <Tooltip title="Live remediation on this scan. Resume to continue." arrow>
+      <Chip
+        size="small"
+        label="Available"
+        style={{
+          height: 20,
+          fontSize: 11,
+          fontWeight: 600,
+          backgroundColor: 'rgba(46, 132, 64, 0.14)',
+          color: '#2E8440',
+        }}
+      />
+    </Tooltip>
+  ) : (
+    <Chip
+      size="small"
+      label="Read-only"
+      style={{
+        height: 20,
+        fontSize: 11,
+        fontWeight: 600,
+        backgroundColor: 'rgba(0,0,0,0.06)',
+        color: '#6A6E73',
+      }}
+    />
+  );
 }
 
 export const ScanHistoryContent = () => {
   const classes = useStyles();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [snapshot, setSnapshot] = useState<GlobalScanRow | null>(null);
+  const [repoFilter, setRepoFilter] = useState(
+    () => searchParams.get('repo') || 'all',
+  );
+  const openedScan = useRef(false);
 
   const globalScans: GlobalScanRow[] = useMemo(() => {
     const rows: GlobalScanRow[] = [];
@@ -325,12 +349,15 @@ export const ScanHistoryContent = () => {
       if (!q) continue;
       const latestId = q.latestScan.scanId;
       const scans = q.scanHistory.length > 0 ? q.scanHistory : [q.latestScan];
+      const available = liveSession(q.remediationStatus);
       for (const scan of scans) {
+        const isLatest = scan.scanId === latestId;
         rows.push({
           ...scan,
           repoName: repo.name,
           org: repo.org,
-          isLatest: scan.scanId === latestId,
+          isLatest,
+          isAvailable: isLatest && available,
         });
       }
     }
@@ -338,19 +365,47 @@ export const ScanHistoryContent = () => {
     return rows;
   }, []);
 
+  useEffect(() => {
+    if (openedScan.current || globalScans.length === 0) return;
+    const scanId = searchParams.get('scan');
+    if (!scanId) return;
+    const row = globalScans.find(s => s.scanId === scanId);
+    if (row) {
+      openedScan.current = true;
+      setSnapshot(row);
+    }
+  }, [globalScans, searchParams]);
+
+  const repoOptions = useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const row of globalScans) {
+      if (!seen.has(row.repoName)) {
+        seen.set(row.repoName, `${row.org}/${row.repoName}`);
+      }
+    }
+    return [...seen.entries()].sort((a, b) => a[1].localeCompare(b[1]));
+  }, [globalScans]);
+
+  const filteredScans = useMemo(
+    () =>
+      repoFilter === 'all'
+        ? globalScans
+        : globalScans.filter(row => row.repoName === repoFilter),
+    [globalScans, repoFilter],
+  );
+
   const openRepo = useCallback(
     (repoName: string) => {
       navigate(
-        `/self-service/repositories/${encodeURIComponent(repoName)}?tab=quality`,
+        `/self-service/repositories/${encodeURIComponent(repoName)}`,
       );
     },
     [navigate],
   );
 
-  const openSession = useCallback(
-    (repoName: string, resume: boolean) => {
-      const qs = new URLSearchParams({ from: 'scans' });
-      if (resume) qs.set('resume', '1');
+  const resumeSession = useCallback(
+    (repoName: string) => {
+      const qs = new URLSearchParams({ from: 'scans', resume: '1' });
       navigate(
         `/self-service/apme/remediate/${encodeURIComponent(
           repoName,
@@ -360,64 +415,27 @@ export const ScanHistoryContent = () => {
     [navigate],
   );
 
-  const runWorkAction = useCallback(
-    (row: GlobalScanRow) => {
-      const q = getProjectQuality(row.repoName);
-      const spec = workActionLabel(
-        q?.remediationStatus,
-        q?.totalViolations ?? 0,
-      );
-      if (spec.kind === 'none') return;
-      if (spec.kind === 'pr' && q?.remediationPrUrl) {
-        window.open(q.remediationPrUrl, '_blank', 'noopener,noreferrer');
-        return;
-      }
-      if (spec.kind === 'session') {
-        openSession(
-          row.repoName,
-          q?.remediationStatus === 'in-progress' ||
-            q?.remediationStatus === 'proposals-ready',
-        );
-      }
-    },
-    [openSession],
-  );
-
   const renderAction = useCallback(
     (row: GlobalScanRow) => {
-      const q = getProjectQuality(row.repoName);
-      const spec = workActionLabel(
-        q?.remediationStatus,
-        q?.totalViolations ?? 0,
-      );
-      const title = !row.isLatest
-        ? 'Starts from the latest scan for this repository.'
-        : spec.disabled
-          ? 'Latest scan has no findings.'
-          : undefined;
+      if (!row.isAvailable) return null;
       return (
-        <Tooltip title={title ?? ''} arrow disableHoverListener={!title}>
-          <span>
-            <Button
-              size="small"
-              color="primary"
-              variant={spec.kind === 'session' ? 'outlined' : 'text'}
-              className={classes.actionBtn}
-              disabled={spec.disabled}
-              onMouseDown={e => e.stopPropagation()}
-              onClick={e => {
-                e.preventDefault();
-                e.stopPropagation();
-                runWorkAction(row);
-              }}
-            >
-              {spec.label}
-            </Button>
-          </span>
-        </Tooltip>
+        <Button
+          size="small"
+          color="primary"
+          variant="outlined"
+          className={classes.actionBtn}
+          onMouseDown={e => e.stopPropagation()}
+          onClick={e => {
+            e.preventDefault();
+            e.stopPropagation();
+            resumeSession(row.repoName);
+          }}
+        >
+          Resume
+        </Button>
       );
     },
-    [classes.actionBtn, runWorkAction],
+    [classes.actionBtn, resumeSession],
   );
 
   const columns: TableColumn<GlobalScanRow>[] = [
@@ -449,27 +467,11 @@ export const ScanHistoryContent = () => {
       ),
     },
     {
-      title: 'Latest',
+      title: 'Status',
       sorting: false,
-      render: (row: GlobalScanRow) =>
-        row.isLatest ? (
-          <Tooltip
-            title="Latest scan for this repository. Older scans are read-only."
-            arrow
-          >
-            <Chip
-              size="small"
-              label="Latest"
-              style={{
-                height: 20,
-                fontSize: 11,
-                fontWeight: 600,
-                backgroundColor: 'rgba(0, 102, 204, 0.12)',
-                color: '#0066CC',
-              }}
-            />
-          </Tooltip>
-        ) : null,
+      render: (row: GlobalScanRow) => (
+        <StatusBadge available={row.isAvailable} />
+      ),
     },
     {
       title: 'Findings',
@@ -498,26 +500,55 @@ export const ScanHistoryContent = () => {
 
   return (
     <Box>
-      <Typography className={classes.heading}>Recent scans</Typography>
+      <Typography className={classes.heading}>Scan history</Typography>
       <Typography className={classes.hint}>
-        Last scans per repository — not a full archive. Latest can start
-        remediation; older scans are read-only.
+        Snapshots of past scans. Available means a live remediation you can
+        resume. Other rows are read-only.
       </Typography>
+      <Box className={classes.toolbar}>
+        <FormControl
+          variant="outlined"
+          size="small"
+          className={classes.repoFilter}
+        >
+          <InputLabel id="scan-history-repo-label">Repository</InputLabel>
+          <Select
+            labelId="scan-history-repo-label"
+            label="Repository"
+            value={repoFilter}
+            onChange={e => setRepoFilter(e.target.value as string)}
+          >
+            <MenuItem value="all">All repositories</MenuItem>
+            {repoOptions.map(([name, label]) => (
+              <MenuItem key={name} value={name}>
+                {label}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </Box>
       <Table<GlobalScanRow>
         columns={columns}
-        data={globalScans}
+        data={filteredScans}
         title=""
         options={{
-          paging: globalScans.length > 20,
+          paging: filteredScans.length > 20,
           pageSize: 20,
           pageSizeOptions: [10, 20, 50],
           emptyRowsWhenPaging: false,
-          search: true,
+          search: false,
           sorting: true,
           padding: 'dense',
           header: true,
           rowStyle: { cursor: 'pointer' },
         }}
+        emptyContent={
+          <Box py={4} textAlign="center">
+            <Typography color="textSecondary">
+              No scans match this repository.
+            </Typography>
+          </Box>
+        }
         onRowClick={(event, rowData) => {
           const el = (event as { target?: EventTarget } | undefined)?.target;
           if (el instanceof Element && el.closest('button, a, [role="button"]')) {

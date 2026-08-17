@@ -380,6 +380,7 @@ const QUALITY_DATA: Record<string, ProjectQualityData> = {
       { scanIndex: 3, totalViolations: 3, fixable: 2 },
     ],
     remediationStatus: 'in-progress',
+    remediationSummary: { addressed: 0, remaining: 3, autoFixed: 0, aiProposed: 0 },
     latestScan: {
       scanId: 'scan-cloud-022',
       scanType: 'check',

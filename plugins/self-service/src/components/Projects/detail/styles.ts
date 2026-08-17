@@ -50,6 +50,29 @@ export const useProjectDetailStyles = makeStyles(theme => ({
     alignItems: 'center',
     gap: theme.spacing(1),
   },
+  /** Pad custom chrome when Content is noPadding so HeaderTabs can span the page column. */
+  detailHeader: {
+    paddingLeft: 'var(--portal-page-gutter, 32px)',
+    paddingRight: 'var(--portal-page-gutter, 32px)',
+    paddingTop: theme.spacing(3),
+  },
+  detailBody: {
+    paddingLeft: 'var(--portal-page-gutter, 32px)',
+    paddingRight: 'var(--portal-page-gutter, 32px)',
+    paddingBottom: theme.spacing(3),
+  },
+  tabsHost: {
+    borderBottom: `1px solid ${theme.palette.divider}`,
+    '& .MuiTabs-scrollButtons': {
+      display: 'none',
+    },
+    '& .MuiTabs-flexContainer': {
+      overflow: 'visible',
+    },
+    '& .MuiTabs-indicator': {
+      height: 3,
+    },
+  },
   tabContent: {
     display: 'flex',
     gap: theme.spacing(3),

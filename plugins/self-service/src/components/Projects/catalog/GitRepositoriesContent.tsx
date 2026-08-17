@@ -44,7 +44,6 @@ import CategoryIcon from '@material-ui/icons/Category';
 import MemoryIcon from '@material-ui/icons/Memory';
 import Popover from '@material-ui/core/Popover';
 import CloseIcon from '@material-ui/icons/Close';
-import SyncIcon from '@material-ui/icons/Sync';
 import WarningIcon from '@material-ui/icons/Warning';
 import { useNavigate } from 'react-router-dom';
 import { CatalogFilterLayout } from '@backstage/plugin-catalog-react';
@@ -52,13 +51,27 @@ import { DismissibleBanner } from '../../common/DismissibleBanner';
 import { EmptyStateLayout, RepositoriesIllustration } from '../../common/EmptyStateLayout';
 import { LastSyncedIndicator } from '../../Admin/LastSyncedIndicator';
 import { statusColors } from '../../common/statusColors';
+import { useNavIaModel } from '../../../hooks/useNavIaModel';
 import {
   GIT_REPOSITORIES,
   type GitRepository,
   type DiscoveredResourceSummary,
 } from './unifiedDemoData';
-import { getProjectViolationCount, getProjectSeverityBreakdown, getProjectRemediationStatus, getProjectCompatibilityCount, getProjectAapVersion, SEVERITY_COLORS } from '../../Projects/detail/qualityDemoData';
-import type { SeverityClass, RemediationStatus } from '../../Projects/detail/qualityDemoData';
+import {
+  getProjectQuality,
+  getProjectHealthScore,
+  getProjectViolationCount,
+  getProjectSeverityBreakdown,
+  getProjectCompatibilityCount,
+  SEVERITY_COLORS,
+} from '../../Projects/detail/qualityDemoData';
+import type { SeverityClass } from '../../Projects/detail/qualityDemoData';
+
+const healthColor = (score: number): string => {
+  if (score >= 80) return statusColors.success;
+  if (score >= 50) return statusColors.warning;
+  return statusColors.error;
+};
 
 type ProviderFilter = 'all' | 'github' | 'gitlab';
 
@@ -74,12 +87,6 @@ const hasActiveFilters = (filters: ActiveFilters) =>
   filters.provider !== 'all';
 
 const useStyles = makeStyles(theme => ({
-  '@global': {
-    '@keyframes spin': {
-      from: { transform: 'rotate(0deg)' },
-      to: { transform: 'rotate(360deg)' },
-    },
-  },
   filterLabel: {
     marginTop: theme.spacing(2),
     fontWeight: 600,
@@ -371,12 +378,270 @@ const saveStarredRepos = (names: Set<string>) => {
   localStorage.setItem(STARRED_REPOS_KEY, JSON.stringify([...names]));
 };
 
-export const GitRepositoriesContent = () => {
-  const classes = useStyles();
+/** Engine in flight — demo overlay. Empty so quality data stays the source of truth. */
+const SCANNING_REPOS = new Set<string>();
+
+/** Develop (quality) list signal: score + last scan — not findings chips. */
+function QualityScoreCell({ repoName }: { repoName: string }) {
+  const navigate = useNavigate();
+  const quality = getProjectQuality(repoName);
+  const scanning = SCANNING_REPOS.has(repoName);
+
+  const openQuality = () => {
+    navigate(
+      `/self-service/repositories/${encodeURIComponent(repoName)}`,
+    );
+  };
+
+  if (scanning) {
+    return (
+      <Chip
+        size="small"
+        label="Scanning"
+        style={{
+          fontSize: 11,
+          height: 20,
+          backgroundColor: `${statusColors.info}15`,
+          color: statusColors.info,
+          fontWeight: 500,
+        }}
+      />
+    );
+  }
+
+  if (!quality) {
+    return (
+      <Typography variant="body2" color="textSecondary" style={{ fontSize: 12 }}>
+        Not scanned
+      </Typography>
+    );
+  }
+
+  return (
+    <Box
+      display="flex"
+      alignItems="baseline"
+      style={{ gap: 8, cursor: 'pointer' }}
+      onClick={e => {
+        e.stopPropagation();
+        openQuality();
+      }}
+    >
+      <Typography
+        component="span"
+        style={{
+          fontSize: 16,
+          fontWeight: 700,
+          lineHeight: 1.2,
+          color: healthColor(quality.healthScore),
+        }}
+      >
+        {quality.healthScore}
+      </Typography>
+      <Typography
+        variant="body2"
+        color="textSecondary"
+        style={{ fontSize: 12 }}
+      >
+        Last scanned {quality.lastScannedAt}
+      </Typography>
+    </Box>
+  );
+}
+
+function QualityFindingsCell({ repoName }: { repoName: string }) {
   const theme = useTheme();
   const isDark = theme.palette.type === 'dark';
   const navigate = useNavigate();
+
+  const quality = getProjectQuality(repoName);
+  const scanning = SCANNING_REPOS.has(repoName);
+
+  const openQuality = (category?: string) => {
+    const qs = new URLSearchParams({ tab: 'quality' });
+    if (category) qs.set('category', category);
+    navigate(`/self-service/repositories/${encodeURIComponent(repoName)}?${qs}`);
+  };
+
+  if (scanning) {
+    return (
+      <Chip
+        size="small"
+        label="Scanning"
+        style={{
+          fontSize: 11,
+          height: 20,
+          backgroundColor: `${statusColors.info}15`,
+          color: statusColors.info,
+          fontWeight: 500,
+        }}
+      />
+    );
+  }
+
+  if (!quality) {
+    return (
+      <Typography variant="body2" color="textSecondary" style={{ fontSize: 12 }}>
+        Not scanned
+      </Typography>
+    );
+  }
+
+  const total = quality.totalViolations;
+  const breakdown = quality.severityBreakdown;
+  const lastScanned = quality.lastScannedAt;
+  const remStatus = quality.remediationStatus;
+  const compatCount = getProjectCompatibilityCount(repoName);
+  const live = remStatus === 'in-progress' || remStatus === 'proposals-ready';
+
+  const findingsChip =
+    total === 0 ? (
+      <Typography
+        variant="body2"
+        style={{ fontSize: 12, color: statusColors.success, fontWeight: 500 }}
+      >
+        Clean
+      </Typography>
+    ) : (
+      (() => {
+        const highest: SeverityClass =
+          breakdown.critical > 0
+            ? 'critical'
+            : breakdown.high > 0
+              ? 'high'
+              : breakdown.medium > 0
+                ? 'medium'
+                : 'low';
+        const highestCount = breakdown[highest];
+        const color = SEVERITY_COLORS[highest];
+        return (
+          <Tooltip
+            title={lastScanned ? `Last scanned ${lastScanned}` : ''}
+            arrow
+            disableHoverListener={!lastScanned}
+          >
+            <Box display="flex" alignItems="center" style={{ gap: 6 }}>
+              <Chip
+                size="small"
+                label={`${highestCount} ${highest}`}
+                style={{
+                  fontSize: 11,
+                  height: 20,
+                  backgroundColor: `${color}18`,
+                  color,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              />
+              {total > highestCount && (
+                <Typography
+                  variant="body2"
+                  color="textSecondary"
+                  style={{ fontSize: 11 }}
+                >
+                  +{total - highestCount}
+                </Typography>
+              )}
+            </Box>
+          </Tooltip>
+        );
+      })()
+    );
+
+  return (
+    <Box display="flex" alignItems="center" style={{ gap: 8, flexWrap: 'wrap' }}>
+      <Box
+        display="flex"
+        alignItems="center"
+        style={{ cursor: 'pointer' }}
+        onClick={e => {
+          e.stopPropagation();
+          openQuality();
+        }}
+      >
+        {findingsChip}
+      </Box>
+      {compatCount > 0 && (
+        <Chip
+          size="small"
+          label="Version update"
+          icon={
+            <WarningIcon
+              style={{
+                fontSize: 11,
+                color: isDark ? '#fbbf24' : '#92400e',
+              }}
+            />
+          }
+          onClick={e => {
+            e.stopPropagation();
+            openQuality('aap-compatibility');
+          }}
+          style={{
+            fontSize: 10,
+            height: 18,
+            fontWeight: 600,
+            backgroundColor: isDark ? 'rgba(234,179,8,0.12)' : '#fef9c3',
+            color: isDark ? '#fbbf24' : '#92400e',
+            cursor: 'pointer',
+          }}
+        />
+      )}
+      {live && (
+        <Typography
+          component="button"
+          onClick={e => {
+            e.stopPropagation();
+            openQuality();
+          }}
+          style={{
+            fontSize: 11,
+            fontWeight: 600,
+            color: statusColors.info,
+            background: 'none',
+            border: 'none',
+            padding: 0,
+            cursor: 'pointer',
+          }}
+        >
+          Remediation in progress
+        </Typography>
+      )}
+      {remStatus === 'pr-open' && (
+        <Typography
+          component="button"
+          onClick={e => {
+            e.stopPropagation();
+            if (quality.remediationPrUrl) {
+              window.open(quality.remediationPrUrl, '_blank', 'noopener,noreferrer');
+              return;
+            }
+            openQuality();
+          }}
+          style={{
+            fontSize: 11,
+            fontWeight: 600,
+            color: '#2E8440',
+            background: 'none',
+            border: 'none',
+            padding: 0,
+            cursor: 'pointer',
+          }}
+        >
+          Pull request open
+        </Typography>
+      )}
+    </Box>
+  );
+}
+
+export const GitRepositoriesContent = () => {
+  const classes = useStyles();
+  const theme = useTheme();
+  const navigate = useNavigate();
   const { hasRole } = useUserRoleContext();
+  const { experience } = useNavIaModel();
+  const qualityScoreOnList = experience === 'develop-apme';
   const [repos, setRepos] = useState<GitRepository[]>(() => {
     const stored = loadStarredRepos();
     return GIT_REPOSITORIES.map(r => ({
@@ -408,10 +673,6 @@ export const GitRepositoriesContent = () => {
   const clearAllFilters = useCallback(() => {
     setFilters({ ...DEFAULT_FILTERS });
   }, []);
-
-
-  const [scanningRepos] = useState<Set<string>>(() => new Set(['network-firewall-rules']));
-  const neverScannedRepos = useMemo(() => new Set(['backup-automation']), []);
 
   const filteredRepos = useMemo(() => {
     let result = repos;
@@ -461,137 +722,71 @@ export const GitRepositoriesContent = () => {
         </Box>
       ),
     },
-    {
-      title: (
-        <Box display="flex" alignItems="center" style={{ gap: 4 }}>
-          Violations
-          <Tooltip title="Policy violations detected by automated quality scans. Address violations to improve content reliability and compliance." arrow>
-            <HelpOutlineIcon style={{ fontSize: 14, color: theme.palette.text.disabled, cursor: 'help' }} />
-          </Tooltip>
-        </Box>
-      ) as unknown as string,
-      width: '20%',
-      customSort: (a: GitRepository, b: GitRepository) => {
-        const SEVERITY_RANK: Record<string, number> = { critical: 4, high: 3, medium: 2, low: 1 };
-        const rankOf = (r: GitRepository) => {
-          if (scanningRepos.has(r.name)) return -2;
-          if (neverScannedRepos.has(r.name)) return -1;
-          const bd = getProjectSeverityBreakdown(r.name);
-          if (!bd) return -1;
-          const total = getProjectViolationCount(r.name) ?? 0;
-          if (total === 0) return 0;
-          const highest = bd.critical > 0 ? 'critical' : bd.high > 0 ? 'high' : bd.medium > 0 ? 'medium' : 'low';
-          return SEVERITY_RANK[highest] * 100 + total;
-        };
-        return rankOf(a) - rankOf(b);
-      },
-      render: (row: GitRepository) => {
-        const isScanning = scanningRepos.has(row.name);
-        const isNeverScanned = neverScannedRepos.has(row.name);
-
-        if (isScanning) {
-          return (
-            <Chip size="small" label="Scanning" style={{
-              fontSize: 11, height: 20, backgroundColor: `${statusColors.info}15`,
-              color: statusColors.info, fontWeight: 500,
-            }} />
-          );
+    qualityScoreOnList
+      ? {
+          title: (
+            <Box display="flex" alignItems="center" style={{ gap: 4 }}>
+              Quality score
+              <Tooltip
+                title="Quality score from the last content quality scan. Open the repository for a summary, or Content quality for scans and remediations."
+                arrow
+              >
+                <HelpOutlineIcon style={{ fontSize: 14, color: theme.palette.text.disabled, cursor: 'help' }} />
+              </Tooltip>
+            </Box>
+          ) as unknown as string,
+          width: '28%',
+          customSort: (a: GitRepository, b: GitRepository) => {
+            const rankOf = (r: GitRepository) => {
+              if (SCANNING_REPOS.has(r.name)) return -2;
+              const score = getProjectHealthScore(r.name);
+              if (score === undefined) return -1;
+              return score;
+            };
+            return rankOf(a) - rankOf(b);
+          },
+          render: (row: GitRepository) => <QualityScoreCell repoName={row.name} />,
         }
-        if (isNeverScanned) {
-          return (
-            <Typography variant="body2" color="textSecondary" style={{ fontSize: 12 }}>
-              Not scanned
-            </Typography>
-          );
-        }
-
-        const breakdown = getProjectSeverityBreakdown(row.name);
-        if (!breakdown) {
-          return (
-            <Typography variant="body2" color="textSecondary" style={{ fontSize: 12 }}>
-              Not scanned
-            </Typography>
-          );
-        }
-
-        const total = getProjectViolationCount(row.name) ?? 0;
-        if (total === 0) {
-          return (
-            <Typography variant="body2" style={{ fontSize: 12, color: statusColors.success, fontWeight: 500 }}>
-              Clean
-            </Typography>
-          );
-        }
-
-        const highest: SeverityClass = breakdown.critical > 0 ? 'critical'
-          : breakdown.high > 0 ? 'high'
-          : breakdown.medium > 0 ? 'medium'
-          : 'low';
-        const highestCount = breakdown[highest];
-        const color = SEVERITY_COLORS[highest];
-
-        const remStatus = getProjectRemediationStatus(row.name);
-        const compatCount = getProjectCompatibilityCount(row.name);
-        const REMEDIATION_LABELS: Partial<Record<RemediationStatus, { text: string; color: string }>> = {
-          'in-progress': { text: 'Generating…', color: statusColors.info },
-          'proposals-ready': { text: 'Review suggestions', color: isDark ? '#f0d080' : '#8a6d00' },
-          'pr-open': { text: 'PR open', color: isDark ? '#f0d080' : '#8a6d00' },
-          'pr-merged': { text: 'Merged', color: statusColors.success },
-        };
-        const remLabel = remStatus ? REMEDIATION_LABELS[remStatus] : undefined;
-
-        return (
-          <Box
-            display="flex" alignItems="center" style={{ gap: 6, cursor: 'pointer' }}
-            onClick={(e: React.MouseEvent) => {
-              e.stopPropagation();
-              navigate(`/self-service/repositories/${row.name}?tab=quality`);
-            }}
-          >
-            <Chip size="small" label={`${highestCount} ${highest}`} style={{
-              fontSize: 11, height: 20,
-              backgroundColor: `${color}18`,
-              color,
-              fontWeight: 600,
-              cursor: 'pointer',
-            }} />
-            {total > highestCount && (
-              <Typography variant="body2" color="textSecondary" style={{ fontSize: 11 }}>
-                +{total - highestCount}
-              </Typography>
-            )}
-            {compatCount > 0 && (
-              <Chip size="small"
-                label="Version update"
-                icon={<WarningIcon style={{ fontSize: 11, color: isDark ? '#fbbf24' : '#92400e' }} />}
-                onClick={(e: React.MouseEvent) => {
-                  e.stopPropagation();
-                  navigate(`/self-service/repositories/${row.name}?tab=quality&category=aap-compatibility`);
-                }}
-                style={{
-                  fontSize: 10, height: 18, fontWeight: 600,
-                  backgroundColor: isDark ? 'rgba(234,179,8,0.12)' : '#fef9c3',
-                  color: isDark ? '#fbbf24' : '#92400e',
-                  cursor: 'pointer',
-                }}
-              />
-            )}
-            {remLabel && (
-              <Box display="flex" alignItems="center" style={{ gap: 3 }}>
-                {remStatus === 'in-progress' ? (
-                  <SyncIcon style={{ fontSize: 13, color: remLabel.color, animation: 'spin 1.2s linear infinite' }} />
-                ) : (
-                  <Box style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: remLabel.color, flexShrink: 0 }} />
-                )}
-                <Typography style={{ fontSize: 11, color: remLabel.color, fontWeight: 500 }}>
-                  {remLabel.text}
-                </Typography>
-              </Box>
-            )}
-          </Box>
-        );
-      },
-    },
+      : {
+          title: (
+            <Box display="flex" alignItems="center" style={{ gap: 4 }}>
+              Findings
+              <Tooltip
+                title="Content quality findings for this repository. Open Quality for detail. Resume a live session from the status link."
+                arrow
+              >
+                <HelpOutlineIcon style={{ fontSize: 14, color: theme.palette.text.disabled, cursor: 'help' }} />
+              </Tooltip>
+            </Box>
+          ) as unknown as string,
+          width: '28%',
+          customSort: (a: GitRepository, b: GitRepository) => {
+            const SEVERITY_RANK: Record<string, number> = {
+              critical: 4,
+              high: 3,
+              medium: 2,
+              low: 1,
+            };
+            const rankOf = (r: GitRepository) => {
+              if (SCANNING_REPOS.has(r.name)) return 500;
+              const bd = getProjectSeverityBreakdown(r.name);
+              if (!bd) return -1;
+              const total = getProjectViolationCount(r.name) ?? 0;
+              if (total === 0) return 0;
+              const highest =
+                bd.critical > 0
+                  ? 'critical'
+                  : bd.high > 0
+                    ? 'high'
+                    : bd.medium > 0
+                      ? 'medium'
+                      : 'low';
+              return SEVERITY_RANK[highest] * 100 + total;
+            };
+            return rankOf(a) - rankOf(b);
+          },
+          render: (row: GitRepository) => <QualityFindingsCell repoName={row.name} />,
+        },
     {
       title: (
         <Box display="flex" alignItems="center" style={{ gap: 4 }}>

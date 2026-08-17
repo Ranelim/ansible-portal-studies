@@ -430,7 +430,9 @@ export const ApmeRemediationPage = () => {
   const repoName = decodeURIComponent(rawName ?? '');
   const [params] = useSearchParams();
   const fromRepo = params.get('from') === 'repo';
+  const fromList = params.get('from') === 'list';
   const fromScans = params.get('from') === 'scans';
+  const fromRemediations = params.get('from') === 'remediations';
   const resume = params.get('resume') === '1';
   const { experience } = useNavIaModel();
 
@@ -521,18 +523,34 @@ export const ApmeRemediationPage = () => {
   const goBack = useCallback(() => {
     if (fromRepo) {
       navigate(
-        `/self-service/repositories/${encodeURIComponent(repoName)}?tab=quality`,
+        `/self-service/repositories/${encodeURIComponent(repoName)}`,
       );
+      return;
+    }
+    if (fromList) {
+      navigate('/self-service/repositories');
       return;
     }
     if (fromScans) {
       navigate('/self-service/apme/scans');
       return;
     }
+    if (fromRemediations) {
+      navigate('/self-service/apme/remediations');
+      return;
+    }
     navigate('/self-service/apme');
-  }, [fromRepo, fromScans, navigate, repoName]);
+  }, [fromRepo, fromList, fromScans, fromRemediations, navigate, repoName]);
 
-  const backLabel = fromRepo ? repo?.name ?? 'Repository' : fromScans ? 'Scans' : 'Content quality';
+  const backLabel = fromRepo
+    ? repo?.name ?? 'Repository'
+    : fromList
+      ? 'Git Repositories'
+      : fromScans
+        ? 'Scans'
+        : fromRemediations
+          ? 'Remediations'
+          : 'Content quality';
 
   const setDecision = (key: string, d: Decision) => {
     setDecisions(prev => {

@@ -166,6 +166,7 @@ const RouteViewContent = () => {
         {/* Parked Findings tab — SHOW_CONTENT_QUALITY_FINDINGS_TAB; redirects to Overview when false. */}
         <Route path="apme/findings" element={<ApmeHostPage />} />
         <Route path="apme/scans" element={<ApmeHostPage />} />
+        <Route path="apme/remediations" element={<ApmeHostPage />} />
         <Route path="apme/remediate/:repoName" element={<ApmeRemediationPage />} />
         <Route path="collections" element={<CollectionsCatalogPage />} />
         <Route

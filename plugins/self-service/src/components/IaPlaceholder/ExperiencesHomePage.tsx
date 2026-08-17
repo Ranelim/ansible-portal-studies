@@ -63,7 +63,7 @@ const EXPERIENCE_BLURB: Record<ExperienceId, string> = {
   'develop-drawer':
     'B — Git Repositories expandable item; Repositories · Quality · Remediations indented.',
   'develop-apme':
-    'C — Git Repositories pin + Content quality pin; Overview · Scans.',
+    'C — Git Repositories pin + Content quality pin; Overview · Remediations · Scans.',
   compliance: 'Scan inventories, review findings, and remediate hosts.',
   edge: 'Manage edge device fleets, updates, and desired state.',
 };

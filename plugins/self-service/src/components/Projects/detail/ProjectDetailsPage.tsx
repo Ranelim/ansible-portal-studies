@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { DEVSPACES_BASE_URL, DEMO_CONNECTIONS } from '../../Admin/syncDemoData';
 import { useUserRoleContext } from '../../../hooks/useUserRole';
 import { useParams, useNavigate, useSearchParams, Link as RouterLink } from 'react-router-dom';
@@ -62,15 +62,23 @@ import {
 import { useProjectDetailStyles } from './styles';
 import { statusColors } from '../../common/statusColors';
 import { getProjectQuality } from './qualityDemoData';
-import { QualityTab, QualityTabUnified } from './QualityTab';
+import { QualityTabUnified } from './QualityTab';
+import { QualityOverviewCard } from './QualityOverviewCard';
 import { DependenciesTab } from './DependenciesTab';
 import VerifiedUserOutlinedIcon from '@material-ui/icons/VerifiedUserOutlined';
 import Chip from '@material-ui/core/Chip';
+import { useNavIaModel } from '../../../hooks/useNavIaModel';
 
 
-const tabs = [
+const HOST_TABS = [
   { id: 'overview', label: 'Overview' },
   { id: 'quality', label: 'Quality' },
+  { id: 'ci-activity', label: 'CI Activity' },
+  { id: 'dependencies', label: 'Dependencies' },
+];
+
+const QUALITY_ON_PIN_TABS = [
+  { id: 'overview', label: 'Overview' },
   { id: 'ci-activity', label: 'CI Activity' },
   { id: 'dependencies', label: 'Dependencies' },
 ];
@@ -192,16 +200,25 @@ const DescriptionLine = ({ text }: { text: string }) => {
 const OverviewTab = ({
   project,
   isPushedToAap,
+  qualitySummary,
 }: {
   project: DemoProject;
   isPushedToAap: boolean;
+  qualitySummary?: boolean;
 }) => {
   const classes = useProjectDetailStyles();
   const readme = PROJECT_README[project.name] || DEFAULT_PROJECT_README;
+  const quality = qualitySummary ? getProjectQuality(project.name) : null;
 
   return (
     <Box className={classes.tabContent}>
       <Box className={classes.mainColumn}>
+        {qualitySummary && (
+          <QualityOverviewCard
+            repoName={project.name}
+            quality={quality}
+          />
+        )}
         <Card className={classes.card} variant="outlined">
           <CardContent className={classes.cardContent}>
             <Typography className={classes.cardTitle}>README.md</Typography>
@@ -984,13 +1001,23 @@ export const ProjectDetailsPage = () => {
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
   const { hasRole: pageHasRole } = useUserRoleContext();
+  const { experience } = useNavIaModel();
+  const qualityOnPin = experience === 'develop-apme';
+  const pageTabs = qualityOnPin ? QUALITY_ON_PIN_TABS : HOST_TABS;
 
   const urlTab = searchParams.get('tab');
   const urlScan = searchParams.get('scan');
   const urlSeverity = searchParams.get('severity') as import('./qualityDemoData').SeverityClass | null;
   const urlRule = searchParams.get('rule');
   const urlCategory = searchParams.get('category') as import('./qualityDemoData').ViolationCategory | null;
-  const [selectedTab, setSelectedTab] = useState(() => urlTab === 'quality' ? 1 : 0);
+  const [selectedTab, setSelectedTab] = useState(() => {
+    if (qualityOnPin) {
+      if (urlTab === 'ci-activity') return 1;
+      if (urlTab === 'dependencies') return 2;
+      return 0;
+    }
+    return urlTab === 'quality' ? 1 : 0;
+  });
   const [qualityInitialView, setQualityInitialView] = useState<'latest-scan' | undefined>(undefined);
   const [initialScanId] = useState<string | null>(urlScan);
   const [starred, setStarred] = useState(false);
@@ -1031,6 +1058,13 @@ export const ProjectDetailsPage = () => {
     setSelectedTab(index);
   }, []);
 
+  useEffect(() => {
+    const id = window.requestAnimationFrame(() => {
+      window.dispatchEvent(new Event('resize'));
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [selectedTab, pageTabs.length]);
+
   if (!project) {
     return (
       <Page themeId="app">
@@ -1059,7 +1093,8 @@ export const ProjectDetailsPage = () => {
 
   return (
     <Page themeId="app">
-      <Content>
+      <Content noPadding>
+        <Box className={classes.detailHeader}>
         {/* Breadcrumbs */}
         <Breadcrumbs
           separator={<NavigateNextIcon fontSize="small" />}
@@ -1133,8 +1168,7 @@ export const ProjectDetailsPage = () => {
           <DescriptionLine text={project.description} />
         )}
 
-        {/* Status signal — single compact line */}
-        {quality && quality.totalViolations > 0 && (
+        {!qualityOnPin && quality && quality.totalViolations > 0 && (
           <Typography
             style={{ fontSize: 13, color: theme.palette.text.disabled, marginTop: 4, cursor: 'pointer' }}
             onClick={() => handleTabChange(1, 'latest-scan')}
@@ -1168,7 +1202,7 @@ export const ProjectDetailsPage = () => {
             )}
           </Typography>
         )}
-        {quality && quality.totalViolations === 0 && (
+        {!qualityOnPin && quality && quality.totalViolations === 0 && (
           <Typography style={{ fontSize: 13, color: theme.palette.text.disabled, marginTop: 4 }}>
             <span style={{ color: statusColors.success, fontWeight: 500 }}>All checks passing</span>
             {' · '}
@@ -1177,7 +1211,7 @@ export const ProjectDetailsPage = () => {
         )}
 
         {/* Version update banner */}
-        {compatCount > 0 && (
+        {compatCount > 0 && !qualityOnPin && (
           <Box
             display="flex" alignItems="center" justifyContent="space-between"
             style={{
@@ -1212,19 +1246,30 @@ export const ProjectDetailsPage = () => {
             </Button>
           </Box>
         )}
+        </Box>
 
-        {/* Tabs */}
-        <HeaderTabs
-          selectedIndex={selectedTab}
-          onChange={handleTabChange}
-          tabs={tabs.map(t => ({ id: t.id, label: t.label }))}
-        />
+        <Box className={classes.tabsHost}>
+          <HeaderTabs
+            selectedIndex={selectedTab}
+            onChange={handleTabChange}
+            tabs={pageTabs.map(t => ({ id: t.id, label: t.label }))}
+          />
+        </Box>
 
-        {/* Tab content */}
-        {selectedTab === 0 && (
+        <Box className={classes.detailBody}>
+        {qualityOnPin && selectedTab === 0 && (
+          <OverviewTab
+            project={project}
+            isPushedToAap={isPushedToAap}
+            qualitySummary
+          />
+        )}
+        {qualityOnPin && selectedTab === 1 && <CIActivityTab project={project} />}
+        {qualityOnPin && selectedTab === 2 && <DependenciesTab quality={quality} />}
+        {!qualityOnPin && selectedTab === 0 && (
           <OverviewTab project={project} isPushedToAap={isPushedToAap} />
         )}
-        {selectedTab === 1 && (
+        {!qualityOnPin && selectedTab === 1 && (
             <QualityTabUnified
               quality={quality}
               projectName={project.name}
@@ -1237,8 +1282,9 @@ export const ProjectDetailsPage = () => {
               branch={project.repo.branch}
             />
         )}
-        {selectedTab === 2 && <CIActivityTab project={project} />}
-        {selectedTab === 3 && <DependenciesTab quality={quality} />}
+        {!qualityOnPin && selectedTab === 2 && <CIActivityTab project={project} />}
+        {!qualityOnPin && selectedTab === 3 && <DependenciesTab quality={quality} />}
+        </Box>
       </Content>
       <Snackbar
         open={pushSnackbar}
