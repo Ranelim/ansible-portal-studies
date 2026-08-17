@@ -62,6 +62,8 @@ const EXPERIENCE_BLURB: Record<ExperienceId, string> = {
     'A — Git Repositories pin; tabs: Repositories · Quality · Remediations · Pipeline.',
   'develop-drawer':
     'B — Git Repositories expandable item; Repositories · Quality · Remediations indented.',
+  'develop-apme':
+    'C — Git Repositories pin + Content quality pin; Overview · Scans.',
   compliance: 'Scan inventories, review findings, and remediate hosts.',
   edge: 'Manage edge device fleets, updates, and desired state.',
 };
@@ -70,6 +72,7 @@ const EXPERIENCE_LANDING: Record<ExperienceId, string> = {
   automate: '/create?scope=experience',
   'develop-tabs': '/self-service/repositories/list',
   'develop-drawer': '/self-service/repositories/list',
+  'develop-apme': '/self-service/repositories/list',
   compliance: '/self-service/experience-dashboard',
   edge: '/self-service/experience-dashboard',
 };
@@ -78,6 +81,7 @@ const EXPERIENCE_ACCENT: Record<ExperienceId, string> = {
   automate: '#0066CC',
   'develop-tabs': '#3D1C7C',
   'develop-drawer': '#7B3DB8',
+  'develop-apme': '#5C2D91',
   compliance: '#C46100',
   edge: '#147EBC',
 };
@@ -108,6 +112,12 @@ const EXPERIENCE_DOCS: Record<
     href: 'https://docs.redhat.com/en/documentation/red_hat_ansible_automation_platform/2.6/html/using_self-service_automation_portal/index',
     linkLabel: 'View Develop documentation',
   },
+  'develop-apme': {
+    summary:
+      'Review C: Content quality as its own Develop rail item (after Git Repositories). Page tabs: Overview (work queue) and Scans (history). Git Repositories stays list-first. Exploration only — not factory default.',
+    href: 'https://docs.redhat.com/en/documentation/red_hat_ansible_automation_platform/2.6/html/using_self-service_automation_portal/index',
+    linkLabel: 'View Develop documentation',
+  },
   compliance: {
     summary:
       'Compliance helps you scan host inventories, review findings, and remediate against security baselines.',
@@ -135,6 +145,7 @@ function experienceIcon(id: ExperienceId | 'assistant'): ReactNode {
       return <PlayArrowIcon {...props} />;
     case 'develop-tabs':
     case 'develop-drawer':
+    case 'develop-apme':
       return <CodeIcon {...props} />;
     case 'compliance':
       return <VerifiedUserIcon {...props} />;
@@ -156,6 +167,7 @@ function readRecent(): ExperienceId[] {
         'automate',
         'develop-tabs',
         'develop-drawer',
+        'develop-apme',
         'compliance',
         'edge',
       ].includes(id),

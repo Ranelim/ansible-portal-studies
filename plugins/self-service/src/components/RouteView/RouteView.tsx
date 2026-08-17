@@ -23,6 +23,8 @@ import { CatalogItemsDetails } from '../CatalogItemDetails';
 import { EETabs } from '../ExecutionEnvironments';
 import { EEDetailsPage } from '../ExecutionEnvironments/catalog/EEDetailsPage';
 import { ProjectsTabs } from '../Projects';
+import { ApmeHostPage } from '../Projects/quality/ApmeHostPage';
+import { ApmeRemediationPage } from '../Projects/quality/ApmeRemediationPage';
 import { ProjectDetailsPage } from '../Projects/detail/ProjectDetailsPage';
 import { RepositoryDetailPage } from '../Projects/repositories/RepositoryDetailPage';
 import { CollectionsCatalogPage } from '../CollectionsCatalog';
@@ -160,6 +162,11 @@ const RouteViewContent = () => {
           path="quality"
           element={<Navigate to="/self-service/repositories/dashboard" replace />}
         />
+        <Route path="apme" element={<ApmeHostPage />} />
+        {/* Parked Findings tab — SHOW_CONTENT_QUALITY_FINDINGS_TAB; redirects to Overview when false. */}
+        <Route path="apme/findings" element={<ApmeHostPage />} />
+        <Route path="apme/scans" element={<ApmeHostPage />} />
+        <Route path="apme/remediate/:repoName" element={<ApmeRemediationPage />} />
         <Route path="collections" element={<CollectionsCatalogPage />} />
         <Route
           path="collections/:collectionName"

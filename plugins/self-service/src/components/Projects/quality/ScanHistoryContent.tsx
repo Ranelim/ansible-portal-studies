@@ -1,6 +1,7 @@
 import { useMemo, useCallback } from 'react';
 import {
   Box,
+  Button,
   Typography,
   Chip,
   Tooltip,
@@ -15,43 +16,73 @@ import {
   getProjectQuality,
 } from '../detail/qualityDemoData';
 import { GIT_REPOSITORIES } from '../catalog/unifiedDemoData';
+import { useNavIaModel } from '../../../hooks/useNavIaModel';
 
 type GlobalScanRow = ScanResult & {
   repoName: string;
   org: string;
+  isCurrent: boolean;
 };
 
 export const ScanHistoryContent = () => {
   const navigate = useNavigate();
+  const { experience } = useNavIaModel();
+  const contentQuality = experience === 'develop-apme';
 
   const globalScans: GlobalScanRow[] = useMemo(() => {
     const rows: GlobalScanRow[] = [];
     for (const repo of GIT_REPOSITORIES) {
       const q = getProjectQuality(repo.name);
       if (!q) continue;
+      const latestId = q.latestScan.scanId;
       const scans = q.scanHistory.length > 0 ? q.scanHistory : [q.latestScan];
       for (const scan of scans) {
-        rows.push({ ...scan, repoName: repo.name, org: repo.org });
+        rows.push({
+          ...scan,
+          repoName: repo.name,
+          org: repo.org,
+          isCurrent: scan.scanId === latestId,
+        });
       }
     }
     return rows;
   }, []);
 
-  const handleNavigateToProject = useCallback((repoName: string) => {
-    const repo = GIT_REPOSITORIES.find(r => r.name === repoName);
-    if (repo && repo.governance !== 'discovered') {
-      navigate(`/self-service/repositories/${repoName}`);
-    } else {
-      navigate(`/self-service/repositories/${repoName}`);
-    }
+  const openRepo = useCallback((repoName: string) => {
+    navigate(
+      `/self-service/repositories/${encodeURIComponent(repoName)}?tab=quality`,
+    );
   }, [navigate]);
+
+  const openSession = useCallback((repoName: string, resume: boolean) => {
+    const qs = new URLSearchParams({ from: 'scans' });
+    if (resume) qs.set('resume', '1');
+    navigate(
+      `/self-service/apme/remediate/${encodeURIComponent(repoName)}?${qs.toString()}`,
+    );
+  }, [navigate]);
+
+  const handleRowActivate = useCallback(
+    (row: GlobalScanRow) => {
+      if (contentQuality && row.isCurrent && row.totalViolations > 0) {
+        const q = getProjectQuality(row.repoName);
+        const resume =
+          q?.remediationStatus === 'in-progress' ||
+          q?.remediationStatus === 'proposals-ready';
+        openSession(row.repoName, Boolean(resume));
+        return;
+      }
+      if (!contentQuality) openRepo(row.repoName);
+    },
+    [contentQuality, openRepo, openSession],
+  );
 
   const columns: TableColumn<GlobalScanRow>[] = [
     {
       title: 'Repository',
       render: (row: GlobalScanRow) => (
         <Typography style={{ fontSize: 13, fontWeight: 500, color: statusColors.info, cursor: 'pointer' }}
-          onClick={(e: React.MouseEvent) => { e.stopPropagation(); handleNavigateToProject(row.repoName); }}
+          onClick={(e: React.MouseEvent) => { e.stopPropagation(); openRepo(row.repoName); }}
         >
           {row.org}/{row.repoName}
         </Typography>
@@ -62,6 +93,24 @@ export const ScanHistoryContent = () => {
       field: 'scanId',
       render: (row: GlobalScanRow) => (
         <Typography style={{ fontSize: 12, fontFamily: 'monospace', color: '#555' }}>{row.scanId}</Typography>
+      ),
+    },
+    {
+      title: 'Status',
+      render: (row: GlobalScanRow) => (
+        <Chip
+          size="small"
+          label={row.isCurrent ? 'Current' : 'Superseded'}
+          style={{
+            fontSize: 11,
+            height: 20,
+            fontWeight: 600,
+            backgroundColor: row.isCurrent
+              ? 'rgba(0, 102, 204, 0.12)'
+              : 'rgba(0,0,0,0.06)',
+            color: row.isCurrent ? '#0066CC' : '#6A6E73',
+          }}
+        />
       ),
     },
     {
@@ -88,7 +137,7 @@ export const ScanHistoryContent = () => {
             <WarningIcon style={{ fontSize: 16, color: statusColors.warning }} />
           )}
           <Typography style={{ fontSize: 13 }}>
-            {row.totalViolations} violation{row.totalViolations !== 1 ? 's' : ''}
+            {row.totalViolations} finding{row.totalViolations !== 1 ? 's' : ''}
           </Typography>
           {row.scanType === 'remediate' && row.remediatedCount > 0 && (
             <Typography style={{ fontSize: 12, color: statusColors.success }}>
@@ -113,6 +162,54 @@ export const ScanHistoryContent = () => {
       },
     },
     { title: 'Date', field: 'createdAt' },
+    {
+      title: 'Action',
+      sorting: false,
+      render: (row: GlobalScanRow) => {
+        if (!contentQuality) return null;
+        if (!row.isCurrent) {
+          return (
+            <Typography style={{ fontSize: 12, color: '#6A6E73' }}>
+              Newer scan available
+            </Typography>
+          );
+        }
+        if (row.totalViolations === 0) return null;
+        const q = getProjectQuality(row.repoName);
+        const status = q?.remediationStatus;
+        if (status === 'pr-open' && q?.remediationPrUrl) {
+          return (
+            <Button
+              size="small"
+              color="primary"
+              style={{ textTransform: 'none', borderRadius: 20 }}
+              onClick={e => {
+                e.stopPropagation();
+                window.open(q.remediationPrUrl, '_blank', 'noopener,noreferrer');
+              }}
+            >
+              View pull request
+            </Button>
+          );
+        }
+        const resume =
+          status === 'in-progress' || status === 'proposals-ready';
+        return (
+          <Button
+            size="small"
+            color="primary"
+            variant="outlined"
+            style={{ textTransform: 'none', borderRadius: 20, fontWeight: 600 }}
+            onClick={e => {
+              e.stopPropagation();
+              openSession(row.repoName, resume);
+            }}
+          >
+            {resume ? 'Resume' : 'Start remediation'}
+          </Button>
+        );
+      },
+    },
   ];
 
   return (
@@ -122,7 +219,9 @@ export const ScanHistoryContent = () => {
           {globalScans.length} scan{globalScans.length !== 1 ? 's' : ''}
         </Typography>
         <Typography variant="body2" color="textSecondary" style={{ fontSize: 12 }}>
-          All quality scans across all repositories, sorted by most recent
+          Scan history across repositories. Current is the latest scan for that
+          repo. Start or resume remediation from a current scan — not from a
+          superseded one.
         </Typography>
       </Box>
       <Table<GlobalScanRow>
@@ -141,7 +240,7 @@ export const ScanHistoryContent = () => {
           rowStyle: { cursor: 'pointer' },
         }}
         onRowClick={(_e, rowData) => {
-          if (rowData) handleNavigateToProject((rowData as GlobalScanRow).repoName);
+          if (rowData) handleRowActivate(rowData as GlobalScanRow);
         }}
       />
     </Box>

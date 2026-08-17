@@ -40,6 +40,7 @@ import PlayArrowIcon from '@material-ui/icons/PlayArrow';
 import HistoryIcon from '@material-ui/icons/History';
 import CodeIcon from '@material-ui/icons/Code';
 import CategoryIcon from '@material-ui/icons/Category';
+import AssessmentIcon from '@material-ui/icons/Assessment';
 import MemoryIcon from '@material-ui/icons/Memory';
 import StorageIcon from '@material-ui/icons/Storage';
 import RouterIcon from '@material-ui/icons/Router';
@@ -554,7 +555,7 @@ const DevelopEntityItems = () => (
     <SidebarItem
       icon={MemoryIcon}
       to="/self-service/ee"
-      text="Execution Environments"
+      text="Execution Env."
     />
     <SidebarItem
       icon={CategoryIcon}
@@ -748,7 +749,7 @@ export const FlatNavSidebar = () => {
           <SidebarItem
             icon={MemoryIcon}
             to="/self-service/ee"
-            text="Execution Environments"
+            text="Execution Env."
           />
           <SidebarItem
             icon={CategoryIcon}
@@ -1380,7 +1381,7 @@ const ExperiencesDomainSidebar = () => {
           <SidebarItem
             icon={MemoryIcon}
             to="/self-service/ee"
-            text="Execution Environments"
+            text="Execution Env."
           />
           <SidebarSpacer />
           <LearnItems />
@@ -1420,7 +1421,38 @@ const ExperiencesDomainSidebar = () => {
           <SidebarItem
             icon={MemoryIcon}
             to="/self-service/ee"
-            text="Execution Environments"
+            text="Execution Env."
+          />
+          <SidebarSpacer />
+          <LearnItems />
+        </>
+      )}
+
+      {/* C — Git Repositories + Content quality, then other objects. */}
+      {domain === 'develop-apme' && (
+        <>
+          {ExperienceDashboardItem}
+          {ExperienceRunPair}
+          <SidebarItem
+            icon={CodeIcon}
+            to="/self-service/repositories"
+            text="Git Repositories"
+          />
+          <SidebarItem
+            icon={AssessmentIcon}
+            to="/self-service/apme"
+            text="Content quality"
+          />
+          <SidebarSpacer />
+          <SidebarItem
+            icon={CategoryIcon}
+            to="/self-service/collections"
+            text="Collections"
+          />
+          <SidebarItem
+            icon={MemoryIcon}
+            to="/self-service/ee"
+            text="Execution Env."
           />
           <SidebarSpacer />
           <LearnItems />

@@ -47,12 +47,15 @@ const getTabIndexFromPath = (pathname: string): number => {
  * Git Repositories host.
  * - Develop (tabs): Repositories | Quality | Remediations | Pipeline activity
  * - Develop (drawer): no host tabs — rail picks Repositories / Quality / Remediations
+ * - Develop (APME rail): list only — Quality lives on the Content quality pin
  */
 export const ProjectsTabs: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { experience } = useNavIaModel();
   const sectionMode = experience === 'develop-drawer';
+  const apmeRailMode = experience === 'develop-apme';
+  const hideHostTabs = sectionMode || apmeRailMode;
   const [createOpen, setCreateOpen] = useState(false);
 
   useEffect(() => {
@@ -64,10 +67,11 @@ export const ProjectsTabs: React.FC = () => {
 
   // Legacy Quality path → Quality surface (dashboard route)
   useEffect(() => {
+    if (apmeRailMode) return;
     if (location.pathname.includes('/repositories/quality')) {
       navigate('/self-service/repositories/dashboard', { replace: true });
     }
-  }, [location.pathname, navigate]);
+  }, [apmeRailMode, location.pathname, navigate]);
 
   const selectedTab = useMemo(
     () => getTabIndexFromPath(location.pathname),
@@ -78,6 +82,18 @@ export const ProjectsTabs: React.FC = () => {
     () => getSurfaceFromPath(location.pathname),
     [location.pathname],
   );
+
+  // In Content quality compare, Quality/Remediations live on /apme — not host tabs.
+  useEffect(() => {
+    if (!apmeRailMode) return;
+    if (surface === 'dashboard') {
+      navigate('/self-service/apme', { replace: true });
+      return;
+    }
+    if (surface === 'remediations' || surface === 'ci-activity') {
+      navigate('/self-service/apme', { replace: true });
+    }
+  }, [apmeRailMode, surface, navigate]);
 
   const onTabSelect = useCallback(
     (index: number) => {
@@ -168,7 +184,7 @@ export const ProjectsTabs: React.FC = () => {
         pageTitleOverride={headerTitle}
         subtitle={headerSubtitle}
       />
-      {!sectionMode && (
+      {!hideHostTabs && (
         <HeaderTabs
           selectedIndex={selectedTab}
           onChange={onTabSelect}

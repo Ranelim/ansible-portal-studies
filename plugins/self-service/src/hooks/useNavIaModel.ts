@@ -15,12 +15,14 @@ export type NavIaModel =
  * Develop is split for APME IA review:
  * - develop-tabs — one Git Repositories pin; Quality as host tab
  * - develop-drawer — Git Repositories expandable nav item; children indented
+ * - develop-apme — Git Repositories pin + Content quality pin (exploration)
  */
 export type NavExperience =
   | 'all'
   | 'automate'
   | 'develop-tabs'
   | 'develop-drawer'
+  | 'develop-apme'
   | 'compliance'
   | 'edge'
   | 'admin';
@@ -57,6 +59,7 @@ function normalizeExperience(raw: string | null): NavExperience | null {
     raw === 'automate' ||
     raw === 'develop-tabs' ||
     raw === 'develop-drawer' ||
+    raw === 'develop-apme' ||
     raw === 'compliance' ||
     raw === 'edge' ||
     raw === 'admin'
@@ -89,7 +92,9 @@ export function writeNavExperience(experience: NavExperience) {
 /** Any Develop APME IA review variant. */
 export function isDevelopExperience(experience: NavExperience): boolean {
   return (
-    experience === 'develop-tabs' || experience === 'develop-drawer'
+    experience === 'develop-tabs' ||
+    experience === 'develop-drawer' ||
+    experience === 'develop-apme'
   );
 }
 
@@ -115,7 +120,7 @@ export function availableExperiences(args: {
   const list: NavExperience[] = ['all'];
   list.push('automate');
   if (args.role === 'developer' || args.isAdmin) {
-    list.push('develop-tabs', 'develop-drawer');
+    list.push('develop-tabs', 'develop-drawer', 'develop-apme');
   }
   if ((args.role === 'operator' || args.isAdmin) && args.compliance) {
     list.push('compliance');
@@ -132,6 +137,7 @@ export const EXPERIENCE_LABELS: Record<NavExperience, string> = {
   automate: 'Automate',
   'develop-tabs': 'Develop (tabs)',
   'develop-drawer': 'Develop (drawer)',
+  'develop-apme': 'Develop (quality)',
   compliance: 'Compliance',
   edge: 'Edge',
   admin: 'Administration',

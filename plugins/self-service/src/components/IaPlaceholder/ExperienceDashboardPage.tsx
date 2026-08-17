@@ -23,6 +23,7 @@ const DEVELOP_PURPOSE =
 const PURPOSE: Partial<Record<NavExperience, string>> = {
   'develop-tabs': DEVELOP_PURPOSE,
   'develop-drawer': DEVELOP_PURPOSE,
+  'develop-apme': DEVELOP_PURPOSE,
   compliance:
     'Experience overview for Compliance — posture across inventories. Inventories in the rail opens the list; overview lives here so the entity page stays list-first.',
   edge:

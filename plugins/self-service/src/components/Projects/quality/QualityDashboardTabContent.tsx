@@ -9,14 +9,17 @@ const useStyles = makeStyles(theme => ({
   },
 }));
 
-/** Cross-repo quality posture — host Quality tab / rail item. */
-export const QualityDashboardTabContent = () => {
+/**
+ * Cross-repo findings-by-rule — host Quality tab, and Content quality Findings
+ * when SHOW_CONTENT_QUALITY_FINDINGS_TAB is true (parked on develop-apme).
+ */
+export const QualityDashboardTabContent = ({ hint }: { hint?: string }) => {
   const classes = useStyles();
   return (
     <Box>
       <Typography className={classes.hint}>
-        Cross-repository quality posture. Open a repository for findings detail;
-        start or resume remediation from Remediations or a repo CTA.
+        {hint ??
+          'Findings grouped by rule across repositories. Open a repository for detail; start or resume remediation from Remediations or a repo CTA.'}
       </Typography>
       <QualityOverviewContent />
     </Box>

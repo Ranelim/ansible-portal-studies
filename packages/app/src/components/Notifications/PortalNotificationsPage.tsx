@@ -131,6 +131,7 @@ const FILTER_EXPERIENCES: Array<Exclude<NavExperience, 'all'>> = [
   'automate',
   'develop-tabs',
   'develop-drawer',
+  'develop-apme',
   'compliance',
   'edge',
   'admin',
@@ -143,6 +144,7 @@ function readLastExperience(): Exclude<NavExperience, 'all'> | null {
       raw === 'automate' ||
       raw === 'develop-tabs' ||
       raw === 'develop-drawer' ||
+      raw === 'develop-apme' ||
       raw === 'compliance' ||
       raw === 'edge' ||
       raw === 'admin'
@@ -169,6 +171,7 @@ function readReturnExperience(): Exclude<NavExperience, 'all'> | null {
       (parsed.experience === 'automate' ||
         parsed.experience === 'develop-tabs' ||
         parsed.experience === 'develop-drawer' ||
+        parsed.experience === 'develop-apme' ||
         parsed.experience === 'compliance' ||
         parsed.experience === 'edge' ||
         parsed.experience === 'admin')

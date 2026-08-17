@@ -108,6 +108,16 @@ const ADMIN_EXPERIENCES: AdminExperience[] = [
     defaultVisible: true,
   },
   {
+    id: 'develop-apme',
+    label: 'Develop (quality)',
+    description:
+      'APME review C — Git Repositories pin + Content quality as its own rail item. Overview · Scans. Exploration only.',
+    pluginsFilter: 'Develop',
+    seatsSummary: 'Developer, Admin',
+    pluginsSummary: 'Self-service, APME Quality Scanning',
+    defaultVisible: true,
+  },
+  {
     id: 'compliance',
     label: 'Compliance',
     description: 'Scan inventories, review findings, and remediate hosts.',

@@ -60,6 +60,13 @@ const SNIPPETS: Record<
     href: '/self-service/repositories/list',
     highlights: ['3 need attention', 'Quality avg 78'],
   },
+  'develop-apme': {
+    summary: 'APME as a Develop rail item — Overview · Findings · Scans (review C).',
+    metric: '12',
+    metricLabel: 'repos',
+    href: '/self-service/apme',
+    highlights: ['3 need attention', 'Quality avg 78'],
+  },
   compliance: {
     summary: 'Inventory compliance posture and open findings.',
     metric: '86%',
@@ -220,7 +227,8 @@ export const FlatHomeDashboardPage = () => {
     ];
     if (
       available.includes('develop-tabs') ||
-      available.includes('develop-drawer')
+      available.includes('develop-drawer') ||
+      available.includes('develop-apme')
     ) {
       items.push({
         id: 'quality',
@@ -260,7 +268,8 @@ export const FlatHomeDashboardPage = () => {
     ];
     if (
       available.includes('develop-tabs') ||
-      available.includes('develop-drawer')
+      available.includes('develop-drawer') ||
+      available.includes('develop-apme')
     ) {
       rows.push({ label: 'EEs in use', value: '6' });
     }

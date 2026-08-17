@@ -50,7 +50,7 @@ export const EEBuilderSidebarItem = () => {
       permission={executionEnvironmentsViewPermission}
       icon={BuildIcon}
       to={`${rootLink()}/ee`}
-      text="Execution Environments"
+      text="Execution Env."
     />
   );
 };

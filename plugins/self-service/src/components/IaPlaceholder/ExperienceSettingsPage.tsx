@@ -70,6 +70,15 @@ const COPY: Partial<
       'Preferred scaffold template',
     ],
   },
+  'develop-apme': {
+    purpose:
+      'Content-developer preferences for Git Repositories, Collections, Execution Environments, and APME.',
+    examples: [
+      'Default repo list columns',
+      'Quality scan notifications',
+      'Preferred scaffold template',
+    ],
+  },
   compliance: {
     purpose:
       'Compliance operator preferences for Inventories and related scan workflows.',
@@ -101,6 +110,10 @@ const ADMIN_ESCAPES: Partial<
     { label: 'Content sources / Sync', to: '/self-service/admin/sync-activity' },
   ],
   'develop-drawer': [
+    { label: 'Integrations', to: '/self-service/admin/integrations' },
+    { label: 'Content sources / Sync', to: '/self-service/admin/sync-activity' },
+  ],
+  'develop-apme': [
     { label: 'Integrations', to: '/self-service/admin/integrations' },
     { label: 'Content sources / Sync', to: '/self-service/admin/sync-activity' },
   ],

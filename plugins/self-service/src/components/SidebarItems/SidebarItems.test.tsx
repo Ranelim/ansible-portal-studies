@@ -165,7 +165,7 @@ describe('EEBuilderSidebarItem', () => {
       </TestApiProvider>,
     );
 
-    const link = screen.getByRole('link', { name: /Execution Environments/i });
+    const link = screen.getByRole('link', { name: /Execution Env./i });
     expect(link).toBeInTheDocument();
     expect(link).toHaveAttribute('href', '/self-service/ee');
   });
@@ -180,7 +180,7 @@ describe('EEBuilderSidebarItem', () => {
     );
 
     expect(
-      screen.getByRole('link', { name: /Execution Environments/i }),
+      screen.getByRole('link', { name: /Execution Env./i }),
     ).toBeInTheDocument();
   });
 
@@ -194,7 +194,7 @@ describe('EEBuilderSidebarItem', () => {
     );
 
     expect(
-      screen.queryByRole('link', { name: /Execution Environments/i }),
+      screen.queryByRole('link', { name: /Execution Env./i }),
     ).not.toBeInTheDocument();
     expect(container.firstChild).toBeNull();
   });
@@ -209,7 +209,7 @@ describe('EEBuilderSidebarItem', () => {
     );
 
     expect(
-      screen.queryByRole('link', { name: /Execution Environments/i }),
+      screen.queryByRole('link', { name: /Execution Env./i }),
     ).not.toBeInTheDocument();
     expect(container.firstChild).toBeNull();
   });
@@ -223,7 +223,7 @@ describe('EEBuilderSidebarItem', () => {
       </TestApiProvider>,
     );
 
-    const link = screen.getByRole('link', { name: /Execution Environments/i });
+    const link = screen.getByRole('link', { name: /Execution Env./i });
     expect(link).toBeInTheDocument();
     expect(link).toHaveAttribute('href', '/self-service/ee');
   });

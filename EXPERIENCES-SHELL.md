@@ -45,7 +45,7 @@ Not eng SoT until ADRs on `ansible-rhdh-plugins` `main`. Mirror: `.cursor/rules/
   - **A — Automate experience + rail:** Automate stays on Bridge; side rail; all experiences use sibling **Templates · Runs** with `SidebarDivider`.
   - **B — No Automate; masthead + tabs:** Automate experience removed; masthead **+** = Templates \| Runs tabs; Develop/Compliance/Edge get one **Automate** rail item + page tabs.
 - **Experience Settings omitted** from Automate / Develop / Compliance / Edge rails until real personal prefs exist (prototype page route may remain; not in nav). Sync schedule → Administration; Sync now → object action.
-- **Develop objects:** Git Repositories · Collections · Execution Environments. APME = Quality on repos (Class B).
+- **Develop objects:** Git Repositories · Collections · **Execution Env.** (rail; page title stays Execution Environments). APME = Quality on repos (Class B) in **tabs** / **drawer**. **Develop (quality)** is a third compare: **Content quality** pin after Git Repositories, then a quiet gap before Collections / EEs (Overview = current work queue · Scans = history) — exploration only, not factory default. **No truncated rail labels** (`portal-rail-labels.mdc`).
 - **Compliance object:** Inventories only. Profiles / Scans = host tabs — not rail, not Settings.
 - **Learn (Develop / Compliance / Edge):** after Class A objects — quiet divider, then **Documentation** + **Learning Paths** (no “Learn” rail label). Not on Automate or Admin.
 - **Automate = rail-less marketplace** — page tabs **Templates | Activity** only (Catalog dropped). Multi-seat: **Back to Experiences**. SME: no Back on Automate; Search → **Back to Automate**.
@@ -57,6 +57,7 @@ Not eng SoT until ADRs on `ansible-rhdh-plugins` `main`. Mirror: `.cursor/rules/
 ### Open
 
 - **Remediations** placement; Massimo **dynamic profile tabs**
+- Develop APME compare: **tabs** vs **drawer** vs **Content quality rail** (`develop-apme` — Overview · Scans; Start/Resume opens ephemeral Brad-style Scan → Complete session at `/apme/remediate/:repo`; no Remediations tab). **Findings** tab parked (`SHOW_CONTENT_QUALITY_FINDINGS_TAB = false`)
 - When experience **Settings** returns
 - **Resources** rail header for Class A only? (Taufique Aug 13 meeting OK — conflicts with “no section labels” quiet lock; decide next)
 - Nested experience nav pattern (PF drawer) for future plugins
@@ -76,6 +77,7 @@ Not eng SoT until ADRs on `ansible-rhdh-plugins` `main`. Mirror: `.cursor/rules/
 
 Waffle masthead try = parked (`SHOW_EXPERIENCES_WAFFLE = false`).
 Admin Sync compare bar = parked (`FORCED_ADMIN_SYNC_IA = 'opt1'`; set `null` + restore `ADMIN_SYNC_IA_BAR_HEIGHT = 36` to revive).
+Content quality **Findings** tab = parked (`SHOW_CONTENT_QUALITY_FINDINGS_TAB = false` in `plugins/self-service/.../quality/contentQualityIa.ts`; set `true` to revive by-rule rollup). Route `/apme/findings` + `QualityDashboardTabContent` kept.
 
 
 ## Git

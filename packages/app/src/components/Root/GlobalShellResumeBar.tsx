@@ -28,6 +28,7 @@ const EXPERIENCE_RESUME: Record<
   automate: '/create?scope=experience',
   'develop-tabs': '/self-service/repositories/list',
   'develop-drawer': '/self-service/repositories/list',
+  'develop-apme': '/self-service/apme',
   compliance: '/self-service/experience-dashboard',
   edge: '/self-service/experience-dashboard',
   admin: '/self-service/admin/overview',
@@ -102,6 +103,7 @@ function readStoredExperience(): NavExperience {
       raw === 'automate' ||
       raw === 'develop-tabs' ||
       raw === 'develop-drawer' ||
+      raw === 'develop-apme' ||
       raw === 'compliance' ||
       raw === 'edge' ||
       raw === 'admin' ||

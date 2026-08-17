@@ -192,8 +192,8 @@ export const QualityOverviewContent = () => {
         </Typography>
         <Typography style={{ fontSize: 13, color: theme.palette.text.secondary }}>
           {hasFilter
-            ? `of ${fleet.totalViolations} violations · ${sortedRules.length} rule${sortedRules.length !== 1 ? 's' : ''} · ${fleet.reposWithIssues} repositories`
-            : `violations · ${allRules.length} rules · ${fleet.reposWithIssues} repositories`
+            ? `of ${fleet.totalViolations} findings · ${sortedRules.length} rule${sortedRules.length !== 1 ? 's' : ''} · ${fleet.reposWithIssues} repositories`
+            : `findings · ${allRules.length} rules · ${fleet.reposWithIssues} repositories`
           }
           {reposClean > 0 && !hasFilter && (
             <span style={{ marginLeft: 6 }}>
@@ -237,7 +237,7 @@ export const QualityOverviewContent = () => {
       {hasFilter && (
         <Box display="flex" alignItems="center" style={{ marginBottom: 12, gap: 8 }}>
           <Typography style={{ fontSize: 12, color: theme.palette.text.secondary }}>
-            Showing {filteredViolationCount} of {fleet.totalViolations} violations
+            Showing {filteredViolationCount} of {fleet.totalViolations} findings
           </Typography>
           {Array.from(categoryFilters).map(cat => (
             <Chip key={cat} size="small" label={CATEGORY_LABELS[cat]}
