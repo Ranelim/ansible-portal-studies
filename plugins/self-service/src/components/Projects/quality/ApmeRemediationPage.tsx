@@ -463,7 +463,7 @@ export const ApmeRemediationPage = () => {
   );
 
   useEffect(() => {
-    if (experience !== 'develop-apme') {
+    if (experience === 'develop-tabs' || experience === 'develop-drawer') {
       navigate(
         `/self-service/repositories/${encodeURIComponent(repoName)}?tab=quality`,
         { replace: true },

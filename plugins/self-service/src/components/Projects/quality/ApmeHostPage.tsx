@@ -373,7 +373,7 @@ const ApmeOverview = () => {
     <Box>
       <Typography className={classes.hint}>
         Current quality cycle per repository. Start or resume remediation here.
-        Scans is scan history.
+        Scans lists recent scans.
       </Typography>
       <Box className={classes.kpis}>
         <Box
@@ -467,7 +467,7 @@ const ApmeOverview = () => {
 
 /**
  * Exploration only — Content quality pin (compare vs host tabs).
- * Overview = current-cycle work queue. Scans = history.
+ * Overview = current-cycle work queue. Scans = recent scans.
  * Findings (by-rule) parked — SHOW_CONTENT_QUALITY_FINDINGS_TAB.
  */
 export const ApmeHostPage = () => {
@@ -504,7 +504,7 @@ export const ApmeHostPage = () => {
             <PageHelpIcon
               tooltipLabel="What is content quality?"
               title="What is content quality?"
-              description="Scans Ansible content in your git repositories for policy, quality, secrets, and modernization findings. Overview is the current work queue. Scans is scan history. Open a repository to review detail and run a remediation session."
+              description="Scans Ansible content in your git repositories for policy, quality, secrets, and modernization findings. Overview is the current work queue. Scans lists recent scans. Open a repository to review detail and run a remediation session."
             />
           </Box>
         }
