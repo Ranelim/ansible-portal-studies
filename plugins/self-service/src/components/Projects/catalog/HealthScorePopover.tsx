@@ -11,6 +11,7 @@ import {
 } from '@material-ui/core';
 import { fade } from '@material-ui/core/styles';
 import CloseIcon from '@material-ui/icons/Close';
+import InfoOutlinedIcon from '@material-ui/icons/InfoOutlined';
 import { statusColors } from '../../common/statusColors';
 import {
   type SeverityClass,
@@ -21,7 +22,7 @@ import {
   getProjectQuality,
 } from '../detail/qualityDemoData';
 
-const SEVERITY_ORDER: SeverityClass[] = [
+export const SEVERITY_ORDER: SeverityClass[] = [
   'critical',
   'high',
   'medium',
@@ -29,7 +30,7 @@ const SEVERITY_ORDER: SeverityClass[] = [
   'info',
 ];
 
-const SEVERITY_LABEL: Record<SeverityClass, string> = {
+export const SEVERITY_LABEL: Record<SeverityClass, string> = {
   critical: 'Critical',
   high: 'High',
   medium: 'Medium',
@@ -47,7 +48,7 @@ const NODE_KIND_LABEL: Record<QualityViolation['scope'], string> = {
   inventory: 'Inventory',
 };
 
-const REMEDIATION_STATUS_LABEL: Record<RemediationStatus, string> = {
+export const REMEDIATION_STATUS_LABEL: Record<RemediationStatus, string> = {
   none: 'not started',
   available: 'not started',
   'in-progress': 'in progress',
@@ -55,6 +56,10 @@ const REMEDIATION_STATUS_LABEL: Record<RemediationStatus, string> = {
   'pr-open': 'pull request open',
   'pr-merged': 'pull request merged',
 };
+
+/** Idle = default. Only surface status when work has started. */
+export const remediationHasStarted = (status: RemediationStatus) =>
+  status !== 'none' && status !== 'available';
 
 type NodeHit = {
   key: string;
@@ -102,15 +107,17 @@ export const healthColor = (score: number): string => {
 
 const shortSha = (sha: string) => (sha.length > 7 ? sha.slice(0, 7) : sha);
 
-/** Colored score with muted /100 — scale without implying a percentage. */
+/** Colored score. `/100` is for display numbers (Overview, popover) — omit in the list. */
 export function QualityScoreMark({
   score,
   fontSize = 16,
   denomSize,
+  showDenom = true,
 }: {
   score: number;
   fontSize?: number;
   denomSize?: number;
+  showDenom?: boolean;
 }) {
   return (
     <span
@@ -132,17 +139,19 @@ export function QualityScoreMark({
       >
         {score}
       </Typography>
-      <Typography
-        component="span"
-        color="textSecondary"
-        style={{
-          fontSize: denomSize ?? Math.max(11, Math.round(fontSize * 0.7)),
-          fontWeight: 500,
-          lineHeight: 1.2,
-        }}
-      >
-        /100
-      </Typography>
+      {showDenom && (
+        <Typography
+          component="span"
+          color="textSecondary"
+          style={{
+            fontSize: denomSize ?? Math.max(11, Math.round(fontSize * 0.7)),
+            fontWeight: 500,
+            lineHeight: 1.2,
+          }}
+        >
+          /100
+        </Typography>
+      )}
     </span>
   );
 }
@@ -163,7 +172,7 @@ const useStyles = makeStyles(theme => ({
   },
   clickTarget: {
     display: 'inline-flex',
-    alignItems: 'center',
+    alignItems: 'baseline',
     cursor: 'pointer',
     borderRadius: 4,
     padding: '2px 6px',
@@ -175,6 +184,56 @@ const useStyles = makeStyles(theme => ({
     '&:hover, &:focus': {
       backgroundColor: theme.palette.action.hover,
       outline: 'none',
+    },
+    '&:hover $openHint, &:focus $openHint': {
+      textDecoration: 'underline',
+    },
+    '&:hover $openIcon, &:focus $openIcon': {
+      color: theme.palette.text.secondary,
+    },
+  },
+  clickTargetStack: {
+    display: 'flex',
+    width: '100%',
+    maxWidth: '100%',
+    minWidth: 0,
+    boxSizing: 'border-box',
+    alignItems: 'baseline',
+    gap: 8,
+    flexWrap: 'nowrap',
+    overflow: 'hidden',
+    containerType: 'inline-size',
+  },
+  scoreLock: {
+    flexShrink: 0,
+  },
+  /** Quiet text control — same idea as MUI text button, grey 12px. */
+  openHint: {
+    fontSize: 12,
+    fontWeight: 400,
+    color: theme.palette.text.secondary,
+    marginLeft: 10,
+    whiteSpace: 'nowrap',
+    lineHeight: 1.2,
+    textDecoration: 'none',
+  },
+  openIcon: {
+    fontSize: 16,
+    color: theme.palette.action.disabled,
+    marginLeft: 6,
+    alignSelf: 'center',
+  },
+  cellMeta: {
+    fontSize: 12,
+    fontWeight: 400,
+    color: theme.palette.text.secondary,
+    lineHeight: 1.4,
+    textAlign: 'left',
+    whiteSpace: 'nowrap',
+    minWidth: 0,
+    overflow: 'hidden',
+    '@container (max-width: 12rem)': {
+      display: 'none',
     },
   },
   findings: {
@@ -234,10 +293,43 @@ const useStyles = makeStyles(theme => ({
   },
 }));
 
+/** Contrast-safe severity count — tint + border, same ink on every hue. */
+export function SeverityCountBadge({
+  severity,
+  count,
+}: {
+  severity: SeverityClass;
+  count: number;
+}) {
+  const classes = useStyles();
+  const theme = useTheme();
+  return (
+    <span
+      className={classes.sevCount}
+      style={{
+        backgroundColor: fade(
+          SEVERITY_COLORS[severity],
+          theme.palette.type === 'dark' ? 0.28 : 0.16,
+        ),
+        borderColor: SEVERITY_COLORS[severity],
+      }}
+      aria-label={`${count} ${SEVERITY_LABEL[severity].toLowerCase()} finding${count === 1 ? '' : 's'}`}
+    >
+      {count}
+    </span>
+  );
+}
+
 interface HealthScorePopoverProps {
   repoName: string;
   quality?: ProjectQualityData | null;
   fontSize?: number;
+  denomSize?: number;
+  /** Quiet grey text next to a display score (Overview). */
+  openHint?: string;
+  showOpenIcon?: boolean;
+  /** List cell: hide /100 and show findings · time · SHA under the score. */
+  showScanMeta?: boolean;
   scanning?: boolean;
   onViewLastScan?: () => void;
   onRemediate?: () => void;
@@ -248,6 +340,10 @@ export const HealthScorePopover = ({
   repoName,
   quality: qualityProp,
   fontSize = 16,
+  denomSize,
+  openHint,
+  showOpenIcon = false,
+  showScanMeta = false,
   scanning = false,
   onViewLastScan,
   onRemediate,
@@ -293,23 +389,44 @@ export const HealthScorePopover = ({
   const presentSev = SEVERITY_ORDER.filter(sev => (severityBreakdown[sev] ?? 0) > 0);
   const sha = lastScannedCommit ? shortSha(lastScannedCommit) : null;
   const findings = quality.violations ?? [];
-  const remediateLabel = live
-    ? 'Resume remediation'
-    : quality.remediationStatus === 'available'
-      ? 'Remediate'
-      : null;
+  const remediateLabel = live ? 'Resume remediation' : null;
+  const showRemediation = remediationHasStarted(quality.remediationStatus);
 
   return (
     <>
       <button
         type="button"
-        className={classes.clickTarget}
+        className={`${classes.clickTarget}${showScanMeta ? ` ${classes.clickTargetStack}` : ''}`}
         onClick={handleOpen}
         aria-haspopup="dialog"
         aria-expanded={Boolean(anchorEl)}
-        aria-label={`Quality score ${healthScore} out of 100. Higher is better. Open scan details.`}
+        aria-label={`Quality score ${healthScore} out of 100. Higher is better. Open findings.`}
       >
-        <QualityScoreMark score={healthScore} fontSize={fontSize} />
+        <span className={classes.scoreLock}>
+          <QualityScoreMark
+            score={healthScore}
+            fontSize={fontSize}
+            denomSize={denomSize}
+            showDenom={!showScanMeta}
+          />
+        </span>
+        {openHint && <span className={classes.openHint}>{openHint}</span>}
+        {showOpenIcon && (
+          <InfoOutlinedIcon className={classes.openIcon} aria-hidden />
+        )}
+        {showScanMeta && (
+          <span className={classes.cellMeta}>
+            {totalViolations === 0 ? 'No findings' : `${totalViolations} findings`}
+            {' · '}
+            {lastScannedAt}
+            {sha && (
+              <>
+                {' · '}
+                <span style={{ fontFamily: 'monospace' }}>{sha}</span>
+              </>
+            )}
+          </span>
+        )}
       </button>
       <Popover
         open={Boolean(anchorEl)}
@@ -338,9 +455,11 @@ export const HealthScorePopover = ({
                 </>
               )}
             </Typography>
-            <Typography className={classes.meta}>
-              Remediation: {REMEDIATION_STATUS_LABEL[quality.remediationStatus]}
-            </Typography>
+            {showRemediation && (
+              <Typography className={classes.meta}>
+                Remediation: {REMEDIATION_STATUS_LABEL[quality.remediationStatus]}
+              </Typography>
+            )}
             <Typography style={{ fontSize: 11, color: theme.palette.text.disabled, marginTop: 2, lineHeight: 1.45 }}>
               0–100, higher is better. Rollup of finding severities from this scan.
             </Typography>
@@ -354,19 +473,7 @@ export const HealthScorePopover = ({
                 return (
                   <Box key={sev}>
                     <Box className={classes.sevRow}>
-                      <span
-                        className={classes.sevCount}
-                        style={{
-                          backgroundColor: fade(
-                            SEVERITY_COLORS[sev],
-                            theme.palette.type === 'dark' ? 0.28 : 0.16,
-                          ),
-                          borderColor: SEVERITY_COLORS[sev],
-                        }}
-                        aria-label={`${count} ${SEVERITY_LABEL[sev].toLowerCase()} finding${count === 1 ? '' : 's'}`}
-                      >
-                        {count}
-                      </span>
+                      <SeverityCountBadge severity={sev} count={count} />
                       <Typography style={{ fontSize: 13, fontWeight: 600 }}>
                         {SEVERITY_LABEL[sev]}
                       </Typography>

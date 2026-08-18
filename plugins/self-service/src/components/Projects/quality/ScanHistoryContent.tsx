@@ -1,19 +1,20 @@
-import { useMemo, useCallback, useState, useEffect, useRef, type ReactNode } from 'react';
+import { useMemo, useCallback, useState } from 'react';
 import {
   Box,
   Button,
   Chip,
-  Drawer,
+  Collapse,
   FormControl,
-  IconButton,
   InputLabel,
+  Link,
   MenuItem,
   Select,
   Tooltip,
   Typography,
   makeStyles,
 } from '@material-ui/core';
-import CloseIcon from '@material-ui/icons/Close';
+import ArrowBack from '@material-ui/icons/ArrowBack';
+import ChevronRight from '@material-ui/icons/ChevronRight';
 import { Table, TableColumn } from '@backstage/core-components';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
@@ -25,7 +26,8 @@ import {
   type SeverityClass,
 } from '../detail/qualityDemoData';
 import { GIT_REPOSITORIES } from '../catalog/unifiedDemoData';
-import { CommitSha } from './CommitSha';
+import { CommitSha, shortSha } from './CommitSha';
+import { snippetForFinding } from './findingCodeContext';
 
 type GlobalScanRow = ScanResult & {
   repoName: string;
@@ -41,6 +43,54 @@ const SEV_ORDER: SeverityClass[] = [
   'low',
   'info',
 ];
+
+const SEV_LABELS: Record<SeverityClass, string> = {
+  critical: 'Critical',
+  high: 'High',
+  medium: 'Medium',
+  low: 'Low',
+  info: 'Info',
+};
+
+const SEV_TIPS: Record<SeverityClass, string> = {
+  critical: 'Critical — Must fix before deployment',
+  high: 'High — Should fix soon',
+  medium: 'Medium — Recommended improvement',
+  low: 'Low — Optional enhancement',
+  info: 'Info — No action required',
+};
+
+type FindingKind = QualityViolation['scope'];
+
+const KIND_ORDER: FindingKind[] = [
+  'task',
+  'block',
+  'play',
+  'playbook',
+  'role',
+  'collection',
+  'inventory',
+];
+
+const KIND_LABELS: Record<FindingKind, string> = {
+  task: 'Task',
+  block: 'Block',
+  play: 'Play',
+  playbook: 'Playbook',
+  role: 'Role',
+  collection: 'Collection',
+  inventory: 'Inventory',
+};
+
+function findingKey(item: QualityViolation): string {
+  return `${item.ruleId}-${item.file}-${item.lineStart}`;
+}
+
+const pill = {
+  textTransform: 'none' as const,
+  fontWeight: 600,
+  borderRadius: 20,
+};
 
 const useStyles = makeStyles(theme => ({
   heading: {
@@ -74,9 +124,7 @@ const useStyles = makeStyles(theme => ({
     },
   },
   actionBtn: {
-    textTransform: 'none',
-    fontWeight: 600,
-    borderRadius: 20,
+    ...pill,
   },
   findingsCell: {
     display: 'flex',
@@ -89,34 +137,190 @@ const useStyles = makeStyles(theme => ({
     height: 6,
     borderRadius: 3,
     overflow: 'hidden',
-    width: 96,
     backgroundColor:
       theme.palette.type === 'dark'
         ? 'rgba(255,255,255,0.08)'
         : 'rgba(0,0,0,0.06)',
   },
-  drawerPaper: {
-    width: 520,
-    maxWidth: '100%',
+  barCompact: {
+    width: 96,
   },
-  drawerInner: {
-    padding: theme.spacing(3),
+  barFull: {
+    width: '100%',
+    marginTop: theme.spacing(1.5),
+  },
+  barSegment: {
+    minWidth: 4,
     height: '100%',
+  },
+  sevRow: {
     display: 'flex',
     flexDirection: 'column',
+    alignItems: 'flex-start',
+    gap: theme.spacing(2),
+    marginTop: theme.spacing(1),
+    marginBottom: theme.spacing(1),
   },
-  drawerClose: {
-    position: 'absolute',
-    top: theme.spacing(1),
-    right: theme.spacing(1),
+  sevChips: {
+    display: 'flex',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: theme.spacing(1),
+  },
+  kindControls: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: theme.spacing(1),
+    paddingTop: theme.spacing(0.5),
+    paddingBottom: theme.spacing(2),
+  },
+  expandBox: {
+    minWidth: 40,
+    width: 40,
+    height: 40,
+    padding: 0,
+    borderRadius: 4,
+    textTransform: 'none',
+    color: theme.palette.text.secondary,
+  },
+  kindSelect: {
+    minWidth: 168,
+  },
+  sevChip: {
+    height: 28,
+    fontSize: 12,
+    fontWeight: 600,
+    borderRadius: 16,
+    backgroundColor: 'transparent',
+    '&:hover': {
+      backgroundColor:
+        theme.palette.type === 'dark'
+          ? 'rgba(255,255,255,0.06)'
+          : 'rgba(0,0,0,0.04)',
+    },
+  },
+  backButton: {
+    textTransform: 'none',
+    fontWeight: 500,
+    fontSize: 14,
+    color: theme.palette.text.secondary,
+    padding: '4px 10px',
+    marginLeft: -8,
+    marginBottom: theme.spacing(1),
+    minWidth: 0,
+    borderRadius: 16,
+    '& .MuiButton-startIcon': {
+      marginRight: 6,
+    },
+    '&:hover': {
+      backgroundColor: theme.palette.action.hover,
+      color: theme.palette.text.primary,
+    },
+  },
+  headerRow: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: theme.spacing(2),
+    marginBottom: theme.spacing(0.5),
+  },
+  detailTitle: {
+    fontWeight: 600,
+    fontSize: 20,
+    lineHeight: 1.3,
+    cursor: 'pointer',
+    '&:hover': {
+      color: theme.palette.primary.main,
+    },
+  },
+  meta: {
+    fontSize: 13,
+    color: theme.palette.text.secondary,
+    display: 'flex',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: theme.spacing(0.75),
+  },
+  metaDot: {
+    color: theme.palette.text.disabled,
+  },
+  metaFindings: {
+    fontWeight: 500,
   },
   findingRow: {
-    display: 'grid',
-    gridTemplateColumns: '88px 1fr',
+    borderBottom: `1px solid ${theme.palette.divider}`,
+  },
+  findingHeader: {
+    display: 'flex',
+    alignItems: 'flex-start',
     gap: theme.spacing(1),
     padding: theme.spacing(1, 0),
-    borderBottom: `1px solid ${theme.palette.divider}`,
+    cursor: 'pointer',
+    '&:hover': {
+      backgroundColor: theme.palette.action.hover,
+    },
+  },
+  chevron: {
+    fontSize: 18,
+    color: theme.palette.text.secondary,
+    marginTop: 2,
+    flexShrink: 0,
+    transition: 'transform 0.15s ease',
+  },
+  chevronOpen: {
+    transform: 'rotate(90deg)',
+  },
+  findingBody: {
+    minWidth: 0,
+    flex: 1,
+  },
+  findingPreview: {
+    padding: theme.spacing(0, 0, 1.5, 4.5),
+    display: 'flex',
+    flexDirection: 'column',
+    gap: theme.spacing(1),
+  },
+  findingDesc: {
     fontSize: 13,
+    lineHeight: 1.5,
+    color: theme.palette.text.secondary,
+  },
+  ruleId: {
+    fontSize: 11,
+    fontFamily: "'SF Mono', 'Fira Code', 'Consolas', monospace",
+    color: theme.palette.text.disabled,
+  },
+  codeContext: {
+    borderRadius: 4,
+    overflow: 'hidden',
+    border: `1px solid ${theme.palette.divider}`,
+    fontFamily: "'SF Mono', 'Fira Code', 'Consolas', monospace",
+    fontSize: 12,
+    lineHeight: 1.6,
+    backgroundColor:
+      theme.palette.type === 'dark' ? 'rgba(255,255,255,0.03)' : '#fafafa',
+  },
+  codeLine: {
+    display: 'flex',
+    padding: '0 12px',
+  },
+  codeLineError: {
+    backgroundColor:
+      theme.palette.type === 'dark' ? 'rgba(201,25,11,0.12)' : '#ffeaea',
+    borderLeft: `3px solid ${SEVERITY_COLORS.high}`,
+    paddingLeft: 9,
+  },
+  codeLineNum: {
+    width: 36,
+    textAlign: 'right' as const,
+    color: theme.palette.text.disabled,
+    userSelect: 'none' as const,
+    paddingRight: 12,
+    flexShrink: 0,
+  },
+  codeLineText: {
+    whiteSpace: 'pre' as const,
+    color: theme.palette.text.primary,
   },
 }));
 
@@ -149,165 +353,192 @@ function severityTooltip(breakdown: Record<SeverityClass, number>): string {
   return parts.join(' · ') || 'No findings';
 }
 
+function liveSession(status: RemediationStatus | undefined): boolean {
+  return status === 'in-progress' || status === 'proposals-ready';
+}
+
 function FindingsBar({
   breakdown,
   classes,
+  fullWidth = false,
+  activeSeverities,
+  onSegmentClick,
 }: {
   breakdown: Record<SeverityClass, number>;
   classes: ReturnType<typeof useStyles>;
+  fullWidth?: boolean;
+  activeSeverities?: Set<SeverityClass>;
+  onSegmentClick?: (sev: SeverityClass) => void;
 }) {
-  const total = SEV_ORDER.reduce((sum, sev) => sum + breakdown[sev], 0);
+  const total = SEV_ORDER.reduce((sum, sev) => sum + (breakdown[sev] ?? 0), 0);
   if (total === 0) return null;
+  const anyActive = (activeSeverities?.size ?? 0) > 0;
   return (
-    <Box className={classes.bar} aria-hidden>
+    <Box
+      className={`${classes.bar} ${fullWidth ? classes.barFull : classes.barCompact}`}
+      role={onSegmentClick ? 'group' : undefined}
+      aria-label={onSegmentClick ? 'Filter findings by severity' : undefined}
+    >
       {SEV_ORDER.map(sev => {
         const count = breakdown[sev];
         if (count === 0) return null;
-        return (
+        const isActive = activeSeverities?.has(sev) ?? false;
+        const segment = (
           <Box
-            key={sev}
+            className={classes.barSegment}
+            role={onSegmentClick ? 'button' : undefined}
+            tabIndex={onSegmentClick ? 0 : undefined}
+            aria-label={
+              onSegmentClick
+                ? `${SEV_LABELS[sev]} ${count}, ${isActive ? 'selected' : 'not selected'}`
+                : undefined
+            }
+            onClick={onSegmentClick ? () => onSegmentClick(sev) : undefined}
+            onKeyDown={
+              onSegmentClick
+                ? e => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      onSegmentClick(sev);
+                    }
+                  }
+                : undefined
+            }
             style={{
-              width: `${(count / total) * 100}%`,
+              width: '100%',
+              height: '100%',
               backgroundColor: SEVERITY_COLORS[sev],
+              cursor: onSegmentClick ? 'pointer' : 'default',
+              opacity: anyActive && !isActive ? 0.35 : 1,
             }}
           />
+        );
+        return (
+          <Box key={sev} style={{ flex: count, minWidth: 4, height: '100%' }}>
+            {fullWidth ? (
+              <Tooltip
+                title={`${SEV_TIPS[sev]}. ${count} finding${count !== 1 ? 's' : ''}. Click to ${
+                  isActive ? 'remove' : 'add'
+                } filter.`}
+                arrow
+              >
+                {segment}
+              </Tooltip>
+            ) : (
+              segment
+            )}
+          </Box>
         );
       })}
     </Box>
   );
 }
 
-function ScanSnapshotDrawer({
-  row,
-  onClose,
-  onOpenRepo,
-  action,
+function SeverityFilterRow({
+  breakdown,
+  active,
+  onToggle,
+  kind,
+  kindOptions,
+  onKindChange,
+  canExpand,
+  allExpanded,
+  onToggleAll,
+  classes,
 }: {
-  row: GlobalScanRow | null;
-  onClose: () => void;
-  onOpenRepo: (name: string) => void;
-  action: ReactNode;
+  breakdown: Record<SeverityClass, number>;
+  active: Set<SeverityClass>;
+  onToggle: (sev: SeverityClass) => void;
+  kind: FindingKind | 'all';
+  kindOptions: { kind: FindingKind; count: number }[];
+  onKindChange: (kind: FindingKind | 'all') => void;
+  canExpand?: boolean;
+  allExpanded?: boolean;
+  onToggleAll?: () => void;
+  classes: ReturnType<typeof useStyles>;
 }) {
-  const classes = useStyles();
-  const quality = row ? getProjectQuality(row.repoName) : undefined;
-  const findings: QualityViolation[] =
-    row?.isLatest && quality ? quality.violations : [];
-
+  const present = SEV_ORDER.filter(sev => (breakdown[sev] ?? 0) > 0);
+  const showKind = kindOptions.length >= 2;
+  if (present.length === 0 && !showKind && !canExpand) return null;
+  const anyActive = active.size > 0;
   return (
-    <Drawer
-      anchor="right"
-      open={Boolean(row)}
-      onClose={onClose}
-      PaperProps={{ className: classes.drawerPaper }}
-    >
-      {row && (
-        <Box className={classes.drawerInner} style={{ position: 'relative' }}>
-          <IconButton
-            aria-label="Close"
-            className={classes.drawerClose}
-            onClick={onClose}
-          >
-            <CloseIcon />
-          </IconButton>
-          <Typography variant="h6" style={{ fontWeight: 600, paddingRight: 36 }}>
-            Scan
-          </Typography>
-          <Typography
-            className={classes.repoLink}
-            style={{ marginTop: 4, display: 'inline-block' }}
-            onClick={() => onOpenRepo(row.repoName)}
-          >
-            {row.org}/{row.repoName}
-          </Typography>
-          <Box display="flex" alignItems="center" style={{ gap: 8, marginTop: 8 }}>
-            <Typography variant="body2" color="textSecondary">
-              {row.createdAt}
-            </Typography>
-            <ScanStateChip current={row.isLatest} />
-          </Box>
-          <Box mt={2} mb={2}>
-            <Typography style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
-              {row.totalViolations === 0
-                ? 'No findings'
-                : `${row.totalViolations} finding${
-                    row.totalViolations !== 1 ? 's' : ''
-                  }`}
-            </Typography>
-            <Tooltip title={severityTooltip(row.severityBreakdown)} arrow>
+    <Box className={classes.sevRow}>
+      <Box className={classes.sevChips}>
+        {present.map(sev => {
+          const count = breakdown[sev];
+          const isActive = active.has(sev);
+          return (
+            <Tooltip
+              key={sev}
+              title={`${SEV_TIPS[sev]}. Click to ${isActive ? 'remove' : 'add'} filter.`}
+              arrow
+            >
               <span>
-                <FindingsBar breakdown={row.severityBreakdown} classes={classes} />
+                <Chip
+                  size="small"
+                  variant="outlined"
+                  clickable
+                  label={`${SEV_LABELS[sev]} (${count})`}
+                  onClick={() => onToggle(sev)}
+                  aria-pressed={isActive}
+                  className={classes.sevChip}
+                  style={{
+                    borderColor: SEVERITY_COLORS[sev],
+                    color: SEVERITY_COLORS[sev],
+                    backgroundColor: isActive ? `${SEVERITY_COLORS[sev]}18` : 'transparent',
+                    opacity: anyActive && !isActive ? 0.4 : 1,
+                  }}
+                />
               </span>
             </Tooltip>
-            <Typography
-              variant="body2"
-              color="textSecondary"
-              style={{ fontSize: 12, marginTop: 8 }}
-            >
-              Commit {row.commitHash.slice(0, 7)}
-            </Typography>
-          </Box>
-          {!row.isLatest ? (
-            <Typography
-              variant="body2"
-              color="textSecondary"
-              style={{ fontSize: 13, marginBottom: 16 }}
-            >
-              A later scan replaced this snapshot. It is superseded.
-            </Typography>
-          ) : !row.isAvailable ? (
-            <Typography
-              variant="body2"
-              color="textSecondary"
-              style={{ fontSize: 13, marginBottom: 16 }}
-            >
-              No live remediation on this scan. Start a scan from Remediations.
-            </Typography>
-          ) : null}
-          <Box style={{ flex: 1, overflow: 'auto' }}>
-            {findings.length > 0 ? (
-              findings.map(item => (
-                <Box
-                  key={`${item.ruleId}-${item.file}-${item.lineStart}`}
-                  className={classes.findingRow}
+          );
+        })}
+      </Box>
+      {(showKind || canExpand) && (
+        <Box className={classes.kindControls}>
+            {canExpand && onToggleAll && (
+              <Tooltip
+                title={allExpanded ? 'Collapse all' : 'Expand all'}
+                arrow
+              >
+                <Button
+                  variant="outlined"
+                  className={classes.expandBox}
+                  onClick={onToggleAll}
+                  aria-label={allExpanded ? 'Collapse all' : 'Expand all'}
+                  aria-pressed={allExpanded}
                 >
-                  <Chip
-                    size="small"
-                    label={item.severity}
-                    style={{
-                      height: 20,
-                      fontSize: 11,
-                      fontWeight: 600,
-                      textTransform: 'capitalize',
-                      backgroundColor: `${SEVERITY_COLORS[item.severity]}22`,
-                      color: SEVERITY_COLORS[item.severity],
-                    }}
+                  <ChevronRight
+                    className={`${classes.chevron}${
+                      allExpanded ? ` ${classes.chevronOpen}` : ''
+                    }`}
+                    style={{ marginTop: 0 }}
                   />
-                  <Box>
-                    <Typography style={{ fontSize: 13 }}>{item.message}</Typography>
-                    <Typography
-                      style={{ fontSize: 12, fontFamily: 'monospace' }}
-                      color="textSecondary"
-                    >
-                      {item.file}:{item.lineStart}
-                    </Typography>
-                  </Box>
-                </Box>
-              ))
-            ) : row.totalViolations > 0 && !row.isLatest ? (
-              <Typography variant="body2" color="textSecondary" style={{ fontSize: 13 }}>
-                Issue list is available on the latest scan.
-              </Typography>
-            ) : null}
+                </Button>
+              </Tooltip>
+            )}
+            {showKind && (
+              <FormControl variant="outlined" size="small" className={classes.kindSelect}>
+                <InputLabel id="scan-kind-filter-label">Kind</InputLabel>
+                <Select
+                  labelId="scan-kind-filter-label"
+                  label="Kind"
+                  value={kind}
+                  onChange={e => onKindChange(e.target.value as FindingKind | 'all')}
+                >
+                  <MenuItem value="all">All kinds</MenuItem>
+                  {kindOptions.map(opt => (
+                    <MenuItem key={opt.kind} value={opt.kind}>
+                      {KIND_LABELS[opt.kind]} ({opt.count})
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            )}
           </Box>
-          <Box mt={2}>{action}</Box>
-        </Box>
       )}
-    </Drawer>
+    </Box>
   );
-}
-
-function liveSession(status: RemediationStatus | undefined): boolean {
-  return status === 'in-progress' || status === 'proposals-ready';
 }
 
 function ScanStateChip({ current }: { current: boolean }) {
@@ -342,15 +573,314 @@ function ScanStateChip({ current }: { current: boolean }) {
   );
 }
 
+function FindingPreviewRow({
+  item,
+  expanded,
+  onToggle,
+  classes,
+}: {
+  item: QualityViolation;
+  expanded: boolean;
+  onToggle: () => void;
+  classes: ReturnType<typeof useStyles>;
+}) {
+  const snippet = snippetForFinding(item);
+  const description = snippet?.detail || item.ruleDescription;
+
+  return (
+    <Box className={classes.findingRow}>
+      <Box
+        className={classes.findingHeader}
+        role="button"
+        tabIndex={0}
+        aria-expanded={expanded}
+        onClick={onToggle}
+        onKeyDown={e => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onToggle();
+          }
+        }}
+      >
+        <ChevronRight
+          className={`${classes.chevron}${expanded ? ` ${classes.chevronOpen}` : ''}`}
+        />
+        <Chip
+          size="small"
+          label={item.severity}
+          style={{
+            height: 20,
+            fontSize: 11,
+            fontWeight: 600,
+            textTransform: 'capitalize',
+            marginTop: 1,
+            backgroundColor: `${SEVERITY_COLORS[item.severity]}22`,
+            color: SEVERITY_COLORS[item.severity],
+          }}
+        />
+        <Box className={classes.findingBody}>
+          <Typography style={{ fontSize: 13 }}>{item.message}</Typography>
+          <Typography
+            style={{ fontSize: 12, fontFamily: 'monospace' }}
+            color="textSecondary"
+          >
+            {item.file}:{item.lineStart}
+          </Typography>
+        </Box>
+      </Box>
+      <Collapse in={expanded}>
+        <Box className={classes.findingPreview}>
+          {description ? (
+            <Typography className={classes.findingDesc}>{description}</Typography>
+          ) : null}
+          {snippet ? (
+            <Box className={classes.codeContext} aria-label="Code excerpt">
+              {snippet.lines.map((line, i) => (
+                <Box
+                  key={`${line.num}-${i}`}
+                  className={`${classes.codeLine}${
+                    line.highlighted ? ` ${classes.codeLineError}` : ''
+                  }`}
+                >
+                  <span className={classes.codeLineNum}>{line.num}</span>
+                  <span className={classes.codeLineText}>{line.text}</span>
+                </Box>
+              ))}
+            </Box>
+          ) : null}
+          <Typography className={classes.ruleId}>
+            {item.ruleId}
+          </Typography>
+        </Box>
+      </Collapse>
+    </Box>
+  );
+}
+
+function ScanSnapshotDetail({
+  row,
+  currentScanId,
+  onBack,
+  onOpenRepo,
+  onViewCurrent,
+  onRemediate,
+  onResume,
+  onViewPullRequest,
+}: {
+  row: GlobalScanRow;
+  currentScanId?: string;
+  onBack: () => void;
+  onOpenRepo: (name: string) => void;
+  onViewCurrent: () => void;
+  onRemediate: () => void;
+  onResume: () => void;
+  onViewPullRequest?: () => void;
+}) {
+  const classes = useStyles();
+  const [severityFilters, setSeverityFilters] = useState<Set<SeverityClass>>(
+    () => new Set(),
+  );
+  const [kindFilter, setKindFilter] = useState<FindingKind | 'all'>('all');
+  const [expandedKeys, setExpandedKeys] = useState<Set<string>>(() => new Set());
+  const quality = getProjectQuality(row.repoName);
+  const findings: QualityViolation[] =
+    row.isLatest && quality ? quality.violations : [];
+  const kindOptions = useMemo(() => {
+    const counts = new Map<FindingKind, number>();
+    for (const item of findings) {
+      counts.set(item.scope, (counts.get(item.scope) ?? 0) + 1);
+    }
+    return KIND_ORDER.filter(kind => (counts.get(kind) ?? 0) > 0).map(kind => ({
+      kind,
+      count: counts.get(kind) ?? 0,
+    }));
+  }, [findings]);
+  const visibleFindings = useMemo(() => {
+    return findings.filter(item => {
+      if (severityFilters.size > 0 && !severityFilters.has(item.severity)) {
+        return false;
+      }
+      if (kindFilter !== 'all' && item.scope !== kindFilter) return false;
+      return true;
+    });
+  }, [findings, severityFilters, kindFilter]);
+  const filtersActive = severityFilters.size > 0 || kindFilter !== 'all';
+  const visibleKeys = useMemo(
+    () => visibleFindings.map(findingKey),
+    [visibleFindings],
+  );
+  const allExpanded =
+    visibleKeys.length > 0 && visibleKeys.every(key => expandedKeys.has(key));
+  const status = quality?.remediationStatus;
+  const showRemediate =
+    row.isLatest && row.totalViolations > 0 && !liveSession(status) && status !== 'pr-open';
+  const showResume = row.isLatest && liveSession(status);
+  const showPr = row.isLatest && status === 'pr-open' && onViewPullRequest;
+
+  const toggleSeverity = useCallback((sev: SeverityClass) => {
+    setSeverityFilters(prev => {
+      const next = new Set(prev);
+      if (next.has(sev)) next.delete(sev);
+      else next.add(sev);
+      return next;
+    });
+  }, []);
+
+  const toggleFinding = useCallback((key: string) => {
+    setExpandedKeys(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }, []);
+
+  return (
+    <Box>
+      <Button
+        variant="text"
+        color="inherit"
+        size="small"
+        className={classes.backButton}
+        startIcon={<ArrowBack fontSize="small" />}
+        onClick={onBack}
+      >
+        All scans
+      </Button>
+      <Box className={classes.headerRow}>
+        <Box minWidth={0}>
+          <Typography
+            className={classes.detailTitle}
+            onClick={() => onOpenRepo(row.repoName)}
+          >
+            {row.org}/{row.repoName}
+          </Typography>
+          <Box className={classes.meta} mt={0.5}>
+            <span className={classes.metaFindings}>
+              {row.totalViolations === 0
+                ? 'No findings'
+                : `${row.totalViolations} finding${
+                    row.totalViolations !== 1 ? 's' : ''
+                  }`}
+            </span>
+            <span className={classes.metaDot}>·</span>
+            <span>{row.createdAt}</span>
+            <span className={classes.metaDot}>·</span>
+            <span style={{ fontFamily: 'monospace' }}>{shortSha(row.commitHash)}</span>
+            <ScanStateChip current={row.isLatest} />
+          </Box>
+        </Box>
+        <Box display="flex" style={{ gap: 8, flexShrink: 0 }}>
+          {showResume && (
+            <Button
+              variant="contained"
+              color="primary"
+              size="small"
+              style={pill}
+              onClick={onResume}
+            >
+              Resume remediation
+            </Button>
+          )}
+          {showPr && (
+            <Button
+              variant="contained"
+              color="primary"
+              size="small"
+              style={pill}
+              onClick={onViewPullRequest}
+            >
+              View pull request
+            </Button>
+          )}
+          {showRemediate && (
+            <Button
+              variant="contained"
+              color="primary"
+              size="small"
+              style={pill}
+              onClick={onRemediate}
+            >
+              Remediate
+            </Button>
+          )}
+        </Box>
+      </Box>
+      <FindingsBar
+        breakdown={row.severityBreakdown}
+        classes={classes}
+        fullWidth
+        activeSeverities={severityFilters}
+        onSegmentClick={toggleSeverity}
+      />
+      <SeverityFilterRow
+        breakdown={row.severityBreakdown}
+        active={severityFilters}
+        onToggle={toggleSeverity}
+        kind={kindFilter}
+        kindOptions={kindOptions}
+        onKindChange={setKindFilter}
+        canExpand={visibleFindings.length > 0}
+        allExpanded={allExpanded}
+        onToggleAll={() =>
+          setExpandedKeys(allExpanded ? new Set() : new Set(visibleKeys))
+        }
+        classes={classes}
+      />
+      {!row.isLatest && (
+        <Typography
+          variant="body2"
+          color="textSecondary"
+          style={{ fontSize: 13, marginBottom: 16 }}
+        >
+          A later scan replaced this snapshot. Remediation uses the current scan.
+          {currentScanId ? (
+            <>
+              {' '}
+              <Link component="button" onClick={onViewCurrent} underline="always">
+                View current scan
+              </Link>
+            </>
+          ) : null}
+        </Typography>
+      )}
+      {visibleFindings.length > 0 ? (
+        visibleFindings.map(item => {
+          const key = findingKey(item);
+          return (
+            <FindingPreviewRow
+              key={key}
+              item={item}
+              expanded={expandedKeys.has(key)}
+              onToggle={() => toggleFinding(key)}
+              classes={classes}
+            />
+          );
+        })
+      ) : findings.length > 0 && filtersActive ? (
+        <Typography variant="body2" color="textSecondary" style={{ fontSize: 13 }}>
+          No findings match the current filters.
+        </Typography>
+      ) : row.totalViolations > 0 && !row.isLatest ? (
+        <Typography variant="body2" color="textSecondary" style={{ fontSize: 13 }}>
+          Finding list is on the current scan.
+        </Typography>
+      ) : row.totalViolations === 0 ? (
+        <Typography variant="body2" color="textSecondary" style={{ fontSize: 13 }}>
+          This scan found no issues.
+        </Typography>
+      ) : null}
+    </Box>
+  );
+}
+
 export const ScanHistoryContent = () => {
   const classes = useStyles();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const [snapshot, setSnapshot] = useState<GlobalScanRow | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
   const [repoFilter, setRepoFilter] = useState(
     () => searchParams.get('repo') || 'all',
   );
-  const openedScan = useRef(false);
 
   const globalScans: GlobalScanRow[] = useMemo(() => {
     const rows: GlobalScanRow[] = [];
@@ -375,15 +905,10 @@ export const ScanHistoryContent = () => {
     return rows;
   }, []);
 
-  useEffect(() => {
-    if (openedScan.current || globalScans.length === 0) return;
+  const snapshot = useMemo(() => {
     const scanId = searchParams.get('scan');
-    if (!scanId) return;
-    const row = globalScans.find(s => s.scanId === scanId);
-    if (row) {
-      openedScan.current = true;
-      setSnapshot(row);
-    }
+    if (!scanId) return null;
+    return globalScans.find(s => s.scanId === scanId) ?? null;
   }, [globalScans, searchParams]);
 
   const repoOptions = useMemo(() => {
@@ -404,23 +929,34 @@ export const ScanHistoryContent = () => {
     [globalScans, repoFilter],
   );
 
+  const setScanParam = useCallback(
+    (scanId: string | null) => {
+      const next = new URLSearchParams(searchParams);
+      if (scanId) next.set('scan', scanId);
+      else next.delete('scan');
+      if (repoFilter !== 'all') next.set('repo', repoFilter);
+      else next.delete('repo');
+      setSearchParams(next);
+    },
+    [repoFilter, searchParams, setSearchParams],
+  );
+
   const openRepo = useCallback(
     (repoName: string) => {
-      navigate(
-        `/self-service/repositories/${encodeURIComponent(repoName)}`,
-      );
+      navigate(`/self-service/repositories/${encodeURIComponent(repoName)}`);
     },
     [navigate],
   );
 
+  const sessionPath = (repoName: string, resume?: boolean) => {
+    const qs = new URLSearchParams({ from: 'scans' });
+    if (resume) qs.set('resume', '1');
+    return `/self-service/apme/remediate/${encodeURIComponent(repoName)}?${qs.toString()}`;
+  };
+
   const resumeSession = useCallback(
     (repoName: string) => {
-      const qs = new URLSearchParams({ from: 'scans', resume: '1' });
-      navigate(
-        `/self-service/apme/remediate/${encodeURIComponent(
-          repoName,
-        )}?${qs.toString()}`,
-      );
+      navigate(sessionPath(repoName, true));
     },
     [navigate],
   );
@@ -488,9 +1024,7 @@ export const ScanHistoryContent = () => {
     {
       title: 'Scan',
       sorting: false,
-      render: (row: GlobalScanRow) => (
-        <ScanStateChip current={row.isLatest} />
-      ),
+      render: (row: GlobalScanRow) => <ScanStateChip current={row.isLatest} />,
     },
     {
       title: 'Findings',
@@ -517,12 +1051,39 @@ export const ScanHistoryContent = () => {
     },
   ];
 
+  if (snapshot) {
+    const currentForRepo = globalScans.find(
+      s => s.repoName === snapshot.repoName && s.isLatest,
+    );
+    const quality = getProjectQuality(snapshot.repoName);
+    return (
+      <ScanSnapshotDetail
+        key={snapshot.scanId}
+        row={snapshot}
+        currentScanId={currentForRepo?.scanId}
+        onBack={() => setScanParam(null)}
+        onOpenRepo={openRepo}
+        onViewCurrent={() => {
+          if (currentForRepo) setScanParam(currentForRepo.scanId);
+        }}
+        onRemediate={() => navigate(sessionPath(snapshot.repoName))}
+        onResume={() => navigate(sessionPath(snapshot.repoName, true))}
+        onViewPullRequest={
+          quality?.remediationPrUrl
+            ? () =>
+                window.open(quality.remediationPrUrl, '_blank', 'noopener,noreferrer')
+            : undefined
+        }
+      />
+    );
+  }
+
   return (
     <Box>
       <Typography className={classes.heading}>Scan history</Typography>
       <Typography className={classes.hint}>
-        Snapshots of past scans. Current is the latest scan for that
-        repository. Resume a live session from Remediation.
+        Snapshots of past scans. Current is the latest scan for that repository.
+        Open a current scan to remediate.
       </Typography>
       <Box className={classes.toolbar}>
         <FormControl
@@ -573,14 +1134,8 @@ export const ScanHistoryContent = () => {
           if (el instanceof Element && el.closest('button, a, [role="button"]')) {
             return;
           }
-          if (rowData) setSnapshot(rowData as GlobalScanRow);
+          if (rowData) setScanParam((rowData as GlobalScanRow).scanId);
         }}
-      />
-      <ScanSnapshotDrawer
-        row={snapshot}
-        onClose={() => setSnapshot(null)}
-        onOpenRepo={openRepo}
-        action={snapshot ? renderRemediation(snapshot) : null}
       />
     </Box>
   );

@@ -7,7 +7,6 @@ import {
   Chip,
   CircularProgress,
   FormControlLabel,
-  IconButton,
   Link,
   LinearProgress,
   Paper,
@@ -67,18 +66,23 @@ const useStyles = makeStyles(theme => ({
   wrap: {
     maxWidth: 1100,
   },
-  backRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: theme.spacing(0.5),
-    marginBottom: theme.spacing(0.5),
-    opacity: 0.75,
-  },
-  backLink: {
+  backButton: {
+    textTransform: 'none',
+    fontWeight: 500,
     fontSize: 14,
-    cursor: 'pointer',
-    color: 'inherit',
-    '&:hover': { textDecoration: 'underline' },
+    color: theme.palette.text.secondary,
+    padding: '4px 10px',
+    marginLeft: -8,
+    marginBottom: theme.spacing(0.5),
+    minWidth: 0,
+    borderRadius: 16,
+    '& .MuiButton-startIcon': {
+      marginRight: 6,
+    },
+    '&:hover': {
+      backgroundColor: theme.palette.action.hover,
+      color: theme.palette.text.primary,
+    },
   },
   titleRow: {
     display: 'flex',
@@ -862,24 +866,16 @@ export const ApmeRemediationPage = () => {
     <Page themeId="app">
       <Content>
         <Box className={classes.wrap}>
-          <Box className={classes.backRow}>
-            <IconButton
-              onClick={goBack}
-              size="small"
-              aria-label={`Back to ${backLabel}`}
-              style={{ marginLeft: -8 }}
-            >
-              <ArrowBack fontSize="small" />
-            </IconButton>
-            <Link
-              component="button"
-              onClick={goBack}
-              className={classes.backLink}
-              underline="none"
-            >
-              {backLabel}
-            </Link>
-          </Box>
+          <Button
+            variant="text"
+            color="inherit"
+            size="small"
+            className={classes.backButton}
+            startIcon={<ArrowBack fontSize="small" />}
+            onClick={goBack}
+          >
+            {backLabel}
+          </Button>
           <Box className={classes.titleRow}>
             <Typography className={classes.title}>Remediation</Typography>
             <Typography className={classes.repo}>{displayRepo}</Typography>

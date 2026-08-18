@@ -1,7 +1,11 @@
 import type { CSSProperties } from 'react';
 import { Box, Button, Card, CardContent, Typography } from '@material-ui/core';
 import { useNavigate } from 'react-router-dom';
-import { QualityScoreMark } from '../catalog/HealthScorePopover';
+import {
+  HealthScorePopover,
+  REMEDIATION_STATUS_LABEL,
+  remediationHasStarted,
+} from '../catalog/HealthScorePopover';
 import { useNavIaModel } from '../../../hooks/useNavIaModel';
 import { scansListPath } from '../quality/qualitySurfacePaths';
 import { useProjectDetailStyles } from './styles';
@@ -74,6 +78,8 @@ export const QualityOverviewCard = ({
   const scannedSha = quality.lastScannedCommit
     ? shortSha(quality.lastScannedCommit)
     : null;
+  const showRemediation = remediationHasStarted(quality.remediationStatus);
+  const prUrl = quality.remediationPrUrl;
 
   return (
     <Card className={classes.card} variant="outlined">
@@ -81,9 +87,26 @@ export const QualityOverviewCard = ({
         <Typography className={classes.cardTitle} style={{ marginBottom: 8 }}>
           Quality score
         </Typography>
-        <QualityScoreMark score={quality.healthScore} fontSize={36} denomSize={18} />
+        <HealthScorePopover
+          repoName={repoName}
+          quality={quality}
+          fontSize={36}
+          denomSize={18}
+          showOpenIcon
+          onViewLastScan={() => navigate(lastScanPath())}
+          onRemediate={() => navigate(scanPath(live))}
+          onViewPullRequest={
+            prUrl
+              ? () => window.open(prUrl, '_blank', 'noopener,noreferrer')
+              : undefined
+          }
+        />
         <Typography color="textSecondary" style={{ fontSize: 13, marginTop: 8 }}>
-          Last scan {quality.lastScannedAt}
+          {quality.totalViolations === 0
+            ? 'No findings'
+            : `${quality.totalViolations} findings`}
+          {' · '}
+          {quality.lastScannedAt}
           {scannedSha && (
             <>
               {' · '}
@@ -91,62 +114,66 @@ export const QualityOverviewCard = ({
             </>
           )}
         </Typography>
+        {showRemediation && (
+          <Typography color="textSecondary" style={{ fontSize: 13, marginTop: 4 }}>
+            Remediation: {REMEDIATION_STATUS_LABEL[quality.remediationStatus]}
+          </Typography>
+        )}
         <Box
           display="flex"
           alignItems="center"
           style={{ gap: 8, marginTop: 16, flexWrap: 'wrap' }}
         >
           {live ? (
-            <>
-              <Button
-                variant="contained"
-                color="primary"
-                size="small"
-                style={pill}
-                onClick={() => navigate(scanPath(true))}
-              >
-                Resume remediation
-              </Button>
-              <Button
-                variant="outlined"
-                color="primary"
-                size="small"
-                style={pill}
-                onClick={() => navigate(lastScanPath())}
-              >
-                View last scan
-              </Button>
-              <Button
-                variant="outlined"
-                color="primary"
-                size="small"
-                style={pill}
-                onClick={() => navigate(scanPath())}
-              >
-                Start new scan
-              </Button>
-            </>
+            <Button
+              variant="contained"
+              color="primary"
+              size="small"
+              style={pill}
+              onClick={() => navigate(scanPath(true))}
+            >
+              Resume remediation
+            </Button>
+          ) : quality.remediationStatus === 'pr-open' && prUrl ? (
+            <Button
+              variant="contained"
+              color="primary"
+              size="small"
+              style={pill}
+              onClick={() => window.open(prUrl, '_blank', 'noopener,noreferrer')}
+            >
+              View pull request
+            </Button>
           ) : (
-            <>
-              <Button
-                variant="contained"
-                color="primary"
-                size="small"
-                style={pill}
-                onClick={() => navigate(scanPath())}
-              >
-                Start new scan
-              </Button>
-              <Button
-                variant="outlined"
-                color="primary"
-                size="small"
-                style={pill}
-                onClick={() => navigate(lastScanPath())}
-              >
-                View last scan
-              </Button>
-            </>
+            <Button
+              variant="contained"
+              color="primary"
+              size="small"
+              style={pill}
+              onClick={() => navigate(scanPath())}
+            >
+              Start new scan
+            </Button>
+          )}
+          <Button
+            variant="outlined"
+            color="primary"
+            size="small"
+            style={pill}
+            onClick={() => navigate(lastScanPath())}
+          >
+            View last scan
+          </Button>
+          {(live || quality.remediationStatus === 'pr-open') && (
+            <Button
+              variant="outlined"
+              color="primary"
+              size="small"
+              style={pill}
+              onClick={() => navigate(scanPath())}
+            >
+              Start new scan
+            </Button>
           )}
         </Box>
       </CardContent>

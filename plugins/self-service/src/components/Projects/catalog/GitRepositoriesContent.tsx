@@ -94,12 +94,21 @@ const useStyles = makeStyles(theme => ({
   providerFilter: {
     minWidth: 160,
   },
+  tableHost: {
+    '& table': {
+      tableLayout: 'fixed',
+      width: '100%',
+    },
+  },
   repoLink: {
     cursor: 'pointer',
     fontWeight: 500,
     fontSize: 14,
     color: theme.palette.primary.main,
     textDecoration: 'none',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
     '&:hover': { textDecoration: 'underline' },
   },
   commitInfo: {
@@ -372,7 +381,7 @@ const saveStarredRepos = (names: Set<string>) => {
 /** Engine in flight — demo overlay. Empty so quality data stays the source of truth. */
 const SCANNING_REPOS = new Set<string>();
 
-/** Develop list: compact score. Scan time, commit, and severity live in the popover. */
+/** Develop list: score + findings · time · SHA. Open for severity. */
 function QualityScoreCell({ repoName }: { repoName: string }) {
   const navigate = useNavigate();
   const { experience } = useNavIaModel();
@@ -402,10 +411,12 @@ function QualityScoreCell({ repoName }: { repoName: string }) {
   };
 
   return (
+    <Box style={{ width: '100%', minWidth: 0, overflow: 'hidden' }}>
     <HealthScorePopover
       repoName={repoName}
       quality={quality}
       scanning={SCANNING_REPOS.has(repoName)}
+      showScanMeta
       onViewLastScan={quality ? viewLastScan : undefined}
       onRemediate={quality ? remediate : undefined}
       onViewPullRequest={
@@ -415,6 +426,7 @@ function QualityScoreCell({ repoName }: { repoName: string }) {
           : undefined
       }
     />
+    </Box>
   );
 }
 
@@ -671,9 +683,9 @@ export const GitRepositoriesContent = () => {
     {
       title: 'Repository',
       field: 'name',
-      width: '48%',
+      width: '36%',
       render: (row: GitRepository) => (
-        <Box display="flex" alignItems="center" style={{ gap: 8 }}>
+        <Box display="flex" alignItems="center" style={{ gap: 8, minWidth: 0 }}>
           {row.provider === 'github' ? (
             <GitHubIcon className={classes.providerIcon} />
           ) : (
@@ -697,14 +709,14 @@ export const GitRepositoriesContent = () => {
             <Box display="flex" alignItems="center" style={{ gap: 4, whiteSpace: 'nowrap' }}>
               Quality
               <Tooltip
-                title="Quality score from the last scan (0–100). Open the score for findings by severity, last scan time, and commit."
+                title="Quality score from the last scan (0–100, higher is better). Open for findings by severity."
                 arrow
               >
                 <HelpOutlineIcon style={{ fontSize: 14, color: theme.palette.text.disabled, cursor: 'help' }} />
               </Tooltip>
             </Box>
           ) as unknown as string,
-          width: '16%',
+          width: '28%',
           customSort: (a: GitRepository, b: GitRepository) => {
             const rankOf = (r: GitRepository) => {
               if (SCANNING_REPOS.has(r.name)) return -2;
@@ -715,6 +727,9 @@ export const GitRepositoriesContent = () => {
             return rankOf(a) - rankOf(b);
           },
           render: (row: GitRepository) => <QualityScoreCell repoName={row.name} />,
+          cellStyle: {
+            overflow: 'hidden',
+          },
         }
       : {
           title: (
@@ -881,6 +896,7 @@ export const GitRepositoriesContent = () => {
         </Box>
       )}
 
+      <Box className={classes.tableHost}>
       <Table<GitRepository>
         columns={columns}
         data={filteredRepos}
@@ -903,6 +919,7 @@ export const GitRepositoriesContent = () => {
           }
         }}
       />
+      </Box>
     </Box>
   );
 };
