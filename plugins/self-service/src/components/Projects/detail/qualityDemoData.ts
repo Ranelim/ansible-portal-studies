@@ -679,7 +679,7 @@ export const APME_CATEGORY_HINT: Record<ApmeRuleCategory, string> = {
   infrastructure: 'Infrastructure checks.',
 };
 
-function apmeCategoryOf(v: QualityViolation): ApmeRuleCategory {
+export function apmeCategoryOf(v: QualityViolation): ApmeRuleCategory {
   if (v.validatorSource === 'gitleaks') return 'secrets';
   if (v.validatorSource === 'dep_audit') return 'infrastructure';
   if (v.category === 'aap-compatibility') return 'aap';
@@ -736,6 +736,62 @@ export function getApmeFleetFindings(): {
   });
 
   return { total, bySeverity, categories };
+}
+
+const SEV_RANK: Record<SeverityClass, number> = {
+  critical: 0,
+  high: 1,
+  medium: 2,
+  low: 3,
+  info: 4,
+};
+
+export type ApmeCategoryRepoHit = {
+  repoName: string;
+  scanId: string;
+  count: number;
+  highestSeverity: SeverityClass;
+};
+
+/** Current-scan repos that have findings in this APME category. */
+export function getApmeCategoryRepoHits(
+  category: ApmeRuleCategory,
+): ApmeCategoryRepoHit[] {
+  const hits: ApmeCategoryRepoHit[] = [];
+  for (const [repoName, data] of Object.entries(QUALITY_DATA)) {
+    const breakdown: Record<SeverityClass, number> = {
+      critical: 0,
+      high: 0,
+      medium: 0,
+      low: 0,
+      info: 0,
+    };
+    for (const v of data.violations) {
+      if (apmeCategoryOf(v) !== category) continue;
+      breakdown[v.severity] += 1;
+    }
+    const count = (Object.values(breakdown) as number[]).reduce(
+      (sum, n) => sum + n,
+      0,
+    );
+    if (count === 0) continue;
+    const highestSeverity = (
+      ['critical', 'high', 'medium', 'low', 'info'] as SeverityClass[]
+    ).find(sev => breakdown[sev] > 0);
+    if (!highestSeverity) continue;
+    hits.push({
+      repoName,
+      scanId: data.latestScan.scanId,
+      count,
+      highestSeverity,
+    });
+  }
+  hits.sort(
+    (a, b) =>
+      SEV_RANK[a.highestSeverity] - SEV_RANK[b.highestSeverity] ||
+      b.count - a.count,
+  );
+  return hits;
 }
 
 export const SEVERITY_COLORS: Record<SeverityClass, string> = {

@@ -18,8 +18,12 @@ import ChevronRight from '@material-ui/icons/ChevronRight';
 import { Table, TableColumn } from '@backstage/core-components';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
+  APME_CATEGORY_LABEL,
+  APME_CATEGORY_ORDER,
   SEVERITY_COLORS,
+  apmeCategoryOf,
   getProjectQuality,
+  type ApmeRuleCategory,
   type QualityViolation,
   type RemediationStatus,
   type ScanResult,
@@ -28,6 +32,8 @@ import {
 import { GIT_REPOSITORIES } from '../catalog/unifiedDemoData';
 import { CommitSha, shortSha } from './CommitSha';
 import { snippetForFinding } from './findingCodeContext';
+import { SeverityFilterChips } from './SeverityFilterChips';
+import { parseScanCategoryParam } from './qualitySurfacePaths';
 
 type GlobalScanRow = ScanResult & {
   repoName: string;
@@ -192,15 +198,10 @@ const useStyles = makeStyles(theme => ({
     marginTop: theme.spacing(1),
     marginBottom: theme.spacing(1),
   },
-  sevChips: {
-    display: 'flex',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: theme.spacing(1),
-  },
   kindControls: {
     display: 'flex',
     alignItems: 'center',
+    flexWrap: 'wrap',
     gap: theme.spacing(1),
     paddingTop: theme.spacing(0.5),
     paddingBottom: theme.spacing(2),
@@ -217,18 +218,8 @@ const useStyles = makeStyles(theme => ({
   kindSelect: {
     minWidth: 168,
   },
-  sevChip: {
-    height: 28,
-    fontSize: 12,
-    fontWeight: 600,
-    borderRadius: 16,
-    backgroundColor: 'transparent',
-    '&:hover': {
-      backgroundColor:
-        theme.palette.type === 'dark'
-          ? 'rgba(255,255,255,0.06)'
-          : 'rgba(0,0,0,0.04)',
-    },
+  categorySelect: {
+    minWidth: 200,
   },
   backButton: {
     textTransform: 'none',
@@ -469,6 +460,9 @@ function SeverityFilterRow({
   breakdown,
   active,
   onToggle,
+  category,
+  categoryOptions,
+  onCategoryChange,
   kind,
   kindOptions,
   onKindChange,
@@ -480,6 +474,9 @@ function SeverityFilterRow({
   breakdown: Record<SeverityClass, number>;
   active: Set<SeverityClass>;
   onToggle: (sev: SeverityClass) => void;
+  category: ApmeRuleCategory | 'all';
+  categoryOptions: { id: ApmeRuleCategory; count: number }[];
+  onCategoryChange: (category: ApmeRuleCategory | 'all') => void;
   kind: FindingKind | 'all';
   kindOptions: { kind: FindingKind; count: number }[];
   onKindChange: (kind: FindingKind | 'all') => void;
@@ -489,43 +486,19 @@ function SeverityFilterRow({
   classes: ReturnType<typeof useStyles>;
 }) {
   const present = SEV_ORDER.filter(sev => (breakdown[sev] ?? 0) > 0);
+  const showCategory = categoryOptions.length >= 1;
   const showKind = kindOptions.length >= 2;
-  if (present.length === 0 && !showKind && !canExpand) return null;
-  const anyActive = active.size > 0;
+  if (present.length === 0 && !showCategory && !showKind && !canExpand) {
+    return null;
+  }
   return (
     <Box className={classes.sevRow}>
-      <Box className={classes.sevChips}>
-        {present.map(sev => {
-          const count = breakdown[sev];
-          const isActive = active.has(sev);
-          return (
-            <Tooltip
-              key={sev}
-              title={`${SEV_TIPS[sev]}. Click to ${isActive ? 'remove' : 'add'} filter.`}
-              arrow
-            >
-              <span>
-                <Chip
-                  size="small"
-                  variant="outlined"
-                  clickable
-                  label={`${SEV_LABELS[sev]} (${count})`}
-                  onClick={() => onToggle(sev)}
-                  aria-pressed={isActive}
-                  className={classes.sevChip}
-                  style={{
-                    borderColor: SEVERITY_COLORS[sev],
-                    color: SEVERITY_COLORS[sev],
-                    backgroundColor: isActive ? `${SEVERITY_COLORS[sev]}18` : 'transparent',
-                    opacity: anyActive && !isActive ? 0.4 : 1,
-                  }}
-                />
-              </span>
-            </Tooltip>
-          );
-        })}
-      </Box>
-      {(showKind || canExpand) && (
+      <SeverityFilterChips
+        breakdown={breakdown}
+        active={active}
+        onToggle={onToggle}
+      />
+      {(showCategory || showKind || canExpand) && (
         <Box className={classes.kindControls}>
             {canExpand && onToggleAll && (
               <Tooltip
@@ -547,6 +520,26 @@ function SeverityFilterRow({
                   />
                 </Button>
               </Tooltip>
+            )}
+            {showCategory && (
+              <FormControl variant="outlined" size="small" className={classes.categorySelect}>
+                <InputLabel id="scan-category-filter-label">Category</InputLabel>
+                <Select
+                  labelId="scan-category-filter-label"
+                  label="Category"
+                  value={category}
+                  onChange={e =>
+                    onCategoryChange(e.target.value as ApmeRuleCategory | 'all')
+                  }
+                >
+                  <MenuItem value="all">All categories</MenuItem>
+                  {categoryOptions.map(opt => (
+                    <MenuItem key={opt.id} value={opt.id}>
+                      {APME_CATEGORY_LABEL[opt.id]} ({opt.count})
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
             )}
             {showKind && (
               <FormControl variant="outlined" size="small" className={classes.kindSelect}>
@@ -691,6 +684,7 @@ function FindingPreviewRow({
 function ScanSnapshotDetail({
   row,
   currentScanId,
+  initialCategory = 'all',
   onBack,
   onOpenRepo,
   onViewCurrent,
@@ -700,6 +694,7 @@ function ScanSnapshotDetail({
 }: {
   row: GlobalScanRow;
   currentScanId?: string;
+  initialCategory?: ApmeRuleCategory | 'all';
   onBack: () => void;
   onOpenRepo: (name: string) => void;
   onViewCurrent: () => void;
@@ -712,10 +707,26 @@ function ScanSnapshotDetail({
     () => new Set(),
   );
   const [kindFilter, setKindFilter] = useState<FindingKind | 'all'>('all');
+  const [categoryFilter, setCategoryFilter] = useState<
+    ApmeRuleCategory | 'all'
+  >(initialCategory);
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(() => new Set());
   const quality = getProjectQuality(row.repoName);
   const findings: QualityViolation[] =
     row.isLatest && quality ? quality.violations : [];
+  const categoryOptions = useMemo(() => {
+    const counts = new Map<ApmeRuleCategory, number>();
+    for (const item of findings) {
+      const id = apmeCategoryOf(item);
+      counts.set(id, (counts.get(id) ?? 0) + 1);
+    }
+    return APME_CATEGORY_ORDER.filter(id => (counts.get(id) ?? 0) > 0).map(
+      id => ({
+        id,
+        count: counts.get(id) ?? 0,
+      }),
+    );
+  }, [findings]);
   const kindOptions = useMemo(() => {
     const counts = new Map<FindingKind, number>();
     for (const item of findings) {
@@ -731,11 +742,20 @@ function ScanSnapshotDetail({
       if (severityFilters.size > 0 && !severityFilters.has(item.severity)) {
         return false;
       }
+      if (
+        categoryFilter !== 'all' &&
+        apmeCategoryOf(item) !== categoryFilter
+      ) {
+        return false;
+      }
       if (kindFilter !== 'all' && item.scope !== kindFilter) return false;
       return true;
     });
-  }, [findings, severityFilters, kindFilter]);
-  const filtersActive = severityFilters.size > 0 || kindFilter !== 'all';
+  }, [findings, severityFilters, categoryFilter, kindFilter]);
+  const filtersActive =
+    severityFilters.size > 0 ||
+    categoryFilter !== 'all' ||
+    kindFilter !== 'all';
   const visibleKeys = useMemo(
     () => visibleFindings.map(findingKey),
     [visibleFindings],
@@ -851,6 +871,9 @@ function ScanSnapshotDetail({
         kind={kindFilter}
         kindOptions={kindOptions}
         onKindChange={setKindFilter}
+        category={categoryFilter}
+        categoryOptions={categoryOptions}
+        onCategoryChange={setCategoryFilter}
         canExpand={visibleFindings.length > 0}
         allExpanded={allExpanded}
         onToggleAll={() =>
@@ -963,6 +986,7 @@ export const ScanHistoryContent = () => {
       const next = new URLSearchParams(searchParams);
       if (scanId) next.set('scan', scanId);
       else next.delete('scan');
+      next.delete('category');
       if (repoFilter !== 'all') next.set('repo', repoFilter);
       else next.delete('repo');
       setSearchParams(next);
@@ -1103,9 +1127,10 @@ export const ScanHistoryContent = () => {
     const quality = getProjectQuality(snapshot.repoName);
     return (
       <ScanSnapshotDetail
-        key={snapshot.scanId}
+        key={`${snapshot.scanId}-${searchParams.get('category') || 'all'}`}
         row={snapshot}
         currentScanId={currentForRepo?.scanId}
+        initialCategory={parseScanCategoryParam(searchParams.get('category'))}
         onBack={() => setScanParam(null)}
         onOpenRepo={openRepo}
         onViewCurrent={() => {

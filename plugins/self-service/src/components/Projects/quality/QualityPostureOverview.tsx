@@ -21,7 +21,9 @@ import {
   QUALITY_WINDOW_DAYS,
   isWithinQualityWindow,
 } from './qualityWindow';
+import { SeverityFilterChips } from './SeverityFilterChips';
 import { SeverityMixBar } from './SeverityMixBar';
+import { CategoryScanPeek } from './CategoryScanPeek';
 
 type KpiId = 'coverage' | 'health' | 'critical' | 'remediations' | 'scans';
 
@@ -32,14 +34,6 @@ const SEV_ORDER: SeverityClass[] = [
   'low',
   'info',
 ];
-
-const SEV_LABEL: Record<SeverityClass, string> = {
-  critical: 'Critical',
-  high: 'High',
-  medium: 'Medium',
-  low: 'Low',
-  info: 'Info',
-};
 
 /** Same stroke as scan-history findings bars — every mix bar in this widget. */
 const FINDINGS_BAR_HEIGHT = 6;
@@ -123,53 +117,8 @@ const useStyles = makeStyles(theme => ({
     height: FINDINGS_BAR_HEIGHT,
     marginBottom: theme.spacing(1),
   },
-  legend: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: theme.spacing(1.5),
+  mixChips: {
     marginBottom: theme.spacing(2),
-  },
-  legendItem: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: 6,
-    padding: 0,
-    border: 'none',
-    background: 'none',
-    cursor: 'pointer',
-    color: 'inherit',
-    fontFamily: 'inherit',
-    fontSize: 'inherit',
-    '&:hover $legendLabel': {
-      textDecoration: 'underline',
-    },
-    '&:focus-visible': {
-      outline: `2px solid ${theme.palette.primary.main}`,
-      outlineOffset: 2,
-    },
-  },
-  legendItemActive: {
-    '& $legendLabel': {
-      color: theme.palette.text.primary,
-      fontWeight: 600,
-    },
-  },
-  legendItemMuted: {
-    opacity: 0.4,
-  },
-  legendSwatch: {
-    width: 10,
-    height: 10,
-    borderRadius: 2,
-    flexShrink: 0,
-  },
-  legendLabel: {
-    fontSize: 12,
-    color: theme.palette.text.secondary,
-  },
-  legendCount: {
-    fontSize: 12,
-    fontWeight: 600,
   },
   catRow: {
     display: 'flex',
@@ -178,6 +127,11 @@ const useStyles = makeStyles(theme => ({
     paddingTop: theme.spacing(1.25),
     paddingBottom: theme.spacing(1.25),
     borderTop: `1px solid ${theme.palette.divider}`,
+    cursor: 'pointer',
+    borderRadius: 4,
+    '&:hover': {
+      backgroundColor: theme.palette.action.hover,
+    },
     '&:last-child': {
       paddingBottom: 0,
     },
@@ -223,6 +177,7 @@ export const QualityPostureOverview = () => {
   const stats = useMemo(() => {
     const totalRepos = GIT_REPOSITORIES.length;
     let scannedRecent = 0;
+    let scannedWithScore = 0;
     let healthSum = 0;
     let withCritical = 0;
     let scansRecent = 0;
@@ -230,14 +185,15 @@ export const QualityPostureOverview = () => {
     for (const repo of GIT_REPOSITORIES) {
       const q = getProjectQuality(repo.name);
       if (!q) continue;
+      scannedWithScore += 1;
+      healthSum += q.healthScore;
       if (isWithinQualityWindow(q.lastScannedAt)) {
         scannedRecent += 1;
-        healthSum += q.healthScore;
       }
       if ((q.severityBreakdown.critical ?? 0) > 0) withCritical += 1;
-      const history =
-        q.scanHistory.length > 0 ? q.scanHistory : [q.latestScan];
-      for (const scan of history) {
+      const latestId = q.latestScan.scanId;
+      const history = q.scanHistory.filter(scan => scan.scanId !== latestId);
+      for (const scan of [q.latestScan, ...history]) {
         if (isWithinQualityWindow(scan.createdAt)) scansRecent += 1;
       }
     }
@@ -246,7 +202,7 @@ export const QualityPostureOverview = () => {
       totalRepos,
       scannedRecent,
       avgHealth:
-        scannedRecent > 0 ? Math.round(healthSum / scannedRecent) : null,
+        scannedWithScore > 0 ? Math.round(healthSum / scannedWithScore) : null,
       withCritical,
       liveRemediations: countLiveRemediations(),
       scansRecent,
@@ -293,7 +249,7 @@ export const QualityPostureOverview = () => {
         return;
       }
       if (id === 'health' && stats.avgHealth !== null) {
-        navigate(repositoriesListPath('recent'));
+        navigate(repositoriesListPath('scanned'));
         return;
       }
       if (id === 'critical' && stats.withCritical > 0) {
@@ -342,22 +298,22 @@ export const QualityPostureOverview = () => {
     {
       id: 'health',
       value: stats.avgHealth === null ? '—' : String(stats.avgHealth),
-      label: 'Average health',
+      label: 'Average health from current scans',
       enabled: stats.avgHealth !== null,
       aria:
         stats.avgHealth === null
           ? 'Average health unavailable'
-          : `Average health ${stats.avgHealth}`,
+          : `Average health ${stats.avgHealth} from current scans`,
     },
     {
       id: 'critical',
       value: String(stats.withCritical),
-      label: 'Repositories with critical findings',
+      label: 'Repositories with critical findings on the current scan',
       enabled: stats.withCritical > 0,
       critical: true,
       aria: `${stats.withCritical} ${
         stats.withCritical === 1 ? 'repository' : 'repositories'
-      } with critical findings`,
+      } with critical findings on the current scan`,
     },
     {
       id: 'remediations',
@@ -382,8 +338,10 @@ export const QualityPostureOverview = () => {
   return (
     <Box>
       <Typography className={classes.hint}>
-        How content quality looks across your git repositories. Open a
-        repository to remediate. Resume a session from Remediations.
+        Health, findings, and critical counts use each repository&apos;s
+        current scan. Cards that mention the last {QUALITY_WINDOW_DAYS} days
+        count scan activity. Open a repository to remediate. Resume a session
+        from Remediations.
       </Typography>
       <Box className={classes.kpis}>
         {cards.map(card => (
@@ -427,7 +385,9 @@ export const QualityPostureOverview = () => {
               {findings.total}
             </Typography>
             <Typography className={classes.mixMeta} component="span">
-              {findings.total === 1 ? 'finding' : 'findings'}
+              {findings.total === 1
+                ? 'finding from current scans'
+                : 'findings from current scans'}
             </Typography>
           </Box>
           <Box className={classes.mixBar}>
@@ -438,59 +398,53 @@ export const QualityPostureOverview = () => {
               onSegmentClick={toggleSeverity}
             />
           </Box>
-          <Box className={classes.legend}>
-            {SEV_ORDER.map(sev => {
-              const count = findings.bySeverity[sev] ?? 0;
-              if (count === 0) return null;
-              const isActive = severityFilter.has(sev);
-              const anyActive = severityFilter.size > 0;
-              return (
-                <button
-                  key={sev}
-                  type="button"
-                  className={`${classes.legendItem}${
-                    isActive ? ` ${classes.legendItemActive}` : ''
-                  }${
-                    anyActive && !isActive
-                      ? ` ${classes.legendItemMuted}`
-                      : ''
-                  }`}
-                  aria-pressed={isActive}
-                  onClick={() => toggleSeverity(sev)}
-                  aria-label={`${SEV_LABEL[sev]}, ${count} findings. ${
-                    isActive ? 'Remove' : 'Add'
-                  } filter.`}
-                >
-                  <Box
-                    className={classes.legendSwatch}
-                    style={{ backgroundColor: SEVERITY_COLORS[sev] }}
-                  />
-                  <span className={classes.legendLabel}>{SEV_LABEL[sev]}</span>
-                  <span className={classes.legendCount}>{count}</span>
-                </button>
-              );
-            })}
+          <Box className={classes.mixChips}>
+            <SeverityFilterChips
+              breakdown={findings.bySeverity}
+              active={severityFilter}
+              onToggle={toggleSeverity}
+            />
           </Box>
           {visibleCategories.map(cat => (
-            <Box key={cat.id} className={classes.catRow}>
-              <Typography className={classes.catName} component="div">
-                {cat.label}
-                <Tooltip title={cat.hint} arrow>
-                  <HelpOutlineIcon className={classes.catHelp} />
-                </Tooltip>
-              </Typography>
-              <Chip
-                size="small"
-                label={cat.count}
-                className={classes.catCount}
-              />
-              <Box className={classes.catBar}>
-                <SeverityMixBar
-                  breakdown={cat.breakdown}
-                  height={FINDINGS_BAR_HEIGHT}
-                />
-              </Box>
-            </Box>
+            <CategoryScanPeek key={cat.id} category={cat.id}>
+              {open => (
+                <Box
+                  className={classes.catRow}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`${cat.label}, ${cat.count} findings. Open scans.`}
+                  onClick={open}
+                  onKeyDown={event => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      open(event);
+                    }
+                  }}
+                >
+                  <Typography className={classes.catName} component="div">
+                    {cat.label}
+                    <Tooltip title={cat.hint} arrow>
+                      <HelpOutlineIcon
+                        className={classes.catHelp}
+                        onClick={event => event.stopPropagation()}
+                        onKeyDown={event => event.stopPropagation()}
+                      />
+                    </Tooltip>
+                  </Typography>
+                  <Chip
+                    size="small"
+                    label={cat.count}
+                    className={classes.catCount}
+                  />
+                  <Box className={classes.catBar}>
+                    <SeverityMixBar
+                      breakdown={cat.breakdown}
+                      height={FINDINGS_BAR_HEIGHT}
+                    />
+                  </Box>
+                </Box>
+              )}
+            </CategoryScanPeek>
           ))}
         </Box>
       )}

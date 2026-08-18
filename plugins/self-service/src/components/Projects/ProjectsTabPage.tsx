@@ -162,7 +162,7 @@ export const ProjectsTabs: React.FC = () => {
 
   const headerSubtitle =
     sectionMode && surface === 'dashboard'
-      ? 'How content quality looks across your git repositories'
+      ? 'Current scan per repository. Last 7 days counts scan activity.'
       : sectionMode && surface === 'remediations'
         ? 'Live remediation sessions you can resume'
         : sectionMode && surface === 'scans'
