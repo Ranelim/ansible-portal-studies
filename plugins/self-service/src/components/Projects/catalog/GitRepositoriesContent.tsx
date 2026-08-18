@@ -18,10 +18,9 @@ import {
   ListItemIcon,
   ListItemText,
   Divider,
-  Input,
-  Paper,
   TextField,
   InputAdornment,
+  InputLabel,
   Link,
   Tooltip,
   useTheme,
@@ -46,8 +45,6 @@ import Popover from '@material-ui/core/Popover';
 import CloseIcon from '@material-ui/icons/Close';
 import WarningIcon from '@material-ui/icons/Warning';
 import { useNavigate } from 'react-router-dom';
-import { CatalogFilterLayout } from '@backstage/plugin-catalog-react';
-import { DismissibleBanner } from '../../common/DismissibleBanner';
 import { EmptyStateLayout, RepositoriesIllustration } from '../../common/EmptyStateLayout';
 import { LastSyncedIndicator } from '../../Admin/LastSyncedIndicator';
 import { statusColors } from '../../common/statusColors';
@@ -83,21 +80,19 @@ const hasActiveFilters = (filters: ActiveFilters) =>
   filters.provider !== 'all';
 
 const useStyles = makeStyles(theme => ({
-  filterLabel: {
-    marginTop: theme.spacing(2),
-    fontWeight: 600,
-    fontSize: '0.875rem',
-    '&:first-child': { marginTop: 0 },
-  },
-  filterPaper: {
-    padding: theme.spacing(1.5),
-    borderRadius: 3,
-  },
-  contentHeader: {
+  toolbar: {
     display: 'flex',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: theme.spacing(1.5),
+    gap: theme.spacing(1),
+    paddingBottom: theme.spacing(1.5),
+    flexWrap: 'wrap',
+  },
+  searchField: {
+    flex: '1 1 240px',
+    maxWidth: 360,
+  },
+  providerFilter: {
+    minWidth: 160,
   },
   repoLink: {
     cursor: 'pointer',
@@ -814,18 +809,20 @@ export const GitRepositoriesContent = () => {
   }
 
   return (
-    <CatalogFilterLayout>
-      <CatalogFilterLayout.Filters>
+    <Box>
+      <Box className={classes.toolbar}>
         <TextField
-          placeholder="Search repositories..."
-          variant="standard"
-          fullWidth
+          className={classes.searchField}
+          placeholder="Search repositories"
+          variant="outlined"
+          size="small"
           value={searchText}
           onChange={e => setSearchText(e.target.value)}
+          inputProps={{ 'aria-label': 'Search repositories' }}
           InputProps={{
             startAdornment: (
               <InputAdornment position="start">
-                <SearchIcon color="disabled" />
+                <SearchIcon color="disabled" fontSize="small" />
               </InputAdornment>
             ),
             endAdornment: searchText ? (
@@ -837,71 +834,75 @@ export const GitRepositoriesContent = () => {
             ) : null,
           }}
         />
-
-        <Typography className={classes.filterLabel}>Provider</Typography>
-        <Paper className={classes.filterPaper}>
-          <FormControl fullWidth>
-            <Select
-              value={filters.provider}
-              onChange={e => setFilters(prev => ({ ...prev, provider: e.target.value as ProviderFilter }))}
-              input={<Input disableUnderline />}
-            >
-              <MenuItem value="all">All</MenuItem>
-              <MenuItem value="github">GitHub</MenuItem>
-              <MenuItem value="gitlab">GitLab</MenuItem>
-            </Select>
-          </FormControl>
-        </Paper>
-      </CatalogFilterLayout.Filters>
-
-      <CatalogFilterLayout.Content>
-
-        {hasActiveFilters(filters) && (
-          <Box className={classes.activeFiltersRow}>
-            <Typography variant="body2" color="textSecondary" style={{ fontSize: 12 }}>
-              Active filters:
-            </Typography>
-            {filterLabels.map(f => (
-              <Chip
-                key={f.key}
-                label={`${f.label}: ${f.value}`}
-                size="small"
-                onDelete={() => clearFilter(f.key)}
-                deleteIcon={<CancelIcon style={{ fontSize: 16 }} />}
-                className={classes.activeChip}
-                color="primary"
-                variant="outlined"
-              />
-            ))}
-            <Button size="small" onClick={clearAllFilters} style={{ textTransform: 'none', fontSize: 12 }}>
-              Clear all
-            </Button>
-          </Box>
-        )}
-
-        <Table<GitRepository>
-          columns={columns}
-          data={filteredRepos}
-          title=""
-          options={{
-            paging: true,
-            pageSize: 10,
-            pageSizeOptions: [5, 10, 20],
-            emptyRowsWhenPaging: false,
-            search: false,
-            sorting: true,
-            padding: 'dense',
-            rowStyle: { cursor: 'pointer' },
-          }}
-          style={{ width: '100%', overflowX: 'hidden' }}
-          onRowClick={(_event, rowData) => {
-            if (rowData) {
-              const row = rowData as GitRepository;
-              navigate(`/self-service/repositories/${row.name}`);
+        <FormControl
+          variant="outlined"
+          size="small"
+          className={classes.providerFilter}
+        >
+          <InputLabel id="git-repos-provider-label">Provider</InputLabel>
+          <Select
+            labelId="git-repos-provider-label"
+            label="Provider"
+            value={filters.provider}
+            onChange={e =>
+              setFilters(prev => ({
+                ...prev,
+                provider: e.target.value as ProviderFilter,
+              }))
             }
-          }}
-        />
-      </CatalogFilterLayout.Content>
-    </CatalogFilterLayout>
+          >
+            <MenuItem value="all">All</MenuItem>
+            <MenuItem value="github">GitHub</MenuItem>
+            <MenuItem value="gitlab">GitLab</MenuItem>
+          </Select>
+        </FormControl>
+      </Box>
+
+      {hasActiveFilters(filters) && (
+        <Box className={classes.activeFiltersRow}>
+          <Typography variant="body2" color="textSecondary" style={{ fontSize: 12 }}>
+            Active filters:
+          </Typography>
+          {filterLabels.map(f => (
+            <Chip
+              key={f.key}
+              label={`${f.label}: ${f.value}`}
+              size="small"
+              onDelete={() => clearFilter(f.key)}
+              deleteIcon={<CancelIcon style={{ fontSize: 16 }} />}
+              className={classes.activeChip}
+              color="primary"
+              variant="outlined"
+            />
+          ))}
+          <Button size="small" onClick={clearAllFilters} style={{ textTransform: 'none', fontSize: 12 }}>
+            Clear all
+          </Button>
+        </Box>
+      )}
+
+      <Table<GitRepository>
+        columns={columns}
+        data={filteredRepos}
+        options={{
+          paging: true,
+          pageSize: 10,
+          pageSizeOptions: [5, 10, 20],
+          emptyRowsWhenPaging: false,
+          search: false,
+          toolbar: false,
+          sorting: true,
+          padding: 'dense',
+          rowStyle: { cursor: 'pointer' },
+        }}
+        style={{ width: '100%', overflowX: 'hidden' }}
+        onRowClick={(_event, rowData) => {
+          if (rowData) {
+            const row = rowData as GitRepository;
+            navigate(`/self-service/repositories/${row.name}`);
+          }
+        }}
+      />
+    </Box>
   );
 };
