@@ -44,12 +44,13 @@ import MemoryIcon from '@material-ui/icons/Memory';
 import Popover from '@material-ui/core/Popover';
 import CloseIcon from '@material-ui/icons/Close';
 import WarningIcon from '@material-ui/icons/Warning';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { EmptyStateLayout, RepositoriesIllustration } from '../../common/EmptyStateLayout';
 import { LastSyncedIndicator } from '../../Admin/LastSyncedIndicator';
 import { statusColors } from '../../common/statusColors';
 import { isDevelopExperience, useNavIaModel } from '../../../hooks/useNavIaModel';
 import { scansListPath } from '../quality/qualitySurfacePaths';
+import { isWithinQualityWindow } from '../quality/qualityWindow';
 import { HealthScorePopover } from './HealthScorePopover';
 import {
   GIT_REPOSITORIES,
@@ -68,16 +69,56 @@ import type { SeverityClass } from '../../Projects/detail/qualityDemoData';
 
 type ProviderFilter = 'all' | 'github' | 'gitlab';
 
+type QualityListFilter =
+  | 'all'
+  | 'recent'
+  | 'scanned'
+  | 'findings'
+  | 'critical'
+  | 'high'
+  | 'medium'
+  | 'low'
+  | 'info';
+
 type ActiveFilters = {
   provider: ProviderFilter;
+  quality: QualityListFilter;
+};
+
+const QUALITY_FILTER_VALUES: QualityListFilter[] = [
+  'recent',
+  'scanned',
+  'findings',
+  'critical',
+  'high',
+  'medium',
+  'low',
+  'info',
+];
+
+const QUALITY_FILTER_LABEL: Record<Exclude<QualityListFilter, 'all'>, string> = {
+  recent: 'Scanned in the last 7 days',
+  scanned: 'Scanned',
+  findings: 'With findings',
+  critical: 'Critical',
+  high: 'High',
+  medium: 'Medium',
+  low: 'Low',
+  info: 'Info',
 };
 
 const DEFAULT_FILTERS: ActiveFilters = {
   provider: 'all',
+  quality: 'all',
 };
 
+const parseQualityParam = (raw: string | null): QualityListFilter =>
+  raw && (QUALITY_FILTER_VALUES as string[]).includes(raw)
+    ? (raw as QualityListFilter)
+    : 'all';
+
 const hasActiveFilters = (filters: ActiveFilters) =>
-  filters.provider !== 'all';
+  filters.provider !== 'all' || filters.quality !== 'all';
 
 const useStyles = makeStyles(theme => ({
   toolbar: {
@@ -620,6 +661,7 @@ export const GitRepositoriesContent = () => {
   const classes = useStyles();
   const theme = useTheme();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { hasRole } = useUserRoleContext();
   const { experience } = useNavIaModel();
   const qualityScoreOnList = isDevelopExperience(experience);
@@ -631,7 +673,21 @@ export const GitRepositoriesContent = () => {
     }));
   });
   const [searchText, setSearchText] = useState('');
-  const [filters, setFilters] = useState<ActiveFilters>({ ...DEFAULT_FILTERS });
+  const [filters, setFilters] = useState<ActiveFilters>(() => ({
+    ...DEFAULT_FILTERS,
+    quality: parseQualityParam(searchParams.get('quality')),
+  }));
+
+  const applyFilters = useCallback(
+    (next: ActiveFilters) => {
+      setFilters(next);
+      const params = new URLSearchParams(searchParams);
+      if (next.quality === 'all') params.delete('quality');
+      else params.set('quality', next.quality);
+      setSearchParams(params, { replace: true });
+    },
+    [searchParams, setSearchParams],
+  );
 
 
   const toggleStar = useCallback((name: string) => {
@@ -647,13 +703,16 @@ export const GitRepositoriesContent = () => {
     setRepos(prev => prev.filter(r => r.name !== name));
   }, []);
 
-  const clearFilter = useCallback((key: keyof ActiveFilters) => {
-    setFilters(prev => ({ ...prev, [key]: 'all' }));
-  }, []);
+  const clearFilter = useCallback(
+    (key: keyof ActiveFilters) => {
+      applyFilters({ ...filters, [key]: 'all' });
+    },
+    [applyFilters, filters],
+  );
 
   const clearAllFilters = useCallback(() => {
-    setFilters({ ...DEFAULT_FILTERS });
-  }, []);
+    applyFilters({ ...DEFAULT_FILTERS });
+  }, [applyFilters]);
 
   const filteredRepos = useMemo(() => {
     let result = repos;
@@ -665,6 +724,26 @@ export const GitRepositoriesContent = () => {
     }
     if (filters.provider !== 'all') {
       result = result.filter(r => r.provider === filters.provider);
+    }
+    if (filters.quality === 'recent') {
+      result = result.filter(r => {
+        const q = getProjectQuality(r.name);
+        return Boolean(q && isWithinQualityWindow(q.lastScannedAt));
+      });
+    } else if (filters.quality === 'scanned') {
+      result = result.filter(r => Boolean(getProjectQuality(r.name)));
+    } else if (filters.quality === 'findings') {
+      result = result.filter(r => (getProjectViolationCount(r.name) ?? 0) > 0);
+    } else if (
+      filters.quality !== 'all' &&
+      filters.quality !== 'findings' &&
+      filters.quality !== 'scanned' &&
+      filters.quality !== 'recent'
+    ) {
+      const sev = filters.quality;
+      result = result.filter(
+        r => (getProjectSeverityBreakdown(r.name)?.[sev] ?? 0) > 0,
+      );
     }
     return result;
   }, [repos, searchText, filters]);
@@ -822,6 +901,13 @@ export const GitRepositoriesContent = () => {
   if (filters.provider !== 'all') {
     filterLabels.push({ key: 'provider', label: 'Provider', value: filters.provider === 'github' ? 'GitHub' : 'GitLab' });
   }
+  if (filters.quality !== 'all') {
+    filterLabels.push({
+      key: 'quality',
+      label: 'Quality',
+      value: QUALITY_FILTER_LABEL[filters.quality],
+    });
+  }
 
   return (
     <Box>
@@ -860,10 +946,10 @@ export const GitRepositoriesContent = () => {
             label="Provider"
             value={filters.provider}
             onChange={e =>
-              setFilters(prev => ({
-                ...prev,
+              applyFilters({
+                ...filters,
                 provider: e.target.value as ProviderFilter,
-              }))
+              })
             }
           >
             <MenuItem value="all">All</MenuItem>
@@ -911,6 +997,13 @@ export const GitRepositoriesContent = () => {
           padding: 'dense',
           rowStyle: { cursor: 'pointer' },
         }}
+        emptyContent={
+          <Box py={4} textAlign="center">
+            <Typography color="textSecondary">
+              No repositories match these filters.
+            </Typography>
+          </Box>
+        }
         style={{ width: '100%', overflowX: 'hidden' }}
         onRowClick={(_event, rowData) => {
           if (rowData) {

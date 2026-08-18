@@ -639,6 +639,105 @@ export function getFleetViolationData(): {
   };
 }
 
+/** APME ADR-008 catalog categories — not the Portal demo parallel labels. */
+export type ApmeRuleCategory =
+  | 'lint'
+  | 'modernize'
+  | 'risk'
+  | 'policy'
+  | 'aap'
+  | 'secrets'
+  | 'infrastructure';
+
+export const APME_CATEGORY_ORDER: ApmeRuleCategory[] = [
+  'lint',
+  'modernize',
+  'risk',
+  'policy',
+  'aap',
+  'secrets',
+  'infrastructure',
+];
+
+export const APME_CATEGORY_LABEL: Record<ApmeRuleCategory, string> = {
+  lint: 'Lint',
+  modernize: 'Modernize',
+  risk: 'Risk',
+  policy: 'Policy',
+  aap: 'AAP compatibility',
+  secrets: 'Secrets',
+  infrastructure: 'Infrastructure',
+};
+
+export const APME_CATEGORY_HINT: Record<ApmeRuleCategory, string> = {
+  lint: 'Style, correctness, and conventions.',
+  modernize: 'ansible-core version migration.',
+  risk: 'Security and risk patterns.',
+  policy: 'Policy rules.',
+  aap: 'Ansible Automation Platform compatibility.',
+  secrets: 'Detected secrets.',
+  infrastructure: 'Infrastructure checks.',
+};
+
+function apmeCategoryOf(v: QualityViolation): ApmeRuleCategory {
+  if (v.validatorSource === 'gitleaks') return 'secrets';
+  if (v.validatorSource === 'dep_audit') return 'infrastructure';
+  if (v.category === 'aap-compatibility') return 'aap';
+  if (v.category === 'security') return 'risk';
+  return 'lint';
+}
+
+export type ApmeCategoryMix = {
+  id: ApmeRuleCategory;
+  label: string;
+  hint: string;
+  count: number;
+  breakdown: Record<SeverityClass, number>;
+};
+
+/** Fleet findings rolled up to APME categories for Overview. */
+export function getApmeFleetFindings(): {
+  total: number;
+  bySeverity: Record<SeverityClass, number>;
+  categories: ApmeCategoryMix[];
+} {
+  const empty = (): Record<SeverityClass, number> => ({
+    critical: 0,
+    high: 0,
+    medium: 0,
+    low: 0,
+    info: 0,
+  });
+  const bySeverity = empty();
+  const byCat = new Map<ApmeRuleCategory, Record<SeverityClass, number>>();
+  let total = 0;
+
+  for (const data of Object.values(QUALITY_DATA)) {
+    for (const v of data.violations) {
+      total += 1;
+      bySeverity[v.severity] += 1;
+      const cat = apmeCategoryOf(v);
+      const bucket = byCat.get(cat) ?? empty();
+      bucket[v.severity] += 1;
+      byCat.set(cat, bucket);
+    }
+  }
+
+  const categories = APME_CATEGORY_ORDER.filter(id => byCat.has(id)).map(id => {
+    const breakdown = byCat.get(id) ?? empty();
+    const count = (Object.values(breakdown) as number[]).reduce((s, n) => s + n, 0);
+    return {
+      id,
+      label: APME_CATEGORY_LABEL[id],
+      hint: APME_CATEGORY_HINT[id],
+      count,
+      breakdown,
+    };
+  });
+
+  return { total, bySeverity, categories };
+}
+
 export const SEVERITY_COLORS: Record<SeverityClass, string> = {
   critical: '#A30000',
   high: '#C9190B',

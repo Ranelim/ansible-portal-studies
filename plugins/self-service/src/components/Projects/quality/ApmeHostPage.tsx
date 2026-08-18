@@ -4,7 +4,7 @@ import { Box, makeStyles } from '@material-ui/core';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { PageHelpIcon } from '../../common/PageHelpIcon';
 import { ReadCountBadge } from '../../common/ReadCountBadge';
-import { QualityDashboardTabContent } from './QualityDashboardTabContent';
+import { QualityOverviewContent } from './QualityOverviewContent';
 import { QualityPostureOverview } from './QualityPostureOverview';
 import {
   RemediationsContent,
@@ -118,9 +118,7 @@ export const ApmeHostPage = () => {
       />
       <Content>
         {surface === 'findings' && SHOW_CONTENT_QUALITY_FINDINGS_TAB ? (
-          <QualityDashboardTabContent
-            hint="Findings grouped by rule across repositories. Open a repository for detail. Resume from Remediations."
-          />
+          <QualityOverviewContent />
         ) : surface === 'scans' ? (
           <ScanHistoryContent />
         ) : surface === 'remediations' ? (

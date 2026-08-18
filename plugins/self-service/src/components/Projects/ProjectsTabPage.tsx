@@ -162,7 +162,7 @@ export const ProjectsTabs: React.FC = () => {
 
   const headerSubtitle =
     sectionMode && surface === 'dashboard'
-      ? 'Cross-repository quality posture and findings rollup'
+      ? 'How content quality looks across your git repositories'
       : sectionMode && surface === 'remediations'
         ? 'Live remediation sessions you can resume'
         : sectionMode && surface === 'scans'

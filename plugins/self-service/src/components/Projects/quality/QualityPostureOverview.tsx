@@ -1,57 +1,48 @@
 import { useCallback, useMemo, useState, type KeyboardEvent } from 'react';
-import { Table, TableColumn } from '@backstage/core-components';
-import { Box, Chip, Typography, makeStyles } from '@material-ui/core';
+import { Box, Chip, Tooltip, Typography, makeStyles } from '@material-ui/core';
+import HelpOutlineIcon from '@material-ui/icons/HelpOutline';
 import { useNavigate } from 'react-router-dom';
 import { GIT_REPOSITORIES } from '../catalog/unifiedDemoData';
+import { QualityScoreMark } from '../catalog/HealthScorePopover';
 import {
   SEVERITY_COLORS,
+  getApmeFleetFindings,
   getProjectQuality,
-  type RemediationStatus,
+  type SeverityClass,
 } from '../detail/qualityDemoData';
-import { statusColors } from '../../common/statusColors';
+import { useNavIaModel } from '../../../hooks/useNavIaModel';
+import {
+  remediationsListPath,
+  repositoriesListPath,
+  scansListPath,
+} from './qualitySurfacePaths';
+import { countLiveRemediations } from './RemediationsContent';
+import {
+  QUALITY_WINDOW_DAYS,
+  isWithinQualityWindow,
+} from './qualityWindow';
+import { SeverityMixBar } from './SeverityMixBar';
 
-type QueueFilter = 'critical' | 'findings' | 'in-progress' | 'pr-open';
+type KpiId = 'coverage' | 'health' | 'critical' | 'remediations' | 'scans';
 
-type AttentionWhy =
-  | 'critical'
-  | 'in-progress'
-  | 'pr-open'
-  | 'findings'
-  | 'stale';
+const SEV_ORDER: SeverityClass[] = [
+  'critical',
+  'high',
+  'medium',
+  'low',
+  'info',
+];
 
-type AttentionRow = {
-  name: string;
-  org: string;
-  health: number;
-  findings: number;
-  critical: number;
-  status: RemediationStatus;
-  why: AttentionWhy;
-  whyLabel: string;
-  when: string;
+const SEV_LABEL: Record<SeverityClass, string> = {
+  critical: 'Critical',
+  high: 'High',
+  medium: 'Medium',
+  low: 'Low',
+  info: 'Info',
 };
 
-const WHY_ORDER: Record<AttentionWhy, number> = {
-  critical: 0,
-  'in-progress': 1,
-  'pr-open': 2,
-  findings: 3,
-  stale: 4,
-};
-
-const FILTER_HINT: Record<QueueFilter, string> = {
-  critical: 'Showing repositories with critical findings.',
-  findings: 'Showing repositories with findings.',
-  'in-progress': 'Showing remediations in progress.',
-  'pr-open': 'Showing repositories with an open pull request.',
-};
-
-const FILTER_TITLE: Record<QueueFilter, string> = {
-  critical: 'Needs attention · Critical',
-  findings: 'Needs attention · With findings',
-  'in-progress': 'Needs attention · In progress',
-  'pr-open': 'Needs attention · Pull requests open',
-};
+/** Same stroke as scan-history findings bars — every mix bar in this widget. */
+const FINDINGS_BAR_HEIGHT = 6;
 
 const useStyles = makeStyles(theme => ({
   hint: {
@@ -62,7 +53,7 @@ const useStyles = makeStyles(theme => ({
   },
   kpis: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
     gap: theme.spacing(2),
     marginBottom: theme.spacing(3),
   },
@@ -72,22 +63,31 @@ const useStyles = makeStyles(theme => ({
     padding: theme.spacing(2),
     backgroundColor: theme.palette.background.paper,
     cursor: 'pointer',
+    textAlign: 'left' as const,
     '&:hover': {
       borderColor: theme.palette.primary.main,
     },
+    '&:focus-visible': {
+      outline: `2px solid ${theme.palette.primary.main}`,
+      outlineOffset: 2,
+    },
   },
-  kpiSelected: {
-    borderColor: theme.palette.primary.main,
-    boxShadow: `inset 0 0 0 1px ${theme.palette.primary.main}`,
-  },
-  kpiSelectedCritical: {
-    borderColor: SEVERITY_COLORS.critical,
-    boxShadow: `inset 0 0 0 1px ${SEVERITY_COLORS.critical}`,
+  kpiMuted: {
+    cursor: 'default',
+    '&:hover': {
+      borderColor: theme.palette.divider,
+    },
   },
   kpiValue: {
     fontSize: 28,
     fontWeight: 700,
     lineHeight: 1.1,
+  },
+  kpiTotal: {
+    fontSize: 16,
+    fontWeight: 400,
+    color: theme.palette.text.secondary,
+    marginLeft: 2,
   },
   kpiValueCritical: {
     color: SEVERITY_COLORS.critical,
@@ -97,329 +97,403 @@ const useStyles = makeStyles(theme => ({
     color: theme.palette.text.secondary,
     marginTop: theme.spacing(0.5),
   },
-  filterHint: {
-    color: theme.palette.text.secondary,
-    fontSize: 13,
+  mixCard: {
+    border: `1px solid ${theme.palette.divider}`,
+    borderRadius: 8,
+    padding: theme.spacing(2),
+    backgroundColor: theme.palette.background.paper,
+  },
+  mixHeader: {
+    display: 'flex',
+    alignItems: 'baseline',
+    flexWrap: 'wrap',
+    gap: theme.spacing(1),
     marginBottom: theme.spacing(1.5),
   },
-  clearFilter: {
-    color: theme.palette.primary.main,
-    cursor: 'pointer',
-    fontWeight: 500,
-    marginLeft: theme.spacing(1),
+  mixTotal: {
+    fontSize: 28,
+    fontWeight: 700,
+    lineHeight: 1.1,
   },
-  sectionTitle: {
-    fontWeight: 600,
-    fontSize: 16,
+  mixMeta: {
+    fontSize: 13,
+    color: theme.palette.text.secondary,
+  },
+  mixBar: {
+    height: FINDINGS_BAR_HEIGHT,
     marginBottom: theme.spacing(1),
   },
-  repoLink: {
+  legend: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: theme.spacing(1.5),
+    marginBottom: theme.spacing(2),
+  },
+  legendItem: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 6,
+    padding: 0,
+    border: 'none',
+    background: 'none',
+    cursor: 'pointer',
+    color: 'inherit',
+    fontFamily: 'inherit',
+    fontSize: 'inherit',
+    '&:hover $legendLabel': {
+      textDecoration: 'underline',
+    },
+    '&:focus-visible': {
+      outline: `2px solid ${theme.palette.primary.main}`,
+      outlineOffset: 2,
+    },
+  },
+  legendItemActive: {
+    '& $legendLabel': {
+      color: theme.palette.text.primary,
+      fontWeight: 600,
+    },
+  },
+  legendItemMuted: {
+    opacity: 0.4,
+  },
+  legendSwatch: {
+    width: 10,
+    height: 10,
+    borderRadius: 2,
+    flexShrink: 0,
+  },
+  legendLabel: {
+    fontSize: 12,
+    color: theme.palette.text.secondary,
+  },
+  legendCount: {
+    fontSize: 12,
+    fontWeight: 600,
+  },
+  catRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: theme.spacing(1.5),
+    paddingTop: theme.spacing(1.25),
+    paddingBottom: theme.spacing(1.25),
+    borderTop: `1px solid ${theme.palette.divider}`,
+    '&:last-child': {
+      paddingBottom: 0,
+    },
+  },
+  catName: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 4,
+    minWidth: 180,
+    flexShrink: 0,
     fontSize: 13,
     fontWeight: 500,
-    color: theme.palette.primary.main,
-    cursor: 'pointer',
+  },
+  catHelp: {
+    fontSize: 14,
+    color: theme.palette.text.disabled,
+    cursor: 'help',
+  },
+  catCount: {
+    height: 20,
+    fontSize: 11,
+    fontWeight: 600,
+    flexShrink: 0,
+  },
+  catBar: {
+    flex: 1,
+    minWidth: 80,
+    height: FINDINGS_BAR_HEIGHT,
+    display: 'flex',
+    alignItems: 'center',
   },
 }));
 
-function healthColor(score: number): string {
-  if (score >= 80) return statusColors.success;
-  if (score >= 50) return statusColors.warning;
-  return statusColors.error;
-}
-
-function isLive(status: RemediationStatus): boolean {
-  return status === 'in-progress' || status === 'proposals-ready';
-}
-
-function isStale(when: string): boolean {
-  return /\d+\s+days?\s+ago/i.test(when);
-}
-
-function attentionWhy(
-  status: RemediationStatus,
-  critical: number,
-  findings: number,
-  when: string,
-): AttentionWhy | null {
-  if (critical > 0) return 'critical';
-  if (isLive(status)) return 'in-progress';
-  if (status === 'pr-open') return 'pr-open';
-  if (findings > 0) return 'findings';
-  if (isStale(when)) return 'stale';
-  return null;
-}
-
-function whyLabel(why: AttentionWhy, status: RemediationStatus): string {
-  switch (why) {
-    case 'critical':
-      return 'Critical findings';
-    case 'in-progress':
-      return status === 'proposals-ready'
-        ? 'Proposals ready'
-        : 'Remediation in progress';
-    case 'pr-open':
-      return 'Pull request open';
-    case 'findings':
-      return 'Findings to review';
-    case 'stale':
-      return 'Scan is stale';
-    default:
-      return why;
-  }
-}
-
-function matchesFilter(row: AttentionRow, filter: QueueFilter): boolean {
-  switch (filter) {
-    case 'critical':
-      return row.critical > 0;
-    case 'findings':
-      return row.findings > 0;
-    case 'in-progress':
-      return isLive(row.status);
-    case 'pr-open':
-      return row.status === 'pr-open';
-    default:
-      return true;
-  }
-}
-
-function whyChipColor(why: AttentionWhy): { bg: string; fg: string } {
-  switch (why) {
-    case 'critical':
-      return { bg: `${SEVERITY_COLORS.critical}22`, fg: SEVERITY_COLORS.critical };
-    case 'in-progress':
-      return { bg: 'rgba(0, 102, 204, 0.12)', fg: '#0066CC' };
-    case 'pr-open':
-      return { bg: 'rgba(46, 132, 64, 0.14)', fg: '#2E8440' };
-    case 'findings':
-      return { bg: 'rgba(240, 171, 0, 0.16)', fg: '#8A6A00' };
-    case 'stale':
-    default:
-      return { bg: 'rgba(0,0,0,0.06)', fg: '#6A6E73' };
-  }
-}
-
 /**
- * Fleet posture for Content quality — not the work queue.
- * Resume / Start scan live on Remediations.
+ * Shared Quality / Overview — estate KPIs, then hand off.
+ * Git Repositories list, Remediations, and Scans own the queues.
  */
 export const QualityPostureOverview = () => {
   const classes = useStyles();
   const navigate = useNavigate();
-  const [filter, setFilter] = useState<QueueFilter | null>(null);
+  const { experience } = useNavIaModel();
 
   const stats = useMemo(() => {
-    let withFindings = 0;
-    let prOpen = 0;
-    let criticalFindings = 0;
-    const attention: AttentionRow[] = [];
+    const totalRepos = GIT_REPOSITORIES.length;
+    let scannedRecent = 0;
+    let healthSum = 0;
+    let withCritical = 0;
+    let scansRecent = 0;
 
     for (const repo of GIT_REPOSITORIES) {
       const q = getProjectQuality(repo.name);
       if (!q) continue;
-      const critical = q.severityBreakdown.critical;
-      criticalFindings += critical;
-      if (q.totalViolations > 0) withFindings += 1;
-      if (q.remediationStatus === 'pr-open') prOpen += 1;
-
-      const why = attentionWhy(
-        q.remediationStatus,
-        critical,
-        q.totalViolations,
-        q.lastScannedAt,
-      );
-      if (!why) continue;
-
-      attention.push({
-        name: repo.name,
-        org: repo.org,
-        health: q.healthScore,
-        findings: q.totalViolations,
-        critical,
-        status: q.remediationStatus,
-        why,
-        whyLabel: whyLabel(why, q.remediationStatus),
-        when: q.lastScannedAt,
-      });
+      if (isWithinQualityWindow(q.lastScannedAt)) {
+        scannedRecent += 1;
+        healthSum += q.healthScore;
+      }
+      if ((q.severityBreakdown.critical ?? 0) > 0) withCritical += 1;
+      const history =
+        q.scanHistory.length > 0 ? q.scanHistory : [q.latestScan];
+      for (const scan of history) {
+        if (isWithinQualityWindow(scan.createdAt)) scansRecent += 1;
+      }
     }
 
-    attention.sort((a, b) => {
-      const order = WHY_ORDER[a.why] - WHY_ORDER[b.why];
-      if (order !== 0) return order;
-      return a.health - b.health;
-    });
-
-    return { withFindings, prOpen, criticalFindings, attention };
+    return {
+      totalRepos,
+      scannedRecent,
+      avgHealth:
+        scannedRecent > 0 ? Math.round(healthSum / scannedRecent) : null,
+      withCritical,
+      liveRemediations: countLiveRemediations(),
+      scansRecent,
+    };
   }, []);
 
-  const rows = useMemo(
-    () =>
-      filter
-        ? stats.attention.filter(row => matchesFilter(row, filter))
-        : stats.attention,
-    [filter, stats.attention],
+  const findings = useMemo(() => getApmeFleetFindings(), []);
+  const [severityFilter, setSeverityFilter] = useState<Set<SeverityClass>>(
+    () => new Set(),
   );
 
-  const toggleFilter = useCallback((next: QueueFilter) => {
-    setFilter(current => (current === next ? null : next));
+  const toggleSeverity = useCallback((sev: SeverityClass) => {
+    setSeverityFilter(prev => {
+      const next = new Set(prev);
+      if (next.has(sev)) next.delete(sev);
+      else next.add(sev);
+      return next;
+    });
   }, []);
 
-  const onKpiKey = useCallback(
-    (next: QueueFilter) => (event: KeyboardEvent) => {
-      if (event.key === 'Enter' || event.key === ' ') {
-        event.preventDefault();
-        toggleFilter(next);
+  const visibleCategories = useMemo(() => {
+    const any = severityFilter.size > 0;
+    return findings.categories
+      .map(cat => {
+        const breakdown = { ...cat.breakdown };
+        if (any) {
+          for (const sev of SEV_ORDER) {
+            if (!severityFilter.has(sev)) breakdown[sev] = 0;
+          }
+        }
+        const count = SEV_ORDER.reduce(
+          (sum, sev) => sum + (breakdown[sev] ?? 0),
+          0,
+        );
+        return { ...cat, breakdown, count };
+      })
+      .filter(cat => cat.count > 0);
+  }, [findings.categories, severityFilter]);
+
+  const activate = useCallback(
+    (id: KpiId) => {
+      if (id === 'coverage' && stats.scannedRecent > 0) {
+        navigate(repositoriesListPath('recent'));
+        return;
+      }
+      if (id === 'health' && stats.avgHealth !== null) {
+        navigate(repositoriesListPath('recent'));
+        return;
+      }
+      if (id === 'critical' && stats.withCritical > 0) {
+        navigate(repositoriesListPath('critical'));
+        return;
+      }
+      if (id === 'remediations' && stats.liveRemediations > 0) {
+        navigate(remediationsListPath(experience));
+        return;
+      }
+      if (id === 'scans' && stats.scansRecent > 0) {
+        navigate(scansListPath(experience));
       }
     },
-    [toggleFilter],
+    [experience, navigate, stats],
   );
 
-  const openRepo = useCallback(
-    (name: string) => {
-      navigate(
-        `/self-service/repositories/${encodeURIComponent(name)}`,
-      );
+  const onKpiKey = useCallback(
+    (id: KpiId) => (event: KeyboardEvent) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        activate(id);
+      }
     },
-    [navigate],
+    [activate],
   );
 
-  const columns: TableColumn<AttentionRow>[] = [
+  const windowLabel = `in the last ${QUALITY_WINDOW_DAYS} days`;
+  const cards: {
+    id: KpiId;
+    value: string;
+    total?: number;
+    label: string;
+    enabled: boolean;
+    critical?: boolean;
+    aria: string;
+  }[] = [
     {
-      title: 'Repository',
-      field: 'name',
-      render: row => (
-        <Typography
-          className={classes.repoLink}
-          onClick={e => {
-            e.stopPropagation();
-            openRepo(row.name);
-          }}
-        >
-          {row.org}/{row.name}
-        </Typography>
-      ),
+      id: 'coverage',
+      value: String(stats.scannedRecent),
+      total: stats.totalRepos,
+      label: `Repositories scanned ${windowLabel}`,
+      enabled: stats.scannedRecent > 0,
+      aria: `${stats.scannedRecent} of ${stats.totalRepos} repositories scanned ${windowLabel}`,
     },
     {
-      title: 'Health',
-      field: 'health',
-      render: row => (
-        <Typography
-          style={{ fontSize: 16, fontWeight: 700, color: healthColor(row.health) }}
-        >
-          {row.health}
-        </Typography>
-      ),
-    },
-    { title: 'Findings', field: 'findings' },
-    {
-      title: 'Why',
-      render: row => {
-        const c = whyChipColor(row.why);
-        return (
-          <Chip
-            size="small"
-            label={row.whyLabel}
-            style={{
-              height: 22,
-              fontSize: 11,
-              fontWeight: 600,
-              backgroundColor: c.bg,
-              color: c.fg,
-            }}
-          />
-        );
-      },
+      id: 'health',
+      value: stats.avgHealth === null ? '—' : String(stats.avgHealth),
+      label: 'Average health',
+      enabled: stats.avgHealth !== null,
+      aria:
+        stats.avgHealth === null
+          ? 'Average health unavailable'
+          : `Average health ${stats.avgHealth}`,
     },
     {
-      title: 'Last scanned',
-      field: 'when',
-      render: row => (
-        <Typography style={{ fontSize: 12 }} color="textSecondary">
-          {row.when}
-        </Typography>
-      ),
+      id: 'critical',
+      value: String(stats.withCritical),
+      label: 'Repositories with critical findings',
+      enabled: stats.withCritical > 0,
+      critical: true,
+      aria: `${stats.withCritical} ${
+        stats.withCritical === 1 ? 'repository' : 'repositories'
+      } with critical findings`,
+    },
+    {
+      id: 'remediations',
+      value: String(stats.liveRemediations),
+      label: 'Remediations in progress',
+      enabled: stats.liveRemediations > 0,
+      aria: `${stats.liveRemediations} ${
+        stats.liveRemediations === 1 ? 'remediation' : 'remediations'
+      } in progress`,
+    },
+    {
+      id: 'scans',
+      value: String(stats.scansRecent),
+      label: `Scans ${windowLabel}`,
+      enabled: stats.scansRecent > 0,
+      aria: `${stats.scansRecent} ${
+        stats.scansRecent === 1 ? 'scan' : 'scans'
+      } ${windowLabel}`,
     },
   ];
 
   return (
     <Box>
       <Typography className={classes.hint}>
-        How content quality looks across your git repositories. Resume or start
-        a scan from Remediations.
+        How content quality looks across your git repositories. Open a
+        repository to remediate. Resume a session from Remediations.
       </Typography>
       <Box className={classes.kpis}>
-        <Box
-          className={`${classes.kpi} ${
-            filter === 'critical' ? classes.kpiSelectedCritical : ''
-          }`}
-          role="button"
-          tabIndex={0}
-          aria-pressed={filter === 'critical'}
-          onClick={() => toggleFilter('critical')}
-          onKeyDown={onKpiKey('critical')}
-        >
-          <Typography className={`${classes.kpiValue} ${classes.kpiValueCritical}`}>
-            {stats.criticalFindings}
-          </Typography>
-          <Typography className={classes.kpiLabel}>Critical</Typography>
-        </Box>
-        <Box
-          className={`${classes.kpi} ${
-            filter === 'findings' ? classes.kpiSelected : ''
-          }`}
-          role="button"
-          tabIndex={0}
-          aria-pressed={filter === 'findings'}
-          onClick={() => toggleFilter('findings')}
-          onKeyDown={onKpiKey('findings')}
-        >
-          <Typography className={classes.kpiValue}>{stats.withFindings}</Typography>
-          <Typography className={classes.kpiLabel}>With findings</Typography>
-        </Box>
-        <Box
-          className={`${classes.kpi} ${
-            filter === 'pr-open' ? classes.kpiSelected : ''
-          }`}
-          role="button"
-          tabIndex={0}
-          aria-pressed={filter === 'pr-open'}
-          onClick={() => toggleFilter('pr-open')}
-          onKeyDown={onKpiKey('pr-open')}
-        >
-          <Typography className={classes.kpiValue}>{stats.prOpen}</Typography>
-          <Typography className={classes.kpiLabel}>Pull requests open</Typography>
-        </Box>
-      </Box>
-      {filter && (
-        <Typography className={classes.filterHint}>
-          {FILTER_HINT[filter]}
-          <span
-            className={classes.clearFilter}
+        {cards.map(card => (
+          <Box
+            key={card.id}
+            className={`${classes.kpi} ${card.enabled ? '' : classes.kpiMuted}`}
             role="button"
-            tabIndex={0}
-            onClick={() => setFilter(null)}
-            onKeyDown={event => {
-              if (event.key === 'Enter' || event.key === ' ') {
-                event.preventDefault();
-                setFilter(null);
-              }
-            }}
+            tabIndex={card.enabled ? 0 : -1}
+            aria-disabled={!card.enabled}
+            aria-label={card.aria}
+            onClick={() => activate(card.id)}
+            onKeyDown={onKpiKey(card.id)}
           >
-            Clear
-          </span>
-        </Typography>
+            {card.id === 'health' && stats.avgHealth !== null ? (
+              <QualityScoreMark
+                score={stats.avgHealth}
+                fontSize={28}
+                denomSize={16}
+              />
+            ) : (
+              <Typography
+                className={`${classes.kpiValue} ${
+                  card.critical ? classes.kpiValueCritical : ''
+                }`}
+                component="div"
+              >
+                {card.value}
+                {card.total !== undefined && (
+                  <span className={classes.kpiTotal}> / {card.total}</span>
+                )}
+              </Typography>
+            )}
+            <Typography className={classes.kpiLabel}>{card.label}</Typography>
+          </Box>
+        ))}
+      </Box>
+      {findings.total > 0 && (
+        <Box className={classes.mixCard}>
+          <Box className={classes.mixHeader}>
+            <Typography className={classes.mixTotal} component="span">
+              {findings.total}
+            </Typography>
+            <Typography className={classes.mixMeta} component="span">
+              {findings.total === 1 ? 'finding' : 'findings'}
+            </Typography>
+          </Box>
+          <Box className={classes.mixBar}>
+            <SeverityMixBar
+              breakdown={findings.bySeverity}
+              height={FINDINGS_BAR_HEIGHT}
+              activeSeverities={severityFilter}
+              onSegmentClick={toggleSeverity}
+            />
+          </Box>
+          <Box className={classes.legend}>
+            {SEV_ORDER.map(sev => {
+              const count = findings.bySeverity[sev] ?? 0;
+              if (count === 0) return null;
+              const isActive = severityFilter.has(sev);
+              const anyActive = severityFilter.size > 0;
+              return (
+                <button
+                  key={sev}
+                  type="button"
+                  className={`${classes.legendItem}${
+                    isActive ? ` ${classes.legendItemActive}` : ''
+                  }${
+                    anyActive && !isActive
+                      ? ` ${classes.legendItemMuted}`
+                      : ''
+                  }`}
+                  aria-pressed={isActive}
+                  onClick={() => toggleSeverity(sev)}
+                  aria-label={`${SEV_LABEL[sev]}, ${count} findings. ${
+                    isActive ? 'Remove' : 'Add'
+                  } filter.`}
+                >
+                  <Box
+                    className={classes.legendSwatch}
+                    style={{ backgroundColor: SEVERITY_COLORS[sev] }}
+                  />
+                  <span className={classes.legendLabel}>{SEV_LABEL[sev]}</span>
+                  <span className={classes.legendCount}>{count}</span>
+                </button>
+              );
+            })}
+          </Box>
+          {visibleCategories.map(cat => (
+            <Box key={cat.id} className={classes.catRow}>
+              <Typography className={classes.catName} component="div">
+                {cat.label}
+                <Tooltip title={cat.hint} arrow>
+                  <HelpOutlineIcon className={classes.catHelp} />
+                </Tooltip>
+              </Typography>
+              <Chip
+                size="small"
+                label={cat.count}
+                className={classes.catCount}
+              />
+              <Box className={classes.catBar}>
+                <SeverityMixBar
+                  breakdown={cat.breakdown}
+                  height={FINDINGS_BAR_HEIGHT}
+                />
+              </Box>
+            </Box>
+          ))}
+        </Box>
       )}
-      <Typography className={classes.sectionTitle}>
-        {filter ? FILTER_TITLE[filter] : 'Needs attention'}
-      </Typography>
-      <Table
-        options={{ search: false, paging: false, padding: 'dense' }}
-        columns={columns}
-        data={rows}
-        onRowClick={(_e, rowData) => {
-          if (rowData) openRepo((rowData as AttentionRow).name);
-        }}
-      />
     </Box>
   );
 };

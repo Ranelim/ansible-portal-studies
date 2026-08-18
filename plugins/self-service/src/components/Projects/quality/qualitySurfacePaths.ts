@@ -19,6 +19,22 @@ export function qualityHomePath(experience: NavExperience): string {
     : '/self-service/repositories/list';
 }
 
+/** Git Repositories list — optional quality filter from Overview / Quality. */
+export function repositoriesListPath(
+  quality?:
+    | 'recent'
+    | 'scanned'
+    | 'findings'
+    | 'critical'
+    | 'high'
+    | 'medium'
+    | 'low'
+    | 'info',
+): string {
+  if (!quality) return '/self-service/repositories/list';
+  return `/self-service/repositories/list?quality=${quality}`;
+}
+
 /**
  * Remediations + Scans live on a fleet surface (host tabs or Content quality pin).
  * Repo page = score summary, not a second Quality workspace.

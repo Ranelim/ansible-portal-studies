@@ -1129,7 +1129,7 @@ export const ScanHistoryContent = () => {
       <Typography className={classes.hint}>
         Snapshots of past scans. Current is the latest scan for that repository.
         Open a current scan to remediate.
-      </Typography>
+        </Typography>
       <Box className={classes.toolbar}>
         <FormControl
           variant="outlined"
