@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState, type KeyboardEvent } from 'react';
 import { Table, TableColumn } from '@backstage/core-components';
-import { Box, Button, Chip, Typography, makeStyles } from '@material-ui/core';
+import { Box, Chip, Typography, makeStyles } from '@material-ui/core';
 import { useNavigate } from 'react-router-dom';
 import { GIT_REPOSITORIES } from '../catalog/unifiedDemoData';
 import {
@@ -59,33 +59,6 @@ const useStyles = makeStyles(theme => ({
     fontSize: 13,
     marginBottom: theme.spacing(2),
     maxWidth: 720,
-  },
-  liveBanner: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: theme.spacing(2),
-    marginBottom: theme.spacing(2),
-    padding: theme.spacing(1.5, 2),
-    borderRadius: 8,
-    border: `1px solid ${theme.palette.divider}`,
-    borderLeft: `4px solid ${statusColors.info}`,
-    backgroundColor: theme.palette.background.paper,
-  },
-  liveText: {
-    fontSize: 14,
-    fontWeight: 600,
-  },
-  liveMeta: {
-    fontSize: 13,
-    color: theme.palette.text.secondary,
-    marginTop: 2,
-  },
-  cta: {
-    textTransform: 'none',
-    fontWeight: 600,
-    borderRadius: 20,
-    flexShrink: 0,
   },
   kpis: {
     display: 'grid',
@@ -237,7 +210,6 @@ export const QualityPostureOverview = () => {
 
   const stats = useMemo(() => {
     let withFindings = 0;
-    let inProgress = 0;
     let prOpen = 0;
     let criticalFindings = 0;
     const attention: AttentionRow[] = [];
@@ -248,7 +220,6 @@ export const QualityPostureOverview = () => {
       const critical = q.severityBreakdown.critical;
       criticalFindings += critical;
       if (q.totalViolations > 0) withFindings += 1;
-      if (isLive(q.remediationStatus)) inProgress += 1;
       if (q.remediationStatus === 'pr-open') prOpen += 1;
 
       const why = attentionWhy(
@@ -278,7 +249,7 @@ export const QualityPostureOverview = () => {
       return a.health - b.health;
     });
 
-    return { withFindings, inProgress, prOpen, criticalFindings, attention };
+    return { withFindings, prOpen, criticalFindings, attention };
   }, []);
 
   const rows = useMemo(
@@ -376,27 +347,6 @@ export const QualityPostureOverview = () => {
         How content quality looks across your git repositories. Resume or start
         a scan from Remediations.
       </Typography>
-      {stats.inProgress > 0 && (
-        <Box className={classes.liveBanner}>
-          <Box>
-            <Typography className={classes.liveText}>
-              {stats.inProgress} remediation
-              {stats.inProgress === 1 ? '' : 's'} in progress
-            </Typography>
-            <Typography className={classes.liveMeta}>
-              Live sessions are on the Remediations tab.
-            </Typography>
-          </Box>
-          <Button
-            className={classes.cta}
-            color="primary"
-            variant="outlined"
-            onClick={() => navigate('/self-service/apme/remediations')}
-          >
-            View remediations
-          </Button>
-        </Box>
-      )}
       <Box className={classes.kpis}>
         <Box
           className={`${classes.kpi} ${
@@ -425,19 +375,6 @@ export const QualityPostureOverview = () => {
         >
           <Typography className={classes.kpiValue}>{stats.withFindings}</Typography>
           <Typography className={classes.kpiLabel}>With findings</Typography>
-        </Box>
-        <Box
-          className={`${classes.kpi} ${
-            filter === 'in-progress' ? classes.kpiSelected : ''
-          }`}
-          role="button"
-          tabIndex={0}
-          aria-pressed={filter === 'in-progress'}
-          onClick={() => toggleFilter('in-progress')}
-          onKeyDown={onKpiKey('in-progress')}
-        >
-          <Typography className={classes.kpiValue}>{stats.inProgress}</Typography>
-          <Typography className={classes.kpiLabel}>Remediations in progress</Typography>
         </Box>
         <Box
           className={`${classes.kpi} ${

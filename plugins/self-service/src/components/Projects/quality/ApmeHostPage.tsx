@@ -1,11 +1,15 @@
 import { useCallback, useEffect } from 'react';
 import { Header, Page, HeaderTabs, Content } from '@backstage/core-components';
-import { Box } from '@material-ui/core';
+import { Box, makeStyles } from '@material-ui/core';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { PageHelpIcon } from '../../common/PageHelpIcon';
+import { ReadCountBadge } from '../../common/ReadCountBadge';
 import { QualityDashboardTabContent } from './QualityDashboardTabContent';
 import { QualityPostureOverview } from './QualityPostureOverview';
-import { RemediationsContent } from './RemediationsContent';
+import {
+  RemediationsContent,
+  countLiveRemediations,
+} from './RemediationsContent';
 import { ScanHistoryContent } from './ScanHistoryContent';
 import { SHOW_CONTENT_QUALITY_FINDINGS_TAB } from './contentQualityIa';
 
@@ -37,12 +41,23 @@ function pathForTab(id: string): string {
   return '/self-service/apme';
 }
 
+const useTabStyles = makeStyles(theme => ({
+  tabLabel: {
+    display: 'inline-flex',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing(0.75),
+    lineHeight: 1,
+  },
+}));
+
 /**
  * Exploration only — Content quality pin (compare vs host tabs).
  * Overview = fleet posture. Remediations = live sessions. Scans = history.
  * Findings (by-rule) parked — SHOW_CONTENT_QUALITY_FINDINGS_TAB.
  */
 export const ApmeHostPage = () => {
+  const classes = useTabStyles();
   const location = useLocation();
   const navigate = useNavigate();
   const surface = getSurface(location.pathname);
@@ -50,6 +65,7 @@ export const ApmeHostPage = () => {
     0,
     TABS.findIndex(tab => tab.id === surface),
   );
+  const liveCount = countLiveRemediations();
 
   useEffect(() => {
     if (!SHOW_CONTENT_QUALITY_FINDINGS_TAB && surface === 'findings') {
@@ -84,7 +100,21 @@ export const ApmeHostPage = () => {
       <HeaderTabs
         selectedIndex={selectedTab}
         onChange={onTabSelect}
-        tabs={TABS.map(({ id, label }) => ({ id, label }))}
+        tabs={TABS.map(({ id, label }) => ({
+          id,
+          label:
+            id === 'remediations' && liveCount > 0 ? (
+              <span className={classes.tabLabel}>
+                <span>{label}</span>
+                <ReadCountBadge
+                  count={liveCount}
+                  label={`${liveCount} live remediations`}
+                />
+              </span>
+            ) : (
+              label
+            ),
+        }))}
       />
       <Content>
         {surface === 'findings' && SHOW_CONTENT_QUALITY_FINDINGS_TAB ? (

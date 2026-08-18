@@ -555,7 +555,7 @@ export const PortalNotificationsPage = () => {
             variant="text"
             size="small"
             startIcon={<SettingsIcon />}
-            onClick={() => navigate('/settings/notifications')}
+            onClick={() => navigate('/notifications/settings')}
             style={{ borderRadius: 20 }}
           >
             Notification settings
@@ -673,9 +673,25 @@ export const PortalNotificationsPage = () => {
               <Box className={classes.empty}>
                 <NotificationsNoneIcon style={{ opacity: 0.3, fontSize: 36 }} />
                 <Typography color="textSecondary">
-                  {subscribedItems.length === 0
-                    ? 'No notification types enabled. Turn some on in Notification settings.'
-                    : readFilter === 'unread'
+                  {subscribedItems.length === 0 ? (
+                    <>
+                      No notification types enabled.{' '}
+                      <Button
+                        color="primary"
+                        size="small"
+                        className={classes.settingsBtn}
+                        onClick={() => navigate('/notifications/settings')}
+                        style={{
+                          textTransform: 'none',
+                          minWidth: 0,
+                          padding: 0,
+                          verticalAlign: 'baseline',
+                        }}
+                      >
+                        Notification settings
+                      </Button>
+                    </>
+                  ) : readFilter === 'unread'
                       ? "You're all caught up"
                       : experienceFilter === 'all'
                         ? "You're all caught up"

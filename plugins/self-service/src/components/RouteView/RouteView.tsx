@@ -56,6 +56,7 @@ import { GeneralPage } from '../Admin/GeneralPage';
 import { DevSpacesDetailPage } from '../Admin/DevSpacesDetailPage';
 import { PluginsPage } from '../Admin/PluginsPage';
 import { ExperiencesAdminPage } from '../Admin/ExperiencesAdminPage';
+import { CreateExperienceWizardPage } from '../Admin/CreateExperienceWizardPage';
 import { NotificationsAdminPage } from '../Admin/NotificationsAdminPage';
 import {
   NotificationProvider,
@@ -150,6 +151,7 @@ const RouteViewContent = () => {
           <Route path="list" element={<ProjectsTabs />} />
           <Route path="dashboard" element={<ProjectsTabs />} />
           <Route path="remediations" element={<ProjectsTabs />} />
+          <Route path="scans" element={<ProjectsTabs />} />
           <Route path="quality" element={<ProjectsTabs />} />
           <Route path="ci-activity" element={<ProjectsTabs />} />
           <Route path="create" element={<ProjectsTabs />} />
@@ -260,6 +262,10 @@ const RouteViewContent = () => {
         <Route
           path="admin/general"
           element={<Navigate to="/self-service/admin/overview" replace />}
+        />
+        <Route
+          path="admin/experiences/create"
+          element={<CreateExperienceWizardPage />}
         />
         <Route path="admin/experiences" element={<ExperiencesAdminPage />} />
         <Route path="admin/plugins" element={<PluginsPage />} />

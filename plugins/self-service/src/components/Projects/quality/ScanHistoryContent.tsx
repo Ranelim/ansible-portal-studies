@@ -25,6 +25,7 @@ import {
   type SeverityClass,
 } from '../detail/qualityDemoData';
 import { GIT_REPOSITORIES } from '../catalog/unifiedDemoData';
+import { CommitSha } from './CommitSha';
 
 type GlobalScanRow = ScanResult & {
   repoName: string;
@@ -222,7 +223,7 @@ function ScanSnapshotDrawer({
             <Typography variant="body2" color="textSecondary">
               {row.createdAt}
             </Typography>
-            <StatusBadge available={row.isAvailable} />
+            <ScanStateChip current={row.isLatest} />
           </Box>
           <Box mt={2} mb={2}>
             <Typography style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
@@ -242,19 +243,26 @@ function ScanSnapshotDrawer({
               color="textSecondary"
               style={{ fontSize: 12, marginTop: 8 }}
             >
-              Commit {row.commitHash}
+              Commit {row.commitHash.slice(0, 7)}
             </Typography>
           </Box>
-          {!row.isAvailable && (
+          {!row.isLatest ? (
             <Typography
               variant="body2"
               color="textSecondary"
               style={{ fontSize: 13, marginBottom: 16 }}
             >
-              This scan is read-only. Resume a live remediation from an
-              Available scan, or start a new scan from Remediations.
+              A later scan replaced this snapshot. It is superseded.
             </Typography>
-          )}
+          ) : !row.isAvailable ? (
+            <Typography
+              variant="body2"
+              color="textSecondary"
+              style={{ fontSize: 13, marginBottom: 16 }}
+            >
+              No live remediation on this scan. Start a scan from Remediations.
+            </Typography>
+          ) : null}
           <Box style={{ flex: 1, overflow: 'auto' }}>
             {findings.length > 0 ? (
               findings.map(item => (
@@ -302,33 +310,35 @@ function liveSession(status: RemediationStatus | undefined): boolean {
   return status === 'in-progress' || status === 'proposals-ready';
 }
 
-function StatusBadge({ available }: { available: boolean }) {
-  return available ? (
-    <Tooltip title="Live remediation on this scan. Resume to continue." arrow>
+function ScanStateChip({ current }: { current: boolean }) {
+  return current ? (
+    <Tooltip title="Latest scan for this repository. The quality score is based on this snapshot." arrow>
       <Chip
         size="small"
-        label="Available"
+        label="Current"
         style={{
           height: 20,
           fontSize: 11,
           fontWeight: 600,
-          backgroundColor: 'rgba(46, 132, 64, 0.14)',
-          color: '#2E8440',
+          backgroundColor: 'rgba(0, 102, 204, 0.12)',
+          color: '#0066CC',
         }}
       />
     </Tooltip>
   ) : (
-    <Chip
-      size="small"
-      label="Read-only"
-      style={{
-        height: 20,
-        fontSize: 11,
-        fontWeight: 600,
-        backgroundColor: 'rgba(0,0,0,0.06)',
-        color: '#6A6E73',
-      }}
-    />
+    <Tooltip title="A later scan replaced this snapshot." arrow>
+      <Chip
+        size="small"
+        label="Superseded"
+        style={{
+          height: 20,
+          fontSize: 11,
+          fontWeight: 600,
+          backgroundColor: 'rgba(0,0,0,0.06)',
+          color: '#6A6E73',
+        }}
+      />
+    </Tooltip>
   );
 }
 
@@ -415,24 +425,30 @@ export const ScanHistoryContent = () => {
     [navigate],
   );
 
-  const renderAction = useCallback(
+  const renderRemediation = useCallback(
     (row: GlobalScanRow) => {
-      if (!row.isAvailable) return null;
+      if (row.isAvailable) {
+        return (
+          <Button
+            size="small"
+            color="primary"
+            variant="outlined"
+            className={classes.actionBtn}
+            onMouseDown={e => e.stopPropagation()}
+            onClick={e => {
+              e.preventDefault();
+              e.stopPropagation();
+              resumeSession(row.repoName);
+            }}
+          >
+            Resume
+          </Button>
+        );
+      }
       return (
-        <Button
-          size="small"
-          color="primary"
-          variant="outlined"
-          className={classes.actionBtn}
-          onMouseDown={e => e.stopPropagation()}
-          onClick={e => {
-            e.preventDefault();
-            e.stopPropagation();
-            resumeSession(row.repoName);
-          }}
-        >
-          Resume
-        </Button>
+        <Typography variant="body2" color="textSecondary" style={{ fontSize: 13 }}>
+          —
+        </Typography>
       );
     },
     [classes.actionBtn, resumeSession],
@@ -445,11 +461,14 @@ export const ScanHistoryContent = () => {
       defaultSort: 'desc',
       customSort: (a, b) => parseScanDate(a.createdAt) - parseScanDate(b.createdAt),
       render: (row: GlobalScanRow) => (
-        <Tooltip title={row.createdAt} arrow>
-          <Typography style={{ fontSize: 13 }}>
-            {formatRelativeWhen(row.createdAt)}
-          </Typography>
-        </Tooltip>
+        <Box>
+          <Tooltip title={row.createdAt} arrow>
+            <Typography style={{ fontSize: 13 }}>
+              {formatRelativeWhen(row.createdAt)}
+            </Typography>
+          </Tooltip>
+          <CommitSha sha={row.commitHash} />
+        </Box>
       ),
     },
     {
@@ -467,10 +486,10 @@ export const ScanHistoryContent = () => {
       ),
     },
     {
-      title: 'Status',
+      title: 'Scan',
       sorting: false,
       render: (row: GlobalScanRow) => (
-        <StatusBadge available={row.isAvailable} />
+        <ScanStateChip current={row.isLatest} />
       ),
     },
     {
@@ -492,9 +511,9 @@ export const ScanHistoryContent = () => {
       ),
     },
     {
-      title: 'Action',
+      title: 'Remediation',
       sorting: false,
-      render: (row: GlobalScanRow) => renderAction(row),
+      render: (row: GlobalScanRow) => renderRemediation(row),
     },
   ];
 
@@ -502,8 +521,8 @@ export const ScanHistoryContent = () => {
     <Box>
       <Typography className={classes.heading}>Scan history</Typography>
       <Typography className={classes.hint}>
-        Snapshots of past scans. Available means a live remediation you can
-        resume. Other rows are read-only.
+        Snapshots of past scans. Current is the latest scan for that
+        repository. Resume a live session from Remediation.
       </Typography>
       <Box className={classes.toolbar}>
         <FormControl
@@ -561,7 +580,7 @@ export const ScanHistoryContent = () => {
         row={snapshot}
         onClose={() => setSnapshot(null)}
         onOpenRepo={openRepo}
-        action={snapshot ? renderAction(snapshot) : null}
+        action={snapshot ? renderRemediation(snapshot) : null}
       />
     </Box>
   );

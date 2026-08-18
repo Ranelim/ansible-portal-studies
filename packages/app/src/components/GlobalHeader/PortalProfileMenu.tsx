@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState, type MouseEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useApi, identityApiRef } from '@backstage/core-plugin-api';
 import { useUserProfile } from '@backstage/plugin-user-settings';
 import AccountCircleOutlinedIcon from '@mui/icons-material/AccountCircleOutlined';
@@ -56,6 +56,7 @@ const menuItemSx = {
  */
 export const PortalProfileMenu = () => {
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const menuId = useId();
   const { displayName, profile, loading } = useUserProfile();
   const identityApi = useApi(identityApiRef);
@@ -65,6 +66,10 @@ export const PortalProfileMenu = () => {
   const [profilePath, setProfilePath] = useState('/settings');
   const measured = useRef(false);
   const open = Boolean(anchorEl);
+  const onAccountPage =
+    pathname === '/settings' ||
+    pathname.startsWith('/settings/') ||
+    /^\/catalog\/[^/]+\/user\//i.test(pathname);
 
   useEffect(() => {
     if (measured.current) return;
@@ -117,7 +122,10 @@ export const PortalProfileMenu = () => {
   };
 
   return (
-    <Box>
+    <Box
+      data-masthead-active={onAccountPage ? 'true' : undefined}
+      data-masthead-menu-open={open ? 'true' : undefined}
+    >
       <Tooltip title={name}>
         <Button
           color="inherit"
@@ -127,10 +135,12 @@ export const PortalProfileMenu = () => {
           aria-haspopup="true"
           aria-controls={open ? menuId : undefined}
           aria-expanded={open ? true : undefined}
+          aria-current={onAccountPage ? 'page' : undefined}
           sx={{
             display: 'flex',
             alignItems: 'center',
             textTransform: 'none',
+            borderRadius: 6,
           }}
         >
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
@@ -211,7 +221,7 @@ export const PortalProfileMenu = () => {
           <ListItemIcon>
             <ManageAccountsOutlinedIcon fontSize="small" />
           </ListItemIcon>
-          <ListItemText primary="Settings" />
+          <ListItemText primary="User settings" />
         </MenuItem>
         <MenuItem onClick={() => go(profilePath)} sx={menuItemSx}>
           <ListItemIcon>

@@ -16,6 +16,8 @@ import KeyboardArrowRightIcon from '@material-ui/icons/KeyboardArrowRight';
 import KeyboardArrowDownIcon from '@material-ui/icons/KeyboardArrowDown';
 import IconButton from '@material-ui/core/IconButton';
 import { statusColors } from '../../common/statusColors';
+import { useNavIaModel } from '../../../hooks/useNavIaModel';
+import { qualitySummaryOnRepo } from './qualitySurfacePaths';
 import {
   getFleetViolationData,
   SEVERITY_COLORS,
@@ -111,6 +113,8 @@ export const QualityOverviewContent = () => {
   const theme = useTheme();
   const isDark = theme.palette.type === 'dark';
   const navigate = useNavigate();
+  const { experience } = useNavIaModel();
+  const openRepoSummary = qualitySummaryOnRepo(experience);
 
   const fleet = useMemo(() => getFleetViolationData(), []);
 
@@ -357,7 +361,11 @@ export const QualityOverviewContent = () => {
                                     style={{ fontSize: 11, color: theme.palette.primary.main, cursor: 'pointer', fontWeight: 500, flexShrink: 0 }}
                                     onClick={(e: React.MouseEvent) => {
                                       e.stopPropagation();
-                                      navigate(`/self-service/repositories/${r.name}?tab=quality&rule=${encodeURIComponent(rule.ruleId)}`);
+                                      navigate(
+                                        openRepoSummary
+                                          ? `/self-service/repositories/${r.name}`
+                                          : `/self-service/repositories/${r.name}?tab=quality&rule=${encodeURIComponent(rule.ruleId)}`,
+                                      );
                                     }}
                                   >
                                     View details →

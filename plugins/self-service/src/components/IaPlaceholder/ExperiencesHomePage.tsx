@@ -102,7 +102,7 @@ const EXPERIENCE_DOCS: Record<
   },
   'develop-tabs': {
     summary:
-      'Review A: one Git Repositories rail item. Tabs: Repositories, Quality, Remediations, Pipeline activity.',
+      'Review A: one Git Repositories rail item. Tabs: Repositories, Quality, Remediations, Scans, Pipeline activity.',
     href: 'https://docs.redhat.com/en/documentation/red_hat_ansible_automation_platform/2.6/html/using_self-service_automation_portal/index',
     linkLabel: 'View Develop documentation',
   },
@@ -114,7 +114,7 @@ const EXPERIENCE_DOCS: Record<
   },
   'develop-apme': {
     summary:
-      'Review C: Content quality as its own Develop rail item (after Git Repositories). Page tabs: Overview (work queue) and Scans (history). Git Repositories stays list-first. Exploration only — not factory default.',
+      'Review C: Content quality as its own Develop rail item (after Git Repositories). Page tabs: Overview, Remediations, Scans. Git Repositories stays list-first. Exploration only — not factory default.',
     href: 'https://docs.redhat.com/en/documentation/red_hat_ansible_automation_platform/2.6/html/using_self-service_automation_portal/index',
     linkLabel: 'View Develop documentation',
   },

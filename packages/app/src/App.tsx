@@ -22,13 +22,9 @@ import {
 } from '@backstage/plugin-techdocs';
 import { TechDocsAddons } from '@backstage/plugin-techdocs-react';
 import { ReportIssue } from '@backstage/plugin-techdocs-module-addons-contrib';
-import {
-  SettingsLayout,
-  UserSettingsPage,
-} from '@backstage/plugin-user-settings';
 import { apis } from './apis';
-import { entityPage } from './components/catalog/EntityPage';
 import { SearchPage as BackstageSearchPage } from '@backstage/plugin-search';
+import { entityPage } from './components/catalog/EntityPage';
 import { SearchPage } from './components/search/SearchPage';
 import { Root } from './components/Root';
 import { GlobalHeader } from './components/GlobalHeader';
@@ -36,7 +32,8 @@ import { GlobalHeader } from './components/GlobalHeader';
 import { AdminSyncIaCompareBar } from './components/IaPrototype';
 import { TemplatesRunsIaCompareBar } from './components/IaPrototype';
 import { PortalNotificationsPage } from './components/Notifications/PortalNotificationsPage';
-import { PortalNotificationSettings } from './components/Notifications/PortalNotificationSettings';
+import { PortalNotificationSettingsPage } from './components/Notifications/PortalNotificationSettingsPage';
+import { PortalUserSettingsPage } from './components/Settings/PortalUserSettingsPage';
 import { LightspeedProvider, LightspeedPanel } from './components/Lightspeed';
 import { QuickstartProvider, QuickstartPanel, WelcomeModal } from './components/Quickstart';
 import { getThemes } from '@red-hat-developer-hub/backstage-plugin-theme';
@@ -341,11 +338,11 @@ const routes = (
       <SearchPage />
     </Route>
     <Route path="/rbac" element={<RbacPage />} />
-    <Route path="/settings" element={<UserSettingsPage />}>
-      <SettingsLayout.Route path="/notifications" title="Notifications">
-        <PortalNotificationSettings />
-      </SettingsLayout.Route>
-    </Route>
+    <Route path="/settings/*" element={<PortalUserSettingsPage />} />
+    <Route
+      path="/notifications/settings"
+      element={<PortalNotificationSettingsPage />}
+    />
     <Route path="/notifications" element={<PortalNotificationsPage />} />
     <Route path="/catalog-graph" element={<CatalogGraphPage />} />
     <Route path="/self-service" element={<SelfServicePage />} />

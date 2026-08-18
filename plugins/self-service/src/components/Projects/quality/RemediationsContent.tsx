@@ -22,6 +22,7 @@ import {
   getProjectQuality,
   type RemediationStatus,
 } from '../detail/qualityDemoData';
+import { CommitSha } from './CommitSha';
 
 type ActiveStatus = 'in-progress' | 'proposals-ready';
 
@@ -34,6 +35,7 @@ type ActiveRow = {
   remaining: number;
   total: number;
   when: string;
+  commitHash: string;
 };
 
 const STEP_LABEL: Record<ActiveStatus, string> = {
@@ -125,6 +127,13 @@ function isActive(status: RemediationStatus): status is ActiveStatus {
   return status === 'in-progress' || status === 'proposals-ready';
 }
 
+export function countLiveRemediations(): number {
+  return GIT_REPOSITORIES.filter(repo => {
+    const q = getProjectQuality(repo.name);
+    return Boolean(q && isActive(q.remediationStatus));
+  }).length;
+}
+
 function buildRows(): ActiveRow[] {
   const rows: ActiveRow[] = [];
   for (const repo of GIT_REPOSITORIES) {
@@ -142,6 +151,7 @@ function buildRows(): ActiveRow[] {
       remaining,
       total: addressed + remaining,
       when: q.lastScannedAt,
+      commitHash: q.latestScan.commitHash || q.lastScannedCommit,
     });
   }
   return rows.sort((a, b) => {
@@ -323,9 +333,12 @@ export const RemediationsContent = () => {
     {
       title: 'When',
       render: row => (
-        <Typography style={{ fontSize: 12 }} color="textSecondary">
-          {row.when}
-        </Typography>
+        <Box>
+          <Typography style={{ fontSize: 13 }}>
+            {row.when}
+          </Typography>
+          <CommitSha sha={row.commitHash} />
+        </Box>
       ),
     },
     {
@@ -357,7 +370,7 @@ export const RemediationsContent = () => {
           </Typography>
           <Typography className={classes.hint}>
             Live sessions you can resume. Start a scan to open a new session.
-            Scan history is on the Scans tab.
+            Scan history is on Scans.
           </Typography>
         </Box>
         <Button

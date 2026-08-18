@@ -1,99 +1,257 @@
 import { useState } from 'react';
 import {
   Box,
-  Typography,
-  Popover,
-  IconButton,
   Button,
   CircularProgress,
+  IconButton,
+  Popover,
+  Typography,
   makeStyles,
   useTheme,
 } from '@material-ui/core';
+import { fade } from '@material-ui/core/styles';
 import CloseIcon from '@material-ui/icons/Close';
-import ErrorIcon from '@material-ui/icons/Error';
-import WarningIcon from '@material-ui/icons/Warning';
-import CheckCircleIcon from '@material-ui/icons/CheckCircle';
 import { statusColors } from '../../common/statusColors';
 import {
   type SeverityClass,
+  type QualityViolation,
   type ProjectQualityData,
+  type RemediationStatus,
   SEVERITY_COLORS,
   getProjectQuality,
 } from '../detail/qualityDemoData';
 
-const healthColor = (score: number): string => {
+const SEVERITY_ORDER: SeverityClass[] = [
+  'critical',
+  'high',
+  'medium',
+  'low',
+  'info',
+];
+
+const SEVERITY_LABEL: Record<SeverityClass, string> = {
+  critical: 'Critical',
+  high: 'High',
+  medium: 'Medium',
+  low: 'Low',
+  info: 'Info',
+};
+
+const NODE_KIND_LABEL: Record<QualityViolation['scope'], string> = {
+  task: 'Task',
+  play: 'Play',
+  role: 'Role',
+  playbook: 'Playbook',
+  collection: 'Collection',
+  block: 'Block',
+  inventory: 'Inventory',
+};
+
+const REMEDIATION_STATUS_LABEL: Record<RemediationStatus, string> = {
+  none: 'not started',
+  available: 'not started',
+  'in-progress': 'in progress',
+  'proposals-ready': 'proposals ready',
+  'pr-open': 'pull request open',
+  'pr-merged': 'pull request merged',
+};
+
+type NodeHit = {
+  key: string;
+  kind: string;
+  label: string;
+};
+
+function basename(file: string): string {
+  const parts = file.split('/');
+  return parts[parts.length - 1] || file;
+}
+
+function nodeFromFinding(v: QualityViolation): NodeHit {
+  const key = (v.yamlPath || '').trim() || `${v.file}:${v.lineStart}`;
+  const kind = v.scope ? NODE_KIND_LABEL[v.scope] : 'Task';
+  const loc =
+    v.lineStart != null && v.lineStart > 0
+      ? `${basename(v.file)}:${v.lineStart}`
+      : basename(v.file);
+  return { key, kind, label: loc };
+}
+
+function nodesForSeverity(
+  findings: QualityViolation[],
+  severity: SeverityClass,
+): NodeHit[] {
+  const seen = new Set<string>();
+  const unique: NodeHit[] = [];
+  for (const v of findings) {
+    if (v.severity !== severity) continue;
+    const node = nodeFromFinding(v);
+    if (seen.has(node.key)) continue;
+    seen.add(node.key);
+    unique.push(node);
+  }
+  return unique;
+}
+
+/** Portal list bands — same as QualityOverviewCard. Not SPA 4-band. */
+export const healthColor = (score: number): string => {
   if (score >= 80) return statusColors.success;
   if (score >= 50) return statusColors.warning;
   return statusColors.error;
 };
 
-const healthLabel = (score: number): string => {
-  if (score >= 80) return 'Good';
-  if (score >= 50) return 'Needs attention';
-  return 'Critical';
-};
+const shortSha = (sha: string) => (sha.length > 7 ? sha.slice(0, 7) : sha);
+
+/** Colored score with muted /100 — scale without implying a percentage. */
+export function QualityScoreMark({
+  score,
+  fontSize = 16,
+  denomSize,
+}: {
+  score: number;
+  fontSize?: number;
+  denomSize?: number;
+}) {
+  return (
+    <span
+      style={{
+        display: 'inline-flex',
+        alignItems: 'baseline',
+        gap: 1,
+        lineHeight: 1.2,
+      }}
+    >
+      <Typography
+        component="span"
+        style={{
+          fontSize,
+          fontWeight: 700,
+          lineHeight: 1.2,
+          color: healthColor(score),
+        }}
+      >
+        {score}
+      </Typography>
+      <Typography
+        component="span"
+        color="textSecondary"
+        style={{
+          fontSize: denomSize ?? Math.max(11, Math.round(fontSize * 0.7)),
+          fontWeight: 500,
+          lineHeight: 1.2,
+        }}
+      >
+        /100
+      </Typography>
+    </span>
+  );
+}
 
 const useStyles = makeStyles(theme => ({
   popoverContent: {
     padding: theme.spacing(2.5),
     maxWidth: 400,
-    minWidth: 320,
+    minWidth: 300,
   },
   header: {
+    marginBottom: theme.spacing(1.5),
+  },
+  headerTop: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: theme.spacing(1.5),
   },
-  violationRow: {
+  clickTarget: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    cursor: 'pointer',
+    borderRadius: 4,
+    padding: '2px 6px',
+    margin: '-2px -6px',
+    border: 'none',
+    background: 'none',
+    font: 'inherit',
+    transition: 'background-color 0.15s',
+    '&:hover, &:focus': {
+      backgroundColor: theme.palette.action.hover,
+      outline: 'none',
+    },
+  },
+  findings: {
+    maxHeight: 280,
+    overflowY: 'auto',
+    marginBottom: theme.spacing(1),
+  },
+  sevRow: {
     display: 'flex',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     gap: 8,
-    padding: '6px 0',
-    borderTop: `1px solid ${theme.palette.divider}`,
-    '&:first-of-type': { borderTop: 'none' },
+    padding: '6px 0 2px',
+  },
+  sevCount: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    boxSizing: 'border-box',
+    height: 18,
+    minWidth: 18,
+    padding: '0 5px',
+    borderRadius: 9,
+    border: '1px solid',
+    fontSize: 11,
+    fontWeight: 600,
+    lineHeight: 1,
+    flexShrink: 0,
+    color: theme.palette.text.primary,
+  },
+  nodeRow: {
+    display: 'flex',
+    alignItems: 'baseline',
+    gap: 8,
+    padding: '2px 0 2px 26px',
   },
   footer: {
     display: 'flex',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: theme.spacing(1),
     marginTop: theme.spacing(1.5),
     paddingTop: theme.spacing(1.5),
     borderTop: `1px solid ${theme.palette.divider}`,
   },
-  clickTarget: {
-    display: 'inline-flex',
-    cursor: 'pointer',
-    borderRadius: 4,
-    padding: '2px 6px',
-    transition: 'background-color 0.15s',
-    '&:hover': {
-      backgroundColor: theme.palette.action.hover,
-    },
+  meta: {
+    fontSize: 12,
+    color: theme.palette.text.secondary,
+    marginTop: 4,
+    lineHeight: 1.45,
+  },
+  pill: {
+    textTransform: 'none',
+    fontWeight: 600,
+    borderRadius: 20,
+    fontSize: 12,
   },
 }));
-
-const SeverityIcon = ({ severity, size = 14 }: { severity: SeverityClass; size?: number }) => {
-  if (severity === 'critical' || severity === 'high') {
-    return <ErrorIcon style={{ fontSize: size, color: SEVERITY_COLORS[severity], flexShrink: 0, marginTop: 1 }} />;
-  }
-  return <WarningIcon style={{ fontSize: size, color: SEVERITY_COLORS[severity], flexShrink: 0, marginTop: 1 }} />;
-};
 
 interface HealthScorePopoverProps {
   repoName: string;
   quality?: ProjectQualityData | null;
   fontSize?: number;
   scanning?: boolean;
-  onNavigateToQuality?: () => void;
+  onViewLastScan?: () => void;
+  onRemediate?: () => void;
+  onViewPullRequest?: () => void;
 }
 
 export const HealthScorePopover = ({
   repoName,
   quality: qualityProp,
-  fontSize = 14,
+  fontSize = 16,
   scanning = false,
-  onNavigateToQuality,
+  onViewLastScan,
+  onRemediate,
+  onViewPullRequest,
 }: HealthScorePopoverProps) => {
   const classes = useStyles();
   const theme = useTheme();
@@ -101,28 +259,7 @@ export const HealthScorePopover = ({
 
   const quality = qualityProp ?? getProjectQuality(repoName);
 
-  if (!quality) {
-    if (scanning) {
-      return (
-        <Box display="inline-flex" alignItems="center" style={{ gap: 6 }}>
-          <CircularProgress size={12} thickness={5} style={{ color: statusColors.info }} />
-          <Typography style={{ fontSize: 12, color: statusColors.info, fontWeight: 500 }}>
-            Scanning
-          </Typography>
-        </Box>
-      );
-    }
-    return (
-      <Typography variant="body2" color="textSecondary" style={{ fontSize: 12 }}>
-        —
-      </Typography>
-    );
-  }
-
-  const { healthScore, totalViolations, lastScannedAt, violations } = quality;
-  const topViolations = violations.slice(0, 4);
-
-  const handleClick = (event: React.MouseEvent<HTMLElement>) => {
+  const handleOpen = (event: React.MouseEvent<HTMLElement>) => {
     event.stopPropagation();
     setAnchorEl(event.currentTarget);
   };
@@ -140,13 +277,40 @@ export const HealthScorePopover = ({
     );
   }
 
+  if (!quality) {
+    return (
+      <Typography variant="body2" color="textSecondary" style={{ fontSize: 12 }}>
+        Not scanned
+      </Typography>
+    );
+  }
+
+  const { healthScore, totalViolations, lastScannedAt, lastScannedCommit, severityBreakdown } =
+    quality;
+  const live =
+    quality.remediationStatus === 'in-progress' ||
+    quality.remediationStatus === 'proposals-ready';
+  const presentSev = SEVERITY_ORDER.filter(sev => (severityBreakdown[sev] ?? 0) > 0);
+  const sha = lastScannedCommit ? shortSha(lastScannedCommit) : null;
+  const findings = quality.violations ?? [];
+  const remediateLabel = live
+    ? 'Resume remediation'
+    : quality.remediationStatus === 'available'
+      ? 'Remediate'
+      : null;
+
   return (
     <>
-      <span className={classes.clickTarget} onClick={handleClick} role="button" tabIndex={0}>
-        <Typography style={{ fontSize, fontWeight: 700, color: healthColor(healthScore) }}>
-          {healthScore}
-        </Typography>
-      </span>
+      <button
+        type="button"
+        className={classes.clickTarget}
+        onClick={handleOpen}
+        aria-haspopup="dialog"
+        aria-expanded={Boolean(anchorEl)}
+        aria-label={`Quality score ${healthScore} out of 100. Higher is better. Open scan details.`}
+      >
+        <QualityScoreMark score={healthScore} fontSize={fontSize} />
+      </button>
       <Popover
         open={Boolean(anchorEl)}
         anchorEl={anchorEl}
@@ -157,72 +321,130 @@ export const HealthScorePopover = ({
       >
         <Box className={classes.popoverContent}>
           <Box className={classes.header}>
-            <Box>
-              <Box display="flex" alignItems="baseline" style={{ gap: 8 }}>
-                <Typography style={{ fontSize: 28, fontWeight: 700, color: healthColor(healthScore), lineHeight: 1 }}>
-                  {healthScore}
-                </Typography>
-                <Typography style={{ fontSize: 13, color: healthColor(healthScore), fontWeight: 500 }}>
-                  {healthLabel(healthScore)}
-                </Typography>
-              </Box>
-              <Typography style={{ fontSize: 12, color: theme.palette.text.secondary, marginTop: 4 }}>
-                {totalViolations === 0
-                  ? 'No violations detected'
-                  : `${totalViolations} violation${totalViolations !== 1 ? 's' : ''} found`}
-                {' · '}last scanned {lastScannedAt}
-              </Typography>
+            <Box className={classes.headerTop}>
+              <QualityScoreMark score={healthScore} fontSize={28} denomSize={16} />
+              <IconButton size="small" onClick={handleClose} aria-label="Close">
+                <CloseIcon fontSize="small" />
+              </IconButton>
             </Box>
-            <IconButton size="small" onClick={handleClose}>
-              <CloseIcon fontSize="small" />
-            </IconButton>
+            <Typography className={classes.meta}>
+              {totalViolations === 0 ? 'No findings' : `${totalViolations} findings`}
+              {' · '}
+              {lastScannedAt}
+              {sha && (
+                <>
+                  {' · '}
+                  <span style={{ fontFamily: 'monospace' }}>{sha}</span>
+                </>
+              )}
+            </Typography>
+            <Typography className={classes.meta}>
+              Remediation: {REMEDIATION_STATUS_LABEL[quality.remediationStatus]}
+            </Typography>
+            <Typography style={{ fontSize: 11, color: theme.palette.text.disabled, marginTop: 2, lineHeight: 1.45 }}>
+              0–100, higher is better. Rollup of finding severities from this scan.
+            </Typography>
           </Box>
 
-          {totalViolations === 0 ? (
-            <Box display="flex" alignItems="center" style={{ gap: 8, padding: '8px 0' }}>
-              <CheckCircleIcon style={{ fontSize: 20, color: statusColors.success }} />
-              <Typography style={{ fontSize: 13, color: statusColors.success, fontWeight: 500 }}>
-                All checks passed
-              </Typography>
-            </Box>
-          ) : (
-            <>
-              <Typography style={{ fontSize: 11, fontWeight: 600, color: theme.palette.text.secondary, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>
-                Top issues
-              </Typography>
-              {topViolations.map((v, i) => (
-                <Box key={i} className={classes.violationRow}>
-                  <SeverityIcon severity={v.severity} />
-                  <Box flex={1} minWidth={0}>
-                    <Typography style={{ fontSize: 12, fontWeight: 500 }} noWrap>
-                      {v.message}
-                    </Typography>
-                    <Typography style={{ fontSize: 11, color: theme.palette.text.disabled, fontFamily: 'monospace' }}>
-                      {v.ruleId} · {v.file}:{v.lineStart}
-                    </Typography>
+          {totalViolations > 0 && presentSev.length > 0 && (
+            <Box className={classes.findings}>
+              {presentSev.map(sev => {
+                const nodes = nodesForSeverity(findings, sev);
+                const count = severityBreakdown[sev];
+                return (
+                  <Box key={sev}>
+                    <Box className={classes.sevRow}>
+                      <span
+                        className={classes.sevCount}
+                        style={{
+                          backgroundColor: fade(
+                            SEVERITY_COLORS[sev],
+                            theme.palette.type === 'dark' ? 0.28 : 0.16,
+                          ),
+                          borderColor: SEVERITY_COLORS[sev],
+                        }}
+                        aria-label={`${count} ${SEVERITY_LABEL[sev].toLowerCase()} finding${count === 1 ? '' : 's'}`}
+                      >
+                        {count}
+                      </span>
+                      <Typography style={{ fontSize: 13, fontWeight: 600 }}>
+                        {SEVERITY_LABEL[sev]}
+                      </Typography>
+                    </Box>
+                    {nodes.map(node => (
+                      <Box key={node.key} className={classes.nodeRow}>
+                        <Typography
+                          style={{
+                            fontSize: 11,
+                            color: theme.palette.text.secondary,
+                            minWidth: 56,
+                          }}
+                        >
+                          {node.kind}
+                        </Typography>
+                        <Typography
+                          style={{
+                            fontSize: 12,
+                            fontFamily: 'monospace',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}
+                          title={node.label}
+                        >
+                          {node.label}
+                        </Typography>
+                      </Box>
+                    ))}
                   </Box>
-                </Box>
-              ))}
-              {violations.length > topViolations.length && (
-                <Typography style={{ fontSize: 11, color: theme.palette.text.disabled, marginTop: 4 }}>
-                  +{violations.length - topViolations.length} more
-                </Typography>
-              )}
-            </>
+                );
+              })}
+            </Box>
           )}
 
           <Box className={classes.footer}>
-            <Typography style={{ fontSize: 11, color: theme.palette.text.disabled }}>
-              commit <code style={{ fontSize: 10 }}>{quality.lastScannedCommit}</code>
-            </Typography>
-            {onNavigateToQuality && (
+            {onViewLastScan && (
               <Button
                 size="small"
                 color="primary"
-                onClick={(e) => { e.stopPropagation(); handleClose(); onNavigateToQuality(); }}
-                style={{ textTransform: 'none', fontSize: 12, fontWeight: 500 }}
+                className={classes.pill}
+                onClick={e => {
+                  e.stopPropagation();
+                  handleClose();
+                  onViewLastScan();
+                }}
               >
-                View all →
+                View last scan
+              </Button>
+            )}
+            {quality.remediationStatus === 'pr-open' && onViewPullRequest && (
+              <Button
+                size="small"
+                color="primary"
+                variant="contained"
+                className={classes.pill}
+                onClick={e => {
+                  e.stopPropagation();
+                  handleClose();
+                  onViewPullRequest();
+                }}
+              >
+                View pull request
+              </Button>
+            )}
+            {remediateLabel && onRemediate && (
+              <Button
+                size="small"
+                color="primary"
+                variant="contained"
+                className={classes.pill}
+                onClick={e => {
+                  e.stopPropagation();
+                  handleClose();
+                  onRemediate();
+                }}
+              >
+                {remediateLabel}
               </Button>
             )}
           </Box>

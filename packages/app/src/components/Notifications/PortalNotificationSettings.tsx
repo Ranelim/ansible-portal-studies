@@ -38,7 +38,7 @@ const useStyles = makeStyles(theme => ({
 
 /**
  * End-user notification prefs — global event types (not per experience).
- * Settings → Notifications tab.
+ * Used by User settings → Notifications and the inbox Notification settings page.
  */
 export const PortalNotificationSettings = () => {
   const classes = useStyles();

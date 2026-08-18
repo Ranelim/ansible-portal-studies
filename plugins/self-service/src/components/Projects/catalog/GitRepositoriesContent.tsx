@@ -51,7 +51,9 @@ import { DismissibleBanner } from '../../common/DismissibleBanner';
 import { EmptyStateLayout, RepositoriesIllustration } from '../../common/EmptyStateLayout';
 import { LastSyncedIndicator } from '../../Admin/LastSyncedIndicator';
 import { statusColors } from '../../common/statusColors';
-import { useNavIaModel } from '../../../hooks/useNavIaModel';
+import { isDevelopExperience, useNavIaModel } from '../../../hooks/useNavIaModel';
+import { scansListPath } from '../quality/qualitySurfacePaths';
+import { HealthScorePopover } from './HealthScorePopover';
 import {
   GIT_REPOSITORIES,
   type GitRepository,
@@ -66,12 +68,6 @@ import {
   SEVERITY_COLORS,
 } from '../../Projects/detail/qualityDemoData';
 import type { SeverityClass } from '../../Projects/detail/qualityDemoData';
-
-const healthColor = (score: number): string => {
-  if (score >= 80) return statusColors.success;
-  if (score >= 50) return statusColors.warning;
-  return statusColors.error;
-};
 
 type ProviderFilter = 'all' | 'github' | 'gitlab';
 
@@ -381,71 +377,49 @@ const saveStarredRepos = (names: Set<string>) => {
 /** Engine in flight — demo overlay. Empty so quality data stays the source of truth. */
 const SCANNING_REPOS = new Set<string>();
 
-/** Develop (quality) list signal: score + last scan — not findings chips. */
+/** Develop list: compact score. Scan time, commit, and severity live in the popover. */
 function QualityScoreCell({ repoName }: { repoName: string }) {
   const navigate = useNavigate();
+  const { experience } = useNavIaModel();
   const quality = getProjectQuality(repoName);
-  const scanning = SCANNING_REPOS.has(repoName);
 
-  const openQuality = () => {
+  const viewLastScan = () => {
+    const qs = new URLSearchParams({ repo: repoName });
+    if (quality?.latestScan.scanId) qs.set('scan', quality.latestScan.scanId);
+    navigate(`${scansListPath(experience)}?${qs.toString()}`);
+  };
+
+  const remediate = () => {
+    const qs = new URLSearchParams({ from: 'list' });
+    const live =
+      quality?.remediationStatus === 'in-progress' ||
+      quality?.remediationStatus === 'proposals-ready';
+    if (live) qs.set('resume', '1');
+    if (experience === 'develop-drawer') {
+      navigate(
+        `/self-service/repositories/${encodeURIComponent(repoName)}?tab=quality`,
+      );
+      return;
+    }
     navigate(
-      `/self-service/repositories/${encodeURIComponent(repoName)}`,
+      `/self-service/apme/remediate/${encodeURIComponent(repoName)}?${qs.toString()}`,
     );
   };
 
-  if (scanning) {
-    return (
-      <Chip
-        size="small"
-        label="Scanning"
-        style={{
-          fontSize: 11,
-          height: 20,
-          backgroundColor: `${statusColors.info}15`,
-          color: statusColors.info,
-          fontWeight: 500,
-        }}
-      />
-    );
-  }
-
-  if (!quality) {
-    return (
-      <Typography variant="body2" color="textSecondary" style={{ fontSize: 12 }}>
-        Not scanned
-      </Typography>
-    );
-  }
-
   return (
-    <Box
-      display="flex"
-      alignItems="baseline"
-      style={{ gap: 8, cursor: 'pointer' }}
-      onClick={e => {
-        e.stopPropagation();
-        openQuality();
-      }}
-    >
-      <Typography
-        component="span"
-        style={{
-          fontSize: 16,
-          fontWeight: 700,
-          lineHeight: 1.2,
-          color: healthColor(quality.healthScore),
-        }}
-      >
-        {quality.healthScore}
-      </Typography>
-      <Typography
-        variant="body2"
-        color="textSecondary"
-        style={{ fontSize: 12 }}
-      >
-        Last scanned {quality.lastScannedAt}
-      </Typography>
-    </Box>
+    <HealthScorePopover
+      repoName={repoName}
+      quality={quality}
+      scanning={SCANNING_REPOS.has(repoName)}
+      onViewLastScan={quality ? viewLastScan : undefined}
+      onRemediate={quality ? remediate : undefined}
+      onViewPullRequest={
+        quality?.remediationPrUrl
+          ? () =>
+              window.open(quality.remediationPrUrl, '_blank', 'noopener,noreferrer')
+          : undefined
+      }
+    />
   );
 }
 
@@ -641,7 +615,7 @@ export const GitRepositoriesContent = () => {
   const navigate = useNavigate();
   const { hasRole } = useUserRoleContext();
   const { experience } = useNavIaModel();
-  const qualityScoreOnList = experience === 'develop-apme';
+  const qualityScoreOnList = isDevelopExperience(experience);
   const [repos, setRepos] = useState<GitRepository[]>(() => {
     const stored = loadStarredRepos();
     return GIT_REPOSITORIES.map(r => ({
@@ -725,17 +699,17 @@ export const GitRepositoriesContent = () => {
     qualityScoreOnList
       ? {
           title: (
-            <Box display="flex" alignItems="center" style={{ gap: 4 }}>
-              Quality score
+            <Box display="flex" alignItems="center" style={{ gap: 4, whiteSpace: 'nowrap' }}>
+              Quality
               <Tooltip
-                title="Quality score from the last content quality scan. Open the repository for a summary, or Content quality for scans and remediations."
+                title="Quality score from the last scan (0–100). Open the score for findings by severity, last scan time, and commit."
                 arrow
               >
                 <HelpOutlineIcon style={{ fontSize: 14, color: theme.palette.text.disabled, cursor: 'help' }} />
               </Tooltip>
             </Box>
           ) as unknown as string,
-          width: '28%',
+          width: '16%',
           customSort: (a: GitRepository, b: GitRepository) => {
             const rankOf = (r: GitRepository) => {
               if (SCANNING_REPOS.has(r.name)) return -2;

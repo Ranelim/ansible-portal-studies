@@ -1,27 +1,43 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Header, Page, HeaderTabs, Content } from '@backstage/core-components';
-import { Box } from '@material-ui/core';
+import { Box, makeStyles } from '@material-ui/core';
 import { useLocation, useNavigate } from 'react-router-dom';
 import FileCopyOutlinedIcon from '@material-ui/icons/FileCopyOutlined';
 import SearchIcon from '@material-ui/icons/Search';
 import { PageHelpIcon } from '../common/PageHelpIcon';
+import { ReadCountBadge } from '../common/ReadCountBadge';
 import { AddActionButton } from '../common/AddActionButton';
 import { CreateFromTemplateDialog } from '../common/CreateFromTemplateDialog';
 import { GitRepositoriesContent } from './catalog/GitRepositoriesContent';
 import { CIActivityContent } from './ci/CIActivityContent';
 import { QualityDashboardTabContent } from './quality/QualityDashboardTabContent';
-import { RemediationsContent } from './quality/RemediationsContent';
+import {
+  RemediationsContent,
+  countLiveRemediations,
+} from './quality/RemediationsContent';
+import { ScanHistoryContent } from './quality/ScanHistoryContent';
 import { useNavIaModel } from '../../hooks/useNavIaModel';
 
-/** Develop (tabs): list → Quality → Remediations → pipeline. */
+/** Develop (tabs): list → Quality → Remediations → Scans → pipeline. */
 const HOST_TABS = [
   { id: 'repositories', label: 'Repositories', path: 'list' },
   { id: 'dashboard', label: 'Quality', path: 'dashboard' },
   { id: 'remediations', label: 'Remediations', path: 'remediations' },
+  { id: 'scans', label: 'Scans', path: 'scans' },
   { id: 'ci-activity', label: 'Pipeline activity', path: 'ci-activity' },
 ];
 
-type Surface = 'list' | 'dashboard' | 'remediations' | 'ci-activity';
+type Surface = 'list' | 'dashboard' | 'remediations' | 'scans' | 'ci-activity';
+
+const useTabStyles = makeStyles(theme => ({
+  tabLabel: {
+    display: 'inline-flex',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing(0.75),
+    lineHeight: 1,
+  },
+}));
 
 const getSurfaceFromPath = (pathname: string): Surface => {
   if (
@@ -31,6 +47,7 @@ const getSurfaceFromPath = (pathname: string): Surface => {
     return 'dashboard';
   }
   if (pathname.includes('/repositories/remediations')) return 'remediations';
+  if (pathname.includes('/repositories/scans')) return 'scans';
   if (pathname.includes('/repositories/ci-activity')) return 'ci-activity';
   return 'list';
 };
@@ -39,17 +56,19 @@ const getTabIndexFromPath = (pathname: string): number => {
   const surface = getSurfaceFromPath(pathname);
   if (surface === 'dashboard') return 1;
   if (surface === 'remediations') return 2;
-  if (surface === 'ci-activity') return 3;
+  if (surface === 'scans') return 3;
+  if (surface === 'ci-activity') return 4;
   return 0;
 };
 
 /**
  * Git Repositories host.
- * - Develop (tabs): Repositories | Quality | Remediations | Pipeline activity
+ * - Develop (tabs): Repositories | Quality | Remediations | Scans | Pipeline activity
  * - Develop (drawer): no host tabs — rail picks Repositories / Quality / Remediations
  * - Develop (APME rail): list only — Quality lives on the Content quality pin
  */
 export const ProjectsTabs: React.FC = () => {
+  const classes = useTabStyles();
   const location = useLocation();
   const navigate = useNavigate();
   const { experience } = useNavIaModel();
@@ -57,6 +76,7 @@ export const ProjectsTabs: React.FC = () => {
   const apmeRailMode = experience === 'develop-apme';
   const hideHostTabs = sectionMode || apmeRailMode;
   const [createOpen, setCreateOpen] = useState(false);
+  const liveCount = countLiveRemediations();
 
   useEffect(() => {
     if (location.pathname.includes('/repositories/create')) {
@@ -83,14 +103,22 @@ export const ProjectsTabs: React.FC = () => {
     [location.pathname],
   );
 
-  // In Content quality compare, Quality/Remediations live on /apme — not host tabs.
+  // In Content quality compare, Quality / Remediations / Scans live on /apme.
   useEffect(() => {
     if (!apmeRailMode) return;
     if (surface === 'dashboard') {
       navigate('/self-service/apme', { replace: true });
       return;
     }
-    if (surface === 'remediations' || surface === 'ci-activity') {
+    if (surface === 'remediations') {
+      navigate('/self-service/apme/remediations', { replace: true });
+      return;
+    }
+    if (surface === 'scans') {
+      navigate('/self-service/apme/scans', { replace: true });
+      return;
+    }
+    if (surface === 'ci-activity') {
       navigate('/self-service/apme', { replace: true });
     }
   }, [apmeRailMode, surface, navigate]);
@@ -112,6 +140,9 @@ export const ProjectsTabs: React.FC = () => {
     if (surface === 'remediations') {
       return <RemediationsContent key="remediations" />;
     }
+    if (surface === 'scans') {
+      return <ScanHistoryContent key="scans" />;
+    }
     if (surface === 'ci-activity') {
       return <CIActivityContent key="ci-activity" />;
     }
@@ -123,18 +154,22 @@ export const ProjectsTabs: React.FC = () => {
       ? 'Quality'
       : sectionMode && surface === 'remediations'
         ? 'Remediations'
-        : sectionMode && surface === 'ci-activity'
-          ? 'Pipeline activity'
-          : 'Git Repositories';
+        : sectionMode && surface === 'scans'
+          ? 'Scans'
+          : sectionMode && surface === 'ci-activity'
+            ? 'Pipeline activity'
+            : 'Git Repositories';
 
   const headerSubtitle =
     sectionMode && surface === 'dashboard'
       ? 'Cross-repository quality posture and findings rollup'
       : sectionMode && surface === 'remediations'
-        ? 'Active and recent remediation runs — including superseded sessions'
-        : sectionMode && surface === 'ci-activity'
-          ? 'CI and quality pipeline runs for repositories'
-          : 'Automation content repositories discovered from your connected sources';
+        ? 'Live remediation sessions you can resume'
+        : sectionMode && surface === 'scans'
+          ? 'Scan snapshots across repositories. Current is the latest scan.'
+          : sectionMode && surface === 'ci-activity'
+            ? 'CI and quality pipeline runs for repositories'
+            : 'Automation content repositories discovered from your connected sources';
 
   const showCreate = !sectionMode || surface === 'list';
 
@@ -188,7 +223,21 @@ export const ProjectsTabs: React.FC = () => {
         <HeaderTabs
           selectedIndex={selectedTab}
           onChange={onTabSelect}
-          tabs={HOST_TABS.map(({ id, label }) => ({ id, label }))}
+          tabs={HOST_TABS.map(({ id, label }) => ({
+            id,
+            label:
+              id === 'remediations' && liveCount > 0 ? (
+                <span className={classes.tabLabel}>
+                  <span>{label}</span>
+                  <ReadCountBadge
+                    count={liveCount}
+                    label={`${liveCount} live remediations`}
+                  />
+                </span>
+              ) : (
+                label
+              ),
+          }))}
         />
       )}
       <Content>{content}</Content>

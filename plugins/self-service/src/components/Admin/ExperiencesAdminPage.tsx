@@ -8,6 +8,7 @@ import {
   Typography,
   makeStyles,
 } from '@material-ui/core';
+import AddIcon from '@material-ui/icons/Add';
 import { PageHelpIcon } from '../common/PageHelpIcon';
 
 const useStyles = makeStyles(theme => ({
@@ -62,6 +63,11 @@ const useStyles = makeStyles(theme => ({
     textTransform: 'none',
     borderRadius: 20,
     fontWeight: 500,
+  },
+  createBtn: {
+    textTransform: 'none',
+    borderRadius: 20,
+    fontWeight: 600,
   },
 }));
 
@@ -152,13 +158,29 @@ export const ExperiencesAdminPage = () => {
     <Page themeId="app">
       <Header
         title={
-          <Box display="flex" alignItems="center">
-            Experiences
-            <PageHelpIcon
-              tooltipLabel="What is Experiences admin?"
-              title="Manage Experiences"
-              description="Control which job-mode experiences appear on the Bridge for this Portal instance. Install or remove capabilities under Plugins. Who can enter each experience is defined in Access Control — use Manage access to jump there. This page is not a second plugin catalog."
-            />
+          <Box
+            display="flex"
+            alignItems="center"
+            justifyContent="space-between"
+            width="100%"
+          >
+            <Box display="flex" alignItems="center">
+              Experiences
+              <PageHelpIcon
+                tooltipLabel="What is Experiences admin?"
+                title="Manage Experiences"
+                description="Control which job-mode experiences appear on the Bridge for this Portal instance. Install or remove capabilities under Plugins. Who can enter each experience is defined in Access Control — use Manage access to jump there. This page is not a second plugin catalog."
+              />
+            </Box>
+            <Button
+              color="primary"
+              variant="contained"
+              className={classes.createBtn}
+              startIcon={<AddIcon />}
+              onClick={() => navigate('/self-service/admin/experiences/create')}
+            >
+              Create experience
+            </Button>
           </Box>
         }
         pageTitleOverride="Experiences"

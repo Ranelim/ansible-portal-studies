@@ -19,6 +19,11 @@ import ArrowBack from '@material-ui/icons/ArrowBack';
 import CheckIcon from '@material-ui/icons/Check';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useNavIaModel } from '../../../hooks/useNavIaModel';
+import {
+  qualityHomePath,
+  remediationsListPath,
+  scansListPath,
+} from './qualitySurfacePaths';
 import { statusColors } from '../../common/statusColors';
 import { GIT_REPOSITORIES } from '../catalog/unifiedDemoData';
 import {
@@ -465,7 +470,9 @@ export const ApmeRemediationPage = () => {
   );
 
   useEffect(() => {
-    if (experience === 'develop-tabs' || experience === 'develop-drawer') {
+    // Drawer still remediates in the repo Quality tab. Tabs uses the same
+    // ephemeral session as Content quality (Resume from Remediations / Scans).
+    if (experience === 'develop-drawer') {
       navigate(
         `/self-service/repositories/${encodeURIComponent(repoName)}?tab=quality`,
         { replace: true },
@@ -532,15 +539,23 @@ export const ApmeRemediationPage = () => {
       return;
     }
     if (fromScans) {
-      navigate('/self-service/apme/scans');
+      navigate(scansListPath(experience));
       return;
     }
     if (fromRemediations) {
-      navigate('/self-service/apme/remediations');
+      navigate(remediationsListPath(experience));
       return;
     }
-    navigate('/self-service/apme');
-  }, [fromRepo, fromList, fromScans, fromRemediations, navigate, repoName]);
+    navigate(qualityHomePath(experience));
+  }, [
+    experience,
+    fromRepo,
+    fromList,
+    fromScans,
+    fromRemediations,
+    navigate,
+    repoName,
+  ]);
 
   const backLabel = fromRepo
     ? repo?.name ?? 'Repository'
@@ -550,7 +565,9 @@ export const ApmeRemediationPage = () => {
         ? 'Scans'
         : fromRemediations
           ? 'Remediations'
-          : 'Content quality';
+          : experience === 'develop-apme'
+            ? 'Content quality'
+            : 'Git Repositories';
 
   const setDecision = (key: string, d: Decision) => {
     setDecisions(prev => {
@@ -580,8 +597,14 @@ export const ApmeRemediationPage = () => {
       <Page themeId="app">
         <Content>
           <Typography>Repository not found.</Typography>
-          <Button className={classes.pill} color="primary" onClick={() => navigate('/self-service/apme')}>
-            Back to Content quality
+          <Button
+            className={classes.pill}
+            color="primary"
+            onClick={() => navigate(qualityHomePath(experience))}
+          >
+            {experience === 'develop-apme'
+              ? 'Back to Content quality'
+              : 'Back to Git Repositories'}
           </Button>
         </Content>
       </Page>

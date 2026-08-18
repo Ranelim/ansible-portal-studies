@@ -68,6 +68,7 @@ import { DependenciesTab } from './DependenciesTab';
 import VerifiedUserOutlinedIcon from '@material-ui/icons/VerifiedUserOutlined';
 import Chip from '@material-ui/core/Chip';
 import { useNavIaModel } from '../../../hooks/useNavIaModel';
+import { qualitySummaryOnRepo } from '../quality/qualitySurfacePaths';
 
 
 const HOST_TABS = [
@@ -77,7 +78,7 @@ const HOST_TABS = [
   { id: 'dependencies', label: 'Dependencies' },
 ];
 
-const QUALITY_ON_PIN_TABS = [
+const OBJECT_HOME_TABS = [
   { id: 'overview', label: 'Overview' },
   { id: 'ci-activity', label: 'CI Activity' },
   { id: 'dependencies', label: 'Dependencies' },
@@ -1002,8 +1003,8 @@ export const ProjectDetailsPage = () => {
   const isDark = theme.palette.mode === 'dark';
   const { hasRole: pageHasRole } = useUserRoleContext();
   const { experience } = useNavIaModel();
-  const qualityOnPin = experience === 'develop-apme';
-  const pageTabs = qualityOnPin ? QUALITY_ON_PIN_TABS : HOST_TABS;
+  const repoQualitySummary = qualitySummaryOnRepo(experience);
+  const pageTabs = repoQualitySummary ? OBJECT_HOME_TABS : HOST_TABS;
 
   const urlTab = searchParams.get('tab');
   const urlScan = searchParams.get('scan');
@@ -1011,7 +1012,7 @@ export const ProjectDetailsPage = () => {
   const urlRule = searchParams.get('rule');
   const urlCategory = searchParams.get('category') as import('./qualityDemoData').ViolationCategory | null;
   const [selectedTab, setSelectedTab] = useState(() => {
-    if (qualityOnPin) {
+    if (repoQualitySummary) {
       if (urlTab === 'ci-activity') return 1;
       if (urlTab === 'dependencies') return 2;
       return 0;
@@ -1168,7 +1169,7 @@ export const ProjectDetailsPage = () => {
           <DescriptionLine text={project.description} />
         )}
 
-        {!qualityOnPin && quality && quality.totalViolations > 0 && (
+        {!repoQualitySummary && quality && quality.totalViolations > 0 && (
           <Typography
             style={{ fontSize: 13, color: theme.palette.text.disabled, marginTop: 4, cursor: 'pointer' }}
             onClick={() => handleTabChange(1, 'latest-scan')}
@@ -1202,7 +1203,7 @@ export const ProjectDetailsPage = () => {
             )}
           </Typography>
         )}
-        {!qualityOnPin && quality && quality.totalViolations === 0 && (
+        {!repoQualitySummary && quality && quality.totalViolations === 0 && (
           <Typography style={{ fontSize: 13, color: theme.palette.text.disabled, marginTop: 4 }}>
             <span style={{ color: statusColors.success, fontWeight: 500 }}>All checks passing</span>
             {' · '}
@@ -1211,7 +1212,7 @@ export const ProjectDetailsPage = () => {
         )}
 
         {/* Version update banner */}
-        {compatCount > 0 && !qualityOnPin && (
+        {compatCount > 0 && !repoQualitySummary && (
           <Box
             display="flex" alignItems="center" justifyContent="space-between"
             style={{
@@ -1257,19 +1258,19 @@ export const ProjectDetailsPage = () => {
         </Box>
 
         <Box className={classes.detailBody}>
-        {qualityOnPin && selectedTab === 0 && (
+        {repoQualitySummary && selectedTab === 0 && (
           <OverviewTab
             project={project}
             isPushedToAap={isPushedToAap}
             qualitySummary
           />
         )}
-        {qualityOnPin && selectedTab === 1 && <CIActivityTab project={project} />}
-        {qualityOnPin && selectedTab === 2 && <DependenciesTab quality={quality} />}
-        {!qualityOnPin && selectedTab === 0 && (
+        {repoQualitySummary && selectedTab === 1 && <CIActivityTab project={project} />}
+        {repoQualitySummary && selectedTab === 2 && <DependenciesTab quality={quality} />}
+        {!repoQualitySummary && selectedTab === 0 && (
           <OverviewTab project={project} isPushedToAap={isPushedToAap} />
         )}
-        {!qualityOnPin && selectedTab === 1 && (
+        {!repoQualitySummary && selectedTab === 1 && (
             <QualityTabUnified
               quality={quality}
               projectName={project.name}
@@ -1282,8 +1283,8 @@ export const ProjectDetailsPage = () => {
               branch={project.repo.branch}
             />
         )}
-        {!qualityOnPin && selectedTab === 2 && <CIActivityTab project={project} />}
-        {!qualityOnPin && selectedTab === 3 && <DependenciesTab quality={quality} />}
+        {!repoQualitySummary && selectedTab === 2 && <CIActivityTab project={project} />}
+        {!repoQualitySummary && selectedTab === 3 && <DependenciesTab quality={quality} />}
         </Box>
       </Content>
       <Snackbar

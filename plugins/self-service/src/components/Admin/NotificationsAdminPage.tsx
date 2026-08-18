@@ -13,7 +13,7 @@ const useStyles = makeStyles(theme => ({
 
 /**
  * Administration → Notifications
- * Platform defaults / channels (Class D). Personal mute prefs stay under profile Settings.
+ * Platform defaults / channels (Class D). Personal mute prefs stay under User settings.
  * Prototype shell only — ideal UX TBD (see portal-notifications doctrine).
  */
 export const NotificationsAdminPage = () => {
@@ -33,7 +33,7 @@ export const NotificationsAdminPage = () => {
           </Box>
         }
         pageTitleOverride="Notifications"
-        subtitle="Platform notification defaults and channels. Personal prefs stay in account Settings."
+        subtitle="Platform notification defaults and channels. Personal prefs stay in User settings."
       />
       <Content>
         <Typography className={classes.note}>

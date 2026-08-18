@@ -1,15 +1,11 @@
 import type { CSSProperties } from 'react';
 import { Box, Button, Card, CardContent, Typography } from '@material-ui/core';
 import { useNavigate } from 'react-router-dom';
-import { statusColors } from '../../common/statusColors';
+import { QualityScoreMark } from '../catalog/HealthScorePopover';
+import { useNavIaModel } from '../../../hooks/useNavIaModel';
+import { scansListPath } from '../quality/qualitySurfacePaths';
 import { useProjectDetailStyles } from './styles';
 import type { ProjectQualityData } from './qualityDemoData';
-
-const healthColor = (score: number): string => {
-  if (score >= 80) return statusColors.success;
-  if (score >= 50) return statusColors.warning;
-  return statusColors.error;
-};
 
 const liveSession = (status: ProjectQualityData['remediationStatus']) =>
   status === 'in-progress' || status === 'proposals-ready';
@@ -23,7 +19,7 @@ const pill: CSSProperties = {
 };
 
 /**
- * Develop (quality) object-home summary.
+ * Object-home summary when Remediations / Scans live on a fleet surface.
  * Last scan time + scanned commit are APME scan metadata.
  * Do not claim default-branch HEAD has moved unless has_new_commits is consumed.
  */
@@ -36,11 +32,12 @@ export const QualityOverviewCard = ({
 }) => {
   const classes = useProjectDetailStyles();
   const navigate = useNavigate();
+  const { experience } = useNavIaModel();
 
   const lastScanPath = () => {
     const qs = new URLSearchParams({ repo: repoName });
     if (quality?.latestScan.scanId) qs.set('scan', quality.latestScan.scanId);
-    return `/self-service/apme/scans?${qs.toString()}`;
+    return `${scansListPath(experience)}?${qs.toString()}`;
   };
 
   const scanPath = (resume?: boolean) => {
@@ -84,16 +81,7 @@ export const QualityOverviewCard = ({
         <Typography className={classes.cardTitle} style={{ marginBottom: 8 }}>
           Quality score
         </Typography>
-        <Typography
-          style={{
-            fontSize: 36,
-            fontWeight: 700,
-            lineHeight: 1,
-            color: healthColor(quality.healthScore),
-          }}
-        >
-          {quality.healthScore}
-        </Typography>
+        <QualityScoreMark score={quality.healthScore} fontSize={36} denomSize={18} />
         <Typography color="textSecondary" style={{ fontSize: 13, marginTop: 8 }}>
           Last scan {quality.lastScannedAt}
           {scannedSha && (
@@ -147,7 +135,7 @@ export const QualityOverviewCard = ({
                 style={pill}
                 onClick={() => navigate(scanPath())}
               >
-                Start scan
+                Start new scan
               </Button>
               <Button
                 variant="outlined"

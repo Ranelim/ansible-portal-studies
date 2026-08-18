@@ -107,11 +107,19 @@ const useRootStyles = makeStyles(theme => {
         color: `${theme.palette.text.primary} !important`,
         backgroundColor: `${theme.palette.action.selected} !important`,
       },
+      '& [data-masthead-active="true"] [class*="MuiButton-root"]': {
+        color: `${theme.palette.text.primary} !important`,
+        backgroundColor: `${theme.palette.action.selected} !important`,
+      },
       // Open Starred / Help — wrapper flag (Menu portals; Tooltip freezes sx).
       '& [data-masthead-menu-open="true"]': {
         backgroundColor: 'transparent !important',
       },
       '& [data-masthead-menu-open="true"] [class*="MuiIconButton-root"]': {
+        color: `${theme.palette.text.primary} !important`,
+        backgroundColor: `${theme.palette.action.selected} !important`,
+      },
+      '& [data-masthead-menu-open="true"] [class*="MuiButton-root"]': {
         color: `${theme.palette.text.primary} !important`,
         backgroundColor: `${theme.palette.action.selected} !important`,
       },
