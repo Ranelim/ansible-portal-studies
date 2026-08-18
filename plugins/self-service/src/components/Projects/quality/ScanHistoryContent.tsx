@@ -113,18 +113,52 @@ const useStyles = makeStyles(theme => ({
   repoFilter: {
     minWidth: 260,
   },
-  repoLink: {
-    fontSize: 13,
+  scanLink: {
+    display: 'block',
+    cursor: 'pointer',
     fontWeight: 500,
+    fontSize: 14,
+    color: theme.palette.primary.main,
+    textDecoration: 'none',
+    whiteSpace: 'nowrap',
+    '&:hover': { textDecoration: 'underline' },
+  },
+  repoLink: {
+    display: 'block',
+    fontSize: 14,
+    fontWeight: 400,
     color: theme.palette.text.primary,
     cursor: 'pointer',
+    textDecoration: 'none',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
     '&:hover': {
       color: theme.palette.primary.main,
       textDecoration: 'underline',
     },
   },
+  findingsCount: {
+    fontSize: 14,
+    fontWeight: 400,
+    lineHeight: 1.4,
+    color: theme.palette.text.primary,
+  },
+  emptyValue: {
+    fontSize: 14,
+    color: theme.palette.text.secondary,
+  },
   actionBtn: {
     ...pill,
+  },
+  viewDetailsBtn: {
+    textTransform: 'none',
+    fontWeight: 500,
+    fontSize: 14,
+    whiteSpace: 'nowrap',
+    minWidth: 'auto',
+    paddingLeft: 8,
+    paddingRight: 8,
   },
   findingsCell: {
     display: 'flex',
@@ -981,27 +1015,37 @@ export const ScanHistoryContent = () => {
           </Button>
         );
       }
-      return (
-        <Typography variant="body2" color="textSecondary" style={{ fontSize: 13 }}>
-          —
-        </Typography>
-      );
+      return <span className={classes.emptyValue}>—</span>;
     },
-    [classes.actionBtn, resumeSession],
+    [classes.actionBtn, classes.emptyValue, resumeSession],
+  );
+
+  const openScan = useCallback(
+    (scanId: string) => {
+      setScanParam(scanId);
+    },
+    [setScanParam],
   );
 
   const columns: TableColumn<GlobalScanRow>[] = [
     {
       title: 'When',
       field: 'createdAt',
+      width: '22%',
       defaultSort: 'desc',
       customSort: (a, b) => parseScanDate(a.createdAt) - parseScanDate(b.createdAt),
       render: (row: GlobalScanRow) => (
         <Box>
           <Tooltip title={row.createdAt} arrow>
-            <Typography style={{ fontSize: 13 }}>
+            <Link
+              className={classes.scanLink}
+              onClick={e => {
+                e.stopPropagation();
+                openScan(row.scanId);
+              }}
+            >
               {formatRelativeWhen(row.createdAt)}
-            </Typography>
+            </Link>
           </Tooltip>
           <CommitSha sha={row.commitHash} />
         </Box>
@@ -1009,8 +1053,9 @@ export const ScanHistoryContent = () => {
     },
     {
       title: 'Repository',
+      width: '22%',
       render: (row: GlobalScanRow) => (
-        <Typography
+        <Link
           className={classes.repoLink}
           onClick={e => {
             e.stopPropagation();
@@ -1018,7 +1063,25 @@ export const ScanHistoryContent = () => {
           }}
         >
           {row.org}/{row.repoName}
-        </Typography>
+        </Link>
+      ),
+    },
+    {
+      title: 'Findings',
+      field: 'totalViolations',
+      render: (row: GlobalScanRow) => (
+        <Tooltip title={severityTooltip(row.severityBreakdown)} arrow>
+          <Box className={classes.findingsCell}>
+            <span className={classes.findingsCount}>
+              {row.totalViolations === 0
+                ? 'No findings'
+                : `${row.totalViolations} finding${
+                    row.totalViolations !== 1 ? 's' : ''
+                  }`}
+            </span>
+            <FindingsBar breakdown={row.severityBreakdown} classes={classes} />
+          </Box>
+        </Tooltip>
       ),
     },
     {
@@ -1027,27 +1090,39 @@ export const ScanHistoryContent = () => {
       render: (row: GlobalScanRow) => <ScanStateChip current={row.isLatest} />,
     },
     {
-      title: 'Findings',
-      field: 'totalViolations',
-      render: (row: GlobalScanRow) => (
-        <Tooltip title={severityTooltip(row.severityBreakdown)} arrow>
-          <Box className={classes.findingsCell}>
-            <Typography style={{ fontSize: 13 }}>
-              {row.totalViolations === 0
-                ? 'No findings'
-                : `${row.totalViolations} finding${
-                    row.totalViolations !== 1 ? 's' : ''
-                  }`}
-            </Typography>
-            <FindingsBar breakdown={row.severityBreakdown} classes={classes} />
-          </Box>
-        </Tooltip>
-      ),
-    },
-    {
       title: 'Remediation',
       sorting: false,
       render: (row: GlobalScanRow) => renderRemediation(row),
+    },
+    {
+      title: '',
+      width: '9.5rem',
+      sorting: false,
+      cellStyle: {
+        whiteSpace: 'nowrap' as const,
+        paddingLeft: 16,
+        paddingRight: 24,
+      },
+      headerStyle: {
+        paddingLeft: 16,
+        paddingRight: 24,
+      },
+      render: (row: GlobalScanRow) => (
+        <Button
+          size="small"
+          color="primary"
+          variant="text"
+          className={classes.viewDetailsBtn}
+          onMouseDown={e => e.stopPropagation()}
+          onClick={e => {
+            e.preventDefault();
+            e.stopPropagation();
+            openScan(row.scanId);
+          }}
+        >
+          View details
+        </Button>
+      ),
     },
   ];
 
