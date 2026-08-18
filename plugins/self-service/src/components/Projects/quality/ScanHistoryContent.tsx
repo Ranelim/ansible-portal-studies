@@ -33,7 +33,6 @@ type GlobalScanRow = ScanResult & {
   repoName: string;
   org: string;
   isLatest: boolean;
-  isAvailable: boolean;
 };
 
 const SEV_ORDER: SeverityClass[] = [
@@ -113,6 +112,12 @@ const useStyles = makeStyles(theme => ({
   repoFilter: {
     minWidth: 260,
   },
+  tableHost: {
+    '& table': {
+      tableLayout: 'auto',
+      width: '100%',
+    },
+  },
   scanLink: {
     display: 'block',
     cursor: 'pointer',
@@ -144,13 +149,6 @@ const useStyles = makeStyles(theme => ({
     lineHeight: 1.4,
     color: theme.palette.text.primary,
   },
-  emptyValue: {
-    fontSize: 14,
-    color: theme.palette.text.secondary,
-  },
-  actionBtn: {
-    ...pill,
-  },
   viewDetailsBtn: {
     textTransform: 'none',
     fontWeight: 500,
@@ -164,7 +162,6 @@ const useStyles = makeStyles(theme => ({
     display: 'flex',
     flexDirection: 'column',
     gap: 4,
-    minWidth: 120,
   },
   bar: {
     display: 'flex',
@@ -923,7 +920,6 @@ export const ScanHistoryContent = () => {
       if (!q) continue;
       const latestId = q.latestScan.scanId;
       const scans = q.scanHistory.length > 0 ? q.scanHistory : [q.latestScan];
-      const available = liveSession(q.remediationStatus);
       for (const scan of scans) {
         const isLatest = scan.scanId === latestId;
         rows.push({
@@ -931,7 +927,6 @@ export const ScanHistoryContent = () => {
           repoName: repo.name,
           org: repo.org,
           isLatest,
-          isAvailable: isLatest && available,
         });
       }
     }
@@ -988,38 +983,6 @@ export const ScanHistoryContent = () => {
     return `/self-service/apme/remediate/${encodeURIComponent(repoName)}?${qs.toString()}`;
   };
 
-  const resumeSession = useCallback(
-    (repoName: string) => {
-      navigate(sessionPath(repoName, true));
-    },
-    [navigate],
-  );
-
-  const renderRemediation = useCallback(
-    (row: GlobalScanRow) => {
-      if (row.isAvailable) {
-        return (
-          <Button
-            size="small"
-            color="primary"
-            variant="outlined"
-            className={classes.actionBtn}
-            onMouseDown={e => e.stopPropagation()}
-            onClick={e => {
-              e.preventDefault();
-              e.stopPropagation();
-              resumeSession(row.repoName);
-            }}
-          >
-            Resume
-          </Button>
-        );
-      }
-      return <span className={classes.emptyValue}>—</span>;
-    },
-    [classes.actionBtn, classes.emptyValue, resumeSession],
-  );
-
   const openScan = useCallback(
     (scanId: string) => {
       setScanParam(scanId);
@@ -1031,9 +994,11 @@ export const ScanHistoryContent = () => {
     {
       title: 'When',
       field: 'createdAt',
-      width: '22%',
+      width: '1%',
       defaultSort: 'desc',
       customSort: (a, b) => parseScanDate(a.createdAt) - parseScanDate(b.createdAt),
+      cellStyle: { whiteSpace: 'nowrap' as const },
+      headerStyle: { whiteSpace: 'nowrap' as const },
       render: (row: GlobalScanRow) => (
         <Box>
           <Tooltip title={row.createdAt} arrow>
@@ -1053,7 +1018,11 @@ export const ScanHistoryContent = () => {
     },
     {
       title: 'Repository',
-      width: '22%',
+      width: '1%',
+      cellStyle: {
+        whiteSpace: 'nowrap' as const,
+        maxWidth: 280,
+      },
       render: (row: GlobalScanRow) => (
         <Link
           className={classes.repoLink}
@@ -1067,8 +1036,18 @@ export const ScanHistoryContent = () => {
       ),
     },
     {
+      title: 'Scan',
+      width: '1%',
+      sorting: false,
+      cellStyle: { whiteSpace: 'nowrap' as const },
+      headerStyle: { whiteSpace: 'nowrap' as const },
+      render: (row: GlobalScanRow) => <ScanStateChip current={row.isLatest} />,
+    },
+    {
       title: 'Findings',
       field: 'totalViolations',
+      width: '1%',
+      cellStyle: { whiteSpace: 'nowrap' as const },
       render: (row: GlobalScanRow) => (
         <Tooltip title={severityTooltip(row.severityBreakdown)} arrow>
           <Box className={classes.findingsCell}>
@@ -1085,27 +1064,18 @@ export const ScanHistoryContent = () => {
       ),
     },
     {
-      title: 'Scan',
-      sorting: false,
-      render: (row: GlobalScanRow) => <ScanStateChip current={row.isLatest} />,
-    },
-    {
-      title: 'Remediation',
-      sorting: false,
-      render: (row: GlobalScanRow) => renderRemediation(row),
-    },
-    {
       title: '',
-      width: '9.5rem',
+      width: '100%',
       sorting: false,
       cellStyle: {
         whiteSpace: 'nowrap' as const,
+        textAlign: 'left' as const,
         paddingLeft: 16,
-        paddingRight: 24,
+        paddingRight: 16,
       },
       headerStyle: {
         paddingLeft: 16,
-        paddingRight: 24,
+        paddingRight: 16,
       },
       render: (row: GlobalScanRow) => (
         <Button
@@ -1182,6 +1152,7 @@ export const ScanHistoryContent = () => {
           </Select>
         </FormControl>
       </Box>
+      <Box className={classes.tableHost}>
       <Table<GlobalScanRow>
         columns={columns}
         data={filteredScans}
@@ -1197,6 +1168,7 @@ export const ScanHistoryContent = () => {
           header: true,
           rowStyle: { cursor: 'pointer' },
         }}
+        style={{ width: '100%', overflowX: 'hidden' }}
         emptyContent={
           <Box py={4} textAlign="center">
             <Typography color="textSecondary">
@@ -1212,6 +1184,7 @@ export const ScanHistoryContent = () => {
           if (rowData) setScanParam((rowData as GlobalScanRow).scanId);
         }}
       />
+      </Box>
     </Box>
   );
 };
