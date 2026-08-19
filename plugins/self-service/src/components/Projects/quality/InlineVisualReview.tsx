@@ -1,0 +1,620 @@
+/**
+ * Visual redesign of Inline AI Results & Remediation (`?wizard=visual`).
+ * List-page layout: toolbar chrome, finding cards. Does not change Inline AI.
+ */
+
+import { useMemo, useState, type Dispatch, type SetStateAction } from 'react';
+import {
+  Box,
+  Button,
+  Chip,
+  CircularProgress,
+  FormControl,
+  InputLabel,
+  LinearProgress,
+  MenuItem,
+  Paper,
+  Select,
+  TextField,
+  Tooltip,
+  Typography,
+  makeStyles,
+} from '@material-ui/core';
+import { fade, type Theme } from '@material-ui/core/styles';
+import CheckIcon from '@material-ui/icons/Check';
+import CloseIcon from '@material-ui/icons/Close';
+import { SEVERITY_COLORS, type QualityViolation } from '../detail/qualityDemoData';
+import {
+  findingKey,
+  kindLabel,
+  type AiRowStatus,
+  type WizardDecision,
+} from './SpaRemediationReview';
+import { snippetForRule } from './spaWizardSnippets';
+
+const PILL = { borderRadius: 20, textTransform: 'none' as const, fontWeight: 600 };
+const PILL_COMPACT = { ...PILL, minWidth: 0, padding: '2px 12px' };
+
+const SEV_LABEL: Record<string, string> = {
+  critical: 'Critical',
+  high: 'High',
+  medium: 'Medium',
+  low: 'Low',
+  info: 'Info',
+};
+
+type FixLane = 'Auto-fix' | 'AI-fix' | 'Manual-fix';
+type DiffKind = 'context' | 'del' | 'add';
+type DiffLine = { kind: DiffKind; text: string };
+
+const LANE_TIP: Record<FixLane, string> = {
+  'Auto-fix': 'Can be applied automatically. Accept or Decline the proposed change.',
+  'AI-fix': 'Needs an AI suggestion. Generate one, then Accept or Decline it.',
+  'Manual-fix': 'No automatic or AI suggestion. Change this in the file.',
+};
+
+function laneOf(v: QualityViolation): FixLane {
+  if (v.fixTier === 'deterministic') return 'Auto-fix';
+  if (v.fixTier === 'ai') return 'AI-fix';
+  return 'Manual-fix';
+}
+
+function groupByFile(findings: QualityViolation[]): { file: string; findings: QualityViolation[] }[] {
+  const map = new Map<string, QualityViolation[]>();
+  findings.forEach(f => {
+    const file = f.file || 'Unknown file';
+    const list = map.get(file) ?? [];
+    list.push(f);
+    map.set(file, list);
+  });
+  return Array.from(map.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([file, list]) => ({
+      file,
+      findings: [...list].sort((a, b) => a.lineStart - b.lineStart),
+    }));
+}
+
+function unifiedDiff(current: string[], proposed: string[]): DiffLine[] {
+  const n = current.length;
+  const m = proposed.length;
+  const dp: number[][] = Array.from({ length: n + 1 }, () => Array(m + 1).fill(0));
+  for (let i = n - 1; i >= 0; i -= 1) {
+    for (let j = m - 1; j >= 0; j -= 1) {
+      dp[i][j] =
+        current[i] === proposed[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
+    }
+  }
+  const out: DiffLine[] = [];
+  let i = 0;
+  let j = 0;
+  while (i < n && j < m) {
+    if (current[i] === proposed[j]) {
+      out.push({ kind: 'context', text: current[i] });
+      i += 1;
+      j += 1;
+    } else if (dp[i + 1][j] >= dp[i][j + 1]) {
+      out.push({ kind: 'del', text: current[i] });
+      i += 1;
+    } else {
+      out.push({ kind: 'add', text: proposed[j] });
+      j += 1;
+    }
+  }
+  while (i < n) {
+    out.push({ kind: 'del', text: current[i] });
+    i += 1;
+  }
+  while (j < m) {
+    out.push({ kind: 'add', text: proposed[j] });
+    j += 1;
+  }
+  return out;
+}
+
+const useStyles = makeStyles((theme: Theme) => ({
+  stepFrame: {
+    borderRadius: 8,
+    backgroundColor: theme.palette.background.paper,
+  },
+  chrome: {
+    position: 'sticky',
+    top: 52,
+    zIndex: 1,
+    marginBottom: theme.spacing(2),
+    paddingBottom: theme.spacing(1.5),
+    backgroundColor: theme.palette.background.paper,
+  },
+  jobRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: theme.spacing(2),
+    flexWrap: 'wrap',
+  },
+  jobCopy: {
+    minWidth: 220,
+    flex: 1,
+    fontSize: 13,
+    color: theme.palette.text.secondary,
+    lineHeight: 1.4,
+  },
+  jobCount: { color: theme.palette.text.primary, fontWeight: 600 },
+  jobActions: { display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' },
+  progress: { marginTop: theme.spacing(1.5), height: 4, borderRadius: 2 },
+  toolbar: {
+    display: 'flex',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: theme.spacing(1.5),
+    padding: theme.spacing(2, 2, 0),
+  },
+  search: { width: 220 },
+  select: { minWidth: 168 },
+  fileList: {
+    padding: theme.spacing(2),
+    display: 'flex',
+    flexDirection: 'column',
+    gap: theme.spacing(1.5),
+  },
+  empty: {
+    padding: theme.spacing(3, 2),
+  },
+  issueCard: {
+    border: `1px solid ${theme.palette.divider}`,
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  cardHead: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: theme.spacing(2),
+    padding: theme.spacing(1.5, 2),
+  },
+  cardCopy: { minWidth: 0, flex: 1 },
+  title: {
+    fontSize: 14,
+    fontWeight: 600,
+    lineHeight: 1.4,
+    color: theme.palette.text.primary,
+  },
+  chips: { display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', marginTop: 8 },
+  chip: { height: 22, fontWeight: 600 },
+  fileMeta: {
+    marginTop: 4,
+    fontSize: 12,
+    color: theme.palette.text.secondary,
+    wordBreak: 'break-all',
+  },
+  filePath: {
+    fontFamily: '"Red Hat Mono", ui-monospace, monospace',
+  },
+  cardActions: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: 6,
+    alignItems: 'center',
+    flexShrink: 0,
+    paddingTop: 2,
+  },
+  rowAccept: { backgroundColor: fade(theme.palette.success.main, 0.06) },
+  rowDecline: { backgroundColor: fade(theme.palette.error.main, 0.06) },
+  diffBlock: {
+    borderTop: `1px solid ${theme.palette.divider}`,
+    padding: theme.spacing(1.5, 2, 2),
+  },
+  diffEmpty: {
+    padding: theme.spacing(1, 0),
+    fontSize: 13,
+    color: theme.palette.text.secondary,
+  },
+  suggestionEmpty: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    padding: theme.spacing(1, 0),
+    minHeight: 40,
+    fontSize: 13,
+    color: theme.palette.text.secondary,
+  },
+  diffLine: {
+    display: 'flex',
+    fontFamily: '"Red Hat Mono", ui-monospace, monospace',
+    fontSize: 12,
+    lineHeight: 1.55,
+    padding: theme.spacing(0, 1),
+    whiteSpace: 'pre',
+    overflow: 'auto',
+  },
+  gutter: {
+    width: 16,
+    flexShrink: 0,
+    userSelect: 'none',
+    fontWeight: 700,
+  },
+  del: {
+    backgroundColor: fade(theme.palette.error.main, theme.palette.type === 'dark' ? 0.22 : 0.12),
+  },
+  add: {
+    backgroundColor: fade(theme.palette.success.main, theme.palette.type === 'dark' ? 0.22 : 0.12),
+  },
+  delMark: { color: theme.palette.error.main },
+  addMark: { color: theme.palette.success.main },
+}));
+
+export const InlineVisualReview: React.FC<{
+  findings: QualityViolation[];
+  t1Decisions: Record<string, WizardDecision>;
+  setT1Decisions?: Dispatch<SetStateAction<Record<string, WizardDecision>>>;
+  aiDecisions: Record<string, WizardDecision>;
+  setAiDecisions?: Dispatch<SetStateAction<Record<string, WizardDecision>>>;
+  aiStatus: Record<string, AiRowStatus>;
+  onGenerateAi?: (key: string) => void;
+  onNext: () => void;
+  onCancel: () => void;
+}> = ({
+  findings,
+  t1Decisions,
+  setT1Decisions,
+  aiDecisions,
+  setAiDecisions,
+  aiStatus,
+  onGenerateAi,
+  onNext,
+  onCancel,
+}) => {
+  const classes = useStyles();
+  const decisions = { ...t1Decisions, ...aiDecisions };
+  const auto = findings.filter(v => v.fixTier === 'deterministic');
+  const ai = findings.filter(v => v.fixTier === 'ai');
+  const lanes = useMemo(() => {
+    const set = new Set<FixLane>();
+    findings.forEach(f => set.add(laneOf(f)));
+    return Array.from(set);
+  }, [findings]);
+  const contentTypes = useMemo(() => Array.from(new Set(findings.map(kindLabel))).sort(), [findings]);
+  const sevs = useMemo(() => Array.from(new Set(findings.map(f => f.severity))), [findings]);
+
+  const [query, setQuery] = useState('');
+  const [contentType, setContentType] = useState<'all' | string>('all');
+  const [severity, setSeverity] = useState<'all' | string>('all');
+  const [fixType, setFixType] = useState<'all' | FixLane>('all');
+
+  const pendingT1 = auto.filter(v => !t1Decisions[findingKey(v)]).length;
+  const readyAi = ai.filter(v => aiStatus[findingKey(v)] === 'ready');
+  const pendingGeneratedAi = readyAi.filter(v => !aiDecisions[findingKey(v)]).length;
+  const aiLoading = ai.some(v => aiStatus[findingKey(v)] === 'loading');
+  const mustDecide = auto.length + readyAi.length;
+  const decidedMust =
+    auto.filter(v => Boolean(t1Decisions[findingKey(v)])).length +
+    readyAi.filter(v => Boolean(aiDecisions[findingKey(v)])).length;
+  const nextLocked = pendingT1 > 0 || pendingGeneratedAi > 0 || aiLoading;
+
+  const filtered = findings.filter(f => {
+    if (contentType !== 'all' && kindLabel(f) !== contentType) return false;
+    if (severity !== 'all' && f.severity !== severity) return false;
+    if (fixType !== 'all' && laneOf(f) !== fixType) return false;
+    const q = query.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      f.ruleId.toLowerCase().includes(q) ||
+      f.message.toLowerCase().includes(q) ||
+      f.file.toLowerCase().includes(q)
+    );
+  });
+  const files = groupByFile(filtered);
+  const visibleAuto = filtered.filter(v => v.fixTier === 'deterministic' && !t1Decisions[findingKey(v)]);
+  const visibleReadyAi = filtered.filter(
+    v => v.fixTier === 'ai' && aiStatus[findingKey(v)] === 'ready' && !aiDecisions[findingKey(v)],
+  );
+  const pendingVisible = visibleAuto.length + visibleReadyAi.length;
+  const hiddenPending =
+    pendingT1 - visibleAuto.length + (pendingGeneratedAi - visibleReadyAi.length);
+
+  const decideItems = (items: QualityViolation[], value: WizardDecision | null) => {
+    items.forEach(v => {
+      const k = findingKey(v);
+      const setter = v.fixTier === 'ai' ? setAiDecisions : setT1Decisions;
+      setter?.(prev => {
+        const next = { ...prev };
+        if (value === null) delete next[k];
+        else if (!next[k]) next[k] = value;
+        return next;
+      });
+    });
+  };
+
+  const onDecision = (v: QualityViolation, d: WizardDecision) => {
+    const k = findingKey(v);
+    if (v.fixTier === 'ai') setAiDecisions?.(prev => ({ ...prev, [k]: d }));
+    else setT1Decisions?.(prev => ({ ...prev, [k]: d }));
+  };
+
+  const jobTitle =
+    pendingT1 > 0
+      ? 'Accept or Decline every auto-fix to continue.'
+      : pendingGeneratedAi > 0
+        ? 'Accept or Decline every generated AI suggestion to continue.'
+        : aiLoading
+          ? 'Wait for AI suggestions to finish generating.'
+          : 'Continue to commit. Un-generated AI findings stay in the file.';
+
+  const jobCount =
+    mustDecide === 0
+      ? 'No auto-fixes to decide.'
+      : `${decidedMust} of ${mustDecide} decided${
+          hiddenPending > 0 ? ' · some hidden by filters' : ''
+        }.`;
+
+  return (
+    <Box>
+      <div className={classes.chrome}>
+        <div className={classes.jobRow}>
+          <Typography className={classes.jobCopy}>
+            {jobTitle}{' '}
+            <span className={classes.jobCount}>{jobCount}</span>
+          </Typography>
+          <div className={classes.jobActions}>
+            <Button
+              size="small"
+              variant="outlined"
+              color="primary"
+              startIcon={<CheckIcon />}
+              disabled={pendingVisible === 0}
+              onClick={() => decideItems([...visibleAuto, ...visibleReadyAi], 'accept')}
+              style={PILL}
+            >
+              Accept remaining{pendingVisible > 0 ? ` (${pendingVisible})` : ''}
+            </Button>
+            <Button
+              size="small"
+              variant="outlined"
+              color="primary"
+              startIcon={<CloseIcon />}
+              disabled={pendingVisible === 0}
+              onClick={() => decideItems([...visibleAuto, ...visibleReadyAi], 'decline')}
+              style={PILL}
+            >
+              Decline remaining
+            </Button>
+            <Button
+              size="small"
+              variant="contained"
+              color="primary"
+              disabled={nextLocked}
+              onClick={onNext}
+              style={PILL}
+            >
+              Continue to commit
+            </Button>
+            <Button size="small" variant="outlined" onClick={onCancel} style={PILL}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+        {mustDecide > 0 && (
+          <LinearProgress
+            className={classes.progress}
+            variant="determinate"
+            value={Math.round((decidedMust / mustDecide) * 100)}
+          />
+        )}
+      </div>
+
+      <Paper className={classes.stepFrame} variant="outlined" elevation={0}>
+        <div className={classes.toolbar}>
+          <TextField
+            className={classes.search}
+            size="small"
+            variant="outlined"
+            placeholder="Search findings"
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            inputProps={{ 'aria-label': 'Search findings' }}
+          />
+          <FormControl variant="outlined" size="small" className={classes.select}>
+            <InputLabel id="visual-content-type-label">Content type</InputLabel>
+            <Select
+              labelId="visual-content-type-label"
+              label="Content type"
+              value={contentType}
+              onChange={e => setContentType(e.target.value as string)}
+            >
+              <MenuItem value="all">All content types</MenuItem>
+              {contentTypes.map(k => (
+                <MenuItem key={k} value={k}>
+                  {k} ({findings.filter(f => kindLabel(f) === k).length})
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <FormControl variant="outlined" size="small" className={classes.select}>
+            <InputLabel id="visual-severity-label">Severity</InputLabel>
+            <Select
+              labelId="visual-severity-label"
+              label="Severity"
+              value={severity}
+              onChange={e => setSeverity(e.target.value as string)}
+            >
+              <MenuItem value="all">All severities</MenuItem>
+              {sevs.map(s => (
+                <MenuItem key={s} value={s}>
+                  {SEV_LABEL[s] ?? s} ({findings.filter(f => f.severity === s).length})
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <FormControl variant="outlined" size="small" className={classes.select}>
+            <InputLabel id="visual-fix-type-label">Fix type</InputLabel>
+            <Select
+              labelId="visual-fix-type-label"
+              label="Fix type"
+              value={fixType}
+              onChange={e => setFixType(e.target.value as 'all' | FixLane)}
+            >
+              <MenuItem value="all">All fix types</MenuItem>
+              {lanes.map(lane => (
+                <MenuItem key={lane} value={lane}>
+                  {lane} ({findings.filter(f => laneOf(f) === lane).length})
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </div>
+
+        {files.length === 0 ? (
+          <Typography className={classes.empty} color="textSecondary">
+            No findings match the current filters.
+          </Typography>
+        ) : (
+          <div className={classes.fileList}>
+            {files.flatMap(group => group.findings).map(f => (
+              <FindingRow
+                key={findingKey(f)}
+                finding={f}
+                decision={decisions[findingKey(f)]}
+                aiStatus={aiStatus[findingKey(f)] ?? 'idle'}
+                onDecision={d => onDecision(f, d)}
+                onGenerateAi={onGenerateAi}
+              />
+            ))}
+          </div>
+        )}
+      </Paper>
+    </Box>
+  );
+};
+
+const FindingRow: React.FC<{
+  finding: QualityViolation;
+  decision?: WizardDecision;
+  aiStatus: AiRowStatus;
+  onDecision: (d: WizardDecision) => void;
+  onGenerateAi?: (key: string) => void;
+}> = ({ finding, decision, aiStatus, onDecision, onGenerateAi }) => {
+  const classes = useStyles();
+  const lane = laneOf(finding);
+  const snip = snippetForRule(finding.ruleId);
+  const key = findingKey(finding);
+  const waitingForAi = lane === 'AI-fix' && aiStatus !== 'ready';
+  const showProposed = lane === 'Auto-fix' || (lane === 'AI-fix' && aiStatus === 'ready');
+  const issueLines: DiffLine[] = waitingForAi || lane === 'Manual-fix'
+    ? snip.current.map(text => ({ kind: 'del' as const, text }))
+    : [];
+  const lines = showProposed
+    ? unifiedDiff(snip.current, snip.proposed)
+    : issueLines;
+  const rowClass =
+    decision === 'accept'
+      ? `${classes.issueCard} ${classes.rowAccept}`
+      : decision === 'decline'
+        ? `${classes.issueCard} ${classes.rowDecline}`
+        : classes.issueCard;
+
+  const actions =
+    lane === 'Auto-fix' || (lane === 'AI-fix' && aiStatus === 'ready') ? (
+      <>
+        <Button
+          size="small"
+          variant={decision === 'accept' ? 'contained' : 'outlined'}
+          color="primary"
+          startIcon={<CheckIcon />}
+          style={PILL_COMPACT}
+          onClick={() => onDecision('accept')}
+        >
+          Accept
+        </Button>
+        <Button
+          size="small"
+          variant={decision === 'decline' ? 'contained' : 'outlined'}
+          startIcon={<CloseIcon />}
+          style={PILL_COMPACT}
+          onClick={() => onDecision('decline')}
+        >
+          Decline
+        </Button>
+      </>
+    ) : lane === 'AI-fix' && aiStatus === 'loading' ? null : lane === 'AI-fix' ? (
+      onGenerateAi ? (
+        <Button
+          size="small"
+          variant="contained"
+          color="primary"
+          style={PILL_COMPACT}
+          onClick={() => onGenerateAi(key)}
+        >
+          Generate AI suggestion
+        </Button>
+      ) : null
+    ) : null;
+
+  return (
+    <div className={rowClass}>
+      <div className={classes.cardHead}>
+        <div className={classes.cardCopy}>
+          <Typography className={classes.title}>{finding.message}</Typography>
+          <Typography className={classes.fileMeta}>
+            <span className={classes.filePath}>
+              {finding.file || 'Unknown file'}:{finding.lineStart}
+            </span>
+            {' · '}
+            {kindLabel(finding)}
+            {' · '}
+            {finding.ruleId}
+          </Typography>
+          <div className={classes.chips}>
+            <Chip
+              size="small"
+              label={SEV_LABEL[finding.severity] ?? finding.severity}
+              className={classes.chip}
+              style={{
+                backgroundColor: SEVERITY_COLORS[finding.severity],
+                color: '#fff',
+              }}
+            />
+            <Tooltip title={LANE_TIP[lane]} placement="top">
+              <Chip size="small" variant="outlined" label={lane} className={classes.chip} />
+            </Tooltip>
+          </div>
+        </div>
+        {actions && <div className={classes.cardActions}>{actions}</div>}
+      </div>
+      <div className={classes.diffBlock}>
+        {lines.length === 0 ? (
+          <Typography className={classes.diffEmpty}>No snippet for this finding.</Typography>
+        ) : (
+          lines.map((line, idx) => (
+            <div
+              key={`${line.kind}-${idx}`}
+              className={`${classes.diffLine} ${
+                line.kind === 'del' ? classes.del : line.kind === 'add' ? classes.add : ''
+              }`}
+            >
+              <span
+                className={`${classes.gutter} ${
+                  line.kind === 'del' ? classes.delMark : line.kind === 'add' ? classes.addMark : ''
+                }`}
+              >
+                {line.kind === 'del' ? '−' : line.kind === 'add' ? '+' : ' '}
+              </span>
+              <span>{line.text || ' '}</span>
+            </div>
+          ))
+        )}
+        {lane === 'AI-fix' && aiStatus === 'loading' && (
+          <div className={classes.suggestionEmpty}>
+            <CircularProgress size={16} />
+            Generating…
+          </div>
+        )}
+        {lane === 'AI-fix' && aiStatus === 'idle' && (
+          <Typography className={classes.suggestionEmpty}>No suggestion yet.</Typography>
+        )}
+        {lane === 'Manual-fix' && (
+          <Typography className={classes.suggestionEmpty}>Change this in the file.</Typography>
+        )}
+      </div>
+    </div>
+  );
+};

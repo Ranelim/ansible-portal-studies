@@ -40,12 +40,14 @@ import {
   useAssessFilters,
   useGateFilters,
 } from './SpaRemediationReview';
+import { InlineVisualReview } from './InlineVisualReview';
 
 /**
  * Quality remediation session (`/apme/remediate/:repo`).
  * Original = SPA 9-step. AI assessment = pick which findings get an AI suggestion.
  * Redesign = Scan → Review auto-fixes → Choose AI findings → Review AI-fixes → Commit.
  * Inline AI = Scan → Results & Remediation → Commit.
+ * Inline visual = clone of Inline AI (`?wizard=visual`) for layout redesign.
  */
 
 type StepId =
@@ -62,16 +64,21 @@ type StepId =
 type StepDef = { id: StepId; label: string };
 
 /** Prototype compare. Stale `?wizard=fixes|optin` falls back to Original. */
-type WizardChrome = 'original' | 'new' | 'inline';
+type WizardChrome = 'original' | 'new' | 'inline' | 'visual';
 
 function parseWizardChrome(value: string | null): WizardChrome {
   if (value === 'new') return 'new';
   if (value === 'inline') return 'inline';
+  if (value === 'visual') return 'visual';
   return 'original';
 }
 
 function isInlineChrome(chrome: WizardChrome): boolean {
-  return chrome === 'inline';
+  return chrome === 'inline' || chrome === 'visual';
+}
+
+function isVisualChrome(chrome: WizardChrome): boolean {
+  return chrome === 'visual';
 }
 
 function isCraigRedesign(chrome: WizardChrome): boolean {
@@ -128,6 +135,9 @@ const useStyles = makeStyles(theme => ({
   wrap: {
     maxWidth: 1200,
   },
+  wrapVisual: {
+    maxWidth: 1280,
+  },
   compareStrip: {
     position: 'sticky',
     top: 0,
@@ -170,22 +180,12 @@ const useStyles = makeStyles(theme => ({
       color: theme.palette.text.primary,
     },
   },
-  titleRow: {
-    display: 'flex',
-    alignItems: 'baseline',
-    gap: theme.spacing(1.5),
-    flexWrap: 'wrap',
-    marginBottom: theme.spacing(0.5),
-  },
   title: {
     fontSize: '1.5rem',
     fontWeight: 700,
     lineHeight: 1.3,
-  },
-  repo: {
-    fontSize: 16,
-    fontWeight: 500,
-    color: theme.palette.text.secondary,
+    marginBottom: theme.spacing(0.5),
+    wordBreak: 'break-all',
   },
   meta: {
     fontSize: 13,
@@ -264,7 +264,7 @@ const useStyles = makeStyles(theme => ({
 }));
 
 function workflowSteps(includeAi: boolean, chrome: WizardChrome): StepDef[] {
-  if (chrome === 'inline') {
+  if (chrome === 'inline' || chrome === 'visual') {
     return [
       { id: 'scan', label: 'Scan' },
       { id: 'findings', label: 'Results & Remediation' },
@@ -909,6 +909,7 @@ export const ApmeRemediationPage = () => {
   const wizard = parseWizardChrome(params.get('wizard'));
   const compact = wizard !== 'original';
   const inline = isInlineChrome(wizard);
+  const visual = isVisualChrome(wizard);
   const craig = isCraigRedesign(wizard);
   const resultsFix = isResultsFixChrome(wizard);
   const { experience } = useNavIaModel();
@@ -1095,6 +1096,21 @@ export const ApmeRemediationPage = () => {
     }
 
     if (step === 'findings') {
+      if (visual) {
+        return (
+          <InlineVisualReview
+            findings={quality.violations}
+            t1Decisions={t1Decisions}
+            setT1Decisions={setT1Decisions}
+            aiDecisions={aiDecisions}
+            setAiDecisions={setAiDecisions}
+            aiStatus={aiStatus}
+            onGenerateAi={generateInlineAi}
+            onNext={() => setStep('tier1_applied')}
+            onCancel={goBack}
+          />
+        );
+      }
       return (
         <AssessPanel
           findings={quality.violations}
@@ -1335,16 +1351,19 @@ export const ApmeRemediationPage = () => {
             <ToggleButton value="original">Original</ToggleButton>
             <ToggleButton value="new">Redesign</ToggleButton>
             <ToggleButton value="inline">Inline AI</ToggleButton>
+            <ToggleButton value="visual">Inline visual</ToggleButton>
           </ToggleButtonGroup>
           <Typography className={classes.compareHint}>
-            {wizard === 'inline'
+            {wizard === 'visual'
+              ? 'Inline AI restyle: file frames, unified diff, sticky job bar. Same Scan → Results & Remediation → Commit flow.'
+              : wizard === 'inline'
               ? 'Scan. One Results & Remediation step: auto-fixes plus Generate AI per row. Then commit.'
               : wizard === 'new'
                 ? 'Scan → Review auto-fixes → Choose AI findings (pick, then generate) → Review AI-fixes → Commit.'
                 : 'SPA 9-step. On AI assessment, check the findings you want AI to generate — then Generate AI suggestions. Unchecked findings skip AI.'}
           </Typography>
         </Box>
-        <Box className={classes.wrap}>
+        <Box className={visual ? classes.wrapVisual : classes.wrap}>
           <Button
             variant="text"
             color="inherit"
@@ -1355,10 +1374,7 @@ export const ApmeRemediationPage = () => {
           >
             {backLabel}
           </Button>
-          <Box className={classes.titleRow}>
-            <Typography className={classes.title}>Remediation</Typography>
-            <Typography className={classes.repo}>{displayRepo}</Typography>
-          </Box>
+          <Typography className={classes.title}>{displayRepo}</Typography>
           <Typography className={classes.meta}>
             {quality.latestScan.scanId} · commit {quality.lastScannedCommit} · {quality.lastScannedAt}
           </Typography>
