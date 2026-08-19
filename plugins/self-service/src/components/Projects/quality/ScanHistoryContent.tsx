@@ -109,7 +109,7 @@ const useStyles = makeStyles(theme => ({
   },
   tableHost: {
     '& table': {
-      tableLayout: 'auto',
+      tableLayout: 'fixed',
       width: '100%',
     },
   },
@@ -1007,7 +1007,7 @@ export const ScanHistoryContent = () => {
     {
       title: 'When',
       field: 'createdAt',
-      width: '1%',
+      width: '22%',
       defaultSort: 'desc',
       customSort: (a, b) => parseScanDate(a.createdAt) - parseScanDate(b.createdAt),
       cellStyle: { whiteSpace: 'nowrap' as const },
@@ -1031,10 +1031,9 @@ export const ScanHistoryContent = () => {
     },
     {
       title: 'Repository',
-      width: '1%',
+      width: '30%',
       cellStyle: {
-        whiteSpace: 'nowrap' as const,
-        maxWidth: 280,
+        overflow: 'hidden',
       },
       render: (row: GlobalScanRow) => (
         <Link
@@ -1050,7 +1049,7 @@ export const ScanHistoryContent = () => {
     },
     {
       title: 'Scan',
-      width: '1%',
+      width: '16%',
       sorting: false,
       cellStyle: { whiteSpace: 'nowrap' as const },
       headerStyle: { whiteSpace: 'nowrap' as const },
@@ -1059,7 +1058,7 @@ export const ScanHistoryContent = () => {
     {
       title: 'Findings',
       field: 'totalViolations',
-      width: '1%',
+      width: '20%',
       cellStyle: { whiteSpace: 'nowrap' as const },
       render: (row: GlobalScanRow) => (
         <Tooltip title={severityTooltip(row.severityBreakdown)} arrow>
@@ -1078,17 +1077,16 @@ export const ScanHistoryContent = () => {
     },
     {
       title: '',
-      width: '100%',
+      width: '12%',
       sorting: false,
       cellStyle: {
         whiteSpace: 'nowrap' as const,
-        textAlign: 'left' as const,
-        paddingLeft: 16,
-        paddingRight: 16,
+        textAlign: 'right' as const,
+        paddingRight: 8,
       },
       headerStyle: {
-        paddingLeft: 16,
-        paddingRight: 16,
+        textAlign: 'right' as const,
+        paddingRight: 8,
       },
       render: (row: GlobalScanRow) => (
         <Button
@@ -1175,6 +1173,7 @@ export const ScanHistoryContent = () => {
           sorting: true,
           padding: 'dense',
           header: true,
+          tableLayout: 'fixed',
           rowStyle: { cursor: 'pointer' },
         }}
         style={{ width: '100%', overflowX: 'hidden' }}
