@@ -696,7 +696,7 @@ export type ApmeCategoryMix = {
 };
 
 /** Fleet findings rolled up to APME categories for Overview. */
-export function getApmeFleetFindings(): {
+export function getApmeFleetFindings(repoNames?: string[]): {
   total: number;
   bySeverity: Record<SeverityClass, number>;
   categories: ApmeCategoryMix[];
@@ -711,8 +711,11 @@ export function getApmeFleetFindings(): {
   const bySeverity = empty();
   const byCat = new Map<ApmeRuleCategory, Record<SeverityClass, number>>();
   let total = 0;
+  const allow =
+    repoNames === undefined ? null : new Set(repoNames);
 
-  for (const data of Object.values(QUALITY_DATA)) {
+  for (const [name, data] of Object.entries(QUALITY_DATA)) {
+    if (allow && !allow.has(name)) continue;
     for (const v of data.violations) {
       total += 1;
       bySeverity[v.severity] += 1;
@@ -751,14 +754,19 @@ export type ApmeCategoryRepoHit = {
   scanId: string;
   count: number;
   highestSeverity: SeverityClass;
+  breakdown: Record<SeverityClass, number>;
 };
 
 /** Current-scan repos that have findings in this APME category. */
 export function getApmeCategoryRepoHits(
   category: ApmeRuleCategory,
+  repoNames?: string[],
 ): ApmeCategoryRepoHit[] {
   const hits: ApmeCategoryRepoHit[] = [];
+  const allow =
+    repoNames === undefined ? null : new Set(repoNames);
   for (const [repoName, data] of Object.entries(QUALITY_DATA)) {
+    if (allow && !allow.has(repoName)) continue;
     const breakdown: Record<SeverityClass, number> = {
       critical: 0,
       high: 0,
@@ -784,6 +792,7 @@ export function getApmeCategoryRepoHits(
       scanId: data.latestScan.scanId,
       count,
       highestSeverity,
+      breakdown,
     });
   }
   hits.sort(

@@ -19,7 +19,7 @@ const EXPERIENCES_HREF = '/self-service/experiences';
  * Multi-seat return path (replaces Back bar on Automate B / global shell).
  * Hidden for SME — one Automate world, nowhere to return.
  */
-export const SHOW_EXPERIENCES_WAFFLE = true;
+export const SHOW_EXPERIENCES_WAFFLE = false;
 
 function isExperiencesPath(pathname: string): boolean {
   return (

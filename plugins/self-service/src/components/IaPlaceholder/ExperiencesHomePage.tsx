@@ -32,19 +32,18 @@ import {
   EXPERIENCE_LABELS,
   useNavIaModel,
   writeNavExperience,
-  type NavExperience,
 } from '../../hooks/useNavIaModel';
+import {
+  EXPERIENCE_LANDING,
+  pushRecentExperience,
+  readRecentExperiences,
+  type ExperienceId,
+} from '../../hooks/experienceRecent';
 import { useNavPlugins } from '../../hooks/useNavPlugins';
 import { useUserRoleContext } from '../../hooks/useUserRole';
 
 type SortMode = 'recent' | 'az';
 type CardStyle = 'accent' | 'hub';
-
-/** Job-mode experiences only — Administration is platform config, not an experience card. */
-type ExperienceId = Exclude<NavExperience, 'all' | 'admin'>;
-
-const RECENT_KEY = 'portal-experience-recent';
-const CARD_STYLE_KEY = 'portal-experience-card-style';
 
 /** Temp prototype chrome — kept for when compare bar is re-enabled. */
 const MAGENTA = '#BE0098';
@@ -64,12 +63,7 @@ const EXPERIENCE_BLURB: Record<ExperienceId, string> = {
   edge: 'Manage edge device fleets, updates, and desired state.',
 };
 
-const EXPERIENCE_LANDING: Record<ExperienceId, string> = {
-  automate: '/create?scope=experience',
-  develop: '/self-service/repositories/list',
-  compliance: '/self-service/experience-dashboard',
-  edge: '/self-service/experience-dashboard',
-};
+const CARD_STYLE_KEY = 'portal-experience-card-style';
 
 const EXPERIENCE_ACCENT: Record<ExperienceId, string> = {
   automate: '#0066CC',
@@ -136,26 +130,6 @@ function experienceIcon(id: ExperienceId | 'assistant'): ReactNode {
   }
 }
 
-function readRecent(): ExperienceId[] {
-  try {
-    const raw = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]');
-    if (!Array.isArray(raw)) return [];
-    const mapped = raw.map(id =>
-      id === 'develop-tabs' ||
-      id === 'develop-drawer' ||
-      id === 'develop-apme' ||
-      id === 'develop-section'
-        ? 'develop'
-        : id,
-    );
-    return mapped.filter((id): id is ExperienceId =>
-      ['automate', 'develop', 'compliance', 'edge'].includes(id),
-    );
-  } catch {
-    return [];
-  }
-}
-
 function readCardStyle(): CardStyle {
   if (FORCED_CARD_STYLE) return FORCED_CARD_STYLE;
   try {
@@ -165,15 +139,6 @@ function readCardStyle(): CardStyle {
     /* ignore */
   }
   return 'accent';
-}
-
-export function pushRecentExperience(id: ExperienceId) {
-  const next = [id, ...readRecent().filter(x => x !== id)].slice(0, 8);
-  try {
-    localStorage.setItem(RECENT_KEY, JSON.stringify(next));
-  } catch {
-    /* ignore */
-  }
 }
 
 const useStyles = makeStyles(theme => ({
@@ -577,7 +542,9 @@ export const ExperiencesHomePage = () => {
 
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<SortMode>('recent');
-  const [recent, setRecent] = useState<ExperienceId[]>(() => readRecent());
+  const [recent, setRecent] = useState<ExperienceId[]>(() =>
+    readRecentExperiences(),
+  );
   const [cardStyle, setCardStyle] = useState<CardStyle>(() => readCardStyle());
 
   const available = useMemo(
@@ -602,7 +569,7 @@ export const ExperiencesHomePage = () => {
   }, [location.pathname, navigate]);
 
   useEffect(() => {
-    setRecent(readRecent());
+    setRecent(readRecentExperiences());
   }, [location.pathname]);
 
   useEffect(() => {
@@ -646,7 +613,7 @@ export const ExperiencesHomePage = () => {
   const openExperience = useCallback(
     (id: ExperienceId) => {
       pushRecentExperience(id);
-      setRecent(readRecent());
+      setRecent(readRecentExperiences());
       setExperience(id);
       writeNavExperience(id);
       navigate(EXPERIENCE_LANDING[id]);

@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState, type KeyboardEvent } from 'react';
 import { Box, Chip, Tooltip, Typography, makeStyles } from '@material-ui/core';
 import HelpOutlineIcon from '@material-ui/icons/HelpOutline';
+import { ToggleButton, ToggleButtonGroup } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { GIT_REPOSITORIES } from '../catalog/unifiedDemoData';
 import { QualityScoreMark } from '../catalog/HealthScorePopover';
@@ -18,8 +19,8 @@ import {
 } from './qualitySurfacePaths';
 import { countLiveRemediations } from './RemediationsContent';
 import {
-  QUALITY_WINDOW_DAYS,
-  isWithinQualityWindow,
+  isWithinDays,
+  type QualityOverviewScope,
 } from './qualityWindow';
 import { SeverityFilterChips } from './SeverityFilterChips';
 import { SeverityMixBar } from './SeverityMixBar';
@@ -38,12 +39,41 @@ const SEV_ORDER: SeverityClass[] = [
 /** Same stroke as scan-history findings bars — every mix bar in this widget. */
 const FINDINGS_BAR_HEIGHT = 6;
 
+const SCOPE_OPTIONS: { id: QualityOverviewScope; value: string; label: string }[] =
+  [
+    { id: 'current', value: 'current', label: 'Current scan' },
+    { id: 7, value: '7', label: 'Last 7 days' },
+    { id: 30, value: '30', label: 'Last 30 days' },
+  ];
+
+function parseOverviewScope(value: string): QualityOverviewScope {
+  if (value === '7') return 7;
+  if (value === '30') return 30;
+  return 'current';
+}
+
+const SCOPE_HELP =
+  'Current scan is the latest completed scan for each git repository. Last 7 or 30 days limits Overview to repositories whose latest scan is in that window. Remediations always use the current scan. History is on Scans.';
+
 const useStyles = makeStyles(theme => ({
   kpis: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
     gap: theme.spacing(2),
     marginBottom: theme.spacing(3),
+  },
+  scopeRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    flexWrap: 'wrap',
+    gap: theme.spacing(1),
+    marginBottom: theme.spacing(2),
+  },
+  scopeHelp: {
+    fontSize: 16,
+    color: theme.palette.text.disabled,
+    cursor: 'help',
   },
   kpi: {
     border: `1px solid ${theme.palette.divider}`,
@@ -167,43 +197,63 @@ export const QualityPostureOverview = () => {
   const classes = useStyles();
   const navigate = useNavigate();
   const { experience } = useNavIaModel();
+  const [scope, setScope] = useState<QualityOverviewScope>('current');
+
+  const scopedRepos = useMemo(() => {
+    return GIT_REPOSITORIES.filter(repo => {
+      const q = getProjectQuality(repo.name);
+      if (!q) return false;
+      if (scope === 'current') return true;
+      return isWithinDays(q.lastScannedAt, scope);
+    });
+  }, [scope]);
+  const scopedNames = useMemo(
+    () => scopedRepos.map(r => r.name),
+    [scopedRepos],
+  );
 
   const stats = useMemo(() => {
     const totalRepos = GIT_REPOSITORIES.length;
-    let scannedRecent = 0;
     let scannedWithScore = 0;
     let healthSum = 0;
     let withCritical = 0;
-    let scansRecent = 0;
+    let scansInWindow = 0;
+    const windowDays = scope === 'current' ? null : scope;
 
     for (const repo of GIT_REPOSITORIES) {
       const q = getProjectQuality(repo.name);
       if (!q) continue;
-      scannedWithScore += 1;
-      healthSum += q.healthScore;
-      if (isWithinQualityWindow(q.lastScannedAt)) {
-        scannedRecent += 1;
+      const inScope =
+        scope === 'current' || isWithinDays(q.lastScannedAt, scope);
+      if (inScope) {
+        scannedWithScore += 1;
+        healthSum += q.healthScore;
+        if ((q.severityBreakdown.critical ?? 0) > 0) withCritical += 1;
       }
-      if ((q.severityBreakdown.critical ?? 0) > 0) withCritical += 1;
-      const latestId = q.latestScan.scanId;
-      const history = q.scanHistory.filter(scan => scan.scanId !== latestId);
-      for (const scan of [q.latestScan, ...history]) {
-        if (isWithinQualityWindow(scan.createdAt)) scansRecent += 1;
+      if (windowDays !== null) {
+        const latestId = q.latestScan.scanId;
+        const history = q.scanHistory.filter(scan => scan.scanId !== latestId);
+        for (const scan of [q.latestScan, ...history]) {
+          if (isWithinDays(scan.createdAt, windowDays)) scansInWindow += 1;
+        }
       }
     }
 
     return {
       totalRepos,
-      scannedRecent,
+      scannedWithScore,
       avgHealth:
         scannedWithScore > 0 ? Math.round(healthSum / scannedWithScore) : null,
       withCritical,
       liveRemediations: countLiveRemediations(),
-      scansRecent,
+      scansInWindow,
     };
-  }, []);
+  }, [scope]);
 
-  const findings = useMemo(() => getApmeFleetFindings(), []);
+  const findings = useMemo(
+    () => getApmeFleetFindings(scope === 'current' ? undefined : scopedNames),
+    [scope, scopedNames],
+  );
   const [severityFilter, setSeverityFilter] = useState<Set<SeverityClass>>(
     () => new Set(),
   );
@@ -238,8 +288,12 @@ export const QualityPostureOverview = () => {
 
   const activate = useCallback(
     (id: KpiId) => {
-      if (id === 'coverage' && stats.scannedRecent > 0) {
-        navigate(repositoriesListPath('recent'));
+      if (id === 'coverage' && stats.scannedWithScore > 0) {
+        navigate(
+          scope === 'current'
+            ? repositoriesListPath('scanned')
+            : repositoriesListPath('recent'),
+        );
         return;
       }
       if (id === 'health' && stats.avgHealth !== null) {
@@ -254,11 +308,11 @@ export const QualityPostureOverview = () => {
         navigate(remediationsListPath(experience));
         return;
       }
-      if (id === 'scans' && stats.scansRecent > 0) {
+      if (id === 'scans' && stats.scansInWindow > 0) {
         navigate(scansListPath(experience));
       }
     },
-    [experience, navigate, stats],
+    [experience, navigate, scope, stats],
   );
 
   const onKpiKey = useCallback(
@@ -271,7 +325,8 @@ export const QualityPostureOverview = () => {
     [activate],
   );
 
-  const windowLabel = `in the last ${QUALITY_WINDOW_DAYS} days`;
+  const windowPhrase =
+    scope === 'current' ? 'on the current scan' : `in the last ${scope} days`;
   const cards: {
     id: KpiId;
     value: string;
@@ -283,31 +338,41 @@ export const QualityPostureOverview = () => {
   }[] = [
     {
       id: 'coverage',
-      value: String(stats.scannedRecent),
+      value: String(stats.scannedWithScore),
       total: stats.totalRepos,
-      label: `Repositories scanned ${windowLabel}`,
-      enabled: stats.scannedRecent > 0,
-      aria: `${stats.scannedRecent} of ${stats.totalRepos} repositories scanned ${windowLabel}`,
+      label:
+        scope === 'current'
+          ? 'Repositories with a current scan'
+          : `Repositories scanned in the last ${scope} days`,
+      enabled: stats.scannedWithScore > 0,
+      aria: `${stats.scannedWithScore} of ${stats.totalRepos} ${
+        scope === 'current'
+          ? 'repositories with a current scan'
+          : `repositories scanned in the last ${scope} days`
+      }`,
     },
     {
       id: 'health',
       value: stats.avgHealth === null ? '—' : String(stats.avgHealth),
-      label: 'Average health from current scans',
+      label:
+        scope === 'current'
+          ? 'Average health on the current scan'
+          : `Average health for repositories scanned in the last ${scope} days`,
       enabled: stats.avgHealth !== null,
       aria:
         stats.avgHealth === null
           ? 'Average health unavailable'
-          : `Average health ${stats.avgHealth} from current scans`,
+          : `Average health ${stats.avgHealth}`,
     },
     {
       id: 'critical',
       value: String(stats.withCritical),
-      label: 'Repositories with critical findings on the current scan',
+      label: `Repositories with critical findings ${windowPhrase}`,
       enabled: stats.withCritical > 0,
       critical: true,
       aria: `${stats.withCritical} ${
         stats.withCritical === 1 ? 'repository' : 'repositories'
-      } with critical findings on the current scan`,
+      } with critical findings ${windowPhrase}`,
     },
     {
       id: 'remediations',
@@ -318,19 +383,41 @@ export const QualityPostureOverview = () => {
         stats.liveRemediations === 1 ? 'remediation' : 'remediations'
       } in progress`,
     },
-    {
-      id: 'scans',
-      value: String(stats.scansRecent),
-      label: `Scans ${windowLabel}`,
-      enabled: stats.scansRecent > 0,
-      aria: `${stats.scansRecent} ${
-        stats.scansRecent === 1 ? 'scan' : 'scans'
-      } ${windowLabel}`,
-    },
   ];
+  if (scope !== 'current') {
+    cards.push({
+      id: 'scans',
+      value: String(stats.scansInWindow),
+      label: `Scans run in the last ${scope} days`,
+      enabled: stats.scansInWindow > 0,
+      aria: `${stats.scansInWindow} ${
+        stats.scansInWindow === 1 ? 'scan' : 'scans'
+      } run in the last ${scope} days`,
+    });
+  }
 
   return (
     <Box>
+      <Box className={classes.scopeRow}>
+        <ToggleButtonGroup
+          exclusive
+          size="small"
+          value={String(scope)}
+          onChange={(_event, next) => {
+            if (next !== null) setScope(parseOverviewScope(String(next)));
+          }}
+          aria-label="Overview scan scope"
+        >
+          {SCOPE_OPTIONS.map(opt => (
+            <ToggleButton key={opt.value} value={opt.value}>
+              {opt.label}
+            </ToggleButton>
+          ))}
+        </ToggleButtonGroup>
+        <Tooltip title={SCOPE_HELP} arrow>
+          <HelpOutlineIcon className={classes.scopeHelp} />
+        </Tooltip>
+      </Box>
       <Box className={classes.kpis}>
         {cards.map(card => (
           <Box
@@ -374,8 +461,12 @@ export const QualityPostureOverview = () => {
             </Typography>
             <Typography className={classes.mixMeta} component="span">
               {findings.total === 1
-                ? 'finding from current scans'
-                : 'findings from current scans'}
+                ? scope === 'current'
+                  ? 'finding on the current scan'
+                  : `finding on current scans from the last ${scope} days`
+                : scope === 'current'
+                  ? 'findings on the current scan'
+                  : `findings on current scans from the last ${scope} days`}
             </Typography>
           </Box>
           <Box className={classes.mixBar}>
@@ -394,7 +485,11 @@ export const QualityPostureOverview = () => {
             />
           </Box>
           {visibleCategories.map(cat => (
-            <CategoryScanPeek key={cat.id} category={cat.id}>
+            <CategoryScanPeek
+              key={cat.id}
+              category={cat.id}
+              repoNames={scope === 'current' ? undefined : scopedNames}
+            >
               {open => (
                 <Box
                   className={classes.catRow}

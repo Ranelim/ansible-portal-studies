@@ -43,6 +43,13 @@ export {
   type NavExperience,
 } from './hooks/useNavIaModel';
 export {
+  EXPERIENCE_LANDING,
+  pushRecentExperience,
+  readRecentExperiences,
+  sortExperiencesByRecent,
+  type ExperienceId,
+} from './hooks/experienceRecent';
+export {
   NAV_IA_REVIEW_MODS,
   isSmeRole,
 } from './components/IaPlaceholder/navIaReviewMods';

@@ -12,6 +12,7 @@ import {
   useAdminSyncIa,
   useTemplatesRunsIa,
   type NavExperience,
+  type ExperienceId,
   ASSISTANT_SIDE_NAV_TRIAL,
   isAssistantPath,
   useAssistantChatTrial,
@@ -61,6 +62,7 @@ import ArrowBackIcon from '@material-ui/icons/ArrowBack';
 import ChevronLeftIcon from '@material-ui/icons/ChevronLeft';
 import DeleteOutlineIcon from '@material-ui/icons/DeleteOutline';
 import { useExperienceReturnChrome } from '../IaPrototype/useExperienceReturnChrome';
+import { ExperienceSwitcher } from './ExperienceSwitcher';
 
 const useSidebarLogoStyles = makeStyles({
   root: {
@@ -957,13 +959,26 @@ const useQuietReturnStyles = makeStyles(theme => ({
     fontSize: 18,
     opacity: 0.85,
   },
-  /** Option B — chevron + experience label on one row. */
+  /** Option B — chevron + experience switcher on one row. */
   labelReturnRow: {
     display: 'flex',
     alignItems: 'center',
     width: '100%',
+    boxSizing: 'border-box' as const,
     padding: '10px 8px 8px 0',
+    gap: 4,
     minHeight: 32,
+  },
+  /** 24px chip at the 32px gutter — same left edge as fedora / SidebarItem glyph. */
+  labelReturnHit: {
+    boxSizing: 'border-box' as const,
+    width: 24,
+    minWidth: 24,
+    marginLeft: 32,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
   },
   labelReturnBtn: {
     appearance: 'none' as const,
@@ -1009,8 +1024,12 @@ const useQuietReturnStyles = makeStyles(theme => ({
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap' as const,
-    // Pull toward icon column like SidebarItem label (iconContainer has -16px marginRight).
-    marginLeft: -theme.spacing(1),
+  },
+  switchSlot: {
+    minWidth: 0,
+    flex: 1,
+    display: 'flex',
+    alignItems: 'center',
   },
   softDiv: {
     margin: theme.spacing(0.5, 2, 0.5),
@@ -1134,7 +1153,7 @@ const AssistantSidebarRail = () => {
 
       {showLabelReturn ? (
         <Box className={quietClasses.labelReturnRow}>
-          <span className={quietClasses.iconCol}>
+          <span className={quietClasses.labelReturnHit}>
             <button
               type="button"
               className={quietClasses.labelReturnBtn}
@@ -1298,6 +1317,14 @@ const ExperiencesDomainSidebar = () => {
   const experienceLabel =
     EXPERIENCE_LABELS[domain] ?? EXPERIENCE_LABELS.develop;
 
+  const jobAvailable = available.filter(
+    (id): id is ExperienceId => id !== 'all' && id !== 'admin',
+  );
+  const currentJob: ExperienceId =
+    domain === 'admin' || domain === 'all'
+      ? jobAvailable[0] ?? 'develop'
+      : domain;
+
   const showQuietReturn = !smeLocked && returnChrome === 'quiet';
   const showLabelReturn = !smeLocked && returnChrome === 'waffle';
 
@@ -1337,7 +1364,7 @@ const ExperiencesDomainSidebar = () => {
       {/* B — left chevron beside experience name (icon-column aligned). */}
       {showLabelReturn ? (
         <Box className={quietClasses.labelReturnRow}>
-          <span className={quietClasses.iconCol}>
+          <span className={quietClasses.labelReturnHit}>
             <button
               type="button"
               className={quietClasses.labelReturnBtn}
@@ -1348,12 +1375,12 @@ const ExperiencesDomainSidebar = () => {
               <ChevronLeftIcon className={quietClasses.labelReturnChevron} />
             </button>
           </span>
-          <Typography
-            className={quietClasses.labelReturnText}
-            component="span"
-          >
-            {experienceLabel}
-          </Typography>
+          <span className={quietClasses.switchSlot}>
+            <ExperienceSwitcher
+              current={currentJob}
+              available={jobAvailable}
+            />
+          </span>
         </Box>
       ) : (
         !showQuietReturn && <SidebarSectionLabel text={experienceLabel} />

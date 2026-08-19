@@ -35,6 +35,24 @@ const QUALITY_TABS = [
   { id: 'scans', label: 'Scans', path: 'scans' },
 ];
 
+const QUALITY_TAB_COPY: Record<
+  'overview' | 'remediations' | 'scans',
+  { subtitle: string }
+> = {
+  overview: {
+    subtitle:
+      'Latest completed scan for each git repository — what is true now. History is on Scans.',
+  },
+  remediations: {
+    subtitle:
+      'Live fix sessions against the current scan. Start a scan from the header for a new snapshot.',
+  },
+  scans: {
+    subtitle:
+      'Every scan as a receipt. Current is the latest per repository; older scans are superseded.',
+  },
+};
+
 type Surface = 'list' | 'dashboard' | 'remediations' | 'scans' | 'ci-activity';
 
 const useStyles = makeStyles(theme => ({
@@ -167,7 +185,13 @@ export const ProjectsTabs: React.FC = () => {
       : 'Git Repositories';
 
   const headerSubtitle = qualityPage
-    ? 'Findings, remediations, and scan history for your git repositories.'
+    ? QUALITY_TAB_COPY[
+        surface === 'remediations'
+          ? 'remediations'
+          : surface === 'scans'
+            ? 'scans'
+            : 'overview'
+      ].subtitle
     : sectionMode && surface === 'ci-activity'
       ? 'CI and quality pipeline runs for repositories'
       : 'Automation content repositories discovered from your connected sources.';
@@ -203,7 +227,7 @@ export const ProjectsTabs: React.FC = () => {
                 <PageHelpIcon
                   tooltipLabel="What is Quality?"
                   title="What is Quality?"
-                  description="Scans Ansible content in your git repositories for policy, quality, secrets, and modernization findings. Overview is fleet posture. Remediations are live sessions. Scans is history."
+                  description="Scans Ansible content in your git repositories. Overview is the current scan — the latest completed scan per repository. Remediations are live fix sessions. Scans is history."
                 />
               ) : (
                 surface === 'list' && (

@@ -6,8 +6,10 @@ import {
   Typography,
   makeStyles,
 } from '@material-ui/core';
+import GitHubIcon from '@material-ui/icons/GitHub';
 import { useNavigate } from 'react-router-dom';
 import { GIT_REPOSITORIES } from '../catalog/unifiedDemoData';
+import { GitLabIcon } from '../../common/icons';
 import {
   APME_CATEGORY_LABEL,
   SEVERITY_COLORS,
@@ -36,8 +38,10 @@ const SEV_LABEL: Record<SeverityClass, string> = {
 
 const useStyles = makeStyles(theme => ({
   paper: {
-    width: 360,
+    width: 400,
     maxWidth: 'calc(100vw - 32px)',
+    maxHeight: 'min(420px, calc(100vh - 96px))',
+    overflowY: 'auto',
     padding: theme.spacing(2),
   },
   title: {
@@ -61,13 +65,17 @@ const useStyles = makeStyles(theme => ({
     marginBottom: 4,
   },
   row: {
-    display: 'flex',
+    display: 'grid',
+    gridTemplateColumns: '16px minmax(0, 1fr) 28px auto',
     alignItems: 'center',
-    gap: theme.spacing(1),
+    columnGap: theme.spacing(1),
     padding: '6px 0',
   },
+  providerIcon: {
+    fontSize: 14,
+    color: theme.palette.text.secondary,
+  },
   repo: {
-    flex: 1,
     minWidth: 0,
     fontSize: 13,
     fontWeight: 500,
@@ -78,24 +86,27 @@ const useStyles = makeStyles(theme => ({
   count: {
     fontSize: 12,
     color: theme.palette.text.secondary,
-    flexShrink: 0,
+    fontVariantNumeric: 'tabular-nums',
+    textAlign: 'right',
   },
   viewBtn: {
     textTransform: 'none',
     fontWeight: 600,
     fontSize: 12,
     borderRadius: 20,
-    flexShrink: 0,
+    minWidth: 0,
     padding: '2px 10px',
   },
 }));
 
-/** Peek: scans that have this category, grouped by highest severity. */
+/** Peek: scans that have this category, grouped by severity in the mix. */
 export function CategoryScanPeek({
   category,
+  repoNames,
   children,
 }: {
   category: ApmeRuleCategory;
+  repoNames?: string[];
   children: (open: (event: SyntheticEvent<HTMLElement>) => void) => ReactNode;
 }) {
   const classes = useStyles();
@@ -103,13 +114,20 @@ export function CategoryScanPeek({
   const { experience } = useNavIaModel();
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   const hits = useMemo(
-    () => getApmeCategoryRepoHits(category),
-    [category],
+    () => getApmeCategoryRepoHits(category, repoNames),
+    [category, repoNames],
   );
   const grouped = useMemo(() => {
     return SEV_ORDER.map(sev => ({
       sev,
-      rows: hits.filter(hit => hit.highestSeverity === sev),
+      rows: hits
+        .filter(hit => hit.breakdown[sev] > 0)
+        .map(hit => ({
+          repoName: hit.repoName,
+          scanId: hit.scanId,
+          count: hit.breakdown[sev],
+        }))
+        .sort((a, b) => b.count - a.count),
     })).filter(group => group.rows.length > 0);
   }, [hits]);
   const repoCount = hits.length;
@@ -149,16 +167,23 @@ export function CategoryScanPeek({
               {SEV_LABEL[group.sev]}
             </Typography>
             {group.rows.map(hit => {
-              const org =
-                GIT_REPOSITORIES.find(r => r.name === hit.repoName)?.org ?? '';
+              const repo = GIT_REPOSITORIES.find(r => r.name === hit.repoName);
+              const org = repo?.org ?? '';
+              const gitlab = repo?.provider === 'gitlab';
               return (
-                <Box key={hit.repoName} className={classes.row}>
-                  <Typography className={classes.repo} title={`${org}/${hit.repoName}`}>
+                <Box key={`${group.sev}-${hit.repoName}`} className={classes.row}>
+                  {gitlab ? (
+                    <GitLabIcon className={classes.providerIcon} />
+                  ) : (
+                    <GitHubIcon className={classes.providerIcon} />
+                  )}
+                  <Typography
+                    className={classes.repo}
+                    title={`${org}/${hit.repoName}`}
+                  >
                     {org ? `${org}/${hit.repoName}` : hit.repoName}
                   </Typography>
-                  <Typography className={classes.count}>
-                    {hit.count}
-                  </Typography>
+                  <Typography className={classes.count}>{hit.count}</Typography>
                   <Button
                     size="small"
                     color="primary"

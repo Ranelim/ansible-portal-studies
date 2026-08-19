@@ -66,12 +66,12 @@ export const AutomationPortalBrand = () => {
         alignItems: 'center',
         flexShrink: 0,
         boxSizing: 'border-box',
-        // Toolbar left = RAIL_ICON_GUTTER (Root CSS). No extra brand pad — waffle
-        // hit edge is the page gutter line (TEMP / Back / Header / Content).
+        // Toolbar already pads RAIL_ICON_GUTTER (32px) — same as the rail back
+        // chevron. Do not add extra pl when the waffle is off or the fedora
+        // sits to the right of the back button.
         ml: 0,
-        pl: showWaffle ? 0 : 1.5,
+        pl: 0,
         pr: 1,
-        // Room between waffle pressed surface and fedora.
         gap: showWaffle ? 1.5 : 0,
       }}
     >

@@ -1,5 +1,7 @@
-/** Shared recency window for Quality Overview KPIs and list handoff. */
+/** Recency windows for Quality Overview scope (not Remediations). */
 export const QUALITY_WINDOW_DAYS = 7;
+
+export type QualityOverviewScope = 'current' | 7 | 30;
 
 /** Days since a demo timestamp (`2 hours ago` or `May 25, 2026 14:30`). */
 export function daysSinceLabel(createdAt: string): number | null {
@@ -21,6 +23,10 @@ export function daysSinceLabel(createdAt: string): number | null {
 }
 
 export function isWithinQualityWindow(createdAt: string): boolean {
-  const days = daysSinceLabel(createdAt);
-  return days !== null && days <= QUALITY_WINDOW_DAYS;
+  return isWithinDays(createdAt, QUALITY_WINDOW_DAYS);
+}
+
+export function isWithinDays(createdAt: string, days: number): boolean {
+  const since = daysSinceLabel(createdAt);
+  return since !== null && since <= days;
 }
