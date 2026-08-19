@@ -243,6 +243,37 @@ const useStyles = makeStyles((theme: Theme) => ({
     whiteSpace: 'pre',
     marginTop: theme.spacing(1),
   },
+  findingSplit: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: theme.spacing(1.5),
+    padding: theme.spacing(1.5, 0),
+    borderBottom: `1px solid ${theme.palette.divider}`,
+    '&:last-of-type': { borderBottom: 'none' },
+    [theme.breakpoints.down('sm')]: { gridTemplateColumns: '1fr' },
+  },
+  findingSplitMeta: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: theme.spacing(1),
+    alignItems: 'center',
+  },
+  fixDisclaimer: {
+    padding: theme.spacing(1.5),
+    fontSize: 13,
+    lineHeight: 1.5,
+    color: theme.palette.text.secondary,
+    backgroundColor: theme.palette.background.default,
+    minHeight: 72,
+  },
+  fixActions: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: 8,
+    padding: theme.spacing(1.5),
+    borderTop: `1px solid ${theme.palette.divider}`,
+  },
   diffGrid: {
     display: 'grid',
     gridTemplateColumns: '1fr 1fr',
@@ -397,6 +428,26 @@ const DiffView: React.FC<{ current: string[]; proposed: string[] }> = ({ current
   );
 };
 
+export type AiRowStatus = 'idle' | 'loading' | 'ready';
+
+function t1CardDecision(
+  findings: QualityViolation[],
+  decisions: Record<string, WizardDecision>,
+  aiStatus?: Record<string, AiRowStatus>,
+): WizardDecision | undefined {
+  const actionable = findings.filter(f => {
+    if (f.fixTier === 'deterministic') return true;
+    if (f.fixTier === 'ai' && aiStatus?.[findingKey(f)] === 'ready') return true;
+    return false;
+  });
+  if (actionable.length === 0) return undefined;
+  const ds = actionable.map(f => decisions[findingKey(f)]);
+  if (ds.some(d => !d)) return undefined;
+  if (ds.every(d => d === 'accept')) return 'accept';
+  if (ds.every(d => d === 'decline')) return 'decline';
+  return undefined;
+}
+
 const NodeCard: React.FC<{
   id: string;
   title: string;
@@ -407,13 +458,50 @@ const NodeCard: React.FC<{
   expanded: boolean;
   onToggle: () => void;
   onDecision?: (id: string, d: WizardDecision) => void;
-}> = ({ id, title, kind, findings, mode, decision, expanded, onToggle, onDecision }) => {
+  /** Results step: Current on the left, Fix column on the right (proposed or disclaimer). */
+  fixColumn?: boolean;
+  /** Finding-keyed Accept/Decline for Quick-fix rows in the results step. */
+  findingDecisions?: Record<string, WizardDecision>;
+  /** Fourth prototype: per-finding Use AI on the results step. */
+  showAiOptIn?: boolean;
+  aiOptIn?: Record<string, boolean>;
+  onToggleAiOptIn?: (key: string) => void;
+  /** Inline AI: generate a suggestion in this row, then Accept/Decline. */
+  inlineAi?: boolean;
+  aiStatus?: Record<string, AiRowStatus>;
+  onGenerateAi?: (key: string) => void;
+}> = ({
+  id,
+  title,
+  kind,
+  findings,
+  mode,
+  decision,
+  expanded,
+  onToggle,
+  onDecision,
+  fixColumn,
+  findingDecisions,
+  showAiOptIn,
+  aiOptIn,
+  onToggleAiOptIn,
+  inlineAi,
+  aiStatus,
+  onGenerateAi,
+}) => {
   const classes = useStyles();
   const lead = findings[0];
   const snip = snippetForRule(lead.ruleId);
   const rules = Array.from(new Set(findings.map(f => f.ruleId)));
+  const cardDecision = fixColumn
+    ? t1CardDecision(findings, findingDecisions ?? {}, aiStatus)
+    : decision;
   const border =
-    decision === 'accept' ? classes.nodeCardAccept : decision === 'decline' ? classes.nodeCardDecline : '';
+    cardDecision === 'accept'
+      ? classes.nodeCardAccept
+      : cardDecision === 'decline'
+        ? classes.nodeCardDecline
+        : '';
 
   return (
     <Paper className={`${classes.nodeCard} ${border}`} variant="outlined" elevation={0}>
@@ -445,7 +533,7 @@ const NodeCard: React.FC<{
             )}
           </div>
         </Box>
-        {mode === 'gate' && onDecision && (
+        {mode === 'gate' && onDecision && !fixColumn && (
           <div className={classes.nodeActions} onClick={e => e.stopPropagation()}>
             <Button
               size="small"
@@ -472,31 +560,226 @@ const NodeCard: React.FC<{
       <Collapse in={expanded}>
         <div className={classes.detail}>
           {mode === 'assess' &&
-            findings.map(f => (
-              <div key={findingKey(f)} className={classes.findingRow}>
-                <Typography variant="body2" style={{ fontWeight: 600 }}>
-                  {f.ruleId}
-                </Typography>
-                <Chip
-                  size="small"
-                  label={SEV_LABEL[f.severity] ?? f.severity}
-                  style={{
-                    backgroundColor: sevColor(f.severity),
-                    color: '#fff',
-                    fontWeight: 600,
-                    height: 22,
-                  }}
-                />
-                <Typography variant="caption">{fixTypeLabel(f)}</Typography>
-                <Typography variant="body2" color="textSecondary">
-                  {f.message}
-                  <br />
-                  <span style={{ fontFamily: 'monospace', fontSize: 12 }}>
-                    {f.file}:{f.lineStart}
-                  </span>
-                </Typography>
-              </div>
-            ))}
+            findings.map(f => {
+              const rowSnip = snippetForRule(f.ruleId);
+              if (fixColumn) {
+                const lane = fixTypeLabel(f);
+                return (
+                  <div key={findingKey(f)} className={classes.findingSplit}>
+                    <div className={classes.diffPane}>
+                      <div className={classes.diffHead}>Finding</div>
+                      <Box p={1.5}>
+                        <div className={classes.findingSplitMeta}>
+                          <Typography variant="body2" style={{ fontWeight: 600 }}>
+                            {f.ruleId}
+                          </Typography>
+                          <Chip
+                            size="small"
+                            label={SEV_LABEL[f.severity] ?? f.severity}
+                            style={{
+                              backgroundColor: sevColor(f.severity),
+                              color: '#fff',
+                              fontWeight: 600,
+                              height: 22,
+                            }}
+                          />
+                          <Chip size="small" variant="outlined" label={lane} />
+                        </div>
+                        <Typography variant="body2" color="textSecondary">
+                          {f.message}
+                          <br />
+                          <span style={{ fontFamily: 'monospace', fontSize: 12 }}>
+                            {f.file}:{f.lineStart}
+                          </span>
+                        </Typography>
+                        <YamlBlock title="Current YAML" lines={rowSnip.current} />
+                      </Box>
+                    </div>
+                    <div className={classes.diffPane}>
+                      <div className={classes.diffHead}>Fix</div>
+                      {lane === 'Quick-fix' ? (
+                        <>
+                          <pre className={classes.yamlBox} style={{ margin: 0, borderRadius: 0 }}>
+                            {rowSnip.proposed.join('\n') || '—'}
+                          </pre>
+                          {onDecision && (
+                            <div
+                              className={classes.fixActions}
+                              onClick={e => e.stopPropagation()}
+                            >
+                              <Button
+                                size="small"
+                                variant={
+                                  findingDecisions?.[findingKey(f)] === 'accept'
+                                    ? 'contained'
+                                    : 'outlined'
+                                }
+                                color="primary"
+                                startIcon={<CheckIcon />}
+                                style={PILL}
+                                onClick={() => onDecision(findingKey(f), 'accept')}
+                              >
+                                Accept
+                              </Button>
+                              <Button
+                                size="small"
+                                variant={
+                                  findingDecisions?.[findingKey(f)] === 'decline'
+                                    ? 'contained'
+                                    : 'outlined'
+                                }
+                                startIcon={<CloseIcon />}
+                                style={PILL}
+                                onClick={() => onDecision(findingKey(f), 'decline')}
+                              >
+                                Decline
+                              </Button>
+                            </div>
+                          )}
+                        </>
+                      ) : lane === 'AI' ? (
+                        inlineAi ? (
+                          (() => {
+                            const key = findingKey(f);
+                            const status = aiStatus?.[key] ?? 'idle';
+                            if (status === 'loading') {
+                              return (
+                                <Box
+                                  className={classes.fixDisclaimer}
+                                  display="flex"
+                                  alignItems="center"
+                                  style={{ gap: 12 }}
+                                >
+                                  <CircularProgress size={18} />
+                                  <span>Generating AI suggestion…</span>
+                                </Box>
+                              );
+                            }
+                            if (status === 'ready') {
+                              return (
+                                <>
+                                  <pre className={classes.yamlBox} style={{ margin: 0, borderRadius: 0 }}>
+                                    {rowSnip.proposed.join('\n') || '—'}
+                                  </pre>
+                                  {onDecision && (
+                                    <div
+                                      className={classes.fixActions}
+                                      onClick={e => e.stopPropagation()}
+                                    >
+                                      <Button
+                                        size="small"
+                                        variant={
+                                          findingDecisions?.[key] === 'accept' ? 'contained' : 'outlined'
+                                        }
+                                        color="primary"
+                                        startIcon={<CheckIcon />}
+                                        style={PILL}
+                                        onClick={() => onDecision(key, 'accept')}
+                                      >
+                                        Accept
+                                      </Button>
+                                      <Button
+                                        size="small"
+                                        variant={
+                                          findingDecisions?.[key] === 'decline' ? 'contained' : 'outlined'
+                                        }
+                                        startIcon={<CloseIcon />}
+                                        style={PILL}
+                                        onClick={() => onDecision(key, 'decline')}
+                                      >
+                                        Decline
+                                      </Button>
+                                    </div>
+                                  )}
+                                </>
+                              );
+                            }
+                            return (
+                              <>
+                                <div className={classes.fixDisclaimer}>
+                                  AI can suggest a fix. Generate a suggestion here to review it.
+                                </div>
+                                {onGenerateAi && (
+                                  <div
+                                    className={classes.fixActions}
+                                    onClick={e => e.stopPropagation()}
+                                  >
+                                    <Button
+                                      size="small"
+                                      variant="contained"
+                                      color="primary"
+                                      style={PILL}
+                                      onClick={() => onGenerateAi(key)}
+                                    >
+                                      Generate AI suggestion
+                                    </Button>
+                                  </div>
+                                )}
+                              </>
+                            );
+                          })()
+                        ) : (
+                          <>
+                            <div className={classes.fixDisclaimer}>
+                              {showAiOptIn
+                                ? aiOptIn?.[findingKey(f)]
+                                  ? "Selected. You'll review a suggestion in the AI step."
+                                  : 'AI can suggest a fix. Select Use AI to generate one in the next step.'
+                                : "AI can suggest a fix. You'll review it in the AI step."}
+                            </div>
+                            {showAiOptIn && onToggleAiOptIn && (
+                              <div
+                                className={classes.fixActions}
+                                onClick={e => e.stopPropagation()}
+                              >
+                                <Button
+                                  size="small"
+                                  variant={aiOptIn?.[findingKey(f)] ? 'contained' : 'outlined'}
+                                  color="primary"
+                                  style={PILL}
+                                  onClick={() => onToggleAiOptIn(findingKey(f))}
+                                >
+                                  {aiOptIn?.[findingKey(f)] ? "Don't use AI" : 'Use AI'}
+                                </Button>
+                              </div>
+                            )}
+                          </>
+                        )
+                      ) : (
+                        <div className={classes.fixDisclaimer}>
+                          No automatic fix. Change this in the file yourself.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              }
+              return (
+                <div key={findingKey(f)} className={classes.findingRow}>
+                  <Typography variant="body2" style={{ fontWeight: 600 }}>
+                    {f.ruleId}
+                  </Typography>
+                  <Chip
+                    size="small"
+                    label={SEV_LABEL[f.severity] ?? f.severity}
+                    style={{
+                      backgroundColor: sevColor(f.severity),
+                      color: '#fff',
+                      fontWeight: 600,
+                      height: 22,
+                    }}
+                  />
+                  <Typography variant="caption">{fixTypeLabel(f)}</Typography>
+                  <Typography variant="body2" color="textSecondary">
+                    {f.message}
+                    <br />
+                    <span style={{ fontFamily: 'monospace', fontSize: 12 }}>
+                      {f.file}:{f.lineStart}
+                    </span>
+                  </Typography>
+                </div>
+              );
+            })}
           {mode === 'gate' && snip.explanation && (
             <Typography variant="body2" paragraph>
               {snip.explanation}
@@ -514,11 +797,11 @@ const NodeCard: React.FC<{
               />
             </Box>
           )}
-          {mode === 'assess' ? (
+          {mode === 'assess' && !fixColumn ? (
             <YamlBlock title="Current YAML" lines={snip.current} />
-          ) : (
+          ) : mode === 'gate' ? (
             <DiffView current={snip.current} proposed={snip.proposed} />
-          )}
+          ) : null}
         </div>
       </Collapse>
     </Paper>
@@ -537,6 +820,13 @@ export const NodeReviewList: React.FC<{
   onClear?: () => void;
   pendingVisible: number;
   decidedCount: number;
+  fixColumn?: boolean;
+  showAiOptIn?: boolean;
+  aiOptIn?: Record<string, boolean>;
+  onToggleAiOptIn?: (key: string) => void;
+  inlineAi?: boolean;
+  aiStatus?: Record<string, AiRowStatus>;
+  onGenerateAi?: (key: string) => void;
 }> = ({
   nodes,
   mode,
@@ -547,26 +837,54 @@ export const NodeReviewList: React.FC<{
   onClear,
   pendingVisible,
   decidedCount,
+  fixColumn,
+  showAiOptIn,
+  aiOptIn,
+  onToggleAiOptIn,
+  inlineAi,
+  aiStatus,
+  onGenerateAi,
 }) => {
   const classes = useStyles();
   const ids = useMemo(() => nodes.map(n => n.id), [nodes]);
   const idKey = ids.join('|');
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set(ids));
+  const showBulk = mode === 'gate' || Boolean(fixColumn && onAcceptRemaining);
+
+  const decidedCollapseKey = useMemo(() => {
+    if (mode !== 'gate' && !fixColumn) return '';
+    return nodes
+      .map(n => {
+        if (fixColumn) {
+          const actionable = n.findings.filter(f => {
+            if (f.fixTier === 'deterministic') return true;
+            if (inlineAi && f.fixTier === 'ai' && aiStatus?.[findingKey(f)] === 'ready') {
+              return true;
+            }
+            return false;
+          });
+          const done =
+            actionable.length > 0 && actionable.every(f => Boolean(decisions[findingKey(f)]));
+          return done ? n.id : '';
+        }
+        return decisions[n.id] ? n.id : '';
+      })
+      .filter(Boolean)
+      .join('|');
+  }, [nodes, decisions, fixColumn, mode, inlineAi, aiStatus]);
 
   useEffect(() => {
     setExpanded(new Set(idKey ? idKey.split('|') : []));
   }, [idKey]);
 
   useEffect(() => {
-    if (mode !== 'gate') return;
+    if (!decidedCollapseKey) return;
     setExpanded(prev => {
       const next = new Set(prev);
-      Object.entries(decisions).forEach(([id, d]) => {
-        if (d) next.delete(id);
-      });
+      decidedCollapseKey.split('|').forEach(id => next.delete(id));
       return next;
     });
-  }, [decisions, mode]);
+  }, [decidedCollapseKey]);
 
   const expandAll = () => setExpanded(new Set(ids));
   const collapseAll = () => setExpanded(new Set());
@@ -589,7 +907,7 @@ export const NodeReviewList: React.FC<{
             Collapse all
           </Button>
         </div>
-        {mode === 'gate' && (
+        {showBulk && (
           <div className={classes.linkRow}>
             <Button
               size="small"
@@ -639,6 +957,14 @@ export const NodeReviewList: React.FC<{
             })
           }
           onDecision={onDecision}
+          fixColumn={fixColumn}
+          findingDecisions={fixColumn ? decisions : undefined}
+          showAiOptIn={showAiOptIn}
+          aiOptIn={aiOptIn}
+          onToggleAiOptIn={onToggleAiOptIn}
+          inlineAi={inlineAi}
+          aiStatus={aiStatus}
+          onGenerateAi={onGenerateAi}
         />
       ))}
     </Box>
