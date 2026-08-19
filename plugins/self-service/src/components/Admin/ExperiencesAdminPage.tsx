@@ -94,30 +94,10 @@ const ADMIN_EXPERIENCES: AdminExperience[] = [
     defaultVisible: true,
   },
   {
-    id: 'develop-tabs',
-    label: 'Develop (tabs)',
+    id: 'develop',
+    label: 'Develop',
     description:
-      'APME review A — Git Repositories pin; Quality + Remediations host tabs.',
-    pluginsFilter: 'Develop',
-    seatsSummary: 'Developer, Admin',
-    pluginsSummary: 'Self-service, APME Quality Scanning',
-    defaultVisible: true,
-  },
-  {
-    id: 'develop-drawer',
-    label: 'Develop (drawer)',
-    description:
-      'APME review B — Git Repositories expandable item; Repositories · Quality · Remediations indented.',
-    pluginsFilter: 'Develop',
-    seatsSummary: 'Developer, Admin',
-    pluginsSummary: 'Self-service, APME Quality Scanning',
-    defaultVisible: true,
-  },
-  {
-    id: 'develop-apme',
-    label: 'Develop (quality)',
-    description:
-      'APME review C — Git Repositories pin + Content quality as its own rail item. Overview · Remediations · Scans. Exploration only.',
+      'Git repositories, collections, and execution environments. Quality, remediations, and scans nest under Git Repositories.',
     pluginsFilter: 'Develop',
     seatsSummary: 'Developer, Admin',
     pluginsSummary: 'Self-service, APME Quality Scanning',

@@ -45,7 +45,7 @@ Not eng SoT until ADRs on `ansible-rhdh-plugins` `main`. Mirror: `.cursor/rules/
   - **A — Automate experience + rail:** Automate stays on Bridge; side rail; all experiences use sibling **Templates · Runs** with `SidebarDivider`.
   - **B — No Automate; masthead + tabs:** Automate experience removed; masthead **+** = Templates \| Runs tabs; Develop/Compliance/Edge get one **Automate** rail item + page tabs.
 - **Experience Settings omitted** from Automate / Develop / Compliance / Edge rails until real personal prefs exist (prototype page route may remain; not in nav). Sync schedule → Administration; Sync now → object action.
-- **Develop objects:** Git Repositories · Collections · **Execution Env.** (rail; page title stays Execution Environments). APME = Quality on repos (Class B) in **tabs** / **drawer**. **Develop (quality)** is a third compare: **Content quality** pin after Git Repositories, then a quiet gap before Collections / EEs (Overview = fleet posture · Remediations = live sessions · Scans = history) — exploration only, not factory default. **No truncated rail labels** (`portal-rail-labels.mdc`).
+- **Develop objects:** One **Develop** experience. Git Repositories (nested: Repositories · Quality · Remediations · Scans) · Collections · **Execution Env.** (rail; page title stays Execution Environments). APME = Class B on Git Repositories — not a separate experience, not a Content quality pin, not labeled “(drawer)”. **No truncated rail labels** (`portal-rail-labels.mdc`).
 - **Compliance object:** Inventories only. Profiles / Scans = host tabs — not rail, not Settings.
 - **Learn (Develop / Compliance / Edge):** after Class A objects — quiet divider, then **Documentation** + **Learning Paths** (no “Learn” rail label). Not on Automate or Admin.
 - **Automate = rail-less marketplace** — page tabs **Templates | Activity** only (Catalog dropped). Multi-seat: **Back to Experiences**. SME: no Back on Automate; Search → **Back to Automate**.
@@ -57,10 +57,9 @@ Not eng SoT until ADRs on `ansible-rhdh-plugins` `main`. Mirror: `.cursor/rules/
 ### Open
 
 - Massimo **dynamic profile tabs**
-- Develop APME compare: **tabs** vs **drawer** vs **Content quality rail** (`develop-apme` — Overview · Remediations · Scans; Start scan → repo picker → ephemeral Brad-style Scan → Complete session at `/apme/remediate/:repo`; Resume from Remediations or Available scan rows). **Findings** tab parked. Git Repos list = **Quality score + last scanned**. Repo page in this experience: no Quality tab / version banner / header score — Overview card with score + last-scan basis, links into Content quality (last scan / remediation). Session expiry ≠ stale score (score is last completed scan).
 - When experience **Settings** returns
 - **Resources** rail header for Class A only? (Taufique Aug 13 meeting OK — conflicts with “no section labels” quiet lock; decide next)
-- Nested experience nav pattern (PF drawer) for future plugins
+- Nested experience nav: **RHDH already has it** (IT Hub: Catalog accordion + `>` submenus). Portal question is *when* to use it (tab overflow / non-host add-on), not whether the widget exists. Do not call it a PF-only drawer.
 
 ### Change now — from Ran + Taufique meeting (Aug 13 ~16:38)
 

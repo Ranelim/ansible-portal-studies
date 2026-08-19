@@ -49,7 +49,7 @@ import { EmptyStateLayout, RepositoriesIllustration } from '../../common/EmptySt
 import { LastSyncedIndicator } from '../../Admin/LastSyncedIndicator';
 import { statusColors } from '../../common/statusColors';
 import { isDevelopExperience, useNavIaModel } from '../../../hooks/useNavIaModel';
-import { scansListPath } from '../quality/qualitySurfacePaths';
+import { scansListPath, scanSnapshotPath } from '../quality/qualitySurfacePaths';
 import { isWithinQualityWindow } from '../quality/qualityWindow';
 import { HealthScorePopover } from './HealthScorePopover';
 import {
@@ -65,7 +65,7 @@ import {
   getProjectCompatibilityCount,
   SEVERITY_COLORS,
 } from '../../Projects/detail/qualityDemoData';
-import type { SeverityClass } from '../../Projects/detail/qualityDemoData';
+import type { SeverityClass, ApmeRuleCategory } from '../../Projects/detail/qualityDemoData';
 
 type ProviderFilter = 'all' | 'github' | 'gitlab';
 
@@ -440,12 +440,6 @@ function QualityScoreCell({ repoName }: { repoName: string }) {
       quality?.remediationStatus === 'in-progress' ||
       quality?.remediationStatus === 'proposals-ready';
     if (live) qs.set('resume', '1');
-    if (experience === 'develop-drawer') {
-      navigate(
-        `/self-service/repositories/${encodeURIComponent(repoName)}?tab=quality`,
-      );
-      return;
-    }
     navigate(
       `/self-service/apme/remediate/${encodeURIComponent(repoName)}?${qs.toString()}`,
     );
@@ -475,14 +469,30 @@ function QualityFindingsCell({ repoName }: { repoName: string }) {
   const theme = useTheme();
   const isDark = theme.palette.type === 'dark';
   const navigate = useNavigate();
+  const { experience } = useNavIaModel();
 
   const quality = getProjectQuality(repoName);
   const scanning = SCANNING_REPOS.has(repoName);
 
-  const openQuality = (category?: string) => {
-    const qs = new URLSearchParams({ tab: 'quality' });
-    if (category) qs.set('category', category);
-    navigate(`/self-service/repositories/${encodeURIComponent(repoName)}?${qs}`);
+  const openLastScan = (category?: string) => {
+    const scanId = quality?.latestScan.scanId;
+    if (!scanId) {
+      navigate(`/self-service/repositories/${encodeURIComponent(repoName)}`);
+      return;
+    }
+    navigate(
+      scanSnapshotPath(experience, scanId, {
+        repo: repoName,
+        ...(category ? { category: category as ApmeRuleCategory } : {}),
+      }),
+    );
+  };
+
+  const openRemediation = () => {
+    const qs = new URLSearchParams({ from: 'list', resume: '1' });
+    navigate(
+      `/self-service/apme/remediate/${encodeURIComponent(repoName)}?${qs.toString()}`,
+    );
   };
 
   if (scanning) {
@@ -578,7 +588,7 @@ function QualityFindingsCell({ repoName }: { repoName: string }) {
         style={{ cursor: 'pointer' }}
         onClick={e => {
           e.stopPropagation();
-          openQuality();
+          openLastScan();
         }}
       >
         {findingsChip}
@@ -597,7 +607,7 @@ function QualityFindingsCell({ repoName }: { repoName: string }) {
           }
           onClick={e => {
             e.stopPropagation();
-            openQuality('aap-compatibility');
+            openLastScan('aap-compatibility');
           }}
           style={{
             fontSize: 10,
@@ -614,7 +624,7 @@ function QualityFindingsCell({ repoName }: { repoName: string }) {
           component="button"
           onClick={e => {
             e.stopPropagation();
-            openQuality();
+            openRemediation();
           }}
           style={{
             fontSize: 11,
@@ -638,7 +648,7 @@ function QualityFindingsCell({ repoName }: { repoName: string }) {
               window.open(quality.remediationPrUrl, '_blank', 'noopener,noreferrer');
               return;
             }
-            openQuality();
+            openLastScan();
           }}
           style={{
             fontSize: 11,

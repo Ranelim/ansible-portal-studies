@@ -1,4 +1,4 @@
 import { QualityPostureOverview } from './QualityPostureOverview';
 
-/** Host Quality tab — same body as Content quality Overview. */
+/** Quality overview body — same as Git Repositories Quality. */
 export const QualityDashboardTabContent = () => <QualityPostureOverview />;

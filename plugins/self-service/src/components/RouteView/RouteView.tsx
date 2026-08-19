@@ -23,7 +23,6 @@ import { CatalogItemsDetails } from '../CatalogItemDetails';
 import { EETabs } from '../ExecutionEnvironments';
 import { EEDetailsPage } from '../ExecutionEnvironments/catalog/EEDetailsPage';
 import { ProjectsTabs } from '../Projects';
-import { ApmeHostPage } from '../Projects/quality/ApmeHostPage';
 import { ApmeRemediationPage } from '../Projects/quality/ApmeRemediationPage';
 import { ProjectDetailsPage } from '../Projects/detail/ProjectDetailsPage';
 import { RepositoryDetailPage } from '../Projects/repositories/RepositoryDetailPage';
@@ -164,11 +163,22 @@ const RouteViewContent = () => {
           path="quality"
           element={<Navigate to="/self-service/repositories/dashboard" replace />}
         />
-        <Route path="apme" element={<ApmeHostPage />} />
-        {/* Parked Findings tab — SHOW_CONTENT_QUALITY_FINDINGS_TAB; redirects to Overview when false. */}
-        <Route path="apme/findings" element={<ApmeHostPage />} />
-        <Route path="apme/scans" element={<ApmeHostPage />} />
-        <Route path="apme/remediations" element={<ApmeHostPage />} />
+        <Route
+          path="apme"
+          element={<Navigate to="/self-service/repositories/dashboard" replace />}
+        />
+        <Route
+          path="apme/findings"
+          element={<Navigate to="/self-service/repositories/dashboard" replace />}
+        />
+        <Route
+          path="apme/scans"
+          element={<Navigate to="/self-service/repositories/scans" replace />}
+        />
+        <Route
+          path="apme/remediations"
+          element={<Navigate to="/self-service/repositories/remediations" replace />}
+        />
         <Route path="apme/remediate/:repoName" element={<ApmeRemediationPage />} />
         <Route path="collections" element={<CollectionsCatalogPage />} />
         <Route

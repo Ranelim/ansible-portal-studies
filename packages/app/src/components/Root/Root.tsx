@@ -20,7 +20,6 @@ import {
   GlobalShellResumeBar,
   isBridgePath,
   isGlobalShellPath,
-  isGlobalTemplatesRunsPath,
   useCaptureGlobalShellReturn,
 } from './GlobalShellResumeBar';
 import { isAutomateFullPagePath } from './AutomateFullPageChrome';
@@ -347,10 +346,6 @@ export const Root = ({ children }: PropsWithChildren<{}>) => {
     location.pathname,
     location.search,
   );
-  const onGlobalTemplatesRuns = isGlobalTemplatesRunsPath(
-    location.pathname,
-    location.search,
-  );
 
   // A: Automate rail (≥2 items) — Templates · Runs.
   // B: unified Automate host — rail-less page tabs; multi-seat return = waffle (no Back).
@@ -374,15 +369,9 @@ export const Root = ({ children }: PropsWithChildren<{}>) => {
     !isSetup && FORCED_TEMPLATES_RUNS_IA === null;
   const showTemplatesRunsBar = templatesRunsBarEligible && magentaBarVisible;
 
-  /** Option B masthead + global surface (not inside Automate experience). */
-  const showGlobalRunPairTabs =
-    mastheadPlus && onGlobalTemplatesRuns && !inAutomateExperience;
-
-  /** Option B Automate experience host — page tabs Templates | Runs. */
+  /** Option B Automate experience — page tabs Templates | Runs. Not masthead +. */
   const showAutomateExperienceHostTabs =
-    mastheadPlus &&
-    inAutomateExperience &&
-    (onExperienceRunPaths || onGlobalTemplatesRuns);
+    mastheadPlus && inAutomateExperience && onExperienceRunPaths;
 
   /** Option B: Automate pin inside Develop/Compliance/Edge → same host tabs. */
   const showExperienceRunPairTabs =
@@ -394,9 +383,7 @@ export const Root = ({ children }: PropsWithChildren<{}>) => {
       experience === 'edge');
 
   const showAutomateHostChrome =
-    showGlobalRunPairTabs ||
-    showAutomateExperienceHostTabs ||
-    showExperienceRunPairTabs;
+    showAutomateExperienceHostTabs || showExperienceRunPairTabs;
 
   const chromeTop = chromeTopForPrototypeBars({
     showAdminSyncBar,
@@ -447,19 +434,18 @@ export const Root = ({ children }: PropsWithChildren<{}>) => {
   }
 
   if (railLess) {
-    const runPairMode = inAutomateExperience ? 'experience' : 'global';
     return (
       <RestartProvider>
         <div className={rootClasses.fixedHeaderOffset} style={chromeOffsetStyle}>
           <NavIaRouteGuard />
           <GlobalRestartBanner />
           {showResumeBar && <GlobalShellResumeBar />}
-          {/* SME Search still needs a resume path — only that case uses the bar. */}
+          {/* SME Search / masthead Create — resume to Automate. */}
           {sme && onGlobalShell && !showAutomateExperienceHostTabs && (
             <GlobalShellResumeBar />
           )}
-          {(showGlobalRunPairTabs || showAutomateExperienceHostTabs) && (
-            <ExperienceRunPairTabs mode={runPairMode} />
+          {showAutomateExperienceHostTabs && (
+            <ExperienceRunPairTabs mode="experience" />
           )}
           {/* Settings / Search / user / Notifications — ← in Header title */}
           {!showAutomateHostChrome && <ExperiencesHeaderBackPortal />}

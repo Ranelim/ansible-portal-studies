@@ -12,17 +12,13 @@ export type NavIaModel =
  * Experiences for Option 5 (toggle). Availability depends on seat + plugins.
  * Templates/Activity are duplicated inside each experience's rail.
  *
- * Develop is split for APME IA review:
- * - develop-tabs — one Git Repositories pin; Quality as host tab
- * - develop-drawer — Git Repositories expandable nav item; children indented
- * - develop-apme — Git Repositories pin + Content quality pin (exploration)
+ * Develop is one experience (nested rail under Git Repositories).
+ * Legacy ids `develop-tabs` / `develop-drawer` / `develop-apme` normalize to `develop`.
  */
 export type NavExperience =
   | 'all'
   | 'automate'
-  | 'develop-tabs'
-  | 'develop-drawer'
-  | 'develop-apme'
+  | 'develop'
   | 'compliance'
   | 'edge'
   | 'admin';
@@ -57,17 +53,27 @@ function normalizeExperience(raw: string | null): NavExperience | null {
   if (
     raw === 'all' ||
     raw === 'automate' ||
-    raw === 'develop-tabs' ||
-    raw === 'develop-drawer' ||
-    raw === 'develop-apme' ||
+    raw === 'develop' ||
     raw === 'compliance' ||
     raw === 'edge' ||
     raw === 'admin'
   ) {
     return raw;
   }
-  // Legacy: single Develop or killed section variant → tabs
-  if (raw === 'develop' || raw === 'develop-section') return 'develop-tabs';
+  // Killed APME A/B ids + older Develop labels → one Develop experience
+  if (
+    raw === 'develop-tabs' ||
+    raw === 'develop-drawer' ||
+    raw === 'develop-apme' ||
+    raw === 'develop-section'
+  ) {
+    try {
+      localStorage.setItem(EXPERIENCE_KEY, 'develop');
+    } catch {
+      /* ignore */
+    }
+    return 'develop';
+  }
   return null;
 }
 
@@ -89,18 +95,14 @@ export function writeNavExperience(experience: NavExperience) {
   notify();
 }
 
-/** Any Develop APME IA review variant. */
+/** Develop experience (nested Git Repositories rail). */
 export function isDevelopExperience(experience: NavExperience): boolean {
-  return (
-    experience === 'develop-tabs' ||
-    experience === 'develop-drawer' ||
-    experience === 'develop-apme'
-  );
+  return experience === 'develop';
 }
 
-/** Drawer — no host tabs; rail picks Repositories / Quality / Remediations. */
+/** Nested rail: Repositories / Quality / Remediations / Scans — no host tabs. */
 export function isDevelopReposRailMode(experience: NavExperience): boolean {
-  return experience === 'develop-drawer';
+  return experience === 'develop';
 }
 
 export function availableExperiences(args: {
@@ -120,7 +122,7 @@ export function availableExperiences(args: {
   const list: NavExperience[] = ['all'];
   list.push('automate');
   if (args.role === 'developer' || args.isAdmin) {
-    list.push('develop-tabs', 'develop-drawer', 'develop-apme');
+    list.push('develop');
   }
   if ((args.role === 'operator' || args.isAdmin) && args.compliance) {
     list.push('compliance');
@@ -135,9 +137,7 @@ export function availableExperiences(args: {
 export const EXPERIENCE_LABELS: Record<NavExperience, string> = {
   all: 'Experiences',
   automate: 'Automate',
-  'develop-tabs': 'Develop (tabs)',
-  'develop-drawer': 'Develop (drawer)',
-  'develop-apme': 'Develop (quality)',
+  develop: 'Develop',
   compliance: 'Compliance',
   edge: 'Edge',
   admin: 'Administration',

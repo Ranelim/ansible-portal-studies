@@ -4,11 +4,9 @@ import {
   type ApmeRuleCategory,
 } from '../detail/qualityDemoData';
 
-/** Content quality pin vs Git Repositories host tabs / drawer. */
-export function scansListPath(experience: NavExperience): string {
-  return experience === 'develop-apme'
-    ? '/self-service/apme/scans'
-    : '/self-service/repositories/scans';
+/** Fleet Quality / Remediations / Scans — Git Repositories nested rail. */
+export function scansListPath(_experience: NavExperience): string {
+  return '/self-service/repositories/scans';
 }
 
 export function scanSnapshotPath(
@@ -31,16 +29,12 @@ export function parseScanCategoryParam(
   return 'all';
 }
 
-export function remediationsListPath(experience: NavExperience): string {
-  return experience === 'develop-apme'
-    ? '/self-service/apme/remediations'
-    : '/self-service/repositories/remediations';
+export function remediationsListPath(_experience: NavExperience): string {
+  return '/self-service/repositories/remediations';
 }
 
-export function qualityHomePath(experience: NavExperience): string {
-  return experience === 'develop-apme'
-    ? '/self-service/apme'
-    : '/self-service/repositories/list';
+export function qualityHomePath(_experience: NavExperience): string {
+  return '/self-service/repositories/dashboard';
 }
 
 /** Git Repositories list — optional quality filter from Overview / Quality. */
@@ -59,10 +53,7 @@ export function repositoriesListPath(
   return `/self-service/repositories/list?quality=${quality}`;
 }
 
-/**
- * Remediations + Scans live on a fleet surface (host tabs or Content quality pin).
- * Repo page = score summary, not a second Quality workspace.
- */
-export function qualitySummaryOnRepo(experience: NavExperience): boolean {
-  return experience === 'develop-apme' || experience === 'develop-tabs';
+/** Repo page = score summary. Remediations / Scans live on the Git Repositories rail. */
+export function qualitySummaryOnRepo(_experience: NavExperience): boolean {
+  return true;
 }

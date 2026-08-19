@@ -52,9 +52,9 @@ const useTabStyles = makeStyles(theme => ({
 }));
 
 /**
- * Exploration only — Content quality pin (compare vs host tabs).
- * Overview = fleet posture. Remediations = live sessions. Scans = history.
- * Findings (by-rule) parked — SHOW_CONTENT_QUALITY_FINDINGS_TAB.
+ * Unused — Content quality experience killed Aug 19, 2026.
+ * `/apme` routes redirect to Git Repositories Quality / Remediations / Scans.
+ * Kept only if we need to revive a fleet-tab host; do not wire to the rail.
  */
 export const ApmeHostPage = () => {
   const classes = useTabStyles();

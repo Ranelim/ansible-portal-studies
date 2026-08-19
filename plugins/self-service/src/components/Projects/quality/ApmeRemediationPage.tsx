@@ -34,7 +34,7 @@ import {
 
 /**
  * Brad SPA Scan → Complete workflow, MUI under RHDH theme.
- * Exploration only — Content quality (develop-apme) ephemeral session.
+ * Ephemeral Quality remediation session (`/apme/remediate/:repo`).
  */
 
 type StepId =
@@ -473,17 +473,6 @@ export const ApmeRemediationPage = () => {
       `https://github.com/${repo?.org ?? 'acme-corp'}/${repoName}/pull/42`,
   );
 
-  useEffect(() => {
-    // Drawer still remediates in the repo Quality tab. Tabs uses the same
-    // ephemeral session as Content quality (Resume from Remediations / Scans).
-    if (experience === 'develop-drawer') {
-      navigate(
-        `/self-service/repositories/${encodeURIComponent(repoName)}?tab=quality`,
-        { replace: true },
-      );
-    }
-  }, [experience, navigate, repoName]);
-
   const quickFix = quality?.violations.filter(v => v.fixTier === 'deterministic') ?? [];
   const aiFix = quality?.violations.filter(v => v.fixTier === 'ai') ?? [];
   const manual = quality?.violations.filter(v => v.fixTier === 'manual') ?? [];
@@ -569,9 +558,7 @@ export const ApmeRemediationPage = () => {
         ? 'Scans'
         : fromRemediations
           ? 'Remediations'
-          : experience === 'develop-apme'
-            ? 'Content quality'
-            : 'Git Repositories';
+          : 'Quality';
 
   const setDecision = (key: string, d: Decision) => {
     setDecisions(prev => {
@@ -606,9 +593,7 @@ export const ApmeRemediationPage = () => {
             color="primary"
             onClick={() => navigate(qualityHomePath(experience))}
           >
-            {experience === 'develop-apme'
-              ? 'Back to Content quality'
-              : 'Back to Git Repositories'}
+            {experience === 'develop' ? 'Back to Quality' : 'Back to Git Repositories'}
           </Button>
         </Content>
       </Page>

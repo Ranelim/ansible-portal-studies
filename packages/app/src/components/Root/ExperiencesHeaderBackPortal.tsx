@@ -46,7 +46,7 @@ function ensureMount(box: HTMLElement): HTMLElement {
 
 /**
  * Injects ← next to the stock Backstage page Header title on rail-less
- * orphan pages (Settings, Search, user profile, Notifications, …).
+ * orphan pages (Settings, Search, Create, user profile, Notifications, …).
  * Multi-seat only — SME has no Experiences catalog to return to.
  */
 export const ExperiencesHeaderBackPortal = () => {

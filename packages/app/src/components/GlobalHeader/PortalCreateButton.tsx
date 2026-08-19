@@ -10,15 +10,8 @@ import {
 } from './mastheadIconSx';
 
 function isGlobalCreatePath(pathname: string, search: string): boolean {
-  const scope = new URLSearchParams(search).get('scope');
   if (pathname === '/create' || pathname.startsWith('/create/')) {
-    return scope !== 'experience';
-  }
-  if (
-    pathname === '/self-service/create/tasks' ||
-    pathname.startsWith('/self-service/create/tasks/')
-  ) {
-    return scope === 'all';
+    return new URLSearchParams(search).get('scope') !== 'experience';
   }
   return false;
 }
@@ -37,7 +30,7 @@ export const PortalCreateButton = () => {
     : (pathname === '/create' || pathname.startsWith('/create/')) &&
       new URLSearchParams(search).get('scope') !== 'experience';
 
-  const label = mastheadPlus ? 'Templates and runs' : 'All templates';
+  const label = 'Create';
 
   return (
     <Tooltip title={label}>

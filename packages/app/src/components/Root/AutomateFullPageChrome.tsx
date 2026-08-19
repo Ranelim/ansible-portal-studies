@@ -49,10 +49,15 @@ const useStyles = makeStyles(theme => ({
  * Catalog (`/self-service/resources`) is not part of Automate.
  */
 export function isAutomateFullPagePath(pathname: string, search = ''): boolean {
-  if (pathname === '/self-service/create/tasks') return true;
-  if (pathname.startsWith('/self-service/create/tasks/')) return true;
+  const scope = new URLSearchParams(search).get('scope');
+  if (
+    pathname === '/self-service/create/tasks' ||
+    pathname.startsWith('/self-service/create/tasks/')
+  ) {
+    return scope !== 'all';
+  }
   if (pathname === '/create' || pathname.startsWith('/create/')) {
-    return new URLSearchParams(search).get('scope') === 'experience';
+    return scope === 'experience';
   }
   return false;
 }

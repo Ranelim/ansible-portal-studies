@@ -293,6 +293,9 @@ const apiPage = (
   </EntityLayout>
 );
 
+// User entities: `/catalog/:ns/user/:name` is PortalMyProfilePage (App.tsx).
+// Do not use EntityLayout here — it titles the page "USER {id}" and the
+// catalog User is missing in this prototype (Failed to fetch).
 const userPage = (
   <EntityLayout>
     <EntityLayout.Route path="/" title="Overview">

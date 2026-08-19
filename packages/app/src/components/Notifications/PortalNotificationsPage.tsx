@@ -90,7 +90,7 @@ const INITIAL_ITEMS: DemoItem[] = [
     detail:
       'APME reported new high-severity findings in roles/firewall. Score impact is concentrated in policy and security validators. Open the repository Quality tab to triage findings.',
     entity: 'edge-firewall',
-    experience: 'develop-tabs',
+    experience: 'develop',
     eventType: 'quality-alerts',
     when: '1 hour ago',
     severity: 'Important',
@@ -129,9 +129,7 @@ const INITIAL_ITEMS: DemoItem[] = [
 
 const FILTER_EXPERIENCES: Array<Exclude<NavExperience, 'all'>> = [
   'automate',
-  'develop-tabs',
-  'develop-drawer',
-  'develop-apme',
+  'develop',
   'compliance',
   'edge',
   'admin',
@@ -142,16 +140,21 @@ function readLastExperience(): Exclude<NavExperience, 'all'> | null {
     const raw = localStorage.getItem('portal-nav-experience');
     if (
       raw === 'automate' ||
-      raw === 'develop-tabs' ||
-      raw === 'develop-drawer' ||
-      raw === 'develop-apme' ||
+      raw === 'develop' ||
       raw === 'compliance' ||
       raw === 'edge' ||
       raw === 'admin'
     ) {
       return raw;
     }
-    if (raw === 'develop' || raw === 'develop-section') return 'develop-tabs';
+    if (
+      raw === 'develop-tabs' ||
+      raw === 'develop-drawer' ||
+      raw === 'develop-apme' ||
+      raw === 'develop-section'
+    ) {
+      return 'develop';
+    }
   } catch {
     /* ignore */
   }
@@ -166,24 +169,25 @@ function readReturnExperience(): Exclude<NavExperience, 'all'> | null {
       kind?: string;
       experience?: string;
     };
-    if (
-      parsed?.kind === 'experience' &&
-      (parsed.experience === 'automate' ||
-        parsed.experience === 'develop-tabs' ||
-        parsed.experience === 'develop-drawer' ||
-        parsed.experience === 'develop-apme' ||
-        parsed.experience === 'compliance' ||
-        parsed.experience === 'edge' ||
-        parsed.experience === 'admin')
-    ) {
-      return parsed.experience;
-    }
-    if (
-      parsed?.kind === 'experience' &&
-      (parsed.experience === 'develop' ||
-        parsed.experience === 'develop-section')
-    ) {
-      return 'develop-tabs';
+    if (parsed?.kind === 'experience' && parsed.experience) {
+      const exp = parsed.experience;
+      if (
+        exp === 'automate' ||
+        exp === 'develop' ||
+        exp === 'compliance' ||
+        exp === 'edge' ||
+        exp === 'admin'
+      ) {
+        return exp;
+      }
+      if (
+        exp === 'develop-tabs' ||
+        exp === 'develop-drawer' ||
+        exp === 'develop-apme' ||
+        exp === 'develop-section'
+      ) {
+        return 'develop';
+      }
     }
   } catch {
     /* ignore */

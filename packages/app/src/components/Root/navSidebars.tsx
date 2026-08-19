@@ -40,7 +40,6 @@ import PlayArrowIcon from '@material-ui/icons/PlayArrow';
 import HistoryIcon from '@material-ui/icons/History';
 import CodeIcon from '@material-ui/icons/Code';
 import CategoryIcon from '@material-ui/icons/Category';
-import AssessmentIcon from '@material-ui/icons/Assessment';
 import MemoryIcon from '@material-ui/icons/Memory';
 import StorageIcon from '@material-ui/icons/Storage';
 import RouterIcon from '@material-ui/icons/Router';
@@ -252,7 +251,8 @@ const ExpandableNavChild = ({ to, text }: ExpandableNavChildProps) => {
         pathname.endsWith('/repositories/list'))) ||
     (base.endsWith('/dashboard') && pathname.includes('/repositories/dashboard')) ||
     (base.endsWith('/remediations') &&
-      pathname.includes('/repositories/remediations'));
+      pathname.includes('/repositories/remediations')) ||
+    (base.endsWith('/scans') && pathname.includes('/repositories/scans'));
 
   return (
     <Link
@@ -446,7 +446,7 @@ const SearchAndMenu = ({
       </SidebarGroup>
     )}
     <SidebarGroup label="Menu" icon={<MenuIcon />}>
-      {/* Long experience rails (Develop section/drawer) must scroll — stock
+      {/* Long experience rails must scroll — stock
           drawer uses flexShrink:0 + hidden scrollbar and clips overflow. */}
       <Box
         data-portal-sidebar-scroll=""
@@ -1291,7 +1291,7 @@ const ExperiencesDomainSidebar = () => {
       : active;
 
   const experienceLabel =
-    EXPERIENCE_LABELS[domain] ?? EXPERIENCE_LABELS['develop-tabs'];
+    EXPERIENCE_LABELS[domain] ?? EXPERIENCE_LABELS.develop;
 
   const showQuietReturn = !smeLocked && returnChrome === 'quiet';
   const showLabelReturn = !smeLocked && returnChrome === 'waffle';
@@ -1363,33 +1363,8 @@ const ExperiencesDomainSidebar = () => {
       {/* A: Automate = Templates · Runs only (no Learn). B is rail-less — skip. */}
       {domain === 'automate' && automateRail && <RunItems />}
 
-      {/* A — one Git Repositories pin; Quality lives as a host tab. */}
-      {domain === 'develop-tabs' && (
-        <>
-          {ExperienceDashboardItem}
-          {ExperienceRunPair}
-          <SidebarItem
-            icon={CodeIcon}
-            to="/self-service/repositories"
-            text="Git Repositories"
-          />
-          <SidebarItem
-            icon={CategoryIcon}
-            to="/self-service/collections"
-            text="Collections"
-          />
-          <SidebarItem
-            icon={MemoryIcon}
-            to="/self-service/ee"
-            text="Execution Env."
-          />
-          <SidebarSpacer />
-          <LearnItems />
-        </>
-      )}
-
-      {/* B — Git Repositories as expandable nav item (chevron), children indented. */}
-      {domain === 'develop-drawer' && (
+      {/* Develop — Git Repositories expandable; Quality / Remediations / Scans nested. */}
+      {domain === 'develop' && (
         <>
           {ExperienceDashboardItem}
           {ExperienceRunPair}
@@ -1412,38 +1387,11 @@ const ExperiencesDomainSidebar = () => {
               to="/self-service/repositories/remediations"
               text="Remediations"
             />
+            <ExpandableNavChild
+              to="/self-service/repositories/scans"
+              text="Scans"
+            />
           </ExpandableNavItem>
-          <SidebarItem
-            icon={CategoryIcon}
-            to="/self-service/collections"
-            text="Collections"
-          />
-          <SidebarItem
-            icon={MemoryIcon}
-            to="/self-service/ee"
-            text="Execution Env."
-          />
-          <SidebarSpacer />
-          <LearnItems />
-        </>
-      )}
-
-      {/* C — Git Repositories + Content quality, then other objects. */}
-      {domain === 'develop-apme' && (
-        <>
-          {ExperienceDashboardItem}
-          {ExperienceRunPair}
-          <SidebarItem
-            icon={CodeIcon}
-            to="/self-service/repositories"
-            text="Git Repositories"
-          />
-          <SidebarItem
-            icon={AssessmentIcon}
-            to="/self-service/apme"
-            text="Content quality"
-          />
-          <SidebarSpacer />
           <SidebarItem
             icon={CategoryIcon}
             to="/self-service/collections"

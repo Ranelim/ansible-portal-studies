@@ -26,9 +26,7 @@ const EXPERIENCE_RESUME: Record<
   string
 > = {
   automate: '/create?scope=experience',
-  'develop-tabs': '/self-service/repositories/list',
-  'develop-drawer': '/self-service/repositories/list',
-  'develop-apme': '/self-service/apme',
+  develop: '/self-service/repositories/list',
   compliance: '/self-service/experience-dashboard',
   edge: '/self-service/experience-dashboard',
   admin: '/self-service/admin/overview',
@@ -79,7 +77,7 @@ export function isGlobalShellPath(pathname: string, search = ''): boolean {
   return false;
 }
 
-/** Masthead + Templates | Runs surface (Option B), excluding account/search. */
+/** Masthead Create (`+`) catalog — `/create` without experience scope. */
 export function isGlobalTemplatesRunsPath(
   pathname: string,
   search = '',
@@ -101,9 +99,7 @@ function readStoredExperience(): NavExperience {
     const raw = localStorage.getItem('portal-nav-experience');
     if (
       raw === 'automate' ||
-      raw === 'develop-tabs' ||
-      raw === 'develop-drawer' ||
-      raw === 'develop-apme' ||
+      raw === 'develop' ||
       raw === 'compliance' ||
       raw === 'edge' ||
       raw === 'admin' ||
@@ -111,7 +107,14 @@ function readStoredExperience(): NavExperience {
     ) {
       return raw;
     }
-    if (raw === 'develop' || raw === 'develop-section') return 'develop-tabs';
+    if (
+      raw === 'develop-tabs' ||
+      raw === 'develop-drawer' ||
+      raw === 'develop-apme' ||
+      raw === 'develop-section'
+    ) {
+      return 'develop';
+    }
   } catch {
     /* ignore */
   }
@@ -124,11 +127,16 @@ function readReturn(): GlobalReturn | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw) as GlobalReturn;
     if (parsed?.kind === 'bridge') return parsed;
-    if (
-      parsed?.kind === 'experience' &&
-      parsed.experience &&
-      parsed.experience !== 'all'
-    ) {
+    if (parsed?.kind === 'experience' && parsed.experience && parsed.experience !== 'all') {
+      const exp = parsed.experience as string;
+      if (
+        exp === 'develop-tabs' ||
+        exp === 'develop-drawer' ||
+        exp === 'develop-apme' ||
+        exp === 'develop-section'
+      ) {
+        return { kind: 'experience', experience: 'develop' };
+      }
       return parsed;
     }
   } catch {
@@ -220,8 +228,8 @@ const useStyles = makeStyles(theme => ({
 
 /**
  * Conditional resume control on global shell pages only.
- * Hidden for SME (single Automate world — nowhere useful to “go back”).
- * Specific label when we know the origin; hidden when there is nothing useful to say.
+ * SME: Search and masthead Create → Back to Automate (no Bridge).
+ * Multi-seat: specific label when we know the origin; hidden when waffle is the return.
  */
 export const GlobalShellResumeBar = () => {
   const classes = useStyles();
@@ -237,53 +245,15 @@ export const GlobalShellResumeBar = () => {
     setRet(readReturn());
   }, [pathname, search]);
 
-  const onGlobalTemplatesRuns = isGlobalTemplatesRunsPath(pathname, search);
   const mastheadPlus = runPairIa === 'masthead-plus';
-  const onAutomateHost =
-    isAutomateFullPagePath(pathname, search) || onGlobalTemplatesRuns;
+  const onAutomateHost = isAutomateFullPagePath(pathname, search);
+  const onGlobalCreate = isGlobalTemplatesRunsPath(pathname, search);
 
-  // Option B Automate experience (rail-less) — return to Bridge.
-  if (
-    mastheadPlus &&
-    experience === 'automate' &&
-    !isSmeRole(role) &&
-    onAutomateHost
-  ) {
-    return (
-      <Box className={classes.bar} role="navigation" aria-label="Return">
-        <Button
-          className={classes.button}
-          size="small"
-          startIcon={<ArrowBackIcon fontSize="small" />}
-          onClick={() => navigate('/self-service/experiences')}
-        >
-          Back to Experiences
-        </Button>
-      </Box>
-    );
-  }
-
-  // Option B masthead + global surface — always return to Experiences catalog.
-  if (mastheadPlus && onGlobalTemplatesRuns) {
-    return (
-      <Box className={classes.bar} role="navigation" aria-label="Return">
-        <Button
-          className={classes.button}
-          size="small"
-          startIcon={<ArrowBackIcon fontSize="small" />}
-          onClick={() => navigate('/self-service/experiences')}
-        >
-          Back to Experiences
-        </Button>
-      </Box>
-    );
-  }
-
-  // SME: no Bridge on other global pages. Search → back to Automate.
+  // SME: no Bridge. Search or masthead Create → back to Automate.
   if (isSmeRole(role)) {
     const onSearch =
       pathname === '/search' || pathname.startsWith('/search/');
-    if (!onSearch) {
+    if (!onSearch && !onGlobalCreate) {
       return null;
     }
     return (
@@ -295,6 +265,26 @@ export const GlobalShellResumeBar = () => {
           onClick={() => navigate('/create?scope=experience')}
         >
           Back to Automate
+        </Button>
+      </Box>
+    );
+  }
+
+  // Option B Automate experience (rail-less) — return to Bridge.
+  if (
+    mastheadPlus &&
+    experience === 'automate' &&
+    onAutomateHost
+  ) {
+    return (
+      <Box className={classes.bar} role="navigation" aria-label="Return">
+        <Button
+          className={classes.button}
+          size="small"
+          startIcon={<ArrowBackIcon fontSize="small" />}
+          onClick={() => navigate('/self-service/experiences')}
+        >
+          Back to Experiences
         </Button>
       </Box>
     );

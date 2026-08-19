@@ -52,27 +52,9 @@ const COPY: Partial<
       'Run-focused preferences for Templates and Activity in this experience.',
     examples: ['Default template filters', 'Activity list density'],
   },
-  'develop-tabs': {
+  develop: {
     purpose:
       'Content-developer preferences for Git Repositories, Collections, and Execution Environments.',
-    examples: [
-      'Default repo list columns',
-      'Quality scan notifications',
-      'Preferred scaffold template',
-    ],
-  },
-  'develop-drawer': {
-    purpose:
-      'Content-developer preferences for Git Repositories, Collections, and Execution Environments.',
-    examples: [
-      'Default repo list columns',
-      'Quality scan notifications',
-      'Preferred scaffold template',
-    ],
-  },
-  'develop-apme': {
-    purpose:
-      'Content-developer preferences for Git Repositories, Collections, Execution Environments, and APME.',
     examples: [
       'Default repo list columns',
       'Quality scan notifications',
@@ -105,15 +87,7 @@ const ADMIN_ESCAPES: Partial<
   automate: [
     { label: 'Integrations', to: '/self-service/admin/integrations' },
   ],
-  'develop-tabs': [
-    { label: 'Integrations', to: '/self-service/admin/integrations' },
-    { label: 'Content sources / Sync', to: '/self-service/admin/sync-activity' },
-  ],
-  'develop-drawer': [
-    { label: 'Integrations', to: '/self-service/admin/integrations' },
-    { label: 'Content sources / Sync', to: '/self-service/admin/sync-activity' },
-  ],
-  'develop-apme': [
+  develop: [
     { label: 'Integrations', to: '/self-service/admin/integrations' },
     { label: 'Content sources / Sync', to: '/self-service/admin/sync-activity' },
   ],

@@ -16,9 +16,9 @@ import {
   countLiveRemediations,
 } from './quality/RemediationsContent';
 import { ScanHistoryContent } from './quality/ScanHistoryContent';
-import { useNavIaModel } from '../../hooks/useNavIaModel';
+import { isDevelopExperience, useNavIaModel } from '../../hooks/useNavIaModel';
 
-/** Develop (tabs): list → Quality → Remediations → Scans → pipeline. */
+/** Develop host tabs (unused while rail is nested). */
 const HOST_TABS = [
   { id: 'repositories', label: 'Repositories', path: 'list' },
   { id: 'dashboard', label: 'Quality', path: 'dashboard' },
@@ -63,18 +63,15 @@ const getTabIndexFromPath = (pathname: string): number => {
 
 /**
  * Git Repositories host.
- * - Develop (tabs): Repositories | Quality | Remediations | Scans | Pipeline activity
- * - Develop (drawer): no host tabs — rail picks Repositories / Quality / Remediations
- * - Develop (APME rail): list only — Quality lives on the Content quality pin
+ * Develop: no host tabs — rail picks Repositories / Quality / Remediations / Scans
  */
 export const ProjectsTabs: React.FC = () => {
   const classes = useTabStyles();
   const location = useLocation();
   const navigate = useNavigate();
   const { experience } = useNavIaModel();
-  const sectionMode = experience === 'develop-drawer';
-  const apmeRailMode = experience === 'develop-apme';
-  const hideHostTabs = sectionMode || apmeRailMode;
+  const sectionMode = isDevelopExperience(experience);
+  const hideHostTabs = sectionMode;
   const [createOpen, setCreateOpen] = useState(false);
   const liveCount = countLiveRemediations();
 
@@ -87,11 +84,10 @@ export const ProjectsTabs: React.FC = () => {
 
   // Legacy Quality path → Quality surface (dashboard route)
   useEffect(() => {
-    if (apmeRailMode) return;
     if (location.pathname.includes('/repositories/quality')) {
       navigate('/self-service/repositories/dashboard', { replace: true });
     }
-  }, [apmeRailMode, location.pathname, navigate]);
+  }, [location.pathname, navigate]);
 
   const selectedTab = useMemo(
     () => getTabIndexFromPath(location.pathname),
@@ -102,26 +98,6 @@ export const ProjectsTabs: React.FC = () => {
     () => getSurfaceFromPath(location.pathname),
     [location.pathname],
   );
-
-  // In Content quality compare, Quality / Remediations / Scans live on /apme.
-  useEffect(() => {
-    if (!apmeRailMode) return;
-    if (surface === 'dashboard') {
-      navigate('/self-service/apme', { replace: true });
-      return;
-    }
-    if (surface === 'remediations') {
-      navigate('/self-service/apme/remediations', { replace: true });
-      return;
-    }
-    if (surface === 'scans') {
-      navigate('/self-service/apme/scans', { replace: true });
-      return;
-    }
-    if (surface === 'ci-activity') {
-      navigate('/self-service/apme', { replace: true });
-    }
-  }, [apmeRailMode, surface, navigate]);
 
   const onTabSelect = useCallback(
     (index: number) => {

@@ -1,5 +1,5 @@
 /**
- * Content quality (develop-apme) Findings tab — by-rule fleet rollup.
+ * Parked Findings (by-rule fleet rollup). Not on the Develop rail.
  *
  * Parked Aug 17: Overview + Remediations + Scans. By-rule chrome is a
  * Findings-tab job, not a peer of the work queue. Code stays for revive.

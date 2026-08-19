@@ -58,30 +58,22 @@ const FORCED_CARD_STYLE: CardStyle | null = 'hub';
 /** User-facing experience blurbs — not IA documentation. */
 const EXPERIENCE_BLURB: Record<ExperienceId, string> = {
   automate: 'Run job templates and track recent activity.',
-  'develop-tabs':
-    'A — Git Repositories pin; tabs: Repositories · Quality · Remediations · Pipeline.',
-  'develop-drawer':
-    'B — Git Repositories expandable item; Repositories · Quality · Remediations indented.',
-  'develop-apme':
-    'C — Git Repositories pin + Content quality pin; Overview · Remediations · Scans.',
+  develop:
+    'Create and manage automation content — git repositories, collections, and execution environments.',
   compliance: 'Scan inventories, review findings, and remediate hosts.',
   edge: 'Manage edge device fleets, updates, and desired state.',
 };
 
 const EXPERIENCE_LANDING: Record<ExperienceId, string> = {
   automate: '/create?scope=experience',
-  'develop-tabs': '/self-service/repositories/list',
-  'develop-drawer': '/self-service/repositories/list',
-  'develop-apme': '/self-service/repositories/list',
+  develop: '/self-service/repositories/list',
   compliance: '/self-service/experience-dashboard',
   edge: '/self-service/experience-dashboard',
 };
 
 const EXPERIENCE_ACCENT: Record<ExperienceId, string> = {
   automate: '#0066CC',
-  'develop-tabs': '#3D1C7C',
-  'develop-drawer': '#7B3DB8',
-  'develop-apme': '#5C2D91',
+  develop: '#7B3DB8',
   compliance: '#C46100',
   edge: '#147EBC',
 };
@@ -100,21 +92,9 @@ const EXPERIENCE_DOCS: Record<
     href: 'https://docs.redhat.com/en/documentation/red_hat_ansible_automation_platform/2.6/html/using_self-service_automation_portal/self-service-working-templates_aap-self-service-using',
     linkLabel: 'View Automate documentation',
   },
-  'develop-tabs': {
+  develop: {
     summary:
-      'Review A: one Git Repositories rail item. Tabs: Repositories, Quality, Remediations, Scans, Pipeline activity.',
-    href: 'https://docs.redhat.com/en/documentation/red_hat_ansible_automation_platform/2.6/html/using_self-service_automation_portal/index',
-    linkLabel: 'View Develop documentation',
-  },
-  'develop-drawer': {
-    summary:
-      'Review B: Git Repositories expandable rail item with Repositories, Quality, and Remediations indented.',
-    href: 'https://docs.redhat.com/en/documentation/red_hat_ansible_automation_platform/2.6/html/using_self-service_automation_portal/index',
-    linkLabel: 'View Develop documentation',
-  },
-  'develop-apme': {
-    summary:
-      'Review C: Content quality as its own Develop rail item (after Git Repositories). Page tabs: Overview, Remediations, Scans. Git Repositories stays list-first. Exploration only — not factory default.',
+      'Use Develop to manage git repositories, collections, and execution environments. Quality scans and remediations live on Git Repositories.',
     href: 'https://docs.redhat.com/en/documentation/red_hat_ansible_automation_platform/2.6/html/using_self-service_automation_portal/index',
     linkLabel: 'View Develop documentation',
   },
@@ -143,9 +123,7 @@ function experienceIcon(id: ExperienceId | 'assistant'): ReactNode {
   switch (id) {
     case 'automate':
       return <PlayArrowIcon {...props} />;
-    case 'develop-tabs':
-    case 'develop-drawer':
-    case 'develop-apme':
+    case 'develop':
       return <CodeIcon {...props} />;
     case 'compliance':
       return <VerifiedUserIcon {...props} />;
@@ -162,15 +140,16 @@ function readRecent(): ExperienceId[] {
   try {
     const raw = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]');
     if (!Array.isArray(raw)) return [];
-    return raw.filter((id): id is ExperienceId =>
-      [
-        'automate',
-        'develop-tabs',
-        'develop-drawer',
-        'develop-apme',
-        'compliance',
-        'edge',
-      ].includes(id),
+    const mapped = raw.map(id =>
+      id === 'develop-tabs' ||
+      id === 'develop-drawer' ||
+      id === 'develop-apme' ||
+      id === 'develop-section'
+        ? 'develop'
+        : id,
+    );
+    return mapped.filter((id): id is ExperienceId =>
+      ['automate', 'develop', 'compliance', 'edge'].includes(id),
     );
   } catch {
     return [];

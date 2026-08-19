@@ -46,25 +46,11 @@ const SNIPPETS: Record<
     href: '/create?scope=experience',
     highlights: ['12 succeeded', '2 failed', '1 running'],
   },
-  'develop-tabs': {
-    summary: 'Git repositories host — Quality as tabs (review A).',
+  develop: {
+    summary: 'Git repositories, collections, execution environments, and content quality.',
     metric: '12',
     metricLabel: 'repos',
     href: '/self-service/repositories/list',
-    highlights: ['3 need attention', 'Quality avg 78'],
-  },
-  'develop-drawer': {
-    summary: 'Git Repositories expandable item — Quality nest (review B).',
-    metric: '12',
-    metricLabel: 'repos',
-    href: '/self-service/repositories/list',
-    highlights: ['3 need attention', 'Quality avg 78'],
-  },
-  'develop-apme': {
-    summary: 'APME as a Develop rail item — Overview · Findings · Scans (review C).',
-    metric: '12',
-    metricLabel: 'repos',
-    href: '/self-service/apme',
     highlights: ['3 need attention', 'Quality avg 78'],
   },
   compliance: {
@@ -226,9 +212,7 @@ export const FlatHomeDashboardPage = () => {
       },
     ];
     if (
-      available.includes('develop-tabs') ||
-      available.includes('develop-drawer') ||
-      available.includes('develop-apme')
+      available.includes('develop')
     ) {
       items.push({
         id: 'quality',
@@ -267,9 +251,7 @@ export const FlatHomeDashboardPage = () => {
       { label: 'Failed syncs (24h)', value: available.includes('admin') ? '1' : '0' },
     ];
     if (
-      available.includes('develop-tabs') ||
-      available.includes('develop-drawer') ||
-      available.includes('develop-apme')
+      available.includes('develop')
     ) {
       rows.push({ label: 'EEs in use', value: '6' });
     }

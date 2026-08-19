@@ -34,6 +34,7 @@ import { TemplatesRunsIaCompareBar } from './components/IaPrototype';
 import { PortalNotificationsPage } from './components/Notifications/PortalNotificationsPage';
 import { PortalNotificationSettingsPage } from './components/Notifications/PortalNotificationSettingsPage';
 import { PortalUserSettingsPage } from './components/Settings/PortalUserSettingsPage';
+import { PortalMyProfilePage } from './components/catalog/PortalMyProfilePage';
 import { LightspeedProvider, LightspeedPanel } from './components/Lightspeed';
 import { QuickstartProvider, QuickstartPanel, WelcomeModal } from './components/Quickstart';
 import { getThemes } from '@red-hat-developer-hub/backstage-plugin-theme';
@@ -142,12 +143,14 @@ const StaticScaffolderFallback = () => {
 
   return (
     <Box className={classes.root}>
-      <Typography className={classes.pageTitle}>Templates</Typography>
-      <Typography className={classes.pageSubtitle}>
-        {experienceScoped
-          ? 'Templates for this experience.'
-          : 'All templates you can run across Automation Portal.'}
-      </Typography>
+      {!experienceScoped && (
+        <>
+          <Typography className={classes.pageTitle}>Create</Typography>
+          <Typography className={classes.pageSubtitle}>
+            Choose a template to create projects and automation.
+          </Typography>
+        </>
+      )}
       <Box className={classes.topRow}>
         <Button variant="outlined" className={classes.registerBtn}>Register Existing Component</Button>
       </Box>
@@ -268,6 +271,10 @@ const routes = (
     <Route path="/" element={<RoleLandingRedirect />} />
     <Route path="/catalog" element={<CatalogIndexPage />} />
     <Route
+      path="/catalog/:namespace/user/:name"
+      element={<PortalMyProfilePage />}
+    />
+    <Route
       path="/catalog/:namespace/:kind/:name"
       element={<CatalogEntityPage />}
     >
@@ -292,9 +299,9 @@ const routes = (
             <WorkflowApprovalBanner />
             <ScaffolderPage
               headerOptions={{
-                title: 'Templates',
+                title: 'Create',
                 subtitle:
-                  'Create new projects and automation content from curated templates',
+                  'Choose a template to create projects and automation.',
               }}
               components={{
                 TemplateCardComponent: CustomTemplateCard,
