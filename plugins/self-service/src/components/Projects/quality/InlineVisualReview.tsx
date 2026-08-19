@@ -167,26 +167,12 @@ const useStyles = makeStyles((theme: Theme) => ({
     backgroundColor: theme.palette.background.paper,
   },
   boxHead: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: theme.spacing(2),
     padding: theme.spacing(2, 2, 0),
   },
   boxTitle: {
     fontSize: 16,
     fontWeight: 600,
     lineHeight: 1.3,
-  },
-  expandBtn: {
-    textTransform: 'none',
-    fontWeight: 500,
-    color: theme.palette.text.secondary,
-    borderRadius: 16,
-    '&:hover': {
-      backgroundColor: theme.palette.action.hover,
-      color: theme.palette.text.primary,
-    },
   },
   resultsBody: {
     padding: theme.spacing(1.5, 2, 2),
@@ -209,7 +195,28 @@ const useStyles = makeStyles((theme: Theme) => ({
   },
   mixBar: {
     height: FINDINGS_BAR_HEIGHT,
-    marginBottom: theme.spacing(1),
+  },
+  toggleRow: {
+    display: 'flex',
+    justifyContent: 'flex-start',
+    marginTop: theme.spacing(1.5),
+  },
+  drawerToggle: {
+    textTransform: 'none',
+    fontWeight: 500,
+    fontSize: 13,
+    color: theme.palette.text.secondary,
+    padding: '4px 10px',
+    marginLeft: -10,
+    minWidth: 0,
+    borderRadius: 16,
+    '& .MuiButton-endIcon': {
+      marginLeft: 4,
+    },
+    '&:hover': {
+      backgroundColor: theme.palette.action.hover,
+      color: theme.palette.text.primary,
+    },
   },
   mixChips: {
     marginTop: theme.spacing(1.5),
@@ -277,15 +284,28 @@ const useStyles = makeStyles((theme: Theme) => ({
     justifyContent: 'space-between',
     gap: theme.spacing(2),
     flexWrap: 'wrap',
+    marginTop: theme.spacing(1.25),
   },
   summaryNote: {
-    marginTop: theme.spacing(0.5),
+    flex: '1 1 220px',
     fontSize: 13,
     color: theme.palette.text.secondary,
     lineHeight: 1.4,
   },
-  jobCount: { color: theme.palette.text.primary, fontWeight: 600 },
-  jobActions: { display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' },
+  jobCount: {
+    display: 'block',
+    marginTop: 2,
+    color: theme.palette.text.primary,
+    fontWeight: 600,
+  },
+  jobActions: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: 8,
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    marginLeft: 'auto',
+  },
   progress: { marginTop: theme.spacing(1.5), height: 4, borderRadius: 2 },
   toolbar: {
     display: 'flex',
@@ -539,16 +559,7 @@ export const InlineVisualReview: React.FC<{
     <div className={classes.stack}>
       <Paper className={classes.box} elevation={2}>
         <div className={classes.boxHead}>
-          <Typography className={classes.boxTitle}>Results</Typography>
-          <Button
-            size="small"
-            className={classes.expandBtn}
-            endIcon={breakdownOpen ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-            aria-expanded={breakdownOpen}
-            onClick={() => setBreakdownOpen(open => !open)}
-          >
-            {breakdownOpen ? 'Hide breakdown' : 'Show breakdown'}
-          </Button>
+          <Typography className={classes.boxTitle}>Summary</Typography>
         </div>
         <div className={classes.resultsBody}>
           <div className={classes.mixHeader}>
@@ -566,6 +577,19 @@ export const InlineVisualReview: React.FC<{
               activeSeverities={severityFilter}
               onSegmentClick={toggleSeverity}
             />
+          </div>
+          <div className={classes.toggleRow}>
+            <Button
+              variant="text"
+              color="inherit"
+              size="small"
+              className={classes.drawerToggle}
+              endIcon={breakdownOpen ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
+              aria-expanded={breakdownOpen}
+              onClick={() => setBreakdownOpen(open => !open)}
+            >
+              {breakdownOpen ? 'Hide breakdown' : 'Show breakdown'}
+            </Button>
           </div>
           <Collapse in={breakdownOpen}>
             <div className={classes.mixChips}>
@@ -617,49 +641,48 @@ export const InlineVisualReview: React.FC<{
 
       <Paper className={classes.box} elevation={2}>
         <div className={classes.remediationHead}>
+          <Typography className={classes.boxTitle}>Findings and remediations</Typography>
           <div className={classes.remediationRow}>
-            <div>
-              <Typography className={classes.boxTitle}>Remediation</Typography>
-              <Typography className={classes.summaryNote}>
-                {jobTitle} <span className={classes.jobCount}>{jobCount}</span>
-              </Typography>
-            </div>
+            <Typography className={classes.summaryNote}>
+              {jobTitle}
+              <span className={classes.jobCount}>{jobCount}</span>
+            </Typography>
             <div className={classes.jobActions}>
-            <Button
-              size="small"
-              variant="outlined"
-              color="primary"
-              startIcon={<CheckIcon />}
-              disabled={pendingVisible === 0}
-              onClick={() => decideItems([...visibleAuto, ...visibleReadyAi], 'accept')}
-              style={PILL}
-            >
-              Accept remaining{pendingVisible > 0 ? ` (${pendingVisible})` : ''}
-            </Button>
-            <Button
-              size="small"
-              variant="outlined"
-              color="primary"
-              startIcon={<CloseIcon />}
-              disabled={pendingVisible === 0}
-              onClick={() => decideItems([...visibleAuto, ...visibleReadyAi], 'decline')}
-              style={PILL}
-            >
-              Decline remaining
-            </Button>
-            <Button
-              size="small"
-              variant="contained"
-              color="primary"
-              disabled={nextLocked}
-              onClick={onNext}
-              style={PILL}
-            >
-              Continue to commit
-            </Button>
-            <Button size="small" variant="outlined" onClick={onCancel} style={PILL}>
-              Cancel
-            </Button>
+              <Button
+                size="small"
+                variant="outlined"
+                color="primary"
+                startIcon={<CheckIcon />}
+                disabled={pendingVisible === 0}
+                onClick={() => decideItems([...visibleAuto, ...visibleReadyAi], 'accept')}
+                style={PILL}
+              >
+                Accept remaining{pendingVisible > 0 ? ` (${pendingVisible})` : ''}
+              </Button>
+              <Button
+                size="small"
+                variant="outlined"
+                color="primary"
+                startIcon={<CloseIcon />}
+                disabled={pendingVisible === 0}
+                onClick={() => decideItems([...visibleAuto, ...visibleReadyAi], 'decline')}
+                style={PILL}
+              >
+                Decline remaining
+              </Button>
+              <Button
+                size="small"
+                variant="contained"
+                color="primary"
+                disabled={nextLocked}
+                onClick={onNext}
+                style={PILL}
+              >
+                Continue to commit
+              </Button>
+              <Button size="small" variant="outlined" onClick={onCancel} style={PILL}>
+                Cancel
+              </Button>
             </div>
           </div>
           {mustDecide > 0 && (
