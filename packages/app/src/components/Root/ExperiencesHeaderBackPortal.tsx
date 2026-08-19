@@ -27,20 +27,58 @@ function findHeaderLeftBox(): HTMLElement | null {
   );
 }
 
+const TITLE_ROW_ATTR = 'data-experiences-header-title-row';
+
+function unwrapTitleRows() {
+  document.querySelectorAll(`[${TITLE_ROW_ATTR}]`).forEach(row => {
+    const parent = row.parentElement;
+    if (!parent) {
+      row.remove();
+      return;
+    }
+    while (row.firstChild) {
+      parent.insertBefore(row.firstChild, row);
+    }
+    row.remove();
+  });
+}
+
 function ensureMount(box: HTMLElement): HTMLElement {
-  let mount = box.querySelector<HTMLElement>(`[${MOUNT_ATTR}]`);
+  // Keep subtitle under the title (stock Header stacks them). A row flex on
+  // the left box put Back + title + subtitle on one line.
+  box.style.display = 'flex';
+  box.style.flexDirection = 'column';
+  box.style.alignItems = 'flex-start';
+  box.style.justifyContent = 'flex-start';
+  box.style.gap = '0';
+
+  let titleRow = box.querySelector<HTMLElement>(`[${TITLE_ROW_ATTR}]`);
+  if (!titleRow) {
+    const title =
+      box.querySelector<HTMLElement>('[class*="BackstageHeader-title"]') ??
+      box.querySelector<HTMLElement>('h1, h2');
+    titleRow = document.createElement('span');
+    titleRow.setAttribute(TITLE_ROW_ATTR, '');
+    titleRow.style.display = 'inline-flex';
+    titleRow.style.alignItems = 'center';
+    titleRow.style.gap = '4px';
+    if (title && title.parentElement === box) {
+      box.insertBefore(titleRow, title);
+      titleRow.appendChild(title);
+    } else {
+      box.insertBefore(titleRow, box.firstChild);
+    }
+  }
+
+  let mount = titleRow.querySelector<HTMLElement>(`[${MOUNT_ATTR}]`);
   if (!mount) {
     mount = document.createElement('span');
     mount.setAttribute(MOUNT_ATTR, '');
     mount.style.display = 'inline-flex';
     mount.style.alignItems = 'center';
     mount.style.flexShrink = '0';
-    box.insertBefore(mount, box.firstChild);
+    titleRow.insertBefore(mount, titleRow.firstChild);
   }
-  // Title + back on one row (stock Header left box is not always flex).
-  box.style.display = 'flex';
-  box.style.alignItems = 'center';
-  box.style.gap = '4px';
   return mount;
 }
 
@@ -62,6 +100,7 @@ export const ExperiencesHeaderBackPortal = () => {
     if (!enabled) {
       setMount(null);
       document.querySelectorAll(`[${MOUNT_ATTR}]`).forEach(el => el.remove());
+      unwrapTitleRows();
       return undefined;
     }
 
@@ -80,6 +119,7 @@ export const ExperiencesHeaderBackPortal = () => {
     return () => {
       mo.disconnect();
       document.querySelectorAll(`[${MOUNT_ATTR}]`).forEach(el => el.remove());
+      unwrapTitleRows();
     };
   }, [enabled, pathname, search]);
 

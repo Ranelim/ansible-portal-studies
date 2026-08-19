@@ -39,12 +39,6 @@ const SEV_ORDER: SeverityClass[] = [
 const FINDINGS_BAR_HEIGHT = 6;
 
 const useStyles = makeStyles(theme => ({
-  hint: {
-    color: theme.palette.text.secondary,
-    fontSize: 13,
-    marginBottom: theme.spacing(2),
-    maxWidth: 720,
-  },
   kpis: {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
@@ -337,12 +331,6 @@ export const QualityPostureOverview = () => {
 
   return (
     <Box>
-      <Typography className={classes.hint}>
-        Health, findings, and critical counts use each repository&apos;s
-        current scan. Cards that mention the last {QUALITY_WINDOW_DAYS} days
-        count scan activity. Open a repository to remediate. Resume a session
-        from Remediations.
-      </Typography>
       <Box className={classes.kpis}>
         {cards.map(card => (
           <Box

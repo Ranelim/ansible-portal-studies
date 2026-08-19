@@ -250,10 +250,27 @@ const useRootStyles = makeStyles(theme => {
       zIndex: 0,
       paddingLeft: `var(--portal-page-gutter, ${RAIL_ICON_GUTTER_PX}px) !important`,
       paddingRight: `var(--portal-page-gutter, ${RAIL_ICON_GUTTER_PX}px) !important`,
+      // Stock Header is padding 24 all sides — stacks with HeaderTabs (also 24)
+      // into a hole under the subtitle. Keep top/side; tighten bottom.
+      paddingBottom: `${theme.spacing(1)}px !important`,
     },
     '[class*="BackstageHeaderTabs-tabsWrapper"]': {
       paddingLeft: `var(--portal-page-gutter, ${RAIL_ICON_GUTTER_PX}px) !important`,
     },
+    // Stock HeaderTabs tab padding is spacing(3)=24. Sit tabs under the subtitle.
+    '[class*="BackstageHeaderTabs-tabsWrapper"] .MuiTabs-root': {
+      minHeight: 0,
+    },
+    '[class*="BackstageHeaderTabs-tabsWrapper"] .MuiTab-root': {
+      minHeight: 0,
+      paddingTop: `${theme.spacing(1.5)}px !important`,
+      paddingBottom: `${theme.spacing(1.5)}px !important`,
+    },
+    // Experiences toolbar rhythm: ~20px above and below the filter row.
+    'header[class*="BackstageHeader-header"] + [class*="BackstageContent-root"]:not([class*="noPadding"]), [class*="BackstageHeaderTabs-tabsWrapper"] + [class*="BackstageContent-root"]:not([class*="noPadding"])':
+      {
+        paddingTop: `${theme.spacing(2.5)}px !important`,
+      },
     '[class*="BackstageContent-root"]:not([class*="noPadding"])': {
       paddingLeft: `var(--portal-page-gutter, ${RAIL_ICON_GUTTER_PX}px) !important`,
       paddingRight: `var(--portal-page-gutter, ${RAIL_ICON_GUTTER_PX}px) !important`,
@@ -282,6 +299,11 @@ const useRootStyles = makeStyles(theme => {
   hideNestedPageHeader: {
     '& header[class*="BackstageHeader-header"]': {
       display: 'none !important',
+    },
+    // Automate host: HeaderTabs lives outside the Page, so the sibling
+    // Content selector above does not fire. Same 20px as Experiences.
+    '& [class*="BackstageContent-root"]:not([class*="noPadding"])': {
+      paddingTop: `${theme.spacing(2.5)}px !important`,
     },
   },
 };

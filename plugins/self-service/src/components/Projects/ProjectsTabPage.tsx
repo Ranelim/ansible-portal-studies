@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Header, Page, HeaderTabs, Content } from '@backstage/core-components';
-import { Box, makeStyles } from '@material-ui/core';
+import { Box, Button, makeStyles } from '@material-ui/core';
 import { useLocation, useNavigate } from 'react-router-dom';
 import FileCopyOutlinedIcon from '@material-ui/icons/FileCopyOutlined';
 import SearchIcon from '@material-ui/icons/Search';
@@ -13,12 +13,13 @@ import { CIActivityContent } from './ci/CIActivityContent';
 import { QualityDashboardTabContent } from './quality/QualityDashboardTabContent';
 import {
   RemediationsContent,
+  StartScanDialog,
   countLiveRemediations,
 } from './quality/RemediationsContent';
 import { ScanHistoryContent } from './quality/ScanHistoryContent';
 import { isDevelopExperience, useNavIaModel } from '../../hooks/useNavIaModel';
 
-/** Develop host tabs (unused while rail is nested). */
+/** Non-Develop fallback — full Git Repositories host tabs. */
 const HOST_TABS = [
   { id: 'repositories', label: 'Repositories', path: 'list' },
   { id: 'dashboard', label: 'Quality', path: 'dashboard' },
@@ -27,15 +28,28 @@ const HOST_TABS = [
   { id: 'ci-activity', label: 'Pipeline activity', path: 'ci-activity' },
 ];
 
+/** Develop Quality page — Overview / Remediations / Scans. */
+const QUALITY_TABS = [
+  { id: 'overview', label: 'Overview', path: 'dashboard' },
+  { id: 'remediations', label: 'Remediations', path: 'remediations' },
+  { id: 'scans', label: 'Scans', path: 'scans' },
+];
+
 type Surface = 'list' | 'dashboard' | 'remediations' | 'scans' | 'ci-activity';
 
-const useTabStyles = makeStyles(theme => ({
+const useStyles = makeStyles(theme => ({
   tabLabel: {
     display: 'inline-flex',
     flexDirection: 'row',
     alignItems: 'center',
     gap: theme.spacing(0.75),
     lineHeight: 1,
+  },
+  headerCta: {
+    textTransform: 'none',
+    fontWeight: 600,
+    borderRadius: 20,
+    flexShrink: 0,
   },
 }));
 
@@ -52,7 +66,7 @@ const getSurfaceFromPath = (pathname: string): Surface => {
   return 'list';
 };
 
-const getTabIndexFromPath = (pathname: string): number => {
+const getHostTabIndexFromPath = (pathname: string): number => {
   const surface = getSurfaceFromPath(pathname);
   if (surface === 'dashboard') return 1;
   if (surface === 'remediations') return 2;
@@ -61,18 +75,28 @@ const getTabIndexFromPath = (pathname: string): number => {
   return 0;
 };
 
+const getQualityTabIndexFromPath = (pathname: string): number => {
+  const surface = getSurfaceFromPath(pathname);
+  if (surface === 'remediations') return 1;
+  if (surface === 'scans') return 2;
+  return 0;
+};
+
+const isQualitySurface = (surface: Surface) =>
+  surface === 'dashboard' || surface === 'remediations' || surface === 'scans';
+
 /**
  * Git Repositories host.
- * Develop: no host tabs — rail picks Repositories / Quality / Remediations / Scans
+ * Develop: list is Repositories; Quality is a nested rail item with page tabs.
  */
 export const ProjectsTabs: React.FC = () => {
-  const classes = useTabStyles();
+  const classes = useStyles();
   const location = useLocation();
   const navigate = useNavigate();
   const { experience } = useNavIaModel();
   const sectionMode = isDevelopExperience(experience);
-  const hideHostTabs = sectionMode;
   const [createOpen, setCreateOpen] = useState(false);
+  const [scanOpen, setScanOpen] = useState(false);
   const liveCount = countLiveRemediations();
 
   useEffect(() => {
@@ -82,26 +106,32 @@ export const ProjectsTabs: React.FC = () => {
     }
   }, [location.pathname, navigate]);
 
-  // Legacy Quality path → Quality surface (dashboard route)
   useEffect(() => {
     if (location.pathname.includes('/repositories/quality')) {
       navigate('/self-service/repositories/dashboard', { replace: true });
     }
   }, [location.pathname, navigate]);
 
-  const selectedTab = useMemo(
-    () => getTabIndexFromPath(location.pathname),
-    [location.pathname],
-  );
-
   const surface = useMemo(
     () => getSurfaceFromPath(location.pathname),
     [location.pathname],
   );
 
-  const onTabSelect = useCallback(
+  const qualityPage = sectionMode && isQualitySurface(surface);
+
+  const onHostTabSelect = useCallback(
     (index: number) => {
       const tab = HOST_TABS[index];
+      if (tab) {
+        navigate(`/self-service/repositories/${tab.path}`);
+      }
+    },
+    [navigate],
+  );
+
+  const onQualityTabSelect = useCallback(
+    (index: number) => {
+      const tab = QUALITY_TABS[index];
       if (tab) {
         navigate(`/self-service/repositories/${tab.path}`);
       }
@@ -114,7 +144,12 @@ export const ProjectsTabs: React.FC = () => {
       return <QualityDashboardTabContent key="dashboard" />;
     }
     if (surface === 'remediations') {
-      return <RemediationsContent key="remediations" />;
+      return (
+        <RemediationsContent
+          key="remediations"
+          onStartScan={() => setScanOpen(true)}
+        />
+      );
     }
     if (surface === 'scans') {
       return <ScanHistoryContent key="scans" />;
@@ -125,29 +160,32 @@ export const ProjectsTabs: React.FC = () => {
     return <GitRepositoriesContent key="repositories" />;
   }, [surface]);
 
-  const headerTitle =
-    sectionMode && surface === 'dashboard'
-      ? 'Quality'
-      : sectionMode && surface === 'remediations'
-        ? 'Remediations'
-        : sectionMode && surface === 'scans'
-          ? 'Scans'
-          : sectionMode && surface === 'ci-activity'
-            ? 'Pipeline activity'
-            : 'Git Repositories';
+  const headerTitle = qualityPage
+    ? 'Quality'
+    : sectionMode && surface === 'ci-activity'
+      ? 'Pipeline activity'
+      : 'Git Repositories';
 
-  const headerSubtitle =
-    sectionMode && surface === 'dashboard'
-      ? 'Current scan per repository. Last 7 days counts scan activity.'
-      : sectionMode && surface === 'remediations'
-        ? 'Live remediation sessions you can resume'
-        : sectionMode && surface === 'scans'
-          ? 'Scan snapshots across repositories. Current is the latest scan.'
-          : sectionMode && surface === 'ci-activity'
-            ? 'CI and quality pipeline runs for repositories'
-            : 'Automation content repositories discovered from your connected sources';
+  const headerSubtitle = qualityPage
+    ? 'Findings, remediations, and scan history for your git repositories.'
+    : sectionMode && surface === 'ci-activity'
+      ? 'CI and quality pipeline runs for repositories'
+      : 'Automation content repositories discovered from your connected sources.';
 
-  const showCreate = !sectionMode || surface === 'list';
+  const showAddRepo = !qualityPage && surface !== 'ci-activity';
+
+  const remediationsTabLabel = (label: string) =>
+    liveCount > 0 ? (
+      <span className={classes.tabLabel}>
+        <span>{label}</span>
+        <ReadCountBadge
+          count={liveCount}
+          label={`${liveCount} live remediations`}
+        />
+      </span>
+    ) : (
+      label
+    );
 
   return (
     <Page themeId="app">
@@ -161,15 +199,34 @@ export const ProjectsTabs: React.FC = () => {
           >
             <Box display="flex" alignItems="center">
               {headerTitle}
-              {(!sectionMode || surface === 'list') && (
+              {qualityPage ? (
                 <PageHelpIcon
-                  tooltipLabel="What are git repositories?"
-                  title="What are git repositories?"
-                  description="Git repositories contain your automation content — playbooks, roles, collections, or execution environments. They are discovered from your connected sources (GitHub, GitLab) and appear here automatically. Quality scans run against your repositories to check for best practices and compliance."
+                  tooltipLabel="What is Quality?"
+                  title="What is Quality?"
+                  description="Scans Ansible content in your git repositories for policy, quality, secrets, and modernization findings. Overview is fleet posture. Remediations are live sessions. Scans is history."
                 />
+              ) : (
+                surface === 'list' && (
+                  <PageHelpIcon
+                    tooltipLabel="What are git repositories?"
+                    title="What are git repositories?"
+                    description="Git repositories contain your automation content — playbooks, roles, collections, or execution environments. They are discovered from your connected sources (GitHub, GitLab) and appear here automatically. Quality scans run against your repositories to check for best practices and compliance."
+                  />
+                )
               )}
             </Box>
-            {showCreate && (
+            {qualityPage && (
+              <Button
+                color="primary"
+                variant="contained"
+                size="small"
+                className={classes.headerCta}
+                onClick={() => setScanOpen(true)}
+              >
+                Start scan
+              </Button>
+            )}
+            {showAddRepo && (
               <AddActionButton
                 label="Add repository"
                 options={[
@@ -195,24 +252,23 @@ export const ProjectsTabs: React.FC = () => {
         pageTitleOverride={headerTitle}
         subtitle={headerSubtitle}
       />
-      {!hideHostTabs && (
+      {qualityPage && (
         <HeaderTabs
-          selectedIndex={selectedTab}
-          onChange={onTabSelect}
+          selectedIndex={getQualityTabIndexFromPath(location.pathname)}
+          onChange={onQualityTabSelect}
+          tabs={QUALITY_TABS.map(({ id, label }) => ({
+            id,
+            label: id === 'remediations' ? remediationsTabLabel(label) : label,
+          }))}
+        />
+      )}
+      {!sectionMode && (
+        <HeaderTabs
+          selectedIndex={getHostTabIndexFromPath(location.pathname)}
+          onChange={onHostTabSelect}
           tabs={HOST_TABS.map(({ id, label }) => ({
             id,
-            label:
-              id === 'remediations' && liveCount > 0 ? (
-                <span className={classes.tabLabel}>
-                  <span>{label}</span>
-                  <ReadCountBadge
-                    count={liveCount}
-                    label={`${liveCount} live remediations`}
-                  />
-                </span>
-              ) : (
-                label
-              ),
+            label: id === 'remediations' ? remediationsTabLabel(label) : label,
           }))}
         />
       )}
@@ -222,6 +278,7 @@ export const ProjectsTabs: React.FC = () => {
         onClose={() => setCreateOpen(false)}
         kind="repository"
       />
+      <StartScanDialog open={scanOpen} onClose={() => setScanOpen(false)} />
     </Page>
   );
 };

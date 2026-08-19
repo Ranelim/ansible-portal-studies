@@ -121,11 +121,13 @@ const hasActiveFilters = (filters: ActiveFilters) =>
   filters.provider !== 'all' || filters.quality !== 'all';
 
 const useStyles = makeStyles(theme => ({
+  filterBand: {
+    marginBottom: theme.spacing(2.5),
+  },
   toolbar: {
     display: 'flex',
     alignItems: 'center',
-    gap: theme.spacing(1),
-    paddingBottom: theme.spacing(1.5),
+    gap: theme.spacing(1.5),
     flexWrap: 'wrap',
   },
   searchField: {
@@ -166,7 +168,7 @@ const useStyles = makeStyles(theme => ({
     display: 'flex',
     alignItems: 'center',
     gap: theme.spacing(1),
-    paddingBottom: theme.spacing(1.5),
+    paddingTop: theme.spacing(1),
     flexWrap: 'wrap' as const,
   },
   activeChip: {
@@ -921,6 +923,7 @@ export const GitRepositoriesContent = () => {
 
   return (
     <Box>
+      <Box className={classes.filterBand}>
       <Box className={classes.toolbar}>
         <TextField
           className={classes.searchField}
@@ -991,6 +994,7 @@ export const GitRepositoriesContent = () => {
           </Button>
         </Box>
       )}
+      </Box>
 
       <Box className={classes.tableHost}>
       <Table<GitRepository>

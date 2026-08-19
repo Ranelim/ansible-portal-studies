@@ -694,8 +694,9 @@ export const TaskList = () => {
                   display="flex"
                   alignItems="center"
                   style={{
-                    gap: 8,
-                    padding: '8px 0',
+                    gap: 12,
+                    padding: 0,
+                    marginBottom: 20,
                     flexWrap: 'wrap',
                   }}
                 >

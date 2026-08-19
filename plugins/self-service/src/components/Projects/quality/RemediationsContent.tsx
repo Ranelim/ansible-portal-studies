@@ -8,6 +8,7 @@ import {
   DialogContent,
   DialogTitle,
   FormControl,
+  IconButton,
   InputLabel,
   LinearProgress,
   MenuItem,
@@ -15,6 +16,7 @@ import {
   Typography,
   makeStyles,
 } from '@material-ui/core';
+import CloseIcon from '@material-ui/icons/Close';
 import { Table, TableColumn } from '@backstage/core-components';
 import { useNavigate } from 'react-router-dom';
 import { GIT_REPOSITORIES } from '../catalog/unifiedDemoData';
@@ -44,23 +46,6 @@ const STEP_LABEL: Record<ActiveStatus, string> = {
 };
 
 const useStyles = makeStyles(theme => ({
-  header: {
-    display: 'flex',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: theme.spacing(2),
-    marginBottom: theme.spacing(2),
-  },
-  title: {
-    fontWeight: 600,
-    fontSize: 16,
-  },
-  hint: {
-    color: theme.palette.text.secondary,
-    fontSize: 13,
-    marginTop: 4,
-    maxWidth: 640,
-  },
   cta: {
     textTransform: 'none',
     fontWeight: 600,
@@ -108,10 +93,18 @@ const useStyles = makeStyles(theme => ({
     margin: '0 auto',
     marginBottom: theme.spacing(2),
   },
-  dialogHint: {
-    fontSize: 14,
+  dialogTitleRow: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: theme.spacing(2),
+  },
+  dialogSubtitle: {
+    marginTop: theme.spacing(0.5),
     color: theme.palette.text.secondary,
-    marginBottom: theme.spacing(2),
+    fontSize: 14,
+    lineHeight: 1.5,
+    fontWeight: 400,
   },
   dialogWarn: {
     fontSize: 13,
@@ -120,6 +113,16 @@ const useStyles = makeStyles(theme => ({
   },
   select: {
     minWidth: '100%',
+  },
+  dialogActions: {
+    padding: theme.spacing(1.5, 3, 2),
+    alignItems: 'center',
+  },
+  dialogBtn: {
+    textTransform: 'none',
+    fontWeight: 600,
+    borderRadius: 20,
+    minHeight: 36,
   },
 }));
 
@@ -176,7 +179,7 @@ function sessionPath(repoName: string, resume: boolean) {
   )}?${qs.toString()}`;
 }
 
-function StartScanDialog({
+export function StartScanDialog({
   open,
   onClose,
 }: {
@@ -208,16 +211,27 @@ function StartScanDialog({
       fullWidth
       aria-labelledby="start-scan-title"
     >
-      <DialogTitle id="start-scan-title" disableTypography>
-        <Typography variant="h6" style={{ fontWeight: 600, fontSize: 18 }}>
-          Start scan
-        </Typography>
+      <DialogTitle disableTypography>
+        <Box className={classes.dialogTitleRow}>
+          <Box>
+            <Typography
+              id="start-scan-title"
+              variant="h6"
+              style={{ fontWeight: 600, fontSize: 18 }}
+            >
+              Start scan
+            </Typography>
+            <Typography className={classes.dialogSubtitle}>
+              Choose a git repository. After the scan, you review findings and
+              can remediate in the same session.
+            </Typography>
+          </Box>
+          <IconButton aria-label="Close" onClick={onClose} size="small">
+            <CloseIcon />
+          </IconButton>
+        </Box>
       </DialogTitle>
       <DialogContent>
-        <Typography className={classes.dialogHint}>
-          Choose a git repository. After the scan, you review findings and can
-          remediate in the same session.
-        </Typography>
         <FormControl variant="outlined" size="small" className={classes.select}>
           <InputLabel id="start-scan-repo-label">Repository</InputLabel>
           <Select
@@ -240,8 +254,8 @@ function StartScanDialog({
           </Typography>
         )}
       </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose} color="primary" style={{ textTransform: 'none' }}>
+      <DialogActions className={classes.dialogActions}>
+        <Button onClick={onClose} color="primary" className={classes.dialogBtn}>
           Cancel
         </Button>
         <Button
@@ -249,7 +263,7 @@ function StartScanDialog({
           color="primary"
           variant="contained"
           disabled={!repoName}
-          className={classes.cta}
+          className={classes.dialogBtn}
         >
           Start scan
         </Button>
@@ -260,12 +274,18 @@ function StartScanDialog({
 
 /**
  * Live remediation sessions only — not scan history, not open PRs.
+ * Start scan lives on the Quality page Header; empty state can reuse it.
  */
-export const RemediationsContent = () => {
+export const RemediationsContent = ({
+  onStartScan,
+}: {
+  onStartScan?: () => void;
+}) => {
   const classes = useStyles();
   const navigate = useNavigate();
   const [scanOpen, setScanOpen] = useState(false);
   const rows = useMemo(() => buildRows(), []);
+  const startScan = () => (onStartScan ? onStartScan() : setScanOpen(true));
 
   const openRepo = (repoName: string) => {
     navigate(
@@ -363,25 +383,6 @@ export const RemediationsContent = () => {
 
   return (
     <Box>
-      <Box className={classes.header}>
-        <Box>
-          <Typography className={classes.title} component="h2">
-            Active remediations
-          </Typography>
-          <Typography className={classes.hint}>
-            Live sessions you can resume. Start a scan to open a new session.
-            Scan history is on Scans.
-          </Typography>
-        </Box>
-        <Button
-          className={classes.cta}
-          color="primary"
-          variant="contained"
-          onClick={() => setScanOpen(true)}
-        >
-          Start scan
-        </Button>
-      </Box>
       {rows.length === 0 ? (
         <Box className={classes.empty}>
           <Typography className={classes.emptyTitle}>
@@ -394,7 +395,7 @@ export const RemediationsContent = () => {
             className={classes.cta}
             color="primary"
             variant="contained"
-            onClick={() => setScanOpen(true)}
+            onClick={startScan}
           >
             Start scan
           </Button>
@@ -417,7 +418,9 @@ export const RemediationsContent = () => {
           }}
         />
       )}
-      <StartScanDialog open={scanOpen} onClose={() => setScanOpen(false)} />
+      {!onStartScan && (
+        <StartScanDialog open={scanOpen} onClose={() => setScanOpen(false)} />
+      )}
     </Box>
   );
 };

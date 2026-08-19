@@ -97,7 +97,7 @@ const ADMIN_EXPERIENCES: AdminExperience[] = [
     id: 'develop',
     label: 'Develop',
     description:
-      'Git repositories, collections, and execution environments. Quality, remediations, and scans nest under Git Repositories.',
+      'Git repositories, collections, and execution environments. Quality (overview, remediations, scans) lives on Git Repositories.',
     pluginsFilter: 'Develop',
     seatsSummary: 'Developer, Admin',
     pluginsSummary: 'Self-service, APME Quality Scanning',

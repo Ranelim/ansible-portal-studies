@@ -237,10 +237,16 @@ const useExpandableNavItemStyles = makeStyles(theme => {
 type ExpandableNavChildProps = {
   to: string;
   text: string;
+  /** Extra path match (e.g. Quality stays selected on Remediations / Scans tabs). */
+  extraActive?: (pathname: string) => boolean;
 };
 
 /** Text-only nested rail link — no icon (hierarchy from indent). */
-const ExpandableNavChild = ({ to, text }: ExpandableNavChildProps) => {
+const ExpandableNavChild = ({
+  to,
+  text,
+  extraActive,
+}: ExpandableNavChildProps) => {
   const classes = useExpandableNavItemStyles();
   const { pathname } = useLocation();
   const base = to.split('?')[0] ?? to;
@@ -249,10 +255,9 @@ const ExpandableNavChild = ({ to, text }: ExpandableNavChildProps) => {
     (base.endsWith('/list') &&
       (pathname === '/self-service/repositories' ||
         pathname.endsWith('/repositories/list'))) ||
-    (base.endsWith('/dashboard') && pathname.includes('/repositories/dashboard')) ||
-    (base.endsWith('/remediations') &&
-      pathname.includes('/repositories/remediations')) ||
-    (base.endsWith('/scans') && pathname.includes('/repositories/scans'));
+    (base.endsWith('/dashboard') &&
+      pathname.includes('/repositories/dashboard')) ||
+    extraActive?.(pathname);
 
   return (
     <Link
@@ -1363,7 +1368,7 @@ const ExperiencesDomainSidebar = () => {
       {/* A: Automate = Templates · Runs only (no Learn). B is rail-less — skip. */}
       {domain === 'automate' && automateRail && <RunItems />}
 
-      {/* Develop — Git Repositories expandable; Quality / Remediations / Scans nested. */}
+      {/* Develop — Git Repositories expandable; Quality is nested (tabs on the page). */}
       {domain === 'develop' && (
         <>
           {ExperienceDashboardItem}
@@ -1382,14 +1387,10 @@ const ExperiencesDomainSidebar = () => {
             <ExpandableNavChild
               to="/self-service/repositories/dashboard"
               text="Quality"
-            />
-            <ExpandableNavChild
-              to="/self-service/repositories/remediations"
-              text="Remediations"
-            />
-            <ExpandableNavChild
-              to="/self-service/repositories/scans"
-              text="Scans"
+              extraActive={pathname =>
+                pathname.includes('/repositories/remediations') ||
+                pathname.includes('/repositories/scans')
+              }
             />
           </ExpandableNavItem>
           <SidebarItem

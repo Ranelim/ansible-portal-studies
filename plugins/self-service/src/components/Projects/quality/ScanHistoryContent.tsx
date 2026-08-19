@@ -98,17 +98,6 @@ const pill = {
 };
 
 const useStyles = makeStyles(theme => ({
-  heading: {
-    fontWeight: 600,
-    fontSize: 16,
-    marginBottom: theme.spacing(0.5),
-  },
-  hint: {
-    color: theme.palette.text.secondary,
-    fontSize: 13,
-    marginBottom: theme.spacing(2),
-    maxWidth: 720,
-  },
   toolbar: {
     display: 'flex',
     alignItems: 'center',
@@ -1150,11 +1139,6 @@ export const ScanHistoryContent = () => {
 
   return (
     <Box>
-      <Typography className={classes.heading}>Scan history</Typography>
-      <Typography className={classes.hint}>
-        Snapshots of past scans. Current is the latest scan for that repository.
-        Open a current scan to remediate.
-        </Typography>
       <Box className={classes.toolbar}>
         <FormControl
           variant="outlined"
