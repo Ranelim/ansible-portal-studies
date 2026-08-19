@@ -19,8 +19,11 @@ import {
   type ExperienceId,
 } from '@ansible/plugin-backstage-self-service';
 
+/** Trial height for rail back + switcher (was 24). Revert this to roll back. */
+export const EXPERIENCE_CHROME_HIT = 32;
+
 const useStyles = makeStyles(theme => ({
-  /** Same 24px muted chip as the rail back chevron — stretched for the label. */
+  /** Same muted chip as the rail back chevron — stretched for the label. */
   trigger: {
     appearance: 'none' as const,
     display: 'flex',
@@ -29,9 +32,9 @@ const useStyles = makeStyles(theme => ({
     gap: 2,
     width: '100%',
     minWidth: 0,
-    height: 24,
+    height: EXPERIENCE_CHROME_HIT,
     margin: 0,
-    padding: '0 6px 0 8px',
+    padding: '0 8px 0 10px',
     border: 'none',
     borderRadius: 4,
     cursor: 'pointer',

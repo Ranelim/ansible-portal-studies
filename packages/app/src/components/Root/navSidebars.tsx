@@ -62,7 +62,10 @@ import ArrowBackIcon from '@material-ui/icons/ArrowBack';
 import ChevronLeftIcon from '@material-ui/icons/ChevronLeft';
 import DeleteOutlineIcon from '@material-ui/icons/DeleteOutline';
 import { useExperienceReturnChrome } from '../IaPrototype/useExperienceReturnChrome';
-import { ExperienceSwitcher } from './ExperienceSwitcher';
+import {
+  EXPERIENCE_CHROME_HIT,
+  ExperienceSwitcher,
+} from './ExperienceSwitcher';
 
 const useSidebarLogoStyles = makeStyles({
   root: {
@@ -967,13 +970,13 @@ const useQuietReturnStyles = makeStyles(theme => ({
     boxSizing: 'border-box' as const,
     padding: '10px 8px 8px 0',
     gap: 4,
-    minHeight: 32,
+    minHeight: EXPERIENCE_CHROME_HIT,
   },
-  /** 24px chip at the 32px gutter — same left edge as fedora / SidebarItem glyph. */
+  /** Square chip at the 32px gutter — same left edge as fedora / SidebarItem glyph. */
   labelReturnHit: {
     boxSizing: 'border-box' as const,
-    width: 24,
-    minWidth: 24,
+    width: EXPERIENCE_CHROME_HIT,
+    minWidth: EXPERIENCE_CHROME_HIT,
     marginLeft: 32,
     display: 'flex',
     alignItems: 'center',
@@ -982,9 +985,9 @@ const useQuietReturnStyles = makeStyles(theme => ({
   },
   labelReturnBtn: {
     appearance: 'none' as const,
-    width: 24,
-    height: 24,
-    minWidth: 24,
+    width: EXPERIENCE_CHROME_HIT,
+    height: EXPERIENCE_CHROME_HIT,
+    minWidth: EXPERIENCE_CHROME_HIT,
     padding: 0,
     margin: 0,
     border: 'none',

@@ -52,6 +52,27 @@ function parseOverviewScope(value: string): QualityOverviewScope {
   return 'current';
 }
 
+function kpiHint(id: KpiId, scope: QualityOverviewScope): string {
+  switch (id) {
+    case 'coverage':
+      return scope === 'current'
+        ? 'How many git repositories have a latest completed scan. That scan stays current until a newer scan replaces it — age does not drop a repository from this count.'
+        : `How many git repositories have a latest completed scan in the last ${scope} days. Repositories whose current scan is older are omitted.`;
+    case 'health':
+      return scope === 'current'
+        ? 'Mean health (0–100) from each repository’s current scan. Health is a rollup of findings on that scan, not a separate rubric.'
+        : `Mean health (0–100) for repositories whose latest completed scan is in the last ${scope} days.`;
+    case 'critical':
+      return scope === 'current'
+        ? 'Git repositories whose current scan includes at least one critical finding.'
+        : `Git repositories whose latest completed scan in the last ${scope} days includes at least one critical finding.`;
+    case 'remediations':
+      return 'Live fix sessions against the current scan. This count ignores the 7- or 30-day window. An expired session does not clear the health score.';
+    case 'scans':
+      return `How many scans ran in the last ${scope} days, including runs that a later scan superseded. Current-scan posture is on the other cards.`;
+  }
+}
+
 const SCOPE_HELP =
   'Current scan is the latest completed scan for each git repository. Last 7 or 30 days limits Overview to repositories whose latest scan is in that window. Remediations always use the current scan. History is on Scans.';
 
@@ -76,9 +97,11 @@ const useStyles = makeStyles(theme => ({
     cursor: 'help',
   },
   kpi: {
+    position: 'relative' as const,
     border: `1px solid ${theme.palette.divider}`,
     borderRadius: 8,
     padding: theme.spacing(2),
+    paddingRight: theme.spacing(4.5),
     backgroundColor: theme.palette.background.paper,
     cursor: 'pointer',
     textAlign: 'left' as const,
@@ -114,6 +137,14 @@ const useStyles = makeStyles(theme => ({
     fontSize: 13,
     color: theme.palette.text.secondary,
     marginTop: theme.spacing(0.5),
+  },
+  kpiHelp: {
+    position: 'absolute' as const,
+    top: 8,
+    right: 8,
+    fontSize: 16,
+    color: theme.palette.text.disabled,
+    cursor: 'help',
   },
   mixCard: {
     border: `1px solid ${theme.palette.divider}`,
@@ -430,6 +461,15 @@ export const QualityPostureOverview = () => {
             onClick={() => activate(card.id)}
             onKeyDown={onKpiKey(card.id)}
           >
+            <Tooltip title={kpiHint(card.id, scope)} arrow>
+              <HelpOutlineIcon
+                className={classes.kpiHelp}
+                tabIndex={0}
+                aria-label={`About ${card.label}`}
+                onClick={event => event.stopPropagation()}
+                onKeyDown={event => event.stopPropagation()}
+              />
+            </Tooltip>
             {card.id === 'health' && stats.avgHealth !== null ? (
               <QualityScoreMark
                 score={stats.avgHealth}
