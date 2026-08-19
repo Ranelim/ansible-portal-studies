@@ -7,15 +7,13 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  FormControl,
   IconButton,
-  InputLabel,
   LinearProgress,
-  MenuItem,
-  Select,
+  TextField,
   Typography,
   makeStyles,
 } from '@material-ui/core';
+import Autocomplete from '@material-ui/lab/Autocomplete';
 import CloseIcon from '@material-ui/icons/Close';
 import { Table, TableColumn } from '@backstage/core-components';
 import { useNavigate } from 'react-router-dom';
@@ -111,8 +109,16 @@ const useStyles = makeStyles(theme => ({
     color: theme.palette.text.secondary,
     marginTop: theme.spacing(1.5),
   },
-  select: {
-    minWidth: '100%',
+  option: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    width: '100%',
+  },
+  optionMeta: {
+    fontSize: 12,
+    color: theme.palette.text.secondary,
+    marginTop: 2,
   },
   dialogActions: {
     padding: theme.spacing(1.5, 3, 2),
@@ -165,10 +171,32 @@ function buildRows(): ActiveRow[] {
   });
 }
 
-function scannableRepos() {
-  return GIT_REPOSITORIES.filter(repo => getProjectQuality(repo.name)).sort(
-    (a, b) => a.name.localeCompare(b.name),
-  );
+type ScanRepoOption = {
+  name: string;
+  org: string;
+  label: string;
+  lastScannedAt?: string;
+  live: boolean;
+};
+
+function scannableRepos(): ScanRepoOption[] {
+  return GIT_REPOSITORIES.filter(repo => getProjectQuality(repo.name))
+    .map(repo => {
+      const quality = getProjectQuality(repo.name)!;
+      return {
+        name: repo.name,
+        org: repo.org,
+        label: `${repo.org}/${repo.name}`,
+        lastScannedAt: quality.lastScannedAt,
+        live: isActive(quality.remediationStatus),
+      };
+    })
+    .sort((a, b) => {
+      const aNever = a.lastScannedAt ? 1 : 0;
+      const bNever = b.lastScannedAt ? 1 : 0;
+      if (aNever !== bNever) return aNever - bNever;
+      return a.label.localeCompare(b.label);
+    });
 }
 
 function sessionPath(repoName: string, resume: boolean) {
@@ -189,18 +217,17 @@ export function StartScanDialog({
   const classes = useStyles();
   const navigate = useNavigate();
   const repos = useMemo(() => scannableRepos(), []);
-  const [repoName, setRepoName] = useState('');
+  const [picked, setPicked] = useState<ScanRepoOption | null>(null);
 
   useEffect(() => {
-    if (open) setRepoName('');
+    if (open) setPicked(null);
   }, [open]);
 
-  const selected = getProjectQuality(repoName);
-  const replacesLive = selected ? isActive(selected.remediationStatus) : false;
+  const replacesLive = Boolean(picked?.live);
 
   const start = () => {
-    if (!repoName) return;
-    navigate(sessionPath(repoName, false));
+    if (!picked) return;
+    navigate(sessionPath(picked.name, false));
   };
 
   return (
@@ -232,21 +259,37 @@ export function StartScanDialog({
         </Box>
       </DialogTitle>
       <DialogContent>
-        <FormControl variant="outlined" size="small" className={classes.select}>
-          <InputLabel id="start-scan-repo-label">Repository</InputLabel>
-          <Select
-            labelId="start-scan-repo-label"
-            label="Repository"
-            value={repoName}
-            onChange={e => setRepoName(e.target.value as string)}
-          >
-            {repos.map(repo => (
-              <MenuItem key={repo.name} value={repo.name}>
-                {repo.org}/{repo.name}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
+        <Autocomplete
+          options={repos}
+          value={picked}
+          onChange={(_event, value) => setPicked(value)}
+          getOptionLabel={option => option.label}
+          getOptionSelected={(option, value) => option.name === value.name}
+          autoHighlight
+          openOnFocus
+          clearOnEscape
+          noOptionsText="No repositories match"
+          renderOption={option => (
+            <div className={classes.option}>
+              <span>{option.label}</span>
+              <span className={classes.optionMeta}>
+                {option.lastScannedAt
+                  ? `Last scan ${option.lastScannedAt}`
+                  : 'Never scanned'}
+                {option.live ? ' · Remediation in progress' : ''}
+              </span>
+            </div>
+          )}
+          renderInput={params => (
+            <TextField
+              {...params}
+              label="Repository"
+              variant="outlined"
+              size="small"
+              placeholder="Find a repository"
+            />
+          )}
+        />
         {replacesLive && (
           <Typography className={classes.dialogWarn}>
             This repository already has a remediation in progress. Starting a
@@ -262,7 +305,7 @@ export function StartScanDialog({
           onClick={start}
           color="primary"
           variant="contained"
-          disabled={!repoName}
+          disabled={!picked}
           className={classes.dialogBtn}
         >
           Start scan
