@@ -1,14 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Content, Page, Table, TableColumn } from '@backstage/core-components';
+import { useCallback, useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react';
+import { Content, Page } from '@backstage/core-components';
 import {
   Box,
   Button,
   Checkbox,
-  Chip,
   CircularProgress,
   FormControlLabel,
-  Link,
-  LinearProgress,
   Paper,
   TextField,
   Typography,
@@ -25,12 +22,21 @@ import {
 } from './qualitySurfacePaths';
 import { statusColors } from '../../common/statusColors';
 import { GIT_REPOSITORIES } from '../catalog/unifiedDemoData';
+import { getProjectQuality, type QualityViolation } from '../detail/qualityDemoData';
 import {
-  SEVERITY_COLORS,
-  getProjectQuality,
-  type QualityViolation,
-  type SeverityClass,
-} from '../detail/qualityDemoData';
+  NodeReviewList,
+  OperationProgressPanel,
+  OperationResultCard,
+  ReviewFilterBar,
+  ReviewHint,
+  ReviewInventoryRow,
+  ReviewStepShell,
+  type WizardDecision,
+  groupByNode,
+  uniqueNodeCount,
+  useAssessFilters,
+  useGateFilters,
+} from './SpaRemediationReview';
 
 /**
  * Brad SPA Scan → Complete workflow, MUI under RHDH theme.
@@ -48,16 +54,14 @@ type StepId =
   | 'commit'
   | 'complete';
 
-type Decision = 'pending' | 'accepted' | 'declined';
-
 type StepDef = { id: StepId; label: string };
 
-const SCAN_LOG = [
-  'Queued…',
-  'Cloning repository…',
-  'Resolving collections and Python dependencies…',
-  'Running validators…',
-  'Aggregating findings…',
+const SCAN_PHASES: { phase: string; text: string }[] = [
+  { phase: 'queued', text: 'Queued…' },
+  { phase: 'cloning', text: 'Cloning repository…' },
+  { phase: 'format', text: 'Resolving collections and Python dependencies…' },
+  { phase: 'checking', text: 'Running validators…' },
+  { phase: 'checking', text: 'Aggregating findings…' },
 ];
 
 const APPLY_MS = 1600;
@@ -158,61 +162,21 @@ const useStyles = makeStyles(theme => ({
     marginBottom: theme.spacing(2),
     maxWidth: 720,
   },
-  kpis: {
-    display: 'flex',
-    gap: theme.spacing(3),
-    flexWrap: 'wrap',
-    marginBottom: theme.spacing(2),
-  },
-  kpi: {
-    minWidth: 88,
-  },
-  kpiValue: {
-    fontSize: 22,
-    fontWeight: 700,
-    lineHeight: 1.1,
-  },
-  kpiLabel: {
-    fontSize: 12,
-    color: theme.palette.text.secondary,
-    marginTop: 2,
-  },
-  log: {
-    fontFamily: 'monospace',
-    fontSize: 12,
-    color: theme.palette.text.secondary,
-    marginTop: theme.spacing(1.5),
-    minHeight: 88,
-  },
-  logLine: {
-    marginBottom: 4,
-  },
-  actions: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: theme.spacing(1.5),
-    marginTop: theme.spacing(2),
-    flexWrap: 'wrap',
-  },
   pill: {
     textTransform: 'none',
     fontWeight: 600,
     borderRadius: 20,
   },
-  nextSummary: {
-    fontSize: 12,
-    color: theme.palette.text.secondary,
-    width: '100%',
-  },
-  applying: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    padding: theme.spacing(6, 2),
-    gap: theme.spacing(1.5),
-  },
   formRow: {
     maxWidth: 480,
+    marginBottom: theme.spacing(2),
+  },
+  commitHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: theme.spacing(2),
+    flexWrap: 'wrap',
     marginBottom: theme.spacing(2),
   },
 }));
@@ -243,8 +207,8 @@ const SPINNING = new Set<StepId>([
   'commit',
 ]);
 
-function findingKey(v: QualityViolation): string {
-  return `${v.ruleId}:${v.file}:${v.lineStart}`;
+function findingsPhrase(n: number): string {
+  return `${n} finding${n !== 1 ? 's' : ''}`;
 }
 
 function WorkflowStepper({
@@ -310,7 +274,6 @@ function WorkflowStepper({
                 className={classes.stepLabel}
                 style={{
                   fontWeight: isActive ? 600 : 500,
-                  color: isPending ? undefined : undefined,
                   opacity: isPending ? 0.55 : 1,
                 }}
               >
@@ -324,103 +287,225 @@ function WorkflowStepper({
   );
 }
 
-function FindingsTable({
-  rows,
-  decisions,
-  onDecide,
+function AssessPanel({
+  findings,
+  quickFixCount,
+  onNext,
+  onCancel,
 }: {
-  rows: QualityViolation[];
-  decisions?: Map<string, Decision>;
-  onDecide?: (key: string, d: Decision) => void;
+  findings: QualityViolation[];
+  quickFixCount: number;
+  onNext: () => void;
+  onCancel: () => void;
 }) {
-  const columns: TableColumn<QualityViolation>[] = [
-    {
-      title: 'Severity',
-      render: (row: QualityViolation) => (
-        <Chip
-          size="small"
-          label={row.severity}
-          style={{
-            height: 20,
-            fontSize: 11,
-            fontWeight: 600,
-            textTransform: 'capitalize',
-            backgroundColor: `${SEVERITY_COLORS[row.severity as SeverityClass]}22`,
-            color: SEVERITY_COLORS[row.severity as SeverityClass],
-          }}
-        />
-      ),
-    },
-    { title: 'Rule', field: 'message' },
-    {
-      title: 'File',
-      render: (row: QualityViolation) => (
-        <Typography style={{ fontSize: 12, fontFamily: 'monospace' }}>
-          {row.file}:{row.lineStart}
-        </Typography>
-      ),
-    },
-    {
-      title: 'Fix type',
-      render: (row: QualityViolation) => {
-        const label =
-          row.fixTier === 'deterministic'
-            ? 'Quick-fix'
-            : row.fixTier === 'ai'
-              ? 'AI'
-              : 'Manual';
-        return <Chip size="small" label={label} style={{ height: 20, fontSize: 11 }} />;
-      },
-    },
-  ];
-  if (decisions) {
-    columns.push({
-      title: 'Decision',
-      render: (row: QualityViolation) => {
-        const k = findingKey(row);
-        const d = decisions.get(k) ?? 'pending';
-        if (d === 'pending' && onDecide) {
-          return (
-            <Box display="flex" style={{ gap: 8 }}>
-              <Button
-                size="small"
-                color="primary"
-                variant="contained"
-                style={{ textTransform: 'none', borderRadius: 20 }}
-                onClick={() => onDecide(k, 'accepted')}
-              >
-                Accept
-              </Button>
-              <Button
-                size="small"
-                style={{ textTransform: 'none', borderRadius: 20 }}
-                onClick={() => onDecide(k, 'declined')}
-              >
-                Decline
-              </Button>
-            </Box>
-          );
-        }
-        const label =
-          d === 'accepted' ? 'Accepted' : d === 'declined' ? 'Declined' : 'Undecided';
-        return <Chip size="small" label={label} style={{ height: 20, fontSize: 11 }} />;
-      },
-    });
-  }
+  const { filtered, nodes, filterGroups, narrowed } = useAssessFilters(findings);
+  const auto = findings.filter(v => v.fixTier === 'deterministic');
+  const ai = findings.filter(v => v.fixTier === 'ai');
+  const manual = findings.filter(v => v.fixTier === 'manual');
+  const nextHint =
+    quickFixCount > 0
+      ? `Move on to remediation — review quick-fix proposals for ${findingsPhrase(quickFixCount)} (same session, no rescan).`
+      : 'Move on to remediation — continue this session to review any available fixes (no rescan).';
 
   return (
-    <Table<QualityViolation>
-      columns={columns}
-      data={rows}
-      title=""
-      options={{
-        paging: rows.length > 12,
-        pageSize: 12,
-        search: false,
-        padding: 'dense',
-        emptyRowsWhenPaging: false,
-      }}
-    />
+    <ReviewStepShell
+      title={narrowed ? `Showing ${findingsPhrase(filtered.length)} of ${findings.length}` : undefined}
+      description={
+        <>
+          <ReviewInventoryRow
+            boxes={[
+              {
+                key: 'total',
+                label: 'Total',
+                primary: findings.length,
+                secondary: uniqueNodeCount(findings),
+              },
+              {
+                key: 'auto',
+                label: 'Quick-fix',
+                primary: auto.length,
+                secondary: uniqueNodeCount(auto),
+              },
+              {
+                key: 'ai',
+                label: 'AI eligible',
+                primary: ai.length,
+                secondary: uniqueNodeCount(ai),
+              },
+              {
+                key: 'manual',
+                label: 'Manual',
+                primary: manual.length,
+                secondary: uniqueNodeCount(manual),
+              },
+            ]}
+          />
+          <ReviewHint>
+            Latest scan results. Remediate continues this session — no rescan.
+          </ReviewHint>
+        </>
+      }
+      nextHint={nextHint}
+      onNext={onNext}
+      onCancel={onCancel}
+      filterBar={<ReviewFilterBar groups={filterGroups} />}
+      empty={nodes.length === 0}
+      emptyMessage="No findings match the current filters."
+    >
+      <NodeReviewList
+        nodes={nodes}
+        mode="assess"
+        decisions={{}}
+        pendingVisible={0}
+        decidedCount={0}
+      />
+    </ReviewStepShell>
+  );
+}
+
+function GatePanel({
+  findings,
+  isAi,
+  decisions,
+  setDecisions,
+  onNext,
+  onCancel,
+}: {
+  findings: QualityViolation[];
+  isAi: boolean;
+  decisions: Record<string, WizardDecision>;
+  setDecisions: Dispatch<SetStateAction<Record<string, WizardDecision>>>;
+  onNext: () => void;
+  onCancel: () => void;
+}) {
+  const { nodesAll, filteredNodes, filterGroups, narrowed } = useGateFilters(findings, decisions);
+  const pendingAll = nodesAll.filter(n => !decisions[n.id]).length;
+  const pendingVisible = filteredNodes.filter(n => !decisions[n.id]).length;
+  const decidedCount = nodesAll.filter(n => Boolean(decisions[n.id])).length;
+  const acceptedIds = nodesAll.filter(n => decisions[n.id] === 'accept');
+  const declinedCount = nodesAll.filter(n => decisions[n.id] === 'decline').length;
+  const totalFindings = findings.length;
+
+  const inventory = useMemo(() => {
+    let pendingF = 0;
+    let pendingL = 0;
+    let acceptedF = 0;
+    let acceptedL = 0;
+    let declinedF = 0;
+    let declinedL = 0;
+    nodesAll.forEach(n => {
+      const d = decisions[n.id];
+      if (d === 'accept') {
+        acceptedF += n.findings.length;
+        acceptedL += 1;
+      } else if (d === 'decline') {
+        declinedF += n.findings.length;
+        declinedL += 1;
+      } else {
+        pendingF += n.findings.length;
+        pendingL += 1;
+      }
+    });
+    return { pendingF, pendingL, acceptedF, acceptedL, declinedF, declinedL };
+  }, [nodesAll, decisions]);
+
+  const nextHint =
+    pendingAll > 0
+      ? `${pendingAll} location${pendingAll !== 1 ? 's' : ''} still undecided. Accept or Decline each one, then Next unlocks. Accept remaining / Decline remaining only decide currently visible rows — widen filters to reach the rest.`
+      : isAi
+        ? acceptedIds.length > 0
+          ? `Apply ${acceptedIds.length} accepted AI fix${acceptedIds.length !== 1 ? 'es' : ''}${declinedCount > 0 ? ` (${declinedCount} declined)` : ''}, then finish remediation.`
+          : 'Continue with no AI fixes applied, then finish remediation.'
+        : acceptedIds.length > 0
+          ? `Apply ${acceptedIds.length} accepted quick-fix${acceptedIds.length !== 1 ? 'es' : ''}${declinedCount > 0 ? ` (${declinedCount} declined)` : ''}, then continue to AI assessment if enabled.`
+          : 'Continue with no quick-fixes applied, then AI assessment if enabled (or finish if AI is off).';
+
+  const visibleFindings = filteredNodes.reduce((n, node) => n + node.findings.length, 0);
+
+  return (
+    <ReviewStepShell
+      title={narrowed ? `Showing ${visibleFindings} finding${visibleFindings !== 1 ? 's' : ''} of ${totalFindings}` : undefined}
+      description={
+        <>
+          <ReviewInventoryRow
+            boxes={[
+              {
+                key: 'total',
+                label: 'Total',
+                primary: totalFindings,
+                secondary: nodesAll.length,
+              },
+              {
+                key: 'pending',
+                label: 'Undecided',
+                primary: inventory.pendingF,
+                secondary: inventory.pendingL,
+              },
+              {
+                key: 'accepted',
+                label: 'Accepted',
+                primary: inventory.acceptedF,
+                secondary: inventory.acceptedL,
+              },
+              {
+                key: 'declined',
+                label: 'Declined',
+                primary: inventory.declinedF,
+                secondary: inventory.declinedL,
+              },
+            ]}
+          />
+          <ReviewHint>
+            Every location starts undecided. Next stays disabled until you Accept or Decline each
+            one. Decided rows collapse. Accept remaining / Decline remaining only apply to currently
+            visible rows — widen filters to decide the rest, or Clear to reset and expand again.
+          </ReviewHint>
+        </>
+      }
+      nextHint={nextHint}
+      nextDisabled={pendingAll > 0}
+      onNext={onNext}
+      onCancel={onCancel}
+      filterBar={<ReviewFilterBar groups={filterGroups} />}
+      empty={filteredNodes.length === 0}
+      emptyMessage="No proposals match the current filters."
+    >
+      <NodeReviewList
+        nodes={filteredNodes}
+        mode="gate"
+        decisions={decisions}
+        pendingVisible={pendingVisible}
+        decidedCount={decidedCount}
+        onDecision={(id, d) => setDecisions(prev => ({ ...prev, [id]: d }))}
+        onAcceptRemaining={() =>
+          setDecisions(prev => {
+            const next = { ...prev };
+            filteredNodes.forEach(n => {
+              if (!next[n.id]) next[n.id] = 'accept';
+            });
+            return next;
+          })
+        }
+        onDeclineRemaining={() =>
+          setDecisions(prev => {
+            const next = { ...prev };
+            filteredNodes.forEach(n => {
+              if (!next[n.id]) next[n.id] = 'decline';
+            });
+            return next;
+          })
+        }
+        onClear={() =>
+          setDecisions(prev => {
+            const next = { ...prev };
+            filteredNodes.forEach(n => {
+              delete next[n.id];
+            });
+            return next;
+          })
+        }
+      />
+    </ReviewStepShell>
   );
 }
 
@@ -462,12 +547,15 @@ export const ApmeRemediationPage = () => {
     initialStep(resume, quality?.remediationStatus),
   );
   const [logIndex, setLogIndex] = useState(0);
-  const [decisions, setDecisions] = useState<Map<string, Decision>>(new Map());
+  const [applyTick, setApplyTick] = useState(0);
+  const [t1Decisions, setT1Decisions] = useState<Record<string, WizardDecision>>({});
+  const [aiDecisions, setAiDecisions] = useState<Record<string, WizardDecision>>({});
   const [createPr, setCreatePr] = useState(true);
   const [branchName, setBranchName] = useState(
     `apme/remediate-${(quality?.latestScan.scanId ?? 'fix').slice(0, 12)}`,
   );
   const [committing, setCommitting] = useState(false);
+  const [pushed, setPushed] = useState(false);
   const [prUrl, setPrUrl] = useState(
     quality?.remediationPrUrl ??
       `https://github.com/${repo?.org ?? 'acme-corp'}/${repoName}/pull/42`,
@@ -489,7 +577,7 @@ export const ApmeRemediationPage = () => {
     setLogIndex(0);
     const id = window.setInterval(() => {
       setLogIndex(i => {
-        if (i >= SCAN_LOG.length - 1) {
+        if (i >= SCAN_PHASES.length - 1) {
           window.clearInterval(id);
           setStep('findings');
           return i;
@@ -501,13 +589,13 @@ export const ApmeRemediationPage = () => {
   }, [step]);
 
   useEffect(() => {
-    if (
-      step !== 'tier1_applied' &&
-      step !== 'ai_assessment' &&
-      step !== 'ai_applied'
-    ) {
+    if (step !== 'tier1_applied' && step !== 'ai_assessment' && step !== 'ai_applied') {
       return;
     }
+    setApplyTick(0);
+    const tick = window.setInterval(() => {
+      setApplyTick(t => Math.min(t + 1, 3));
+    }, APPLY_MS / 4);
     const t = window.setTimeout(() => {
       if (step === 'tier1_applied') {
         setStep(includeAi ? 'ai_assessment' : 'commit');
@@ -517,14 +605,15 @@ export const ApmeRemediationPage = () => {
         setStep('commit');
       }
     }, APPLY_MS);
-    return () => window.clearTimeout(t);
+    return () => {
+      window.clearInterval(tick);
+      window.clearTimeout(t);
+    };
   }, [step, includeAi]);
 
   const goBack = useCallback(() => {
     if (fromRepo) {
-      navigate(
-        `/self-service/repositories/${encodeURIComponent(repoName)}`,
-      );
+      navigate(`/self-service/repositories/${encodeURIComponent(repoName)}`);
       return;
     }
     if (fromList) {
@@ -540,15 +629,7 @@ export const ApmeRemediationPage = () => {
       return;
     }
     navigate(qualityHomePath(experience));
-  }, [
-    experience,
-    fromRepo,
-    fromList,
-    fromScans,
-    fromRemediations,
-    navigate,
-    repoName,
-  ]);
+  }, [experience, fromRepo, fromList, fromScans, fromRemediations, navigate, repoName]);
 
   const backLabel = fromRepo
     ? repo?.name ?? 'Repository'
@@ -559,29 +640,6 @@ export const ApmeRemediationPage = () => {
         : fromRemediations
           ? 'Remediations'
           : 'Quality';
-
-  const setDecision = (key: string, d: Decision) => {
-    setDecisions(prev => {
-      const next = new Map(prev);
-      next.set(key, d);
-      return next;
-    });
-  };
-
-  const pendingCount = (rows: QualityViolation[]) =>
-    rows.filter(v => (decisions.get(findingKey(v)) ?? 'pending') === 'pending')
-      .length;
-
-  const acceptRemaining = (rows: QualityViolation[]) => {
-    setDecisions(prev => {
-      const next = new Map(prev);
-      rows.forEach(v => {
-        const k = findingKey(v);
-        if ((next.get(k) ?? 'pending') === 'pending') next.set(k, 'accepted');
-      });
-      return next;
-    });
-  };
 
   if (!quality || !repo) {
     return (
@@ -601,179 +659,126 @@ export const ApmeRemediationPage = () => {
   }
 
   const displayRepo = `${repo.org}/${repo.name}`;
-
-  const renderProposalActions = (rows: QualityViolation[], onNext: () => void, nextSummary: string) => {
-    const pending = pendingCount(rows);
-    return (
-      <Box className={classes.actions}>
-        <Button
-          className={classes.pill}
-          color="primary"
-          onClick={() => acceptRemaining(rows)}
-          disabled={pending === 0}
-        >
-          Accept remaining
-        </Button>
-        <Button
-          className={classes.pill}
-          color="primary"
-          variant="contained"
-          onClick={onNext}
-          disabled={pending > 0}
-        >
-          Next
-        </Button>
-        <Button className={classes.pill} onClick={goBack}>
-          Cancel
-        </Button>
-        <Typography className={classes.nextSummary}>
-          {pending > 0
-            ? `Accept or decline ${pending} remaining proposal${pending !== 1 ? 's' : ''} to continue.`
-            : nextSummary}
-        </Typography>
-      </Box>
-    );
-  };
+  const t1Accepted = groupByNode(quickFix).filter(n => t1Decisions[n.id] === 'accept').length;
+  const aiAccepted = groupByNode(aiFix).filter(n => aiDecisions[n.id] === 'accept').length;
+  const aiDeclined = groupByNode(aiFix).filter(n => aiDecisions[n.id] === 'decline').length;
+  const remediated = t1Accepted + aiAccepted;
 
   const body = (() => {
     if (step === 'scan') {
+      const pct = Math.round(((logIndex + 1) / SCAN_PHASES.length) * 95);
       return (
-        <Paper variant="outlined" className={classes.panel}>
-          <Typography className={classes.panelTitle}>Scan</Typography>
-          <Typography className={classes.hint}>
-            Checking Ansible content in this repository. Same session continues
-            to findings — no second clone.
-          </Typography>
-          <LinearProgress />
-          <Box className={classes.log}>
-            {SCAN_LOG.slice(0, logIndex + 1).map(line => (
-              <div key={line} className={classes.logLine}>
-                {line}
-              </div>
-            ))}
-          </Box>
-          <Box className={classes.actions}>
-            <Button className={classes.pill} onClick={goBack}>
-              Cancel
-            </Button>
-          </Box>
-        </Paper>
+        <OperationProgressPanel
+          heading={logIndex < 1 ? 'Starting operation...' : 'Checking...'}
+          progress={pct}
+          lines={SCAN_PHASES.slice(0, logIndex + 1)}
+          onCancel={goBack}
+        />
       );
     }
 
     if (step === 'findings') {
       return (
-        <Paper variant="outlined" className={classes.panel}>
-          <Typography className={classes.panelTitle}>Review findings</Typography>
-          <Typography className={classes.hint}>
-            Latest scan results. Remediate continues this session — no rescan.
-          </Typography>
-          <Box className={classes.kpis}>
-            <Box className={classes.kpi}>
-              <Typography className={classes.kpiValue}>{quality.totalViolations}</Typography>
-              <Typography className={classes.kpiLabel}>Findings</Typography>
-            </Box>
-            <Box className={classes.kpi}>
-              <Typography className={classes.kpiValue}>{quickFix.length}</Typography>
-              <Typography className={classes.kpiLabel}>Quick-fix</Typography>
-            </Box>
-            <Box className={classes.kpi}>
-              <Typography className={classes.kpiValue}>{aiFix.length}</Typography>
-              <Typography className={classes.kpiLabel}>AI eligible</Typography>
-            </Box>
-            <Box className={classes.kpi}>
-              <Typography className={classes.kpiValue}>{manual.length}</Typography>
-              <Typography className={classes.kpiLabel}>Manual</Typography>
-            </Box>
-          </Box>
-          <FindingsTable rows={quality.violations} />
-          <Box className={classes.actions}>
-            <Button
-              className={classes.pill}
-              color="primary"
-              variant="contained"
-              onClick={() => setStep('tier1_proposals')}
-            >
-              Next
-            </Button>
-            <Button className={classes.pill} onClick={goBack}>
-              Cancel
-            </Button>
-            <Typography className={classes.nextSummary}>
-              {quickFix.length > 0
-                ? `Move on to remediation — review quick-fix proposals for ${quickFix.length} finding${quickFix.length !== 1 ? 's' : ''} (same session, no rescan).`
-                : 'Move on to remediation — continue this session to review any available fixes (no rescan).'}
-            </Typography>
-          </Box>
-        </Paper>
+        <AssessPanel
+          findings={quality.violations}
+          quickFixCount={quickFix.length}
+          onNext={() => setStep('tier1_proposals')}
+          onCancel={goBack}
+        />
       );
     }
 
     if (step === 'tier1_proposals') {
       return (
-        <Paper variant="outlined" className={classes.panel}>
-          <Typography className={classes.panelTitle}>Quick-fix proposals</Typography>
-          <Typography className={classes.hint}>
-            Deterministic transforms (Gate 1). Accept or decline each proposal.
-          </Typography>
-          <FindingsTable rows={quickFix} decisions={decisions} onDecide={setDecision} />
-          {renderProposalActions(
-            quickFix,
-            () => setStep('tier1_applied'),
-            'Apply accepted quick-fixes, then continue.',
-          )}
-        </Paper>
+        <GatePanel
+          findings={quickFix}
+          isAi={false}
+          decisions={t1Decisions}
+          setDecisions={setT1Decisions}
+          onNext={() => setStep('tier1_applied')}
+          onCancel={goBack}
+        />
       );
     }
 
     if (step === 'tier1_applied' || step === 'ai_assessment' || step === 'ai_applied') {
-      const label =
+      const heading =
         step === 'tier1_applied'
-          ? 'Applying quick-fixes…'
+          ? 'Applying approved fixes...'
           : step === 'ai_assessment'
-            ? 'Running AI assessment…'
-            : 'Applying AI proposals…';
+            ? 'Checking...'
+            : 'Applying approved fixes...';
+      const logs =
+        step === 'ai_assessment'
+          ? [
+              { phase: 'ai', text: 'Running AI assessment…' },
+              { phase: 'ai', text: 'Scoring remaining findings…' },
+              { phase: 'ai', text: 'Preparing AI proposals…' },
+            ]
+          : [
+              { phase: 'applying', text: 'Applying approved fixes...' },
+              { phase: 'tier1', text: 'Pass 1/2 — applying transforms' },
+              { phase: 'tier1', text: 'Converged — final scan' },
+            ];
       return (
-        <Paper variant="outlined" className={classes.panel}>
-          <Box className={classes.applying}>
-            <CircularProgress />
-            <Typography className={classes.panelTitle}>{label}</Typography>
-            <Typography className={classes.hint} style={{ marginBottom: 0, textAlign: 'center' }}>
-              Live operation — this step is attached to the same session.
-            </Typography>
-          </Box>
-        </Paper>
+        <OperationProgressPanel
+          heading={heading}
+          progress={Math.min(20 + applyTick * 25, 95)}
+          lines={logs.slice(0, applyTick + 1)}
+          onCancel={goBack}
+        />
       );
     }
 
     if (step === 'ai_proposals') {
       return (
-        <Paper variant="outlined" className={classes.panel}>
-          <Typography className={classes.panelTitle}>AI proposals</Typography>
-          <Typography className={classes.hint}>
-            AI-assisted fixes (Gate 2). Review before they are applied.
-          </Typography>
-          <FindingsTable rows={aiFix} decisions={decisions} onDecide={setDecision} />
-          {renderProposalActions(
-            aiFix,
-            () => setStep('ai_applied'),
-            'Apply accepted AI proposals, then commit.',
-          )}
-        </Paper>
+        <GatePanel
+          findings={aiFix}
+          isAi
+          decisions={aiDecisions}
+          setDecisions={setAiDecisions}
+          onNext={() => setStep('ai_applied')}
+          onCancel={goBack}
+        />
       );
     }
 
     if (step === 'commit') {
-      const accepted = [...decisions.values()].filter(d => d === 'accepted').length;
+      const count = remediated || quality.latestScan.fixable;
+      const commitHeading =
+        count > 0
+          ? `Commit ${count} remediated change${count !== 1 ? 's' : ''}`
+          : 'Commit remediation changes';
       return (
         <Paper variant="outlined" className={classes.panel}>
-          <Typography className={classes.panelTitle}>
-            Commit {accepted || quality.latestScan.fixable} remediated change
-            {(accepted || quality.latestScan.fixable) !== 1 ? 's' : ''}
-          </Typography>
-          <Typography className={classes.hint}>
-            Push a branch and optionally open a pull request. Merge stays in git.
-          </Typography>
+          <div className={classes.commitHeader}>
+            <Box>
+              <Typography className={classes.panelTitle}>{commitHeading}</Typography>
+              <Typography className={classes.hint} style={{ marginBottom: 0 }}>
+                Create a branch, push the fixes, and optionally open a pull request.
+              </Typography>
+            </Box>
+            <Box display="flex" flexDirection="column" alignItems="flex-end" style={{ gap: 8 }}>
+              <Box display="flex" style={{ gap: 8 }}>
+                <Button
+                  className={classes.pill}
+                  color="primary"
+                  variant="contained"
+                  onClick={() => setStep('complete')}
+                >
+                  Next
+                </Button>
+                <Button className={classes.pill} onClick={goBack} disabled={committing}>
+                  Cancel
+                </Button>
+              </Box>
+              <Typography variant="caption" color="textSecondary" style={{ textAlign: 'right', maxWidth: 360 }}>
+                {pushed
+                  ? 'Continue to the complete step.'
+                  : 'Continue without pushing. Use Commit below to push or open a PR first.'}
+              </Typography>
+            </Box>
+          </div>
           <Box className={classes.formRow}>
             <TextField
               fullWidth
@@ -794,7 +799,7 @@ export const ApmeRemediationPage = () => {
             }
             label="Open a pull request"
           />
-          <Box className={classes.actions}>
+          <Box mt={2}>
             <Button
               className={classes.pill}
               color="primary"
@@ -804,17 +809,13 @@ export const ApmeRemediationPage = () => {
                 setCommitting(true);
                 window.setTimeout(() => {
                   setCommitting(false);
-                  setPrUrl(
-                    `https://github.com/${repo.org}/${repo.name}/pull/42`,
-                  );
+                  setPushed(true);
+                  setPrUrl(`https://github.com/${repo.org}/${repo.name}/pull/42`);
                   setStep('complete');
                 }, 1400);
               }}
             >
-              {committing ? 'Pushing…' : createPr ? 'Commit and open pull request' : 'Commit'}
-            </Button>
-            <Button className={classes.pill} onClick={goBack} disabled={committing}>
-              Cancel
+              {committing ? 'Pushing…' : createPr ? 'Commit & open PR' : 'Commit & push'}
             </Button>
           </Box>
         </Paper>
@@ -822,28 +823,17 @@ export const ApmeRemediationPage = () => {
     }
 
     return (
-      <Paper variant="outlined" className={classes.panel}>
-        <Typography className={classes.panelTitle}>Complete</Typography>
-        <Typography className={classes.hint}>
-          Remediation session finished. Merge the pull request in git — Portal
-          does not mark merged.
-        </Typography>
-        <Box className={classes.actions}>
-          {createPr && (
-            <Button
-              className={classes.pill}
-              color="primary"
-              variant="contained"
-              onClick={() => window.open(prUrl, '_blank', 'noopener,noreferrer')}
-            >
-              View pull request
-            </Button>
-          )}
-          <Button className={classes.pill} color="primary" onClick={goBack}>
-            {`Back to ${backLabel}`}
-          </Button>
-        </Box>
-      </Paper>
+      <OperationResultCard
+        violations={quality.totalViolations}
+        remediated={remediated}
+        manual={manual.length}
+        aiProposed={aiFix.length}
+        aiAccepted={aiAccepted}
+        aiDeclined={aiDeclined}
+        prUrl={prUrl}
+        createPr={createPr && pushed}
+        onDone={goBack}
+      />
     );
   })();
 
@@ -866,8 +856,7 @@ export const ApmeRemediationPage = () => {
             <Typography className={classes.repo}>{displayRepo}</Typography>
           </Box>
           <Typography className={classes.meta}>
-            {quality.latestScan.scanId} · commit {quality.lastScannedCommit} ·{' '}
-            {quality.lastScannedAt}
+            {quality.latestScan.scanId} · commit {quality.lastScannedCommit} · {quality.lastScannedAt}
           </Typography>
           <WorkflowStepper steps={steps} current={step} spinning={spinning} />
           {body}
