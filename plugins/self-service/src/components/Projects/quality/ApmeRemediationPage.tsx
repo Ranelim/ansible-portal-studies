@@ -43,8 +43,9 @@ import {
 
 /**
  * Quality remediation session (`/apme/remediate/:repo`).
- * Original = SPA 9-step. Redesign = four decisions. With fixes / AI opt-in = Scan → results+auto-fix → AI+commit.
- * Inline AI = Scan → Results & Remediation (per-item generate) → Commit.
+ * Original = SPA 9-step. AI assessment = pick which findings get an AI suggestion.
+ * Redesign = Scan → Review auto-fixes → Choose AI findings → Review AI-fixes → Commit.
+ * Inline AI = Scan → Results & Remediation → Commit.
  */
 
 type StepId =
@@ -60,39 +61,40 @@ type StepId =
 
 type StepDef = { id: StepId; label: string };
 
-/** Prototype compare. `optin` = With fixes + per-finding Use AI. `inline` = generate AI on the results row. */
-type WizardChrome = 'original' | 'new' | 'fixes' | 'optin' | 'inline';
+/** Prototype compare. Stale `?wizard=fixes|optin` falls back to Original. */
+type WizardChrome = 'original' | 'new' | 'inline';
 
 function parseWizardChrome(value: string | null): WizardChrome {
   if (value === 'new') return 'new';
-  if (value === 'fixes') return 'fixes';
-  if (value === 'optin') return 'optin';
   if (value === 'inline') return 'inline';
   return 'original';
-}
-
-function isThreeStep(chrome: WizardChrome): boolean {
-  return chrome === 'fixes' || chrome === 'optin';
 }
 
 function isInlineChrome(chrome: WizardChrome): boolean {
   return chrome === 'inline';
 }
 
+function isCraigRedesign(chrome: WizardChrome): boolean {
+  return chrome === 'new';
+}
+
 function isResultsFixChrome(chrome: WizardChrome): boolean {
-  return isThreeStep(chrome) || isInlineChrome(chrome);
+  return isInlineChrome(chrome) || isCraigRedesign(chrome);
 }
 
 /** Map engine/progress stations onto the visible stepper. */
-function displayStepId(step: StepId, chrome: WizardChrome, includeAi: boolean): StepId {
+function displayStepId(step: StepId, chrome: WizardChrome): StepId {
   if (chrome === 'original') return step;
   if (chrome === 'new') {
     switch (step) {
       case 'scan':
-        return 'findings';
+        return 'scan';
+      case 'findings':
+      case 'tier1_proposals':
       case 'tier1_applied':
-        return 'tier1_proposals';
+        return 'findings';
       case 'ai_assessment':
+        return 'ai_assessment';
       case 'ai_applied':
         return 'ai_proposals';
       case 'complete':
@@ -101,32 +103,14 @@ function displayStepId(step: StepId, chrome: WizardChrome, includeAi: boolean): 
         return step;
     }
   }
-  if (chrome === 'inline') {
-    switch (step) {
-      case 'scan':
-        return 'scan';
-      case 'commit':
-      case 'complete':
-        return 'commit';
-      default:
-        return 'findings';
-    }
-  }
   switch (step) {
     case 'scan':
       return 'scan';
-    case 'findings':
-    case 'tier1_proposals':
-    case 'tier1_applied':
-      return 'findings';
-    case 'ai_assessment':
-    case 'ai_proposals':
-    case 'ai_applied':
     case 'commit':
     case 'complete':
-      return includeAi ? 'ai_proposals' : 'commit';
+      return 'commit';
     default:
-      return step;
+      return 'findings';
   }
 }
 
@@ -287,25 +271,16 @@ function workflowSteps(includeAi: boolean, chrome: WizardChrome): StepDef[] {
       { id: 'commit', label: 'Commit' },
     ];
   }
-  if (isThreeStep(chrome)) {
-    const steps: StepDef[] = [
-      { id: 'scan', label: 'Scan' },
-      { id: 'findings', label: 'Results and auto-fixes' },
-    ];
-    if (includeAi) {
-      steps.push({ id: 'ai_proposals', label: 'AI fixes' });
-    } else {
-      steps.push({ id: 'commit', label: 'Commit' });
-    }
-    return steps;
-  }
   if (chrome === 'new') {
     const steps: StepDef[] = [
-      { id: 'findings', label: 'Review findings' },
-      { id: 'tier1_proposals', label: 'Quick-fix' },
+      { id: 'scan', label: 'Scan' },
+      { id: 'findings', label: 'Review auto-fixes' },
     ];
     if (includeAi) {
-      steps.push({ id: 'ai_proposals', label: 'AI' });
+      steps.push(
+        { id: 'ai_assessment', label: 'Choose AI findings' },
+        { id: 'ai_proposals', label: 'Review AI-fixes' },
+      );
     }
     steps.push({ id: 'commit', label: 'Commit' });
     return steps;
@@ -430,14 +405,12 @@ function AssessPanel({
   includeAi,
   t1Decisions,
   setT1Decisions,
-  showAiOptIn,
-  aiOptIn,
-  setAiOptIn,
   inlineAi,
   aiStatus,
   onGenerateAi,
   aiDecisions,
   setAiDecisions,
+  craigFlow,
 }: {
   findings: QualityViolation[];
   quickFixCount: number;
@@ -447,14 +420,12 @@ function AssessPanel({
   includeAi?: boolean;
   t1Decisions?: Record<string, WizardDecision>;
   setT1Decisions?: Dispatch<SetStateAction<Record<string, WizardDecision>>>;
-  showAiOptIn?: boolean;
-  aiOptIn?: Record<string, boolean>;
-  setAiOptIn?: Dispatch<SetStateAction<Record<string, boolean>>>;
   inlineAi?: boolean;
   aiStatus?: Record<string, AiRowStatus>;
   onGenerateAi?: (key: string) => void;
   aiDecisions?: Record<string, WizardDecision>;
   setAiDecisions?: Dispatch<SetStateAction<Record<string, WizardDecision>>>;
+  craigFlow?: boolean;
 }) {
   const { filtered, nodes, filterGroups, narrowed } = useAssessFilters(findings);
   const auto = findings.filter(v => v.fixTier === 'deterministic');
@@ -482,18 +453,22 @@ function AssessPanel({
 
   const nextHint = resultsMode
     ? pendingT1 > 0
-      ? `${pendingT1} Quick-fix finding${pendingT1 !== 1 ? 's' : ''} still undecided. Accept or Decline each one, then Next unlocks.`
+      ? `${pendingT1} ${craigFlow ? 'auto-fix' : 'Quick-fix'} finding${pendingT1 !== 1 ? 's' : ''} still undecided. Accept or Decline each one, then Next unlocks.`
       : pendingGeneratedAi > 0
         ? `${pendingGeneratedAi} generated AI suggestion${pendingGeneratedAi !== 1 ? 's' : ''} still undecided. Accept or Decline each one, then Next unlocks.`
         : aiLoading
           ? 'Wait for AI suggestions to finish generating.'
           : inlineAi
             ? 'Apply accepted fixes, then commit. Un-generated AI findings stay in the file.'
-            : quickFixCount > 0
-              ? 'Apply accepted Quick-fixes, then continue this session — no rescan.'
-              : includeAi
-                ? 'Continue to AI fixes — no Quick-fix to apply.'
-                : 'Continue to commit — no Quick-fix to apply.'
+            : craigFlow
+              ? includeAi
+                ? 'Continue to choose which findings get an AI suggestion.'
+                : 'Continue to commit.'
+              : quickFixCount > 0
+                ? 'Apply accepted Quick-fixes, then continue this session — no rescan.'
+                : includeAi
+                  ? 'Continue to AI fixes — no Quick-fix to apply.'
+                  : 'Continue to commit — no Quick-fix to apply.'
     : quickFixCount > 0
       ? `Move on to remediation — review quick-fix proposals for ${findingsPhrase(quickFixCount)} (same session, no rescan).`
       : 'Move on to remediation — continue this session to review any available fixes (no rescan).';
@@ -530,7 +505,7 @@ function AssessPanel({
               },
               {
                 key: 'auto',
-                label: 'Quick-fix',
+                label: craigFlow ? 'Auto-fix' : 'Quick-fix',
                 primary: auto.length,
                 secondary: uniqueNodeCount(auto),
               },
@@ -551,13 +526,13 @@ function AssessPanel({
           <ReviewHint>
             {inlineAi
               ? 'Accept or Decline each Quick-fix. Generate an AI suggestion on a row when you want one, then Accept or Decline it. Manual findings stay in the file.'
-              : resultsMode
-                ? showAiOptIn
-                  ? 'Accept or Decline each Quick-fix. AI findings need Use AI to generate a suggestion in the next step. Manual findings stay in the file.'
-                  : 'Accept or Decline each Quick-fix. AI and manual findings explain what happens next — no suggestion yet.'
-                : fixColumn
-                  ? 'Quick-fix rows show the proposed change. AI and manual findings explain what happens next — no suggestion yet.'
-                  : 'Latest scan results. Remediate continues this session — no rescan.'}
+              : craigFlow
+                ? 'Accept or Decline each auto-fix. AI findings wait until you choose which ones get a suggestion.'
+                : resultsMode
+                  ? 'Accept or Decline each Quick-fix. AI and manual findings explain what happens next — no suggestion yet.'
+                  : fixColumn
+                    ? 'Quick-fix rows show the proposed change. AI and manual findings explain what happens next — no suggestion yet.'
+                    : 'Latest scan results. Quick-fix proposals come next. On AI assessment you choose which findings get an AI suggestion — nothing generates yet.'}
           </ReviewHint>
         </>
       }
@@ -576,19 +551,13 @@ function AssessPanel({
         pendingVisible={resultsMode ? pendingVisible : 0}
         decidedCount={resultsMode ? decidedCount : 0}
         fixColumn={fixColumn}
-        showAiOptIn={showAiOptIn}
-        aiOptIn={aiOptIn}
         inlineAi={inlineAi}
         aiStatus={aiStatus}
         onGenerateAi={onGenerateAi}
-        onToggleAiOptIn={
-          setAiOptIn
-            ? key =>
-                setAiOptIn(prev => ({
-                  ...prev,
-                  [key]: !prev[key],
-                }))
-            : undefined
+        aiFixHint={
+          craigFlow
+            ? 'AI can suggest a fix after you choose findings in the next step.'
+            : 'AI can suggest a fix. On AI assessment, choose which findings get a suggestion — nothing generates yet.'
         }
         onDecision={
           setT1Decisions
@@ -637,23 +606,25 @@ function AiAssessmentPanel({
   setSelected,
   onNext,
   onCancel,
+  stepperLabel,
 }: {
   findings: QualityViolation[];
   selected: Record<string, boolean>;
   setSelected: Dispatch<SetStateAction<Record<string, boolean>>>;
   onNext: () => void;
   onCancel: () => void;
+  stepperLabel: string;
 }) {
   const nodes = groupByNode(findings);
   const selectedCount = findings.filter(v => selected[findingKey(v)]).length;
   const nextHint =
     selectedCount > 0
-      ? `Generate AI suggestions for ${selectedCount} finding${selectedCount !== 1 ? 's' : ''}. You'll Accept or Decline each one next.`
+      ? `Generate AI suggestions for ${selectedCount} selected finding${selectedCount !== 1 ? 's' : ''}. You'll Accept or Decline each one next.`
       : 'Continue without generating AI suggestions.';
 
   return (
     <ReviewStepShell
-      title="Choose findings for AI"
+      title={stepperLabel}
       description={
         <>
           <ReviewInventoryRow
@@ -673,12 +644,13 @@ function AiAssessmentPanel({
             ]}
           />
           <ReviewHint>
-            Select the findings you want AI to suggest a fix for. Only selected findings get a
-            suggestion. You'll Accept or Decline each one in the next step.
+            Select the findings you want AI to generate a suggestion for. Nothing runs until you
+            choose. Skip this step if you do not want AI suggestions.
           </ReviewHint>
         </>
       }
       nextHint={nextHint}
+      nextLabel={selectedCount > 0 ? 'Generate AI suggestions' : 'Skip AI'}
       onNext={onNext}
       onCancel={onCancel}
       filterBar={
@@ -760,52 +732,6 @@ function AiAssessmentPanel({
         </Paper>
       ))}
     </ReviewStepShell>
-  );
-}
-
-function AiConsentPanel({
-  count,
-  optInMode,
-  onGenerate,
-  onSkip,
-  onCancel,
-}: {
-  count: number;
-  optInMode: boolean;
-  onGenerate: () => void;
-  onSkip: () => void;
-  onCancel: () => void;
-}) {
-  const classes = useStyles();
-  const canGenerate = count > 0;
-  return (
-    <Paper variant="outlined" className={classes.panel}>
-      <Typography className={classes.panelTitle}>Generate AI fixes</Typography>
-      <Typography className={classes.hint}>
-        {optInMode && !canGenerate
-          ? "You didn't select any findings for AI. Continue to commit without generating suggestions."
-          : optInMode
-            ? `AI can suggest fixes for ${count} finding${count !== 1 ? 's' : ''} you selected. You'll Accept or Decline each suggestion, then commit.`
-            : `AI can suggest fixes for ${count} finding${count !== 1 ? 's' : ''} that need it. You'll Accept or Decline each suggestion, then commit.`}
-      </Typography>
-      <Box display="flex" style={{ gap: 8 }} flexWrap="wrap">
-        <Button
-          className={classes.pill}
-          color="primary"
-          variant="contained"
-          disabled={!canGenerate}
-          onClick={onGenerate}
-        >
-          Generate AI fixes
-        </Button>
-        <Button className={classes.pill} onClick={onSkip}>
-          Skip AI and commit
-        </Button>
-        <Button className={classes.pill} onClick={onCancel}>
-          Cancel
-        </Button>
-      </Box>
-    </Paper>
   );
 }
 
@@ -982,8 +908,8 @@ export const ApmeRemediationPage = () => {
   const resume = params.get('resume') === '1';
   const wizard = parseWizardChrome(params.get('wizard'));
   const compact = wizard !== 'original';
-  const threeStep = isThreeStep(wizard);
   const inline = isInlineChrome(wizard);
+  const craig = isCraigRedesign(wizard);
   const resultsFix = isResultsFixChrome(wizard);
   const { experience } = useNavIaModel();
 
@@ -1007,7 +933,6 @@ export const ApmeRemediationPage = () => {
   const [applyTick, setApplyTick] = useState(0);
   const [t1Decisions, setT1Decisions] = useState<Record<string, WizardDecision>>({});
   const [aiDecisions, setAiDecisions] = useState<Record<string, WizardDecision>>({});
-  const [aiConsented, setAiConsented] = useState(false);
   const [aiOptIn, setAiOptIn] = useState<Record<string, boolean>>({});
   const [aiGenerating, setAiGenerating] = useState(false);
   const [aiStatus, setAiStatus] = useState<Record<string, AiRowStatus>>({});
@@ -1038,18 +963,18 @@ export const ApmeRemediationPage = () => {
     (step === 'ai_assessment' && aiGenerating) ||
     step === 'ai_applied' ||
     (step === 'commit' && committing);
-  const stepperCurrent = displayStepId(step, wizard, includeAi);
+  const stepperCurrent = displayStepId(step, wizard);
   const sessionDone = compact && step === 'complete';
 
   useEffect(() => {
-    if (threeStep && step === 'tier1_proposals') setStep('findings');
+    if (craig && step === 'tier1_proposals') setStep('findings');
     if (
       inline &&
       (step === 'tier1_proposals' || step === 'ai_assessment' || step === 'ai_proposals')
     ) {
       setStep('findings');
     }
-  }, [threeStep, inline, step]);
+  }, [craig, inline, step]);
 
   useEffect(() => {
     if (step !== 'scan') return;
@@ -1077,15 +1002,7 @@ export const ApmeRemediationPage = () => {
     }, APPLY_MS / 4);
     const t = window.setTimeout(() => {
       if (step === 'tier1_applied') {
-        setStep(
-          inline
-            ? 'commit'
-            : includeAi
-              ? threeStep
-                ? 'ai_proposals'
-                : 'ai_assessment'
-              : 'commit',
-        );
+        setStep(inline ? 'commit' : includeAi ? 'ai_assessment' : 'commit');
       } else if (step === 'ai_assessment') {
         setAiGenerating(false);
         setStep('ai_proposals');
@@ -1097,7 +1014,7 @@ export const ApmeRemediationPage = () => {
       window.clearInterval(tick);
       window.clearTimeout(t);
     };
-  }, [step, includeAi, threeStep, inline, aiGenerating]);
+  }, [step, includeAi, inline, aiGenerating]);
 
   const goBack = useCallback(() => {
     if (fromRepo) {
@@ -1147,8 +1064,7 @@ export const ApmeRemediationPage = () => {
   }
 
   const displayRepo = `${repo.org}/${repo.name}`;
-  const sessionAiFix =
-    wizard === 'fixes' ? aiFix : aiFix.filter(v => Boolean(aiOptIn[findingKey(v)]));
+  const sessionAiFix = aiFix.filter(v => Boolean(aiOptIn[findingKey(v)]));
   const t1Accepted = resultsFix
     ? groupByNode(quickFix).filter(n =>
         n.findings.every(f => t1Decisions[findingKey(f)] === 'accept'),
@@ -1184,14 +1100,13 @@ export const ApmeRemediationPage = () => {
           findings={quality.violations}
           quickFixCount={quickFix.length}
           onNext={() => {
-            if (inline || threeStep) {
-              if (inline) {
-                setStep('tier1_applied');
-                return;
-              }
-              if (quickFix.length > 0) setStep('tier1_applied');
-              else if (includeAi) setStep('ai_proposals');
+            if (craig) {
+              if (includeAi) setStep('ai_assessment');
               else setStep('commit');
+              return;
+            }
+            if (inline) {
+              setStep('tier1_applied');
               return;
             }
             setStep('tier1_proposals');
@@ -1201,14 +1116,12 @@ export const ApmeRemediationPage = () => {
           includeAi={includeAi}
           t1Decisions={resultsFix ? t1Decisions : undefined}
           setT1Decisions={resultsFix ? setT1Decisions : undefined}
-          showAiOptIn={wizard === 'optin'}
-          aiOptIn={aiOptIn}
-          setAiOptIn={wizard === 'optin' ? setAiOptIn : undefined}
           inlineAi={inline}
           aiStatus={aiStatus}
           onGenerateAi={inline ? generateInlineAi : undefined}
           aiDecisions={inline ? aiDecisions : undefined}
           setAiDecisions={inline ? setAiDecisions : undefined}
+          craigFlow={craig}
         />
       );
     }
@@ -1233,6 +1146,7 @@ export const ApmeRemediationPage = () => {
           findings={aiFix}
           selected={aiOptIn}
           setSelected={setAiOptIn}
+          stepperLabel={craig ? 'Choose AI findings' : 'Choose findings for AI'}
           onNext={() => {
             const picked = aiFix.some(v => aiOptIn[findingKey(v)]);
             if (picked) setAiGenerating(true);
@@ -1273,21 +1187,6 @@ export const ApmeRemediationPage = () => {
     }
 
     if (step === 'ai_proposals') {
-      if (threeStep && !aiConsented) {
-        return (
-          <AiConsentPanel
-            count={sessionAiFix.length}
-            optInMode={wizard === 'optin'}
-            onGenerate={() => {
-              setAiConsented(true);
-              setAiGenerating(true);
-              setStep('ai_assessment');
-            }}
-            onSkip={() => setStep('commit')}
-            onCancel={goBack}
-          />
-        );
-      }
       return (
         <GatePanel
           findings={sessionAiFix}
@@ -1297,7 +1196,7 @@ export const ApmeRemediationPage = () => {
           onNext={() => setStep('ai_applied')}
           onCancel={goBack}
           compact={compact}
-          finishWithCommit={threeStep}
+          finishWithCommit={craig}
         />
       );
     }
@@ -1333,10 +1232,12 @@ export const ApmeRemediationPage = () => {
               </Box>
               <Typography variant="caption" color="textSecondary" style={{ textAlign: 'right', maxWidth: 360 }}>
                 {pushed
-                  ? threeStep || inline
+                  ? inline || craig
                     ? 'Finish this session.'
                     : 'Continue to the complete step.'
-                  : 'Continue without pushing. Use Commit below to push or open a PR first.'}
+                  : craig
+                    ? 'Continue without pushing. Use Create below to push or open a PR first.'
+                    : 'Continue without pushing. Use Commit below to push or open a PR first.'}
               </Typography>
             </Box>
           </div>
@@ -1376,7 +1277,15 @@ export const ApmeRemediationPage = () => {
                 }, 1400);
               }}
             >
-              {committing ? 'Pushing…' : createPr ? 'Commit & open PR' : 'Commit & push'}
+              {committing
+                ? 'Pushing…'
+                : craig
+                  ? createPr
+                    ? 'Create pull request'
+                    : 'Create'
+                  : createPr
+                    ? 'Commit & open PR'
+                    : 'Commit & push'}
             </Button>
           </Box>
         </Paper>
@@ -1425,20 +1334,14 @@ export const ApmeRemediationPage = () => {
           >
             <ToggleButton value="original">Original</ToggleButton>
             <ToggleButton value="new">Redesign</ToggleButton>
-            <ToggleButton value="fixes">With fixes</ToggleButton>
-            <ToggleButton value="optin">AI opt-in</ToggleButton>
             <ToggleButton value="inline">Inline AI</ToggleButton>
           </ToggleButtonGroup>
           <Typography className={classes.compareHint}>
             {wizard === 'inline'
-              ? 'Scan. One Results & Remediation step: Quick-fix plus Generate AI per row. Then commit.'
-              : wizard === 'optin'
-              ? 'Same as With fixes, plus Use AI per finding on the results step.'
-              : wizard === 'fixes'
-                ? 'Scan. Results with Accept/Decline on Quick-fixes. AI consent, then review and commit.'
-                : wizard === 'new'
-                  ? 'Four decisions. Scan and apply stay in the current step. AI includes pick-then-generate.'
-                  : 'SPA 9-step. AI assessment is pick which findings get a suggestion — not a bulk generate.'}
+              ? 'Scan. One Results & Remediation step: auto-fixes plus Generate AI per row. Then commit.'
+              : wizard === 'new'
+                ? 'Scan → Review auto-fixes → Choose AI findings (pick, then generate) → Review AI-fixes → Commit.'
+                : 'SPA 9-step. On AI assessment, check the findings you want AI to generate — then Generate AI suggestions. Unchecked findings skip AI.'}
           </Typography>
         </Box>
         <Box className={classes.wrap}>

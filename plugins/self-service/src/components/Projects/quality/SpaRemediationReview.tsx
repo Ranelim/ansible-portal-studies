@@ -470,6 +470,7 @@ const NodeCard: React.FC<{
   inlineAi?: boolean;
   aiStatus?: Record<string, AiRowStatus>;
   onGenerateAi?: (key: string) => void;
+  aiFixHint?: string;
 }> = ({
   id,
   title,
@@ -488,6 +489,7 @@ const NodeCard: React.FC<{
   inlineAi,
   aiStatus,
   onGenerateAi,
+  aiFixHint,
 }) => {
   const classes = useStyles();
   const lead = findings[0];
@@ -725,7 +727,8 @@ const NodeCard: React.FC<{
                                 ? aiOptIn?.[findingKey(f)]
                                   ? "Selected. You'll review a suggestion in the AI step."
                                   : 'AI can suggest a fix. Select Use AI to generate one in the next step.'
-                                : "AI can suggest a fix. You'll review it in the AI step."}
+                                : aiFixHint ??
+                                  "AI can suggest a fix. You'll review it in the AI step."}
                             </div>
                             {showAiOptIn && onToggleAiOptIn && (
                               <div
@@ -827,6 +830,7 @@ export const NodeReviewList: React.FC<{
   inlineAi?: boolean;
   aiStatus?: Record<string, AiRowStatus>;
   onGenerateAi?: (key: string) => void;
+  aiFixHint?: string;
 }> = ({
   nodes,
   mode,
@@ -844,6 +848,7 @@ export const NodeReviewList: React.FC<{
   inlineAi,
   aiStatus,
   onGenerateAi,
+  aiFixHint,
 }) => {
   const classes = useStyles();
   const ids = useMemo(() => nodes.map(n => n.id), [nodes]);
@@ -965,6 +970,7 @@ export const NodeReviewList: React.FC<{
           inlineAi={inlineAi}
           aiStatus={aiStatus}
           onGenerateAi={onGenerateAi}
+          aiFixHint={aiFixHint}
         />
       ))}
     </Box>
@@ -975,9 +981,10 @@ export const WorkflowNextBar: React.FC<{
   disabled?: boolean;
   loading?: boolean;
   hint: string;
+  nextLabel?: string;
   onNext: () => void;
   onCancel: () => void;
-}> = ({ disabled, loading, hint, onNext, onCancel }) => {
+}> = ({ disabled, loading, hint, nextLabel = 'Next', onNext, onCancel }) => {
   const classes = useStyles();
   return (
     <div className={classes.headerActions}>
@@ -990,7 +997,7 @@ export const WorkflowNextBar: React.FC<{
           style={PILL}
           endIcon={loading ? <CircularProgress size={14} color="inherit" /> : undefined}
         >
-          Next
+          {nextLabel}
         </Button>
         <Button onClick={onCancel} style={PILL}>
           Cancel
@@ -1005,6 +1012,7 @@ export const ReviewStepShell: React.FC<{
   title?: string;
   description: React.ReactNode;
   nextHint: string;
+  nextLabel?: string;
   nextDisabled?: boolean;
   nextLoading?: boolean;
   onNext: () => void;
@@ -1017,6 +1025,7 @@ export const ReviewStepShell: React.FC<{
   title,
   description,
   nextHint,
+  nextLabel,
   nextDisabled,
   nextLoading,
   onNext,
@@ -1040,6 +1049,7 @@ export const ReviewStepShell: React.FC<{
         </div>
         <WorkflowNextBar
           hint={nextHint}
+          nextLabel={nextLabel}
           disabled={nextDisabled}
           loading={nextLoading}
           onNext={onNext}
