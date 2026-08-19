@@ -1,14 +1,14 @@
 /**
  * Visual redesign of Inline AI Results & Remediation (`?wizard=visual`).
- * List-page layout: toolbar chrome, finding cards. Does not change Inline AI.
+ * Results (scan mix) + Remediation (findings). Does not change Inline AI.
  */
 
 import { useMemo, useState, type Dispatch, type SetStateAction } from 'react';
 import {
-  Box,
   Button,
   Chip,
   CircularProgress,
+  Collapse,
   FormControl,
   InputLabel,
   LinearProgress,
@@ -23,7 +23,21 @@ import {
 import { fade, type Theme } from '@material-ui/core/styles';
 import CheckIcon from '@material-ui/icons/Check';
 import CloseIcon from '@material-ui/icons/Close';
-import { SEVERITY_COLORS, type QualityViolation } from '../detail/qualityDemoData';
+import ExpandLessIcon from '@material-ui/icons/ExpandLess';
+import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
+import HelpOutlineIcon from '@material-ui/icons/HelpOutline';
+import {
+  APME_CATEGORY_HINT,
+  APME_CATEGORY_LABEL,
+  APME_CATEGORY_ORDER,
+  SEVERITY_COLORS,
+  apmeCategoryOf,
+  type ApmeRuleCategory,
+  type QualityViolation,
+  type SeverityClass,
+} from '../detail/qualityDemoData';
+import { SeverityFilterChips } from './SeverityFilterChips';
+import { SeverityMixBar } from './SeverityMixBar';
 import {
   findingKey,
   kindLabel,
@@ -44,6 +58,8 @@ const SEV_LABEL: Record<string, string> = {
 };
 
 type FixLane = 'Auto-fix' | 'AI-fix' | 'Manual-fix';
+const SEV_ORDER: SeverityClass[] = ['critical', 'high', 'medium', 'low', 'info'];
+const FINDINGS_BAR_HEIGHT = 6;
 type DiffKind = 'context' | 'del' | 'add';
 type DiffLine = { kind: DiffKind; text: string };
 
@@ -57,6 +73,34 @@ function laneOf(v: QualityViolation): FixLane {
   if (v.fixTier === 'deterministic') return 'Auto-fix';
   if (v.fixTier === 'ai') return 'AI-fix';
   return 'Manual-fix';
+}
+
+function emptySev(): Record<SeverityClass, number> {
+  return { critical: 0, high: 0, medium: 0, low: 0, info: 0 };
+}
+
+function mixFromFindings(findings: QualityViolation[]) {
+  const bySeverity = emptySev();
+  const catMap = new Map<ApmeRuleCategory, Record<SeverityClass, number>>();
+  findings.forEach(f => {
+    bySeverity[f.severity] += 1;
+    const id = apmeCategoryOf(f);
+    const rec = catMap.get(id) ?? emptySev();
+    rec[f.severity] += 1;
+    catMap.set(id, rec);
+  });
+  const categories = APME_CATEGORY_ORDER.filter(id => catMap.has(id)).map(id => {
+    const breakdown = catMap.get(id)!;
+    const count = SEV_ORDER.reduce((sum, sev) => sum + breakdown[sev], 0);
+    return {
+      id,
+      label: APME_CATEGORY_LABEL[id],
+      hint: APME_CATEGORY_HINT[id],
+      count,
+      breakdown,
+    };
+  });
+  return { total: findings.length, bySeverity, categories };
 }
 
 function groupByFile(findings: QualityViolation[]): { file: string; findings: QualityViolation[] }[] {
@@ -113,28 +157,129 @@ function unifiedDiff(current: string[], proposed: string[]): DiffLine[] {
 }
 
 const useStyles = makeStyles((theme: Theme) => ({
-  stepFrame: {
+  stack: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: theme.spacing(2),
+  },
+  box: {
     borderRadius: 8,
     backgroundColor: theme.palette.background.paper,
   },
-  chrome: {
-    position: 'sticky',
-    top: 52,
-    zIndex: 1,
-    marginBottom: theme.spacing(2),
-    paddingBottom: theme.spacing(1.5),
-    backgroundColor: theme.palette.background.paper,
-  },
-  jobRow: {
+  boxHead: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: theme.spacing(2),
+    padding: theme.spacing(2, 2, 0),
+  },
+  boxTitle: {
+    fontSize: 16,
+    fontWeight: 600,
+    lineHeight: 1.3,
+  },
+  expandBtn: {
+    textTransform: 'none',
+    fontWeight: 500,
+    color: theme.palette.text.secondary,
+    borderRadius: 16,
+    '&:hover': {
+      backgroundColor: theme.palette.action.hover,
+      color: theme.palette.text.primary,
+    },
+  },
+  resultsBody: {
+    padding: theme.spacing(1.5, 2, 2),
+  },
+  mixHeader: {
+    display: 'flex',
+    alignItems: 'baseline',
+    flexWrap: 'wrap',
+    gap: theme.spacing(1),
+    marginBottom: theme.spacing(1.5),
+  },
+  mixTotal: {
+    fontSize: 28,
+    fontWeight: 700,
+    lineHeight: 1.1,
+  },
+  mixMeta: {
+    fontSize: 13,
+    color: theme.palette.text.secondary,
+  },
+  mixBar: {
+    height: FINDINGS_BAR_HEIGHT,
+    marginBottom: theme.spacing(1),
+  },
+  mixChips: {
+    marginTop: theme.spacing(1.5),
+    marginBottom: theme.spacing(1),
+  },
+  catRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: theme.spacing(1.5),
+    paddingTop: theme.spacing(1.25),
+    paddingBottom: theme.spacing(1.25),
+    borderTop: `1px solid ${theme.palette.divider}`,
+    cursor: 'pointer',
+    borderRadius: 4,
+    '&:hover': {
+      backgroundColor: theme.palette.action.hover,
+    },
+    '&:last-child': {
+      paddingBottom: 0,
+    },
+  },
+  catRowSelected: {
+    backgroundColor: theme.palette.action.selected,
+  },
+  catName: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 4,
+    minWidth: 180,
+    flexShrink: 0,
+    fontSize: 13,
+    fontWeight: 500,
+  },
+  catHelp: {
+    fontSize: 14,
+    color: theme.palette.text.disabled,
+    cursor: 'help',
+  },
+  catCount: {
+    height: 20,
+    fontSize: 11,
+    fontWeight: 600,
+    flexShrink: 0,
+  },
+  catBar: {
+    flex: 1,
+    minWidth: 80,
+    height: FINDINGS_BAR_HEIGHT,
+    display: 'flex',
+    alignItems: 'center',
+  },
+  remediationHead: {
+    position: 'sticky',
+    top: 52,
+    zIndex: 1,
+    padding: theme.spacing(2),
+    backgroundColor: theme.palette.background.paper,
+    borderBottom: `1px solid ${theme.palette.divider}`,
+    borderTopLeftRadius: 8,
+    borderTopRightRadius: 8,
+  },
+  remediationRow: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: theme.spacing(2),
     flexWrap: 'wrap',
   },
-  jobCopy: {
-    minWidth: 220,
-    flex: 1,
+  summaryNote: {
+    marginTop: theme.spacing(0.5),
     fontSize: 13,
     color: theme.palette.text.secondary,
     lineHeight: 1.4,
@@ -276,10 +421,48 @@ export const InlineVisualReview: React.FC<{
   const contentTypes = useMemo(() => Array.from(new Set(findings.map(kindLabel))).sort(), [findings]);
   const sevs = useMemo(() => Array.from(new Set(findings.map(f => f.severity))), [findings]);
 
+  const mix = useMemo(() => mixFromFindings(findings), [findings]);
+  const presentCategories = useMemo(
+    () => mix.categories.map(c => c.id),
+    [mix.categories],
+  );
+
   const [query, setQuery] = useState('');
   const [contentType, setContentType] = useState<'all' | string>('all');
-  const [severity, setSeverity] = useState<'all' | string>('all');
+  const [category, setCategory] = useState<'all' | ApmeRuleCategory>('all');
+  const [severityFilter, setSeverityFilter] = useState<Set<SeverityClass>>(() => new Set());
   const [fixType, setFixType] = useState<'all' | FixLane>('all');
+  const [breakdownOpen, setBreakdownOpen] = useState(false);
+
+  const toggleSeverity = (sev: SeverityClass) => {
+    setBreakdownOpen(true);
+    setSeverityFilter(prev => {
+      const next = new Set(prev);
+      if (next.has(sev)) next.delete(sev);
+      else next.add(sev);
+      return next;
+    });
+  };
+  const toggleCategory = (id: ApmeRuleCategory) => {
+    setCategory(prev => (prev === id ? 'all' : id));
+    setBreakdownOpen(true);
+  };
+
+  const visibleCategories = useMemo(() => {
+    const any = severityFilter.size > 0;
+    return mix.categories
+      .map(cat => {
+        const breakdown = { ...cat.breakdown };
+        if (any) {
+          for (const sev of SEV_ORDER) {
+            if (!severityFilter.has(sev)) breakdown[sev] = 0;
+          }
+        }
+        const count = SEV_ORDER.reduce((sum, sev) => sum + (breakdown[sev] ?? 0), 0);
+        return { ...cat, breakdown, count };
+      })
+      .filter(cat => cat.count > 0);
+  }, [mix.categories, severityFilter]);
 
   const pendingT1 = auto.filter(v => !t1Decisions[findingKey(v)]).length;
   const readyAi = ai.filter(v => aiStatus[findingKey(v)] === 'ready');
@@ -293,7 +476,8 @@ export const InlineVisualReview: React.FC<{
 
   const filtered = findings.filter(f => {
     if (contentType !== 'all' && kindLabel(f) !== contentType) return false;
-    if (severity !== 'all' && f.severity !== severity) return false;
+    if (category !== 'all' && apmeCategoryOf(f) !== category) return false;
+    if (severityFilter.size > 0 && !severityFilter.has(f.severity)) return false;
     if (fixType !== 'all' && laneOf(f) !== fixType) return false;
     const q = query.trim().toLowerCase();
     if (!q) return true;
@@ -347,15 +531,100 @@ export const InlineVisualReview: React.FC<{
           hiddenPending > 0 ? ' · some hidden by filters' : ''
         }.`;
 
+  const severitySelect =
+    severityFilter.size === 1 ? Array.from(severityFilter)[0] : 'all';
+  const findingWord = mix.total === 1 ? 'finding' : 'findings';
+
   return (
-    <Box>
-      <div className={classes.chrome}>
-        <div className={classes.jobRow}>
-          <Typography className={classes.jobCopy}>
-            {jobTitle}{' '}
-            <span className={classes.jobCount}>{jobCount}</span>
-          </Typography>
-          <div className={classes.jobActions}>
+    <div className={classes.stack}>
+      <Paper className={classes.box} elevation={2}>
+        <div className={classes.boxHead}>
+          <Typography className={classes.boxTitle}>Results</Typography>
+          <Button
+            size="small"
+            className={classes.expandBtn}
+            endIcon={breakdownOpen ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+            aria-expanded={breakdownOpen}
+            onClick={() => setBreakdownOpen(open => !open)}
+          >
+            {breakdownOpen ? 'Hide breakdown' : 'Show breakdown'}
+          </Button>
+        </div>
+        <div className={classes.resultsBody}>
+          <div className={classes.mixHeader}>
+            <Typography className={classes.mixTotal} component="span">
+              {mix.total}
+            </Typography>
+            <Typography className={classes.mixMeta} component="span">
+              {findingWord} on this scan
+            </Typography>
+          </div>
+          <div className={classes.mixBar}>
+            <SeverityMixBar
+              breakdown={mix.bySeverity}
+              height={FINDINGS_BAR_HEIGHT}
+              activeSeverities={severityFilter}
+              onSegmentClick={toggleSeverity}
+            />
+          </div>
+          <Collapse in={breakdownOpen}>
+            <div className={classes.mixChips}>
+              <SeverityFilterChips
+                breakdown={mix.bySeverity}
+                active={severityFilter}
+                onToggle={toggleSeverity}
+              />
+            </div>
+            {visibleCategories.map(cat => (
+              <div
+                key={cat.id}
+                className={`${classes.catRow} ${
+                  category === cat.id ? classes.catRowSelected : ''
+                }`}
+                role="button"
+                tabIndex={0}
+                aria-pressed={category === cat.id}
+                aria-label={`${cat.label}, ${cat.count} findings. ${
+                  category === cat.id ? 'Clear' : 'Apply'
+                } filter.`}
+                onClick={() => toggleCategory(cat.id)}
+                onKeyDown={event => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    toggleCategory(cat.id);
+                  }
+                }}
+              >
+                <Typography className={classes.catName} component="div">
+                  {cat.label}
+                  <Tooltip title={cat.hint} arrow>
+                    <HelpOutlineIcon
+                      className={classes.catHelp}
+                      onClick={event => event.stopPropagation()}
+                      onKeyDown={event => event.stopPropagation()}
+                    />
+                  </Tooltip>
+                </Typography>
+                <Chip size="small" label={cat.count} className={classes.catCount} />
+                <div className={classes.catBar}>
+                  <SeverityMixBar breakdown={cat.breakdown} height={FINDINGS_BAR_HEIGHT} />
+                </div>
+              </div>
+            ))}
+          </Collapse>
+        </div>
+      </Paper>
+
+      <Paper className={classes.box} elevation={2}>
+        <div className={classes.remediationHead}>
+          <div className={classes.remediationRow}>
+            <div>
+              <Typography className={classes.boxTitle}>Remediation</Typography>
+              <Typography className={classes.summaryNote}>
+                {jobTitle} <span className={classes.jobCount}>{jobCount}</span>
+              </Typography>
+            </div>
+            <div className={classes.jobActions}>
             <Button
               size="small"
               variant="outlined"
@@ -391,18 +660,17 @@ export const InlineVisualReview: React.FC<{
             <Button size="small" variant="outlined" onClick={onCancel} style={PILL}>
               Cancel
             </Button>
+            </div>
           </div>
+          {mustDecide > 0 && (
+            <LinearProgress
+              className={classes.progress}
+              variant="determinate"
+              value={Math.round((decidedMust / mustDecide) * 100)}
+            />
+          )}
         </div>
-        {mustDecide > 0 && (
-          <LinearProgress
-            className={classes.progress}
-            variant="determinate"
-            value={Math.round((decidedMust / mustDecide) * 100)}
-          />
-        )}
-      </div>
 
-      <Paper className={classes.stepFrame} variant="outlined" elevation={0}>
         <div className={classes.toolbar}>
           <TextField
             className={classes.search}
@@ -430,12 +698,34 @@ export const InlineVisualReview: React.FC<{
             </Select>
           </FormControl>
           <FormControl variant="outlined" size="small" className={classes.select}>
+            <InputLabel id="visual-category-label">Category</InputLabel>
+            <Select
+              labelId="visual-category-label"
+              label="Category"
+              value={category}
+              onChange={e => setCategory(e.target.value as 'all' | ApmeRuleCategory)}
+            >
+              <MenuItem value="all">All categories</MenuItem>
+              {presentCategories.map(id => (
+                <MenuItem key={id} value={id}>
+                  {APME_CATEGORY_LABEL[id]} (
+                  {findings.filter(f => apmeCategoryOf(f) === id).length})
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <FormControl variant="outlined" size="small" className={classes.select}>
             <InputLabel id="visual-severity-label">Severity</InputLabel>
             <Select
               labelId="visual-severity-label"
               label="Severity"
-              value={severity}
-              onChange={e => setSeverity(e.target.value as string)}
+              value={severitySelect}
+              onChange={e => {
+                const value = e.target.value as string;
+                setSeverityFilter(
+                  value === 'all' ? new Set() : new Set([value as SeverityClass]),
+                );
+              }}
             >
               <MenuItem value="all">All severities</MenuItem>
               {sevs.map(s => (
@@ -482,7 +772,7 @@ export const InlineVisualReview: React.FC<{
           </div>
         )}
       </Paper>
-    </Box>
+    </div>
   );
 };
 

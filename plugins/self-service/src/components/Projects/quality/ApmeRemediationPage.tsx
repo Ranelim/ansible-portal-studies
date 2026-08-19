@@ -137,6 +137,7 @@ const useStyles = makeStyles(theme => ({
   },
   wrapVisual: {
     maxWidth: 1280,
+    paddingBottom: theme.spacing(4),
   },
   compareStrip: {
     position: 'sticky',
@@ -195,6 +196,10 @@ const useStyles = makeStyles(theme => ({
   stepperCard: {
     padding: theme.spacing(2),
     marginBottom: theme.spacing(2),
+  },
+  stepperBare: {
+    padding: theme.spacing(1, 0, 2.5),
+    marginBottom: 0,
   },
   stepper: {
     display: 'flex',
@@ -321,17 +326,18 @@ function WorkflowStepper({
   current,
   spinning,
   sessionDone,
+  bare,
 }: {
   steps: StepDef[];
   current: StepId;
   spinning: boolean;
   sessionDone?: boolean;
+  bare?: boolean;
 }) {
   const classes = useStyles();
   const activeIndex = steps.findIndex(s => s.id === current);
 
-  return (
-    <Paper variant="outlined" className={classes.stepperCard}>
+  const inner = (
       <Box className={classes.stepper} role="navigation" aria-label="Remediation workflow progress">
         {steps.map((step, index) => {
           const isComplete =
@@ -392,6 +398,15 @@ function WorkflowStepper({
           );
         })}
       </Box>
+  );
+
+  if (bare) {
+    return <div className={classes.stepperBare}>{inner}</div>;
+  }
+
+  return (
+    <Paper variant="outlined" className={classes.stepperCard}>
+      {inner}
     </Paper>
   );
 }
@@ -1355,7 +1370,7 @@ export const ApmeRemediationPage = () => {
           </ToggleButtonGroup>
           <Typography className={classes.compareHint}>
             {wizard === 'visual'
-              ? 'Inline AI restyle: file frames, unified diff, sticky job bar. Same Scan → Results & Remediation → Commit flow.'
+              ? 'Inline AI restyle: Results summary with expandable category mix, then Remediation findings. Same 3-step flow.'
               : wizard === 'inline'
               ? 'Scan. One Results & Remediation step: auto-fixes plus Generate AI per row. Then commit.'
               : wizard === 'new'
@@ -1383,6 +1398,7 @@ export const ApmeRemediationPage = () => {
             current={stepperCurrent}
             spinning={spinning && !sessionDone}
             sessionDone={sessionDone}
+            bare={visual}
           />
           {body}
         </Box>
