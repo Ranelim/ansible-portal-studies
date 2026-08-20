@@ -21,6 +21,11 @@ const useStyles = makeStyles(theme => ({
         ? theme.palette.grey[700]
         : theme.palette.grey[300],
     color: theme.palette.text.secondary,
+    transition:
+      'background-color 300ms cubic-bezier(.4, 0, .2, 1), color 300ms cubic-bezier(.4, 0, .2, 1)',
+    '@media (prefers-reduced-motion: reduce)': {
+      transition: 'none',
+    },
   },
   unread: {
     backgroundColor: statusColors.info,

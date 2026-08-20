@@ -19,7 +19,7 @@ import {
   type BridgeExperienceId,
 } from '../../hooks/bridgeExperienceVisibility';
 import { useExperienceSetup } from '../../hooks/experienceSetup';
-import { useAttentionSeen } from '../../hooks/attentionSeen';
+import { useAttentionClearOnActive } from '../../hooks/attentionSeen';
 import { SHOW_ADMIN_PLUGINS } from './adminPluginsTrial';
 import { ExperienceThumbnail } from '../IaPlaceholder/experienceVisuals';
 import type { JobExperienceId } from '../../hooks/experienceRecent';
@@ -188,22 +188,20 @@ export const ExperiencesAdminPage = () => {
   const navigate = useNavigate();
   const { visibility, setVisible } = useBridgeExperienceVisibility();
   const { setup: orchestratorSetup } = useExperienceSetup('orchestrator');
-  const { seen: discoverSeen, markSeen: markDiscoverSeen } =
-    useAttentionSeen('experiences-discover');
   const tabFromUrl = tabFromSearch(location.search);
   const [tab, setTab] = useState<ExperienceFilterTab>(tabFromUrl);
+  const discoverCount = ADMIN_EXPERIENCES.filter(exp =>
+    isAwaitingSetup(exp, orchestratorSetup),
+  ).length;
+  const { seen: discoverSeen, exiting: discoverExiting } =
+    useAttentionClearOnActive(
+      'experiences-discover',
+      tab === 'discover' && discoverCount > 0,
+    );
 
   useEffect(() => {
     setTab(tabFromUrl);
   }, [tabFromUrl]);
-
-  useEffect(() => {
-    if (tab === 'discover') markDiscoverSeen();
-  }, [tab, markDiscoverSeen]);
-
-  const discoverCount = ADMIN_EXPERIENCES.filter(exp =>
-    isAwaitingSetup(exp, orchestratorSetup),
-  ).length;
 
   const visible = useMemo(
     () =>
@@ -218,7 +216,6 @@ export const ExperiencesAdminPage = () => {
 
   const setFilterTab = (next: ExperienceFilterTab) => {
     setTab(next);
-    if (next === 'discover') markDiscoverSeen();
     navigate(
       next === 'all'
         ? '/self-service/admin/experiences'
@@ -259,7 +256,10 @@ export const ExperiencesAdminPage = () => {
               discoverCount > 0 && !discoverSeen ? (
                 <span className={classes.tabLabel}>
                   <span>Discover</span>
-                  <AttentionDot label="Experiences need setup" />
+                  <AttentionDot
+                    label="Experiences need setup"
+                    exiting={discoverExiting}
+                  />
                 </span>
               ) : (
                 'Discover'

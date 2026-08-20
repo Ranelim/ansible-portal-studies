@@ -33,7 +33,7 @@ import { ReadCountBadge } from '../common/ReadCountBadge';
 import { DEMO_CONNECTIONS, ConnectionProvider } from './syncDemoData';
 import { statusColors } from '../common/statusColors';
 import { useDevSpacesSetup } from '../../hooks/devSpacesSetup';
-import { useAttentionSeen } from '../../hooks/attentionSeen';
+import { useAttentionClearOnActive } from '../../hooks/attentionSeen';
 
 const AnsibleIcon = (props: any) => (
   <SvgIcon {...props} viewBox="0 0 24 24">
@@ -518,8 +518,6 @@ export const ConnectionsPage = () => {
   const { variant } = useAdminSyncIa();
   const { variant: orientVariant } = useIntegrationsOrientIa();
   const { connected: devSpacesConnected } = useDevSpacesSetup();
-  const { seen: needsSetupSeen, markSeen: markNeedsSetupSeen } =
-    useAttentionSeen('integrations-needs-setup');
   const location = useLocation();
   const navigate = useNavigate();
   const [syncing, setSyncing] = useState(false);
@@ -541,12 +539,6 @@ export const ConnectionsPage = () => {
     setFilter(filterFromUrl);
   }, [filterFromUrl]);
 
-  useEffect(() => {
-    if (tab === 'connections' && filter === 'needs-setup') {
-      markNeedsSetupSeen();
-    }
-  }, [tab, filter, markNeedsSetupSeen]);
-
   const providers = DEMO_CONNECTIONS.map(c =>
     c.id === 'devspaces'
       ? {
@@ -567,6 +559,11 @@ export const ConnectionsPage = () => {
   const containerRegistries = visibleProviders.filter(c => c.type === 'registry');
   const devTools = visibleProviders.filter(c => c.type === 'devtools');
   const needsSetupCount = providers.filter(needsSetup).length;
+  const { seen: needsSetupSeen, exiting: needsSetupExiting } =
+    useAttentionClearOnActive(
+      'integrations-needs-setup',
+      filter === 'needs-setup' && needsSetupCount > 0,
+    );
 
   const handleSyncAll = () => {
     setSyncing(true);
@@ -585,7 +582,6 @@ export const ConnectionsPage = () => {
 
   const setConnectionFilter = (next: ConnectionFilter) => {
     setFilter(next);
-    if (next === 'needs-setup') markNeedsSetupSeen();
     navigate(
       next === 'all'
         ? '/self-service/admin/integrations'
@@ -691,7 +687,11 @@ export const ConnectionsPage = () => {
                       <ReadCountBadge
                         count={needsSetupCount}
                         label={`${needsSetupCount} ${needsSetupCount === 1 ? 'connection needs' : 'connections need'} setup`}
-                        tone={needsSetupSeen ? 'read' : 'unread'}
+                        tone={
+                          needsSetupSeen || needsSetupExiting
+                            ? 'read'
+                            : 'unread'
+                        }
                       />
                     </span>
                   ) : (

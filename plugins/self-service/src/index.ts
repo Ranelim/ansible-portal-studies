@@ -84,10 +84,12 @@ export {
 export { useDevSpacesSetup } from './hooks/devSpacesSetup';
 export {
   useAttentionSeen,
+  useAttentionClearOnActive,
   isAttentionSeen,
   markAttentionSeen,
   type AttentionKey,
 } from './hooks/attentionSeen';
+export { AttentionDot } from './components/common/AttentionDot';
 export {
   FORCED_ADMIN_SYNC_IA,
   readAdminSyncIa,

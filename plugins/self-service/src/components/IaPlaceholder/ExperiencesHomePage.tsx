@@ -563,11 +563,17 @@ export const ExperiencesHomePage = () => {
   const { visibility: bridgeVisibility } = useBridgeExperienceVisibility();
   const { setup: orchestratorSetup } = useExperienceSetup('orchestrator');
   const { connected: devSpacesConnected } = useDevSpacesSetup();
-  const { seen: discoverSeen } = useAttentionSeen('experiences-discover');
-  const { seen: needsSetupSeen } = useAttentionSeen('integrations-needs-setup');
-  const showAdminDot =
-    (!orchestratorSetup && !discoverSeen) ||
-    (!devSpacesConnected && !needsSetupSeen);
+  const { seen: discoverSeen, exiting: discoverExiting } =
+    useAttentionSeen('experiences-discover');
+  const { seen: needsSetupSeen, exiting: needsSetupExiting } =
+    useAttentionSeen('integrations-needs-setup');
+  const experienceAttention = !orchestratorSetup && !discoverSeen;
+  const integrationsAttention = !devSpacesConnected && !needsSetupSeen;
+  const showAdminDot = experienceAttention || integrationsAttention;
+  const adminExiting =
+    showAdminDot &&
+    (!experienceAttention || discoverExiting) &&
+    (!integrationsAttention || needsSetupExiting);
 
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<SortMode>('recent');
@@ -914,7 +920,10 @@ export const ExperiencesHomePage = () => {
               <span className={classes.adminButtonLabel}>
                 Administration
                 {showAdminDot ? (
-                  <AttentionDot label="Setup needed in Administration" />
+                  <AttentionDot
+                    label="Setup needed in Administration"
+                    exiting={adminExiting}
+                  />
                 ) : null}
               </span>
             </Button>
