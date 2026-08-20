@@ -106,7 +106,7 @@ export function isDevelopExperience(experience: NavExperience): boolean {
   return experience === 'develop';
 }
 
-/** Nested rail: Repositories + Quality (Quality page tabs: Overview / Remediations / Scans). */
+/** Nested rail: Repositories + Content quality (page tabs: Overview / Remediations / Scans). */
 export function isDevelopReposRailMode(experience: NavExperience): boolean {
   return experience === 'develop';
 }

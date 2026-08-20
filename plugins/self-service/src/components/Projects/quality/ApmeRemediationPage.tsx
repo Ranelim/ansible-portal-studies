@@ -1067,7 +1067,7 @@ export const ApmeRemediationPage = () => {
         ? 'Scans'
         : fromRemediations
           ? 'Remediations'
-          : 'Quality';
+          : 'Content quality';
 
   if (!quality || !repo) {
     return (
@@ -1079,7 +1079,7 @@ export const ApmeRemediationPage = () => {
             color="primary"
             onClick={() => navigate(qualityHomePath(experience))}
           >
-            {experience === 'develop' ? 'Back to Quality' : 'Back to Git Repositories'}
+            {experience === 'develop' ? 'Back to Content quality' : 'Back to Git Repositories'}
           </Button>
         </Content>
       </Page>

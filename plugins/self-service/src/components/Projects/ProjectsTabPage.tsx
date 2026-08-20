@@ -22,36 +22,18 @@ import { isDevelopExperience, useNavIaModel } from '../../hooks/useNavIaModel';
 /** Non-Develop fallback — full Git Repositories host tabs. */
 const HOST_TABS = [
   { id: 'repositories', label: 'Repositories', path: 'list' },
-  { id: 'dashboard', label: 'Quality', path: 'dashboard' },
+  { id: 'dashboard', label: 'Content quality', path: 'dashboard' },
   { id: 'remediations', label: 'Remediations', path: 'remediations' },
   { id: 'scans', label: 'Scans', path: 'scans' },
   { id: 'ci-activity', label: 'Pipeline activity', path: 'ci-activity' },
 ];
 
-/** Develop Quality page — Overview / Remediations / Scans. */
+/** Develop Content quality page — Overview / Remediations / Scans. */
 const QUALITY_TABS = [
   { id: 'overview', label: 'Overview', path: 'dashboard' },
   { id: 'remediations', label: 'Remediations', path: 'remediations' },
   { id: 'scans', label: 'Scans', path: 'scans' },
 ];
-
-const QUALITY_TAB_COPY: Record<
-  'overview' | 'remediations' | 'scans',
-  { subtitle: string }
-> = {
-  overview: {
-    subtitle:
-      'Posture from each repository’s latest completed scan. History is on Scans.',
-  },
-  remediations: {
-    subtitle:
-      'Live fix sessions against each repository’s latest scan. Start a scan from the header for a new snapshot.',
-  },
-  scans: {
-    subtitle:
-      'Every scan as a receipt. Latest is the most recent completed scan per repository; older scans are superseded.',
-  },
-};
 
 type Surface = 'list' | 'dashboard' | 'remediations' | 'scans' | 'ci-activity';
 
@@ -105,7 +87,7 @@ const isQualitySurface = (surface: Surface) =>
 
 /**
  * Git Repositories host.
- * Develop: list is Repositories; Quality is a nested rail item with page tabs.
+ * Develop: list is Repositories; Content quality is a nested rail item with page tabs.
  */
 export const ProjectsTabs: React.FC = () => {
   const classes = useStyles();
@@ -179,19 +161,13 @@ export const ProjectsTabs: React.FC = () => {
   }, [surface]);
 
   const headerTitle = qualityPage
-    ? 'Quality'
+    ? 'Content quality'
     : sectionMode && surface === 'ci-activity'
       ? 'Pipeline activity'
       : 'Git Repositories';
 
   const headerSubtitle = qualityPage
-    ? QUALITY_TAB_COPY[
-        surface === 'remediations'
-          ? 'remediations'
-          : surface === 'scans'
-            ? 'scans'
-            : 'overview'
-      ].subtitle
+    ? undefined
     : sectionMode && surface === 'ci-activity'
       ? 'CI and quality pipeline runs for repositories'
       : 'Automation content repositories discovered from your connected sources.';
@@ -204,7 +180,7 @@ export const ProjectsTabs: React.FC = () => {
         <span>{label}</span>
         <ReadCountBadge
           count={liveCount}
-          label={`${liveCount} live remediations`}
+          label={`${liveCount} pending remediations`}
         />
       </span>
     ) : (
@@ -225,8 +201,8 @@ export const ProjectsTabs: React.FC = () => {
               {headerTitle}
               {qualityPage ? (
                 <PageHelpIcon
-                  tooltipLabel="What is Quality?"
-                  title="What is Quality?"
+                  tooltipLabel="What is Content quality?"
+                  title="What is Content quality?"
                   description="Scans Ansible content in your git repositories. Overview uses each repository’s latest completed scan. Remediations are live fix sessions. Scans is history."
                 />
               ) : (
@@ -274,7 +250,7 @@ export const ProjectsTabs: React.FC = () => {
           </Box>
         }
         pageTitleOverride={headerTitle}
-        subtitle={headerSubtitle}
+        {...(headerSubtitle ? { subtitle: headerSubtitle } : {})}
       />
       {qualityPage && (
         <HeaderTabs

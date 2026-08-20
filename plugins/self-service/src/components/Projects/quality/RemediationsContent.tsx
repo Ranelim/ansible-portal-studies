@@ -2,27 +2,33 @@ import { useMemo, useState, useEffect } from 'react';
 import {
   Box,
   Button,
-  Chip,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
   IconButton,
-  LinearProgress,
   TextField,
+  Tooltip,
   Typography,
   makeStyles,
 } from '@material-ui/core';
 import Autocomplete from '@material-ui/lab/Autocomplete';
+import CheckIcon from '@material-ui/icons/Check';
 import CloseIcon from '@material-ui/icons/Close';
+import HelpOutlineIcon from '@material-ui/icons/HelpOutline';
 import { Table, TableColumn } from '@backstage/core-components';
 import { useNavigate } from 'react-router-dom';
+import { useNavIaModel } from '../../../hooks/useNavIaModel';
+import { statusColors } from '../../common/statusColors';
+import { HealthScorePopover } from '../catalog/HealthScorePopover';
 import { GIT_REPOSITORIES } from '../catalog/unifiedDemoData';
 import {
   getProjectQuality,
   type RemediationStatus,
 } from '../detail/qualityDemoData';
 import { CommitSha } from './CommitSha';
+import { scansListPath } from './qualitySurfacePaths';
+import { QualityTabIntro } from './QualityTabIntro';
 
 type ActiveStatus = 'in-progress' | 'proposals-ready';
 
@@ -30,18 +36,25 @@ type ActiveRow = {
   repoName: string;
   org: string;
   status: ActiveStatus;
-  stepLabel: string;
-  addressed: number;
-  remaining: number;
-  total: number;
+  currentStep: 0 | 1 | 2;
   when: string;
   commitHash: string;
 };
 
-const STEP_LABEL: Record<ActiveStatus, string> = {
-  'in-progress': 'Review findings',
-  'proposals-ready': 'Quick-fix proposals',
-};
+/** Same 3 steps as the inline visual session. Compact on the list; labeled in the session. */
+const SESSION_STEPS: { label: string; meaning: string }[] = [
+  { label: 'Scan', meaning: 'Scan this repository' },
+  {
+    label: 'Results & Remediation',
+    meaning: 'Review findings and accept or decline fixes',
+  },
+  { label: 'Commit', meaning: 'Push accepted fixes or open a pull request' },
+];
+
+function sessionStepIndex(_status: ActiveStatus): 0 | 1 | 2 {
+  // Live remediations sit on Results & Remediation. Scan already ran.
+  return 1;
+}
 
 const useStyles = makeStyles(theme => ({
   cta: {
@@ -56,21 +69,10 @@ const useStyles = makeStyles(theme => ({
     color: theme.palette.primary.main,
     cursor: 'pointer',
   },
-  progressCell: {
-    minWidth: 180,
-  },
-  progressMeta: {
-    fontSize: 12,
-    color: theme.palette.text.secondary,
-    marginBottom: 4,
-  },
-  progressBar: {
-    height: 6,
-    borderRadius: 3,
-    backgroundColor:
-      theme.palette.type === 'dark'
-        ? 'rgba(255,255,255,0.08)'
-        : 'rgba(0,0,0,0.08)',
+  helpIcon: {
+    fontSize: 14,
+    color: theme.palette.text.disabled,
+    cursor: 'help',
   },
   empty: {
     border: `1px solid ${theme.palette.divider}`,
@@ -130,7 +132,97 @@ const useStyles = makeStyles(theme => ({
     borderRadius: 20,
     minHeight: 36,
   },
+  compactStepper: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 0,
+  },
+  compactConnector: {
+    width: 8,
+    height: 2,
+    margin: '0 2px',
+    backgroundColor:
+      theme.palette.type === 'dark'
+        ? 'rgba(255,255,255,0.22)'
+        : 'rgba(0,0,0,0.18)',
+    flexShrink: 0,
+  },
+  compactBadge: {
+    width: 20,
+    height: 20,
+    borderRadius: '50%',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: 10,
+    fontWeight: 700,
+    lineHeight: 1,
+    boxSizing: 'border-box',
+    cursor: 'default',
+  },
 }));
+
+function CompactSessionStepper({ currentStep }: { currentStep: 0 | 1 | 2 }) {
+  const classes = useStyles();
+  const summary = `On ${SESSION_STEPS[currentStep].label}. ${SESSION_STEPS.map(
+    (step, index) => {
+      const state =
+        index < currentStep
+          ? 'complete'
+          : index === currentStep
+            ? 'current'
+            : 'not started';
+      return `${step.label} ${state}`;
+    },
+  ).join('. ')}.`;
+
+  return (
+    <Box className={classes.compactStepper} role="img" aria-label={summary}>
+      {SESSION_STEPS.map((step, index) => {
+        const isComplete = index < currentStep;
+        const isCurrent = index === currentStep;
+        const state = isComplete
+          ? 'Complete'
+          : isCurrent
+            ? 'Current'
+            : 'Not started';
+        const tooltip = `${step.label} — ${step.meaning}. ${state}.`;
+        let backgroundColor = 'transparent';
+        let color = statusColors.pending;
+        let border = `2px solid ${statusColors.pending}`;
+        if (isComplete) {
+          backgroundColor = statusColors.success;
+          color = '#fff';
+          border = `2px solid ${statusColors.success}`;
+        } else if (isCurrent) {
+          backgroundColor = statusColors.info;
+          color = '#fff';
+          border = `2px solid ${statusColors.info}`;
+        }
+
+        return (
+          <Box key={step.label} display="inline-flex" alignItems="center">
+            {index > 0 && (
+              <span className={classes.compactConnector} aria-hidden />
+            )}
+            <Tooltip title={tooltip} arrow>
+              <span
+                className={classes.compactBadge}
+                style={{ backgroundColor, color, border }}
+              >
+                {isComplete ? (
+                  <CheckIcon style={{ fontSize: 12 }} />
+                ) : (
+                  index + 1
+                )}
+              </span>
+            </Tooltip>
+          </Box>
+        );
+      })}
+    </Box>
+  );
+}
 
 function isActive(status: RemediationStatus): status is ActiveStatus {
   return status === 'in-progress' || status === 'proposals-ready';
@@ -148,17 +240,11 @@ function buildRows(): ActiveRow[] {
   for (const repo of GIT_REPOSITORIES) {
     const q = getProjectQuality(repo.name);
     if (!q || !isActive(q.remediationStatus)) continue;
-    const addressed = q.remediationSummary?.addressed ?? 0;
-    const remaining =
-      q.remediationSummary?.remaining ?? q.totalViolations;
     rows.push({
       repoName: repo.name,
       org: repo.org,
       status: q.remediationStatus,
-      stepLabel: STEP_LABEL[q.remediationStatus],
-      addressed,
-      remaining,
-      total: addressed + remaining,
+      currentStep: sessionStepIndex(q.remediationStatus),
       when: q.lastScannedAt,
       commitHash: q.latestScan.commitHash || q.lastScannedCommit,
     });
@@ -326,6 +412,7 @@ export const RemediationsContent = ({
 }) => {
   const classes = useStyles();
   const navigate = useNavigate();
+  const { experience } = useNavIaModel();
   const [scanOpen, setScanOpen] = useState(false);
   const rows = useMemo(() => buildRows(), []);
   const startScan = () => (onStartScan ? onStartScan() : setScanOpen(true));
@@ -338,6 +425,13 @@ export const RemediationsContent = ({
 
   const resume = (repoName: string) => {
     navigate(sessionPath(repoName, true));
+  };
+
+  const viewLastScan = (repoName: string) => {
+    const quality = getProjectQuality(repoName);
+    const qs = new URLSearchParams({ repo: repoName });
+    if (quality?.latestScan.scanId) qs.set('scan', quality.latestScan.scanId);
+    navigate(`${scansListPath(experience)}?${qs.toString()}`);
   };
 
   const columns: TableColumn<ActiveRow>[] = [
@@ -356,45 +450,26 @@ export const RemediationsContent = ({
       ),
     },
     {
-      title: 'Current step',
+      title: (
+        <Box display="flex" alignItems="center" style={{ gap: 4, whiteSpace: 'nowrap' }}>
+          Quality
+          <Tooltip title="Opens findings by category and severity." arrow>
+            <HelpOutlineIcon className={classes.helpIcon} />
+          </Tooltip>
+        </Box>
+      ) as unknown as string,
       render: row => (
-        <Chip
-          size="small"
-          label={row.stepLabel}
-          style={{
-            height: 22,
-            fontSize: 11,
-            fontWeight: 600,
-            backgroundColor:
-              row.status === 'in-progress'
-                ? 'rgba(0, 102, 204, 0.12)'
-                : 'rgba(103, 83, 172, 0.14)',
-            color: row.status === 'in-progress' ? '#0066CC' : '#5B3F9E',
-          }}
+        <HealthScorePopover
+          repoName={row.repoName}
+          quality={getProjectQuality(row.repoName)}
+          showFindingsLink
+          onViewLastScan={() => viewLastScan(row.repoName)}
+          onRemediate={() => resume(row.repoName)}
         />
       ),
     },
     {
-      title: 'Progress',
-      render: row => {
-        const pct =
-          row.total > 0 ? Math.round((row.addressed / row.total) * 100) : 0;
-        return (
-          <Box className={classes.progressCell}>
-            <Typography className={classes.progressMeta}>
-              {row.addressed} of {row.total} findings addressed
-            </Typography>
-            <LinearProgress
-              variant="determinate"
-              value={pct}
-              className={classes.progressBar}
-            />
-          </Box>
-        );
-      },
-    },
-    {
-      title: 'When',
+      title: 'Scanned',
       render: row => (
         <Box>
           <Typography style={{ fontSize: 13 }}>
@@ -403,6 +478,10 @@ export const RemediationsContent = ({
           <CommitSha sha={row.commitHash} />
         </Box>
       ),
+    },
+    {
+      title: 'Remediation progress',
+      render: row => <CompactSessionStepper currentStep={row.currentStep} />,
     },
     {
       title: 'Action',
@@ -426,13 +505,18 @@ export const RemediationsContent = ({
 
   return (
     <Box>
+      <QualityTabIntro>
+        Unfinished fix sessions on a repository’s latest scan. Resume to review
+        remaining findings or commit accepted fixes.
+      </QualityTabIntro>
       {rows.length === 0 ? (
         <Box className={classes.empty}>
           <Typography className={classes.emptyTitle}>
-            No remediations in progress
+            No pending remediations
           </Typography>
           <Typography className={classes.emptyBody}>
-            Start a scan on a git repository to review findings and remediate.
+            Start a scan on a git repository to review findings and open a fix
+            session. Finished sessions leave this list.
           </Typography>
           <Button
             className={classes.cta}

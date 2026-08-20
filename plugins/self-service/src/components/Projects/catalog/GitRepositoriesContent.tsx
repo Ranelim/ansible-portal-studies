@@ -800,7 +800,7 @@ export const GitRepositoriesContent = () => {
             <Box display="flex" alignItems="center" style={{ gap: 4, whiteSpace: 'nowrap' }}>
               Quality
               <Tooltip
-                title="Quality score from the last scan (0–100, higher is better). Open for findings by severity."
+                title="Opens findings by category and severity."
                 arrow
               >
                 <HelpOutlineIcon style={{ fontSize: 14, color: theme.palette.text.disabled, cursor: 'help' }} />
@@ -827,7 +827,7 @@ export const GitRepositoriesContent = () => {
             <Box display="flex" alignItems="center" style={{ gap: 4 }}>
               Findings
               <Tooltip
-                title="Content quality findings for this repository. Open Quality for detail. Resume a live session from the status link."
+                title="Content quality findings for this repository. Open Content quality for detail. Resume a live session from the status link."
                 arrow
               >
                 <HelpOutlineIcon style={{ fontSize: 14, color: theme.palette.text.disabled, cursor: 'help' }} />

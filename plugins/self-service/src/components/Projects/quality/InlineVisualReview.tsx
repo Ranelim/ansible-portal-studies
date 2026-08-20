@@ -446,6 +446,11 @@ export const InlineVisualReview: React.FC<{
       .filter(cat => cat.count > 0);
   }, [mix.categories, severityFilter]);
 
+  const visibleCatTotal = useMemo(
+    () => visibleCategories.reduce((sum, cat) => sum + cat.count, 0),
+    [visibleCategories],
+  );
+
   const pendingT1 = auto.filter(v => !t1Decisions[findingKey(v)]).length;
   const readyAi = ai.filter(v => aiStatus[findingKey(v)] === 'ready');
   const pendingGeneratedAi = readyAi.filter(v => !aiDecisions[findingKey(v)]).length;
@@ -593,7 +598,13 @@ export const InlineVisualReview: React.FC<{
                 </Typography>
                 <Chip size="small" label={cat.count} className={classes.catCount} />
                 <div className={classes.catBar}>
-                  <SeverityMixBar breakdown={cat.breakdown} height={FINDINGS_BAR_HEIGHT} />
+                  <SeverityMixBar
+                    breakdown={cat.breakdown}
+                    height={FINDINGS_BAR_HEIGHT}
+                    shareOfTotal={
+                      visibleCatTotal > 0 ? cat.count / visibleCatTotal : 0
+                    }
+                  />
                 </div>
               </div>
             ))}

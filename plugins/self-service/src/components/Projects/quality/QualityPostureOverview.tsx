@@ -25,6 +25,7 @@ import {
 import { SeverityFilterChips } from './SeverityFilterChips';
 import { SeverityMixBar } from './SeverityMixBar';
 import { CategoryScanPeek } from './CategoryScanPeek';
+import { QualityTabIntro } from './QualityTabIntro';
 
 type KpiId = 'coverage' | 'health' | 'critical' | 'remediations' | 'scans';
 
@@ -317,6 +318,11 @@ export const QualityPostureOverview = () => {
       .filter(cat => cat.count > 0);
   }, [findings.categories, severityFilter]);
 
+  const visibleCatTotal = useMemo(
+    () => visibleCategories.reduce((sum, cat) => sum + cat.count, 0),
+    [visibleCategories],
+  );
+
   const activate = useCallback(
     (id: KpiId) => {
       if (id === 'coverage' && stats.scannedWithScore > 0) {
@@ -429,6 +435,10 @@ export const QualityPostureOverview = () => {
 
   return (
     <Box>
+      <QualityTabIntro>
+        Posture from each repository’s latest completed scan. History is on
+        Scans.
+      </QualityTabIntro>
       <Box className={classes.scopeRow}>
         <ToggleButtonGroup
           exclusive
@@ -563,6 +573,9 @@ export const QualityPostureOverview = () => {
                     <SeverityMixBar
                       breakdown={cat.breakdown}
                       height={FINDINGS_BAR_HEIGHT}
+                      shareOfTotal={
+                        visibleCatTotal > 0 ? cat.count / visibleCatTotal : 0
+                      }
                     />
                   </Box>
                 </Box>

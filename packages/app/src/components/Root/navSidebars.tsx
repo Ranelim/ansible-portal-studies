@@ -1443,7 +1443,7 @@ const ExperiencesDomainSidebar = () => {
       {/* A: Automate = Templates · Runs only (no Learn). B is rail-less — skip. */}
       {domain === 'automate' && automateRail && <RunItems />}
 
-      {/* Develop — Git Repositories expandable; Quality is nested (tabs on the page). */}
+      {/* Develop — Git Repositories expandable; Content quality is nested (tabs on the page). */}
       {domain === 'develop' && (
         <>
           {ExperienceDashboardItem}
@@ -1461,7 +1461,7 @@ const ExperiencesDomainSidebar = () => {
             />
             <ExpandableNavChild
               to="/self-service/repositories/dashboard"
-              text="Quality"
+              text="Content quality"
               extraActive={pathname =>
                 pathname.includes('/repositories/remediations') ||
                 pathname.includes('/repositories/scans')

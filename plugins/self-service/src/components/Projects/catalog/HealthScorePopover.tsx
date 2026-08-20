@@ -19,8 +19,10 @@ import {
   type ProjectQualityData,
   type RemediationStatus,
   SEVERITY_COLORS,
+  getApmeFleetFindings,
   getProjectQuality,
 } from '../detail/qualityDemoData';
+import { SeverityMixBar } from '../quality/SeverityMixBar';
 
 export const SEVERITY_ORDER: SeverityClass[] = [
   'critical',
@@ -173,6 +175,9 @@ const useStyles = makeStyles(theme => ({
   clickTarget: {
     display: 'inline-flex',
     alignItems: 'baseline',
+    gap: 8,
+    width: 'auto',
+    maxWidth: '100%',
     cursor: 'pointer',
     borderRadius: 4,
     padding: '2px 6px',
@@ -186,6 +191,9 @@ const useStyles = makeStyles(theme => ({
       outline: 'none',
     },
     '&:hover $openHint, &:focus $openHint': {
+      textDecoration: 'underline',
+    },
+    '&:hover $findingsLink, &:focus $findingsLink': {
       textDecoration: 'underline',
     },
     '&:hover $openIcon, &:focus $openIcon': {
@@ -236,10 +244,56 @@ const useStyles = makeStyles(theme => ({
       display: 'none',
     },
   },
+  /** Visible verb — whole cell still opens the popover. */
+  findingsLink: {
+    fontSize: 12,
+    fontWeight: 500,
+    color: theme.palette.primary.main,
+    lineHeight: 1.4,
+    whiteSpace: 'nowrap',
+    textDecoration: 'none',
+  },
   findings: {
-    maxHeight: 280,
+    maxHeight: 220,
     overflowY: 'auto',
     marginBottom: theme.spacing(1),
+  },
+  sectionLabel: {
+    fontSize: 12,
+    fontWeight: 600,
+    color: theme.palette.text.secondary,
+    marginBottom: theme.spacing(0.5),
+  },
+  catSection: {
+    marginBottom: theme.spacing(1.5),
+    paddingBottom: theme.spacing(1.25),
+    borderBottom: `1px solid ${theme.palette.divider}`,
+  },
+  catRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    padding: '3px 0',
+  },
+  catName: {
+    fontSize: 12,
+    fontWeight: 500,
+    minWidth: 108,
+    flexShrink: 0,
+  },
+  catCount: {
+    fontSize: 12,
+    fontWeight: 600,
+    color: theme.palette.text.secondary,
+    minWidth: 16,
+    flexShrink: 0,
+  },
+  catBar: {
+    flex: 1,
+    minWidth: 56,
+    height: 6,
+    display: 'flex',
+    alignItems: 'center',
   },
   sevRow: {
     display: 'flex',
@@ -328,7 +382,12 @@ interface HealthScorePopoverProps {
   /** Quiet grey text next to a display score (Overview). */
   openHint?: string;
   showOpenIcon?: boolean;
-  /** List cell: hide /100 and show findings · time · SHA under the score. */
+  /**
+   * List cell: compact score (no /100) and findings as the visible open verb.
+   * Remediations uses this without scan meta (Scanned column already has time/SHA).
+   */
+  showFindingsLink?: boolean;
+  /** Catalog list: also show muted time · SHA after findings. Implies compact score. */
   showScanMeta?: boolean;
   scanning?: boolean;
   onViewLastScan?: () => void;
@@ -343,6 +402,7 @@ export const HealthScorePopover = ({
   denomSize,
   openHint,
   showOpenIcon = false,
+  showFindingsLink = false,
   showScanMeta = false,
   scanning = false,
   onViewLastScan,
@@ -389,8 +449,14 @@ export const HealthScorePopover = ({
   const presentSev = SEVERITY_ORDER.filter(sev => (severityBreakdown[sev] ?? 0) > 0);
   const sha = lastScannedCommit ? shortSha(lastScannedCommit) : null;
   const findings = quality.violations ?? [];
+  const categoryMix = getApmeFleetFindings([repoName]).categories;
   const remediateLabel = live ? 'Resume remediation' : null;
   const showRemediation = remediationHasStarted(quality.remediationStatus);
+  const listCell = showScanMeta || showFindingsLink;
+  const findingsLabel =
+    totalViolations === 0
+      ? 'No findings'
+      : `${totalViolations} finding${totalViolations === 1 ? '' : 's'}`;
 
   return (
     <>
@@ -400,29 +466,33 @@ export const HealthScorePopover = ({
         onClick={handleOpen}
         aria-haspopup="dialog"
         aria-expanded={Boolean(anchorEl)}
-        aria-label={`Quality score ${healthScore} out of 100. Higher is better. Open findings.`}
+        aria-label={`Quality score ${healthScore} out of 100. ${findingsLabel}. Opens findings by category and severity.`}
       >
         <span className={classes.scoreLock}>
           <QualityScoreMark
             score={healthScore}
             fontSize={fontSize}
             denomSize={denomSize}
-            showDenom={!showScanMeta}
+            showDenom={!listCell}
           />
         </span>
         {openHint && <span className={classes.openHint}>{openHint}</span>}
         {showOpenIcon && (
           <InfoOutlinedIcon className={classes.openIcon} aria-hidden />
         )}
-        {showScanMeta && (
-          <span className={classes.cellMeta}>
-            {totalViolations === 0 ? 'No findings' : `${totalViolations} findings`}
-            {' · '}
-            {lastScannedAt}
-            {sha && (
+        {listCell && (
+          <span className={showScanMeta ? classes.cellMeta : undefined}>
+            <span className={classes.findingsLink}>{findingsLabel}</span>
+            {showScanMeta && (
               <>
                 {' · '}
-                <span style={{ fontFamily: 'monospace' }}>{sha}</span>
+                {lastScannedAt}
+                {sha && (
+                  <>
+                    {' · '}
+                    <span style={{ fontFamily: 'monospace' }}>{sha}</span>
+                  </>
+                )}
               </>
             )}
           </span>
@@ -465,8 +535,38 @@ export const HealthScorePopover = ({
             </Typography>
           </Box>
 
+          {categoryMix.length > 0 && (
+            <Box className={classes.catSection}>
+              <Typography className={classes.sectionLabel}>
+                By category
+              </Typography>
+              {categoryMix.map(cat => (
+                <Box key={cat.id} className={classes.catRow}>
+                  <Typography className={classes.catName} component="span">
+                    {cat.label}
+                  </Typography>
+                  <Typography className={classes.catCount} component="span">
+                    {cat.count}
+                  </Typography>
+                  <Box className={classes.catBar}>
+                    <SeverityMixBar
+                      breakdown={cat.breakdown}
+                      height={6}
+                      shareOfTotal={
+                        totalViolations > 0 ? cat.count / totalViolations : 0
+                      }
+                    />
+                  </Box>
+                </Box>
+              ))}
+            </Box>
+          )}
+
           {totalViolations > 0 && presentSev.length > 0 && (
             <Box className={classes.findings}>
+              <Typography className={classes.sectionLabel}>
+                By severity
+              </Typography>
               {presentSev.map(sev => {
                 const nodes = nodesForSeverity(findings, sev);
                 const count = severityBreakdown[sev];

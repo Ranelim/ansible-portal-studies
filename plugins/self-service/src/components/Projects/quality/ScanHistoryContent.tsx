@@ -34,6 +34,7 @@ import { CommitSha, shortSha } from './CommitSha';
 import { snippetForFinding } from './findingCodeContext';
 import { SeverityFilterChips } from './SeverityFilterChips';
 import { parseScanCategoryParam } from './qualitySurfacePaths';
+import { QualityTabIntro } from './QualityTabIntro';
 
 type GlobalScanRow = ScanResult & {
   repoName: string;
@@ -1137,6 +1138,10 @@ export const ScanHistoryContent = () => {
 
   return (
     <Box>
+      <QualityTabIntro>
+        Every scan as a receipt. Latest is the most recent completed scan per
+        repository; older scans are superseded.
+      </QualityTabIntro>
       <Box className={classes.toolbar}>
         <FormControl
           variant="outlined"
