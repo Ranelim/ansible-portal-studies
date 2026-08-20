@@ -109,7 +109,7 @@ export const healthColor = (score: number): string => {
 
 const shortSha = (sha: string) => (sha.length > 7 ? sha.slice(0, 7) : sha);
 
-/** Colored score. `/100` is for display numbers (Overview, popover) — omit in the list. */
+/** Colored score. “out of 100” is for display numbers (Overview, popover) — omit in the list. */
 export function QualityScoreMark({
   score,
   fontSize = 16,
@@ -126,7 +126,7 @@ export function QualityScoreMark({
       style={{
         display: 'inline-flex',
         alignItems: 'baseline',
-        gap: 1,
+        gap: showDenom ? 6 : 1,
         lineHeight: 1.2,
       }}
     >
@@ -147,11 +147,11 @@ export function QualityScoreMark({
           color="textSecondary"
           style={{
             fontSize: denomSize ?? Math.max(11, Math.round(fontSize * 0.7)),
-            fontWeight: 500,
+            fontWeight: 400,
             lineHeight: 1.2,
           }}
         >
-          /100
+          out of 100
         </Typography>
       )}
     </span>
@@ -383,7 +383,7 @@ interface HealthScorePopoverProps {
   openHint?: string;
   showOpenIcon?: boolean;
   /**
-   * List cell: compact score (no /100) and findings as the visible open verb.
+   * List cell: compact score (no “out of 100”) and findings as the visible open verb.
    * Remediations uses this without scan meta (Scanned column already has time/SHA).
    */
   showFindingsLink?: boolean;

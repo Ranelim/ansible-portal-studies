@@ -1,12 +1,10 @@
 import { useCallback, useMemo, useState, type KeyboardEvent } from 'react';
 import { Box, Chip, Tooltip, Typography, makeStyles } from '@material-ui/core';
 import HelpOutlineIcon from '@material-ui/icons/HelpOutline';
-import { ToggleButton, ToggleButtonGroup } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { GIT_REPOSITORIES } from '../catalog/unifiedDemoData';
 import { QualityScoreMark } from '../catalog/HealthScorePopover';
 import {
-  SEVERITY_COLORS,
   getApmeFleetFindings,
   getProjectQuality,
   type SeverityClass,
@@ -15,19 +13,14 @@ import { useNavIaModel } from '../../../hooks/useNavIaModel';
 import {
   remediationsListPath,
   repositoriesListPath,
-  scansListPath,
 } from './qualitySurfacePaths';
 import { countLiveRemediations } from './RemediationsContent';
-import {
-  isWithinDays,
-  type QualityOverviewScope,
-} from './qualityWindow';
 import { SeverityFilterChips } from './SeverityFilterChips';
 import { SeverityMixBar } from './SeverityMixBar';
 import { CategoryScanPeek } from './CategoryScanPeek';
 import { QualityTabIntro } from './QualityTabIntro';
 
-type KpiId = 'coverage' | 'health' | 'critical' | 'remediations' | 'scans';
+type KpiId = 'coverage' | 'health' | 'remediations';
 
 const SEV_ORDER: SeverityClass[] = [
   'critical',
@@ -40,42 +33,16 @@ const SEV_ORDER: SeverityClass[] = [
 /** Same stroke as scan-history findings bars — every mix bar in this widget. */
 const FINDINGS_BAR_HEIGHT = 6;
 
-const SCOPE_OPTIONS: { id: QualityOverviewScope; value: string; label: string }[] =
-  [
-    { id: 'current', value: 'current', label: 'Latest scans' },
-    { id: 7, value: '7', label: 'Last 7 days' },
-    { id: 30, value: '30', label: 'Last 30 days' },
-  ];
-
-function parseOverviewScope(value: string): QualityOverviewScope {
-  if (value === '7') return 7;
-  if (value === '30') return 30;
-  return 'current';
-}
-
-function kpiHint(id: KpiId, scope: QualityOverviewScope): string {
+function kpiHint(id: KpiId): string {
   switch (id) {
     case 'coverage':
-      return scope === 'current'
-        ? 'How many git repositories have a completed scan.'
-        : `How many git repositories have a latest completed scan in the last ${scope} days. Repositories whose latest scan is older are omitted.`;
+      return 'How many git repositories have a completed scan.';
     case 'health':
-      return scope === 'current'
-        ? 'Mean of each included repository’s latest scan (0–100). Health is a rollup of findings on that scan, not a separate rubric.'
-        : `Mean health (0–100) for repositories whose latest completed scan is in the last ${scope} days.`;
-    case 'critical':
-      return scope === 'current'
-        ? 'Git repositories whose latest scan includes at least one critical finding.'
-        : `Git repositories whose latest completed scan in the last ${scope} days includes at least one critical finding.`;
+      return 'Mean of each repository’s latest scan (0–100). Health is a rollup of findings on that scan, not a separate rubric.';
     case 'remediations':
-      return 'Live fix sessions against each repository’s latest scan. This count ignores the 7- or 30-day window. An expired session does not clear the health score.';
-    case 'scans':
-      return `How many scans ran in the last ${scope} days, including runs that a later scan superseded. Latest-scan posture is on the other cards.`;
+      return 'Live fix sessions against each repository’s latest scan. An expired session does not clear the health score.';
   }
 }
-
-const SCOPE_HELP =
-  'Each git repository has one latest completed scan. These numbers use that scan. Last 7 or 30 days includes only repositories whose latest scan is in that window. An older latest scan still counts under Latest scans. History is on Scans.';
 
 const useStyles = makeStyles(theme => ({
   kpis: {
@@ -83,19 +50,6 @@ const useStyles = makeStyles(theme => ({
     gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
     gap: theme.spacing(2),
     marginBottom: theme.spacing(3),
-  },
-  scopeRow: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    flexWrap: 'wrap',
-    gap: theme.spacing(1),
-    marginBottom: theme.spacing(2),
-  },
-  scopeHelp: {
-    fontSize: 16,
-    color: theme.palette.text.disabled,
-    cursor: 'help',
   },
   kpi: {
     position: 'relative' as const,
@@ -130,9 +84,6 @@ const useStyles = makeStyles(theme => ({
     fontWeight: 400,
     color: theme.palette.text.secondary,
     marginLeft: 2,
-  },
-  kpiValueCritical: {
-    color: SEVERITY_COLORS.critical,
   },
   kpiLabel: {
     fontSize: 13,
@@ -222,53 +173,24 @@ const useStyles = makeStyles(theme => ({
 }));
 
 /**
- * Shared Quality / Overview — estate KPIs, then hand off.
+ * Shared Content quality / Overview — estate KPIs from each repo’s latest scan.
  * Git Repositories list, Remediations, and Scans own the queues.
  */
 export const QualityPostureOverview = () => {
   const classes = useStyles();
   const navigate = useNavigate();
   const { experience } = useNavIaModel();
-  const [scope, setScope] = useState<QualityOverviewScope>('current');
-
-  const scopedRepos = useMemo(() => {
-    return GIT_REPOSITORIES.filter(repo => {
-      const q = getProjectQuality(repo.name);
-      if (!q) return false;
-      if (scope === 'current') return true;
-      return isWithinDays(q.lastScannedAt, scope);
-    });
-  }, [scope]);
-  const scopedNames = useMemo(
-    () => scopedRepos.map(r => r.name),
-    [scopedRepos],
-  );
 
   const stats = useMemo(() => {
     const totalRepos = GIT_REPOSITORIES.length;
     let scannedWithScore = 0;
     let healthSum = 0;
-    let withCritical = 0;
-    let scansInWindow = 0;
-    const windowDays = scope === 'current' ? null : scope;
 
     for (const repo of GIT_REPOSITORIES) {
       const q = getProjectQuality(repo.name);
       if (!q) continue;
-      const inScope =
-        scope === 'current' || isWithinDays(q.lastScannedAt, scope);
-      if (inScope) {
-        scannedWithScore += 1;
-        healthSum += q.healthScore;
-        if ((q.severityBreakdown.critical ?? 0) > 0) withCritical += 1;
-      }
-      if (windowDays !== null) {
-        const latestId = q.latestScan.scanId;
-        const history = q.scanHistory.filter(scan => scan.scanId !== latestId);
-        for (const scan of [q.latestScan, ...history]) {
-          if (isWithinDays(scan.createdAt, windowDays)) scansInWindow += 1;
-        }
-      }
+      scannedWithScore += 1;
+      healthSum += q.healthScore;
     }
 
     return {
@@ -276,16 +198,11 @@ export const QualityPostureOverview = () => {
       scannedWithScore,
       avgHealth:
         scannedWithScore > 0 ? Math.round(healthSum / scannedWithScore) : null,
-      withCritical,
       liveRemediations: countLiveRemediations(),
-      scansInWindow,
     };
-  }, [scope]);
+  }, []);
 
-  const findings = useMemo(
-    () => getApmeFleetFindings(scope === 'current' ? undefined : scopedNames),
-    [scope, scopedNames],
-  );
+  const findings = useMemo(() => getApmeFleetFindings(), []);
   const [severityFilter, setSeverityFilter] = useState<Set<SeverityClass>>(
     () => new Set(),
   );
@@ -326,30 +243,18 @@ export const QualityPostureOverview = () => {
   const activate = useCallback(
     (id: KpiId) => {
       if (id === 'coverage' && stats.scannedWithScore > 0) {
-        navigate(
-          scope === 'current'
-            ? repositoriesListPath('scanned')
-            : repositoriesListPath('recent'),
-        );
+        navigate(repositoriesListPath('scanned'));
         return;
       }
       if (id === 'health' && stats.avgHealth !== null) {
         navigate(repositoriesListPath('scanned'));
         return;
       }
-      if (id === 'critical' && stats.withCritical > 0) {
-        navigate(repositoriesListPath('critical'));
-        return;
-      }
       if (id === 'remediations' && stats.liveRemediations > 0) {
         navigate(remediationsListPath(experience));
-        return;
-      }
-      if (id === 'scans' && stats.scansInWindow > 0) {
-        navigate(scansListPath(experience));
       }
     },
-    [experience, navigate, scope, stats],
+    [experience, navigate, stats],
   );
 
   const onKpiKey = useCallback(
@@ -362,54 +267,31 @@ export const QualityPostureOverview = () => {
     [activate],
   );
 
-  const windowPhrase =
-    scope === 'current' ? '' : ` in the last ${scope} days`;
   const cards: {
     id: KpiId;
     value: string;
     total?: number;
     label: string;
     enabled: boolean;
-    critical?: boolean;
     aria: string;
   }[] = [
     {
       id: 'coverage',
       value: String(stats.scannedWithScore),
       total: stats.totalRepos,
-      label:
-        scope === 'current'
-          ? 'Scanned repositories'
-          : `Repositories scanned in the last ${scope} days`,
+      label: 'Scanned repositories',
       enabled: stats.scannedWithScore > 0,
-      aria: `${stats.scannedWithScore} of ${stats.totalRepos} ${
-        scope === 'current'
-          ? 'scanned repositories'
-          : `repositories scanned in the last ${scope} days`
-      }`,
+      aria: `${stats.scannedWithScore} of ${stats.totalRepos} scanned repositories`,
     },
     {
       id: 'health',
       value: stats.avgHealth === null ? '—' : String(stats.avgHealth),
-      label:
-        scope === 'current'
-          ? 'Average health'
-          : `Average health for repositories scanned in the last ${scope} days`,
+      label: 'Average health',
       enabled: stats.avgHealth !== null,
       aria:
         stats.avgHealth === null
           ? 'Average health unavailable'
           : `Average health ${stats.avgHealth}`,
-    },
-    {
-      id: 'critical',
-      value: String(stats.withCritical),
-      label: `Repositories with critical findings${windowPhrase}`,
-      enabled: stats.withCritical > 0,
-      critical: true,
-      aria: `${stats.withCritical} ${
-        stats.withCritical === 1 ? 'repository' : 'repositories'
-      } with critical findings${windowPhrase}`,
     },
     {
       id: 'remediations',
@@ -421,17 +303,6 @@ export const QualityPostureOverview = () => {
       } in progress`,
     },
   ];
-  if (scope !== 'current') {
-    cards.push({
-      id: 'scans',
-      value: String(stats.scansInWindow),
-      label: `Scans run in the last ${scope} days`,
-      enabled: stats.scansInWindow > 0,
-      aria: `${stats.scansInWindow} ${
-        stats.scansInWindow === 1 ? 'scan' : 'scans'
-      } run in the last ${scope} days`,
-    });
-  }
 
   return (
     <Box>
@@ -439,26 +310,6 @@ export const QualityPostureOverview = () => {
         Posture from each repository’s latest completed scan. History is on
         Scans.
       </QualityTabIntro>
-      <Box className={classes.scopeRow}>
-        <ToggleButtonGroup
-          exclusive
-          size="small"
-          value={String(scope)}
-          onChange={(_event, next) => {
-            if (next !== null) setScope(parseOverviewScope(String(next)));
-          }}
-          aria-label="Overview scan scope"
-        >
-          {SCOPE_OPTIONS.map(opt => (
-            <ToggleButton key={opt.value} value={opt.value}>
-              {opt.label}
-            </ToggleButton>
-          ))}
-        </ToggleButtonGroup>
-        <Tooltip title={SCOPE_HELP} arrow>
-          <HelpOutlineIcon className={classes.scopeHelp} />
-        </Tooltip>
-      </Box>
       <Box className={classes.kpis}>
         {cards.map(card => (
           <Box
@@ -471,7 +322,7 @@ export const QualityPostureOverview = () => {
             onClick={() => activate(card.id)}
             onKeyDown={onKpiKey(card.id)}
           >
-            <Tooltip title={kpiHint(card.id, scope)} arrow>
+            <Tooltip title={kpiHint(card.id)} arrow>
               <HelpOutlineIcon
                 className={classes.kpiHelp}
                 tabIndex={0}
@@ -487,12 +338,7 @@ export const QualityPostureOverview = () => {
                 denomSize={16}
               />
             ) : (
-              <Typography
-                className={`${classes.kpiValue} ${
-                  card.critical ? classes.kpiValueCritical : ''
-                }`}
-                component="div"
-              >
+              <Typography className={classes.kpiValue} component="div">
                 {card.value}
                 {card.total !== undefined && (
                   <span className={classes.kpiTotal}> / {card.total}</span>
@@ -511,12 +357,8 @@ export const QualityPostureOverview = () => {
             </Typography>
             <Typography className={classes.mixMeta} component="span">
               {findings.total === 1
-                ? scope === 'current'
-                  ? 'finding'
-                  : `finding from latest scans in the last ${scope} days`
-                : scope === 'current'
-                  ? 'findings'
-                  : `findings from latest scans in the last ${scope} days`}
+                ? 'finding on latest scans'
+                : 'findings on latest scans'}
             </Typography>
           </Box>
           <Box className={classes.mixBar}>
@@ -535,11 +377,7 @@ export const QualityPostureOverview = () => {
             />
           </Box>
           {visibleCategories.map(cat => (
-            <CategoryScanPeek
-              key={cat.id}
-              category={cat.id}
-              repoNames={scope === 'current' ? undefined : scopedNames}
-            >
+            <CategoryScanPeek key={cat.id} category={cat.id}>
               {open => (
                 <Box
                   className={classes.catRow}
