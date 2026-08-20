@@ -559,7 +559,7 @@ function ScanStateChip({ current }: { current: boolean }) {
     <Tooltip title="Latest scan for this repository. The quality score is based on this snapshot." arrow>
       <Chip
         size="small"
-        label="Current"
+        label="Latest"
         style={{
           height: 20,
           fontSize: 11,
@@ -876,12 +876,12 @@ function ScanSnapshotDetail({
           color="textSecondary"
           style={{ fontSize: 13, marginBottom: 16 }}
         >
-          A later scan replaced this snapshot. Remediation uses the current scan.
+          A later scan replaced this snapshot. Remediation uses the latest scan.
           {currentScanId ? (
             <>
               {' '}
               <Link component="button" onClick={onViewCurrent} underline="always">
-                View current scan
+                View latest scan
               </Link>
             </>
           ) : null}
@@ -906,7 +906,7 @@ function ScanSnapshotDetail({
         </Typography>
       ) : row.totalViolations > 0 && !row.isLatest ? (
         <Typography variant="body2" color="textSecondary" style={{ fontSize: 13 }}>
-          Finding list is on the current scan.
+          Finding list is on the latest scan.
         </Typography>
       ) : row.totalViolations === 0 ? (
         <Typography variant="body2" color="textSecondary" style={{ fontSize: 13 }}>

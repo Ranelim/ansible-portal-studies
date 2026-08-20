@@ -41,7 +41,7 @@ const FINDINGS_BAR_HEIGHT = 6;
 
 const SCOPE_OPTIONS: { id: QualityOverviewScope; value: string; label: string }[] =
   [
-    { id: 'current', value: 'current', label: 'Current scan' },
+    { id: 'current', value: 'current', label: 'Latest scans' },
     { id: 7, value: '7', label: 'Last 7 days' },
     { id: 30, value: '30', label: 'Last 30 days' },
   ];
@@ -56,25 +56,25 @@ function kpiHint(id: KpiId, scope: QualityOverviewScope): string {
   switch (id) {
     case 'coverage':
       return scope === 'current'
-        ? 'How many git repositories have a latest completed scan. That scan stays current until a newer scan replaces it — age does not drop a repository from this count.'
-        : `How many git repositories have a latest completed scan in the last ${scope} days. Repositories whose current scan is older are omitted.`;
+        ? 'How many git repositories have a completed scan.'
+        : `How many git repositories have a latest completed scan in the last ${scope} days. Repositories whose latest scan is older are omitted.`;
     case 'health':
       return scope === 'current'
-        ? 'Mean health (0–100) from each repository’s current scan. Health is a rollup of findings on that scan, not a separate rubric.'
+        ? 'Mean of each included repository’s latest scan (0–100). Health is a rollup of findings on that scan, not a separate rubric.'
         : `Mean health (0–100) for repositories whose latest completed scan is in the last ${scope} days.`;
     case 'critical':
       return scope === 'current'
-        ? 'Git repositories whose current scan includes at least one critical finding.'
+        ? 'Git repositories whose latest scan includes at least one critical finding.'
         : `Git repositories whose latest completed scan in the last ${scope} days includes at least one critical finding.`;
     case 'remediations':
-      return 'Live fix sessions against the current scan. This count ignores the 7- or 30-day window. An expired session does not clear the health score.';
+      return 'Live fix sessions against each repository’s latest scan. This count ignores the 7- or 30-day window. An expired session does not clear the health score.';
     case 'scans':
-      return `How many scans ran in the last ${scope} days, including runs that a later scan superseded. Current-scan posture is on the other cards.`;
+      return `How many scans ran in the last ${scope} days, including runs that a later scan superseded. Latest-scan posture is on the other cards.`;
   }
 }
 
 const SCOPE_HELP =
-  'Current scan is the latest completed scan for each git repository. Last 7 or 30 days limits Overview to repositories whose latest scan is in that window. Remediations always use the current scan. History is on Scans.';
+  'Each git repository has one latest completed scan. These numbers use that scan. Last 7 or 30 days includes only repositories whose latest scan is in that window. An older latest scan still counts under Latest scans. History is on Scans.';
 
 const useStyles = makeStyles(theme => ({
   kpis: {
@@ -357,7 +357,7 @@ export const QualityPostureOverview = () => {
   );
 
   const windowPhrase =
-    scope === 'current' ? 'on the current scan' : `in the last ${scope} days`;
+    scope === 'current' ? '' : ` in the last ${scope} days`;
   const cards: {
     id: KpiId;
     value: string;
@@ -373,12 +373,12 @@ export const QualityPostureOverview = () => {
       total: stats.totalRepos,
       label:
         scope === 'current'
-          ? 'Repositories with a current scan'
+          ? 'Scanned repositories'
           : `Repositories scanned in the last ${scope} days`,
       enabled: stats.scannedWithScore > 0,
       aria: `${stats.scannedWithScore} of ${stats.totalRepos} ${
         scope === 'current'
-          ? 'repositories with a current scan'
+          ? 'scanned repositories'
           : `repositories scanned in the last ${scope} days`
       }`,
     },
@@ -387,7 +387,7 @@ export const QualityPostureOverview = () => {
       value: stats.avgHealth === null ? '—' : String(stats.avgHealth),
       label:
         scope === 'current'
-          ? 'Average health on the current scan'
+          ? 'Average health'
           : `Average health for repositories scanned in the last ${scope} days`,
       enabled: stats.avgHealth !== null,
       aria:
@@ -398,12 +398,12 @@ export const QualityPostureOverview = () => {
     {
       id: 'critical',
       value: String(stats.withCritical),
-      label: `Repositories with critical findings ${windowPhrase}`,
+      label: `Repositories with critical findings${windowPhrase}`,
       enabled: stats.withCritical > 0,
       critical: true,
       aria: `${stats.withCritical} ${
         stats.withCritical === 1 ? 'repository' : 'repositories'
-      } with critical findings ${windowPhrase}`,
+      } with critical findings${windowPhrase}`,
     },
     {
       id: 'remediations',
@@ -502,11 +502,11 @@ export const QualityPostureOverview = () => {
             <Typography className={classes.mixMeta} component="span">
               {findings.total === 1
                 ? scope === 'current'
-                  ? 'finding on the current scan'
-                  : `finding on current scans from the last ${scope} days`
+                  ? 'finding'
+                  : `finding from latest scans in the last ${scope} days`
                 : scope === 'current'
-                  ? 'findings on the current scan'
-                  : `findings on current scans from the last ${scope} days`}
+                  ? 'findings'
+                  : `findings from latest scans in the last ${scope} days`}
             </Typography>
           </Box>
           <Box className={classes.mixBar}>

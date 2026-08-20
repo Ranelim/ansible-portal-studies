@@ -41,15 +41,15 @@ const QUALITY_TAB_COPY: Record<
 > = {
   overview: {
     subtitle:
-      'Latest completed scan for each git repository — what is true now. History is on Scans.',
+      'Posture from each repository’s latest completed scan. History is on Scans.',
   },
   remediations: {
     subtitle:
-      'Live fix sessions against the current scan. Start a scan from the header for a new snapshot.',
+      'Live fix sessions against each repository’s latest scan. Start a scan from the header for a new snapshot.',
   },
   scans: {
     subtitle:
-      'Every scan as a receipt. Current is the latest per repository; older scans are superseded.',
+      'Every scan as a receipt. Latest is the most recent completed scan per repository; older scans are superseded.',
   },
 };
 
@@ -227,7 +227,7 @@ export const ProjectsTabs: React.FC = () => {
                 <PageHelpIcon
                   tooltipLabel="What is Quality?"
                   title="What is Quality?"
-                  description="Scans Ansible content in your git repositories. Overview is the current scan — the latest completed scan per repository. Remediations are live fix sessions. Scans is history."
+                  description="Scans Ansible content in your git repositories. Overview uses each repository’s latest completed scan. Remediations are live fix sessions. Scans is history."
                 />
               ) : (
                 surface === 'list' && (

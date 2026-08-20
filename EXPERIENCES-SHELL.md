@@ -45,7 +45,7 @@ Not eng SoT until ADRs on `ansible-rhdh-plugins` `main`. Mirror: `.cursor/rules/
   - **A — Automate experience + rail:** Automate stays on Bridge; side rail; all experiences use sibling **Templates · Runs** with `SidebarDivider`.
   - **B — No Automate; masthead + tabs:** Automate experience removed; masthead **+** = Templates \| Runs tabs; Develop/Compliance/Edge get one **Automate** rail item + page tabs.
 - **Experience Settings omitted** from Automate / Develop / Compliance / Edge rails until real personal prefs exist (prototype page route may remain; not in nav). Sync schedule → Administration; Sync now → object action.
-- **Develop objects:** One **Develop** experience. Git Repositories (nested: Repositories · Quality) · Collections · **Execution Env.** (rail; page title stays Execution Environments). Quality page: **Start scan** in Header; tabs Overview · Remediations · Scans (per-tab Header subtitles). Overview: **Current scan \| Last 7 days \| Last 30 days** MUI ToggleButtonGroup; current = latest completed scan per repo (do not hide Health for age; do not say obsolete). Remediations ignore the window. APME = Class B on Git Repositories — not a separate experience, not a Content quality pin. **No truncated rail labels** (`portal-rail-labels.mdc`).
+- **Develop objects:** One **Develop** experience. Git Repositories (nested: Repositories · Quality) · Collections · **Execution Env.** (rail; page title stays Execution Environments). Quality page: **Start scan** in Header; tabs Overview · Remediations · Scans (per-tab Header subtitles). Overview: **Latest scans \| Last 7 days \| Last 30 days** MUI ToggleButtonGroup; latest = most recent completed scan per repo (do not hide Health for age; do not say obsolete; do not say “current”). Remediations ignore the window. APME = Class B on Git Repositories — not a separate experience, not a Content quality pin. **No truncated rail labels** (`portal-rail-labels.mdc`).
 - **Compliance object:** Inventories only. Profiles / Scans = host tabs — not rail, not Settings.
 - **Learn (Develop / Compliance / Edge):** after Class A objects — quiet divider, then **Documentation** + **Learning Paths** (no “Learn” rail label). Not on Automate or Admin.
 - **Automate = rail-less marketplace** — page tabs **Templates | Activity** only (Catalog dropped). Multi-seat: **Back to Experiences**. SME: no Back on Automate; Search → **Back to Automate**.
@@ -70,12 +70,14 @@ Not eng SoT until ADRs on `ansible-rhdh-plugins` `main`. Mirror: `.cursor/rules/
 | Next | Stakeholder **login → intro → Experiences** flow |
 | Next | Account chrome: **Back** (not “Developer”) |
 | Done (park) | Admin Sync **Option 1** forced (`FORCED_ADMIN_SYNC_IA = 'opt1'`); magenta compare bar hidden; Overview **Sync health** card removed. Opt 2 code kept for revive. Still open under Opt 1: tab **Sync settings**; modal→history; drop Quality from Integrations |
+| Done (park) | Quality remediation wizard **Inline visual** forced (`FORCED_REMEDIATION_WIZARD = 'visual'` in `ApmeRemediationPage.tsx`); Prototype compare strip hidden. Original / Redesign / Inline AI code kept — set `null` to revive `?wizard=` toggle. |
 | Done | Admin **Experiences** beside **Plugins**; **Notifications** admin shell (platform defaults — personal prefs stay in profile). |
 | Decide | **Resources** header on experience rails for Class A only |
 | Later | Real usage metrics + uninstall; nested-nav example; Cate/Kate APME feedback |
 
 Waffle masthead try = parked (`SHOW_EXPERIENCES_WAFFLE = false`). Multi-seat return = rail back chevron + quiet `ExperienceSwitcher` (`EXPERIENCE_CHROME_HIT = 32`, square chevron). Do **not** unify into one split box.
 Admin Sync compare bar = parked (`FORCED_ADMIN_SYNC_IA = 'opt1'`; set `null` + restore `ADMIN_SYNC_IA_BAR_HEIGHT = 36` to revive).
+Quality remediation compare strip = parked (`FORCED_REMEDIATION_WIZARD = 'visual'` — Inline visual / restyled 3-step Inline AI). Set `null` in `ApmeRemediationPage.tsx` to revive Original · Redesign · Inline AI · Inline visual.
 Content quality **Findings** tab = parked (`SHOW_CONTENT_QUALITY_FINDINGS_TAB = false` in `plugins/self-service/.../quality/contentQualityIa.ts`; set `true` to revive by-rule rollup). Route `/apme/findings` + `QualityDashboardTabContent` kept.
 
 

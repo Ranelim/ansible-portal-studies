@@ -66,7 +66,15 @@ type StepDef = { id: StepId; label: string };
 /** Prototype compare. Stale `?wizard=fixes|optin` falls back to Original. */
 type WizardChrome = 'original' | 'new' | 'inline' | 'visual';
 
+/**
+ * Force Inline visual (latest designed 3-step Inline AI restyle) while the
+ * compare strip is parked. Original / Redesign / Inline AI code stays intact.
+ * Set null to restore the Prototype toggle + `?wizard=` switching.
+ */
+const FORCED_REMEDIATION_WIZARD: WizardChrome | null = 'visual';
+
 function parseWizardChrome(value: string | null): WizardChrome {
+  if (FORCED_REMEDIATION_WIZARD) return FORCED_REMEDIATION_WIZARD;
   if (value === 'new') return 'new';
   if (value === 'inline') return 'inline';
   if (value === 'visual') return 'visual';
@@ -1341,6 +1349,7 @@ export const ApmeRemediationPage = () => {
   return (
     <Page themeId="app">
       <Content>
+        {FORCED_REMEDIATION_WIZARD ? null : (
         <Box
           className={classes.compareStrip}
           role="region"
@@ -1378,6 +1387,7 @@ export const ApmeRemediationPage = () => {
                 : 'SPA 9-step. On AI assessment, check the findings you want AI to generate — then Generate AI suggestions. Unchecked findings skip AI.'}
           </Typography>
         </Box>
+        )}
         <Box className={visual ? classes.wrapVisual : classes.wrap}>
           <Button
             variant="text"
