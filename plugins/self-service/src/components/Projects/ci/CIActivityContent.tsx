@@ -29,9 +29,8 @@ import VerifiedUserOutlinedIcon from '@material-ui/icons/VerifiedUserOutlined';
 import CodeIcon from '@material-ui/icons/Code';
 import { CatalogFilterLayout } from '@backstage/plugin-catalog-react';
 import { statusColors } from '../../common/statusColors';
-import { DEVSPACES_BASE_URL, DEMO_CONNECTIONS } from '../../Admin/syncDemoData';
-
-const isDevSpacesConnected = DEMO_CONNECTIONS.find(c => c.id === 'devspaces')?.status === 'Active';
+import { DEVSPACES_BASE_URL } from '../../Admin/syncDemoData';
+import { isDevSpacesConnected } from '../../../hooks/devSpacesSetup';
 
 type CIRunStatus = 'success' | 'failure' | 'running' | 'cancelled' | 'queued';
 
@@ -406,7 +405,7 @@ export const CIActivityContent = () => {
       field: 'time',
       width: '120px',
     },
-    ...(isDevSpacesConnected ? [{
+    ...(isDevSpacesConnected() ? [{
       title: '',
       field: 'actions' as keyof CIRun,
       width: '48px',

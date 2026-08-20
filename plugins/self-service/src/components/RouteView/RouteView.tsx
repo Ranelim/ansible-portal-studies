@@ -56,6 +56,7 @@ import { SetupWizardPage } from '../Setup/SetupWizardPage';
 import { GeneralPage } from '../Admin/GeneralPage';
 import { DevSpacesDetailPage } from '../Admin/DevSpacesDetailPage';
 import { PluginsPage } from '../Admin/PluginsPage';
+import { SHOW_ADMIN_PLUGINS } from '../Admin/adminPluginsTrial';
 import { ExperiencesAdminPage } from '../Admin/ExperiencesAdminPage';
 import { CreateExperienceWizardPage } from '../Admin/CreateExperienceWizardPage';
 import { NotificationsAdminPage } from '../Admin/NotificationsAdminPage';
@@ -322,7 +323,16 @@ const RouteViewContent = () => {
         <Route path="admin/experiences" element={<ExperiencesAdminPage />} />
         <Route path="orchestrator" element={<OrchestratorPage />} />
         <Route path="orchestrator/*" element={<OrchestratorPage />} />
-        <Route path="admin/plugins" element={<PluginsPage />} />
+        <Route
+          path="admin/plugins"
+          element={
+            SHOW_ADMIN_PLUGINS ? (
+              <PluginsPage />
+            ) : (
+              <Navigate to="/self-service/admin/experiences" replace />
+            )
+          }
+        />
         <Route
           path="admin/notifications"
           element={<NotificationsAdminPage />}

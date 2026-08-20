@@ -1,8 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
-import { DEMO_CONNECTIONS } from '../../Admin/syncDemoData';
+import { isDevSpacesConnected } from '../../../hooks/devSpacesSetup';
 import { useUserRoleContext } from '../../../hooks/useUserRole';
-
-const isDevSpacesConnected = DEMO_CONNECTIONS.find(c => c.id === 'devspaces')?.status === 'Active';
 import {
   Box,
   Typography,
@@ -429,7 +427,7 @@ const ViolationRow = ({
         </Typography>
 
         {/* IDE column */}
-        {repoUrl && isDevSpacesConnected && hasRole('developer') ? (
+        {repoUrl && isDevSpacesConnected() && hasRole('developer') ? (
           <Box style={{ width: 28, display: 'flex', justifyContent: 'center', flexShrink: 0 }}>
             <DarkTooltip title={`Open ${v.file}:${v.lineStart} in Dev Spaces`} arrow>
               <IconButton
@@ -522,7 +520,7 @@ const ViolationRow = ({
           )}
 
           {/* Dev Spaces link */}
-          {repoUrl && isDevSpacesConnected && hasRole('developer') && (
+          {repoUrl && isDevSpacesConnected() && hasRole('developer') && (
             <Box display="flex" alignItems="center" style={{ gap: 6, marginTop: 2 }}>
               <CodeIcon style={{ fontSize: 14, color: statusColors.info }} />
               <Typography
@@ -942,7 +940,7 @@ export const QualityTab = ({
 
               {/* Action area */}
               <Box display="flex" alignItems="center" style={{ gap: 8 }}>
-                {isDevSpacesConnected && isDeveloper && quality.violations.length > 0 && (
+                {isDevSpacesConnected() && isDeveloper && quality.violations.length > 0 && (
                   <Button
                     size="small" variant="outlined"
                     startIcon={<CodeIcon style={{ fontSize: 14 }} />}
@@ -1086,7 +1084,7 @@ export const QualityTab = ({
                 </Typography>
               </Box>
               <Box display="flex" alignItems="center" style={{ gap: 4 }}>
-                {isDevSpacesConnected && (
+                {isDevSpacesConnected() && (
                   <Button
                     size="small" variant="outlined"
                     startIcon={<CodeIcon style={{ fontSize: 14 }} />}
@@ -1214,7 +1212,7 @@ export const QualityTab = ({
                     Remediate{selectedViolations.size > 0 ? ` (${selectedViolations.size})` : ''}
                   </Button>
                 )}
-                {isDevSpacesConnected && isDeveloper && selectedViolations.size > 0 && (
+                {isDevSpacesConnected() && isDeveloper && selectedViolations.size > 0 && (
                   <Button
                     size="small" variant="outlined"
                     startIcon={<CodeIcon style={{ fontSize: 14 }} />}
@@ -1303,7 +1301,7 @@ export const QualityTab = ({
                   <Typography style={{ fontSize: 10, fontWeight: 600, color: '#999', textTransform: 'uppercase', letterSpacing: 0.5, minWidth: 90, textAlign: 'right' }}>
                     Status
                   </Typography>
-                  {repoUrl && isDevSpacesConnected && (
+                  {repoUrl && isDevSpacesConnected() && (
                     <Typography style={{ fontSize: 10, fontWeight: 600, color: '#999', textTransform: 'uppercase', letterSpacing: 0.5, width: 28, textAlign: 'center' }}>
                       IDE
                     </Typography>
@@ -1394,7 +1392,7 @@ export const QualityTab = ({
                         <Chip size="small" label={`${hunks.length} change${hunks.length !== 1 ? 's' : ''}`}
                           style={{ fontSize: 10, height: 18, backgroundColor: 'rgba(0,0,0,0.06)', color: '#666' }} />
                       </Box>
-                      {repoUrl && isDevSpacesConnected && (
+                      {repoUrl && isDevSpacesConnected() && (
                         <DarkTooltip title={`Open ${file} in Dev Spaces`} arrow>
                           <IconButton size="small"
                             onClick={() => window.open(`/devspaces-mockup.html?file=${encodeURIComponent(file)}`, '_blank')}
@@ -2612,7 +2610,7 @@ export const QualityTabUnified = ({
                 style={{ textTransform: 'none', fontSize: 13, fontWeight: 500 }}>
                 View pull request
               </Button>
-              {isDevSpacesConnected && isDeveloper && (
+              {isDevSpacesConnected() && isDeveloper && (
                 <Button size="small" variant="contained" color="primary" startIcon={<CodeIcon style={{ fontSize: 14 }} />}
                   onClick={() => window.open(`/devspaces-mockup.html?state=pr-review&branch=${encodeURIComponent(remBranch)}`, '_blank')}
                   style={{ textTransform: 'none', fontSize: 13, fontWeight: 500 }}>

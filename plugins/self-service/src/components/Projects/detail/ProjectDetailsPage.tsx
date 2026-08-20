@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import { DEVSPACES_BASE_URL, DEMO_CONNECTIONS } from '../../Admin/syncDemoData';
+import { DEVSPACES_BASE_URL } from '../../Admin/syncDemoData';
+import { isDevSpacesConnected } from '../../../hooks/devSpacesSetup';
 import { useUserRoleContext } from '../../../hooks/useUserRole';
 import { useParams, useNavigate, useSearchParams, Link as RouterLink } from 'react-router-dom';
 import {
@@ -638,8 +639,6 @@ const LinksCard = ({ project, isPushedToAap }: { project: DemoProject; isPushedT
 
 
 
-const devSpacesConnection = DEMO_CONNECTIONS.find(c => c.id === 'devspaces');
-const isDevSpacesConfigured = devSpacesConnection?.status === 'Active';
 
 
 // ---------------------------------------------------------------------------
@@ -1133,7 +1132,7 @@ export const ProjectDetailsPage = () => {
             >
               View source
             </Button>
-            {isDevSpacesConfigured && pageHasRole('developer') && (
+            {isDevSpacesConnected() && pageHasRole('developer') && (
               <Button
                 variant="outlined" size="small"
                 startIcon={<CodeIcon style={{ fontSize: 16 }} />}
@@ -1143,7 +1142,7 @@ export const ProjectDetailsPage = () => {
                 Edit in Dev Spaces
               </Button>
             )}
-            {!isDevSpacesConfigured && pageHasRole('developer') && (
+            {!isDevSpacesConnected() && pageHasRole('developer') && (
               <Tooltip title="Edit in Dev Spaces is available when your administrator connects a Dev Spaces instance." arrow>
                 <span>
                   <Button

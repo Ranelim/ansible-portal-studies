@@ -70,7 +70,8 @@ Not eng SoT until ADRs on `ansible-rhdh-plugins` `main`. Mirror: `.cursor/rules/
 | Done (park) | Admin Sync **Option 1** forced (`FORCED_ADMIN_SYNC_IA = 'opt1'`); magenta compare bar hidden; Overview **Sync health** card removed. Opt 2 code kept for revive. Still open under Opt 1: tab **Sync settings**; modal→history; drop Quality from Integrations |
 | Done (park) | Quality remediation wizard **Inline visual** forced (`FORCED_REMEDIATION_WIZARD = 'visual'`). Original · Redesign · Inline AI compare stays hidden. **Continue compare** is live: Current vs Wizard footer (`?cta=current`, default footer). |
 | Done (park) | **Assistant experience** killed (`SHOW_ASSISTANT_EXPERIENCE = false`). Lightspeed FAB stays. Set `true` in `assistantIaTrial.ts` to revive the Bridge card + `/self-service/assistant`. |
-| Done | Admin **Experiences** beside **Plugins**; **Notifications** admin shell (platform defaults — personal prefs stay in profile). |
+| Done (park) | Admin **Plugins** killed (`SHOW_ADMIN_PLUGINS = false`). Rail item, page, and Experiences **Manage plugins** hidden. Set `true` in `adminPluginsTrial.ts` to revive. `/self-service/admin/plugins` redirects to Experiences. |
+| Done | Admin **Experiences**; **Notifications** admin shell (platform defaults — personal prefs stay in profile). |
 | Decide | **Resources** header on experience rails for Class A only |
 | Later | Real usage metrics + uninstall; nested-nav example; Cate/Kate APME feedback |
 

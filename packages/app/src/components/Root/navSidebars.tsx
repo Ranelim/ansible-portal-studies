@@ -11,6 +11,10 @@ import {
   isSmeRole,
   useAdminSyncIa,
   useTemplatesRunsIa,
+  useExperienceSetup,
+  useDevSpacesSetup,
+  useAttentionSeen,
+  SHOW_ADMIN_PLUGINS,
   type NavExperience,
   type ExperienceId,
   assistantUsesSideNav,
@@ -531,9 +535,30 @@ const LearnItems = () => (
   </>
 );
 
+const useAdminNavBadgeStyles = makeStyles({
+  dot: {
+    display: 'inline-block',
+    width: 8,
+    height: 8,
+    borderRadius: '50%',
+    backgroundColor: '#0066CC',
+  },
+});
+
+const RailAttentionDot = ({ label }: { label: string }) => {
+  const classes = useAdminNavBadgeStyles();
+  return <span className={classes.dot} aria-label={label} />;
+};
+
 const AdminItems = () => {
   const { variant } = useAdminSyncIa();
   const showSyncRail = variant === 'opt2';
+  const { setup: orchestratorSetup } = useExperienceSetup('orchestrator');
+  const { connected: devSpacesConnected } = useDevSpacesSetup();
+  const { seen: discoverSeen } = useAttentionSeen('experiences-discover');
+  const { seen: needsSetupSeen } = useAttentionSeen('integrations-needs-setup');
+  const showExperienceDot = !orchestratorSetup && !discoverSeen;
+  const showIntegrationsDot = !devSpacesConnected && !needsSetupSeen;
 
   return (
     <>
@@ -546,7 +571,11 @@ const AdminItems = () => {
         icon={LinkIcon}
         to="/self-service/admin/integrations"
         text="Integrations"
-      />
+      >
+        {showIntegrationsDot ? (
+          <RailAttentionDot label="A connection needs setup" />
+        ) : null}
+      </SidebarItem>
       {showSyncRail && (
         <SidebarItem
           icon={SyncIcon}
@@ -559,12 +588,18 @@ const AdminItems = () => {
         icon={AppsIcon}
         to="/self-service/admin/experiences"
         text="Experiences"
-      />
-      <SidebarItem
-        icon={ExtensionIcon}
-        to="/self-service/admin/plugins"
-        text="Plugins"
-      />
+      >
+        {showExperienceDot ? (
+          <RailAttentionDot label="A new experience needs setup" />
+        ) : null}
+      </SidebarItem>
+      {SHOW_ADMIN_PLUGINS && (
+        <SidebarItem
+          icon={ExtensionIcon}
+          to="/self-service/admin/plugins"
+          text="Plugins"
+        />
+      )}
       <SidebarItem
         icon={NotificationsIcon}
         to="/self-service/admin/notifications"

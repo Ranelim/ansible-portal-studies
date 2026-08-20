@@ -131,7 +131,7 @@ export const DEMO_CONNECTIONS: ConnectionProvider[] = [
     id: 'devspaces',
     name: 'OpenShift Dev Spaces',
     type: 'devtools',
-    status: 'Active',
+    status: 'Not configured',
     host: 'devspaces.apps.ansible-rhdh.testing.ansible.com',
     syncJobs: [],
   },

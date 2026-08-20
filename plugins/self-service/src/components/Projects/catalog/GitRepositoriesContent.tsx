@@ -1,8 +1,7 @@
 import { useState, useMemo, useCallback } from 'react';
-import { DEVSPACES_BASE_URL, DEMO_CONNECTIONS } from '../../Admin/syncDemoData';
+import { DEVSPACES_BASE_URL } from '../../Admin/syncDemoData';
+import { isDevSpacesConnected } from '../../../hooks/devSpacesSetup';
 import { useUserRoleContext } from '../../../hooks/useUserRole';
-
-const isDevSpacesConnected = DEMO_CONNECTIONS.find(c => c.id === 'devspaces')?.status === 'Active';
 import { Table, TableColumn } from '@backstage/core-components';
 import {
   Box,
@@ -386,7 +385,7 @@ const RowActionsMenu = ({
         transformOrigin={{ vertical: 'top', horizontal: 'right' }}
         getContentAnchorEl={null}
       >
-        {isDevSpacesConnected && hasRole('developer') && (
+        {isDevSpacesConnected() && hasRole('developer') && (
           <MenuItem onClick={() => {
             window.open(`${DEVSPACES_BASE_URL}/#${repo.url}/tree/${repo.branch}`, '_blank');
             handleClose();
@@ -883,7 +882,7 @@ export const GitRepositoriesContent = () => {
       headerStyle: { textAlign: 'right' as const, paddingRight: 8 },
       render: (row: GitRepository) => (
         <Box className={classes.actionsCell}>
-          {isDevSpacesConnected && hasRole('developer') && (
+          {isDevSpacesConnected() && hasRole('developer') && (
             <Tooltip title="Edit in Dev Spaces" arrow>
               <IconButton
                 size="small"

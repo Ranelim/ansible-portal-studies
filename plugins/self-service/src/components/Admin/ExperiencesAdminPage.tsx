@@ -1,23 +1,41 @@
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Page, Header, Content } from '@backstage/core-components';
 import {
   Box,
   Button,
   Chip,
   Switch,
+  Tab,
+  Tabs,
   Typography,
   makeStyles,
 } from '@material-ui/core';
 import { PageHelpIcon } from '../common/PageHelpIcon';
+import { AttentionDot } from '../common/AttentionDot';
+import { statusColors } from '../common/statusColors';
 import {
   useBridgeExperienceVisibility,
   type BridgeExperienceId,
 } from '../../hooks/bridgeExperienceVisibility';
 import { useExperienceSetup } from '../../hooks/experienceSetup';
+import { useAttentionSeen } from '../../hooks/attentionSeen';
+import { SHOW_ADMIN_PLUGINS } from './adminPluginsTrial';
 import { ExperienceThumbnail } from '../IaPlaceholder/experienceVisuals';
 import type { JobExperienceId } from '../../hooks/experienceRecent';
 
 const useStyles = makeStyles(theme => ({
+  pageTabs: {
+    marginBottom: theme.spacing(2),
+    borderBottom: `1px solid ${theme.palette.divider}`,
+  },
+  tabLabel: {
+    display: 'inline-flex',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing(0.75),
+    lineHeight: 1,
+  },
   list: {
     display: 'flex',
     flexDirection: 'column',
@@ -83,6 +101,11 @@ const useStyles = makeStyles(theme => ({
     borderRadius: 20,
     fontWeight: 500,
   },
+  empty: {
+    fontSize: 14,
+    color: theme.palette.text.secondary,
+    padding: theme.spacing(3, 1),
+  },
 }));
 
 type AdminExperience = {
@@ -94,6 +117,8 @@ type AdminExperience = {
   pluginsSummary: string;
   needsSetup?: boolean;
 };
+
+type ExperienceFilterTab = 'all' | 'ready' | 'discover';
 
 const ADMIN_EXPERIENCES: AdminExperience[] = [
   {
@@ -142,15 +167,65 @@ const ADMIN_EXPERIENCES: AdminExperience[] = [
   },
 ];
 
+const tabFromSearch = (search: string): ExperienceFilterTab => {
+  const raw = new URLSearchParams(search).get('tab');
+  if (raw === 'ready' || raw === 'discover') return raw;
+  return 'all';
+};
+
+const isAwaitingSetup = (
+  exp: AdminExperience,
+  orchestratorSetup: boolean,
+) => Boolean(exp.needsSetup) && !orchestratorSetup;
+
 /**
  * Administration → Experiences
  * Govern Bridge job worlds. Plugins = capability install; Access Control = RBAC SoT.
  */
 export const ExperiencesAdminPage = () => {
   const classes = useStyles();
+  const location = useLocation();
   const navigate = useNavigate();
   const { visibility, setVisible } = useBridgeExperienceVisibility();
   const { setup: orchestratorSetup } = useExperienceSetup('orchestrator');
+  const { seen: discoverSeen, markSeen: markDiscoverSeen } =
+    useAttentionSeen('experiences-discover');
+  const tabFromUrl = tabFromSearch(location.search);
+  const [tab, setTab] = useState<ExperienceFilterTab>(tabFromUrl);
+
+  useEffect(() => {
+    setTab(tabFromUrl);
+  }, [tabFromUrl]);
+
+  useEffect(() => {
+    if (tab === 'discover') markDiscoverSeen();
+  }, [tab, markDiscoverSeen]);
+
+  const discoverCount = ADMIN_EXPERIENCES.filter(exp =>
+    isAwaitingSetup(exp, orchestratorSetup),
+  ).length;
+
+  const visible = useMemo(
+    () =>
+      ADMIN_EXPERIENCES.filter(exp => {
+        const awaiting = isAwaitingSetup(exp, orchestratorSetup);
+        if (tab === 'discover') return awaiting;
+        if (tab === 'ready') return !awaiting;
+        return true;
+      }),
+    [orchestratorSetup, tab],
+  );
+
+  const setFilterTab = (next: ExperienceFilterTab) => {
+    setTab(next);
+    if (next === 'discover') markDiscoverSeen();
+    navigate(
+      next === 'all'
+        ? '/self-service/admin/experiences'
+        : `/self-service/admin/experiences?tab=${next}`,
+      { replace: true },
+    );
+  };
 
   return (
     <Page themeId="app">
@@ -161,106 +236,150 @@ export const ExperiencesAdminPage = () => {
             <PageHelpIcon
               tooltipLabel="What is Experiences admin?"
               title="Manage Experiences"
-              description="Control which job-mode experiences appear on the Bridge for this Portal instance. Experiences that still need setup stay off the switcher until you enable them. Who can enter each experience is defined in Access Control."
+              description="Control which job-mode experiences appear on the Bridge for this Portal instance. Ready experiences can be shown or hidden. Discover lists installed experiences that still need setup before they appear for users. Who can enter each experience is defined in Access Control."
             />
           </Box>
         }
         pageTitleOverride="Experiences"
-        subtitle="Show or hide experiences on the Bridge and in the experience switcher. Set up installed experiences before they appear for users."
+        subtitle="Show or hide ready experiences on the Bridge. Set up anything under Discover before it appears for users."
       />
       <Content>
-        <Box className={classes.list}>
-          {ADMIN_EXPERIENCES.map(exp => {
-            const awaitingSetup = Boolean(exp.needsSetup) && !orchestratorSetup;
-            return (
-              <Box key={exp.id} className={classes.row}>
-                <Box className={classes.identity}>
-                  <ExperienceThumbnail id={exp.id} />
-                  <Box style={{ minWidth: 0 }}>
-                    <Box className={classes.titleRow}>
-                      <Typography className={classes.title}>
-                        {exp.label}
-                      </Typography>
-                      {awaitingSetup && (
-                        <Chip size="small" label="Needs setup" />
-                      )}
-                    </Box>
-                    <Typography className={classes.description}>
-                      {exp.description}
-                    </Typography>
-                    <Typography className={classes.meta}>
-                      Seats (summary): {exp.seatsSummary}
-                      {' · '}
-                      Plugins: {exp.pluginsSummary}
-                    </Typography>
-                  </Box>
-                </Box>
-                <Box className={classes.actions}>
-                  {awaitingSetup ? (
-                    <Button
-                      size="small"
-                      variant="contained"
-                      color="primary"
-                      className={classes.btn}
-                      onClick={() =>
-                        navigate(
-                          `/self-service/admin/experiences/${exp.id}/setup`,
-                        )
-                      }
-                    >
-                      Set up
-                    </Button>
-                  ) : (
-                    <>
-                      <Box className={classes.visibility}>
-                        <Typography
-                          className={classes.visibilityLabel}
-                          component="span"
-                        >
-                          On Bridge
+        <Tabs
+          className={classes.pageTabs}
+          value={tab}
+          onChange={(_e, v) => setFilterTab(v)}
+          indicatorColor="primary"
+          textColor="primary"
+          aria-label="Experience filters"
+        >
+          <Tab label="All" value="all" />
+          <Tab label="Ready" value="ready" />
+          <Tab
+            label={
+              discoverCount > 0 && !discoverSeen ? (
+                <span className={classes.tabLabel}>
+                  <span>Discover</span>
+                  <AttentionDot label="Experiences need setup" />
+                </span>
+              ) : (
+                'Discover'
+              )
+            }
+            value="discover"
+          />
+        </Tabs>
+
+        {visible.length === 0 ? (
+          <Typography className={classes.empty}>
+            {tab === 'discover'
+              ? 'No experiences to set up. Installed experiences that still need setup appear here.'
+              : 'No experiences in this view.'}
+          </Typography>
+        ) : (
+          <Box className={classes.list}>
+            {visible.map(exp => {
+              const awaitingSetup = isAwaitingSetup(exp, orchestratorSetup);
+              return (
+                <Box key={exp.id} className={classes.row}>
+                  <Box className={classes.identity}>
+                    <ExperienceThumbnail id={exp.id} />
+                    <Box style={{ minWidth: 0 }}>
+                      <Box className={classes.titleRow}>
+                        <Typography className={classes.title}>
+                          {exp.label}
                         </Typography>
-                        <Switch
-                          color="primary"
-                          checked={visibility[exp.id as BridgeExperienceId]}
-                          onChange={(_, checked) =>
-                            setVisible(exp.id as BridgeExperienceId, checked)
-                          }
-                          inputProps={{
-                            'aria-label': `Show ${exp.label} on Experiences Bridge`,
-                          }}
-                        />
+                        {awaitingSetup && (
+                          <Chip
+                            size="small"
+                            label="Needs setup"
+                            style={{
+                              height: 22,
+                              fontSize: 11,
+                              backgroundColor: 'rgba(0,102,204,0.15)',
+                              color: statusColors.info,
+                            }}
+                          />
+                        )}
                       </Box>
+                      <Typography className={classes.description}>
+                        {exp.description}
+                      </Typography>
+                      <Typography className={classes.meta}>
+                        Seats (summary): {exp.seatsSummary}
+                        {' · '}
+                        Plugins: {exp.pluginsSummary}
+                      </Typography>
+                    </Box>
+                  </Box>
+                  <Box className={classes.actions}>
+                    {awaitingSetup ? (
                       <Button
                         size="small"
-                        variant="outlined"
+                        variant="contained"
                         color="primary"
                         className={classes.btn}
                         onClick={() =>
                           navigate(
-                            `/self-service/admin/plugins?experience=${encodeURIComponent(
-                              exp.pluginsFilter,
-                            )}`,
+                            `/self-service/admin/experiences/${exp.id}/setup`,
                           )
                         }
                       >
-                        Manage plugins
+                        Set up
                       </Button>
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        color="primary"
-                        className={classes.btn}
-                        onClick={() => navigate('/rbac')}
-                      >
-                        Manage access
-                      </Button>
-                    </>
-                  )}
+                    ) : (
+                      <>
+                        <Box className={classes.visibility}>
+                          <Typography
+                            className={classes.visibilityLabel}
+                            component="span"
+                          >
+                            On Bridge
+                          </Typography>
+                          <Switch
+                            color="primary"
+                            checked={visibility[exp.id as BridgeExperienceId]}
+                            onChange={(_, checked) =>
+                              setVisible(exp.id as BridgeExperienceId, checked)
+                            }
+                            inputProps={{
+                              'aria-label': `Show ${exp.label} on Experiences Bridge`,
+                            }}
+                          />
+                        </Box>
+                        {SHOW_ADMIN_PLUGINS && (
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            color="primary"
+                            className={classes.btn}
+                            onClick={() =>
+                              navigate(
+                                `/self-service/admin/plugins?experience=${encodeURIComponent(
+                                  exp.pluginsFilter,
+                                )}`,
+                              )
+                            }
+                          >
+                            Manage plugins
+                          </Button>
+                        )}
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          color="primary"
+                          className={classes.btn}
+                          onClick={() => navigate('/rbac')}
+                        >
+                          Manage access
+                        </Button>
+                      </>
+                    )}
+                  </Box>
                 </Box>
-              </Box>
-            );
-          })}
-        </Box>
+              );
+            })}
+          </Box>
+        )}
       </Content>
     </Page>
   );

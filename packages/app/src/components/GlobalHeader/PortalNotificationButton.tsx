@@ -6,9 +6,17 @@ import Tooltip from '@mui/material/Tooltip';
 import NotificationIcon from '@mui/icons-material/NotificationsOutlined';
 import type { CSSProperties } from 'react';
 import {
+  useUserRoleContext,
+  useExperienceSetup,
+  useDevSpacesSetup,
+} from '@ansible/plugin-backstage-self-service';
+import {
   mastheadIconButtonSx,
   mastheadTooltipChildSx,
 } from './mastheadIconSx';
+import { getAdminSetupNotifications } from '../Notifications/adminSetupNotifications';
+
+const DEMO_UNREAD_COUNT = 3;
 
 /**
  * Notifications — same masthead icon grid as Create / Starred / Help.
@@ -18,7 +26,7 @@ export const PortalNotificationButton = ({
   tooltip,
   to = '/notifications',
   layout,
-  unreadCount = 3,
+  unreadCount,
 }: {
   title?: string;
   tooltip?: string;
@@ -28,6 +36,16 @@ export const PortalNotificationButton = ({
 }) => {
   const navigate = useNavigate();
   const { pathname } = useLocation();
+  const { hasRole } = useUserRoleContext();
+  const { setup: orchestratorSetup } = useExperienceSetup('orchestrator');
+  const { connected: devSpacesConnected } = useDevSpacesSetup();
+  const setupUnread = hasRole('admin')
+    ? getAdminSetupNotifications({
+        devSpacesConnected,
+        orchestratorSetup,
+      }).length
+    : 0;
+  const badgeCount = unreadCount ?? DEMO_UNREAD_COUNT + setupUnread;
   const active =
     pathname === to || pathname.startsWith(`${to.replace(/\/$/, '')}/`);
 
@@ -46,9 +64,9 @@ export const PortalNotificationButton = ({
             aria-current={active ? 'page' : undefined}
             sx={mastheadIconButtonSx(active)}
           >
-            {unreadCount > 0 ? (
+            {badgeCount > 0 ? (
               <Badge
-                badgeContent={unreadCount}
+                badgeContent={badgeCount}
                 color="error"
                 max={999}
                 overlap="circular"

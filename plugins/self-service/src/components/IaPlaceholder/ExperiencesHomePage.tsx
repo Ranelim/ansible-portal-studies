@@ -50,6 +50,10 @@ import {
   EXPERIENCE_ACCENT,
   ExperienceThumbnail,
 } from './experienceVisuals';
+import { AttentionDot } from '../common/AttentionDot';
+import { useExperienceSetup } from '../../hooks/experienceSetup';
+import { useDevSpacesSetup } from '../../hooks/devSpacesSetup';
+import { useAttentionSeen } from '../../hooks/attentionSeen';
 
 type SortMode = 'recent' | 'az';
 type CardStyle = 'accent' | 'hub';
@@ -276,6 +280,11 @@ const useStyles = makeStyles(theme => ({
     '& .MuiButton-startIcon': {
       color: 'inherit',
     },
+  },
+  adminButtonLabel: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: theme.spacing(0.75),
   },
   toolbar: {
     display: 'flex',
@@ -552,6 +561,13 @@ export const ExperiencesHomePage = () => {
   const { setExperience } = useNavIaModel();
   const isAdmin = hasRole('admin');
   const { visibility: bridgeVisibility } = useBridgeExperienceVisibility();
+  const { setup: orchestratorSetup } = useExperienceSetup('orchestrator');
+  const { connected: devSpacesConnected } = useDevSpacesSetup();
+  const { seen: discoverSeen } = useAttentionSeen('experiences-discover');
+  const { seen: needsSetupSeen } = useAttentionSeen('integrations-needs-setup');
+  const showAdminDot =
+    (!orchestratorSetup && !discoverSeen) ||
+    (!devSpacesConnected && !needsSetupSeen);
 
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<SortMode>('recent');
@@ -889,8 +905,18 @@ export const ExperiencesHomePage = () => {
               size="small"
               startIcon={<SettingsIcon fontSize="small" />}
               onClick={openAdministration}
+              aria-label={
+                showAdminDot
+                  ? 'Administration, setup needed'
+                  : undefined
+              }
             >
-              Administration
+              <span className={classes.adminButtonLabel}>
+                Administration
+                {showAdminDot ? (
+                  <AttentionDot label="Setup needed in Administration" />
+                ) : null}
+              </span>
             </Button>
           )}
         </Box>

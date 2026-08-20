@@ -153,13 +153,44 @@ const useStyles = makeStyles(theme => ({
     maxWidth: 1280,
     paddingBottom: theme.spacing(4),
   },
+  /**
+   * Fill the remaining well under the compare strip so the step footer
+   * stays on screen. `100vh - 320px` sat below the fold (masthead +
+   * compare + stepper) while the findings action bar stayed sticky.
+   */
+  footerSession: {
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden',
+    boxSizing: 'border-box',
+    height: 'calc(100vh - var(--portal-chrome-top, 64px) - 3rem - 40px)',
+    maxHeight: 'calc(100vh - var(--portal-chrome-top, 64px) - 3rem - 40px)',
+  },
   wrapVisualFooter: {
-    paddingBottom: theme.spacing(1),
+    flex: 1,
+    minHeight: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden',
+    paddingBottom: 0,
+    width: '100%',
+  },
+  chrome: {
+    flexShrink: 0,
+    width: '100%',
+  },
+  reviewFill: {
+    flex: 1,
+    minHeight: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden',
   },
   compareStrip: {
     position: 'sticky',
     top: 0,
     zIndex: 2,
+    flexShrink: 0,
     display: 'flex',
     alignItems: 'center',
     flexWrap: 'wrap',
@@ -189,6 +220,7 @@ const useStyles = makeStyles(theme => ({
     marginLeft: -8,
     marginBottom: theme.spacing(0.5),
     minWidth: 0,
+    alignSelf: 'flex-start',
     borderRadius: 16,
     '& .MuiButton-startIcon': {
       marginRight: 6,
@@ -1350,9 +1382,12 @@ export const ApmeRemediationPage = () => {
     );
   })();
 
+  const footerMode = visual && ctaLayout === 'footer';
+
   return (
     <Page themeId="app">
       <Content>
+        <Box className={footerMode ? classes.footerSession : undefined}>
         {visual ? (
         <Box
           className={classes.compareStrip}
@@ -1381,7 +1416,7 @@ export const ApmeRemediationPage = () => {
           </ToggleButtonGroup>
           <Typography className={classes.compareHint}>
             {ctaLayout === 'footer'
-              ? 'List actions stay with findings. Continue and Cancel pin to a sticky footer.'
+              ? 'List actions stay with findings. Continue and Cancel stay in the step footer.'
               : 'Continue sits with Accept remaining at the top of findings.'}
           </Typography>
         </Box>
@@ -1427,10 +1462,11 @@ export const ApmeRemediationPage = () => {
         <Box
           className={
             visual
-              ? `${classes.wrapVisual}${ctaLayout === 'footer' ? ` ${classes.wrapVisualFooter}` : ''}`
+              ? `${classes.wrapVisual}${footerMode ? ` ${classes.wrapVisualFooter}` : ''}`
               : classes.wrap
           }
         >
+          <Box className={classes.chrome}>
           <Button
             variant="text"
             color="inherit"
@@ -1452,7 +1488,9 @@ export const ApmeRemediationPage = () => {
             sessionDone={sessionDone}
             bare={visual}
           />
-          {body}
+          </Box>
+          {footerMode ? <Box className={classes.reviewFill}>{body}</Box> : body}
+        </Box>
         </Box>
       </Content>
     </Page>

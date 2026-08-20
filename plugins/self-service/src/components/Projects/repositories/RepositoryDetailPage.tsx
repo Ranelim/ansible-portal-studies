@@ -40,14 +40,13 @@ import SvgIcon from '@material-ui/core/SvgIcon';
 import { useProjectDetailStyles } from '../detail/styles';
 import { statusColors } from '../../common/statusColors';
 import { useUserRoleContext } from '../../../hooks/useUserRole';
-import { DEVSPACES_BASE_URL, DEMO_CONNECTIONS } from '../../Admin/syncDemoData';
+import { DEVSPACES_BASE_URL } from '../../Admin/syncDemoData';
+import { isDevSpacesConnected } from '../../../hooks/devSpacesSetup';
 import {
   DISCOVERED_REPOS,
   DiscoveredRepo,
   DiscoveredResource,
 } from './repositoriesDemoData';
-
-const isDevSpacesConnected = DEMO_CONNECTIONS.find(c => c.id === 'devspaces')?.status === 'Active';
 
 const GitLabIcon = (props: React.ComponentProps<typeof SvgIcon>) => (
   <SvgIcon {...props} viewBox="0 0 24 24">
@@ -906,7 +905,7 @@ export const RepositoryDetailPage = () => {
             </Typography>
           </Box>
           <Box className={classes.actionsRow}>
-            {isDevSpacesConnected && hasRole('developer') && (
+            {isDevSpacesConnected() && hasRole('developer') && (
               <Button
                 variant="outlined"
                 size="small"

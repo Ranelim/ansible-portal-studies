@@ -19,6 +19,7 @@ import CheckCircleOutlineIcon from '@material-ui/icons/CheckCircleOutline';
 import OpenInNewIcon from '@material-ui/icons/OpenInNew';
 import DeleteOutlineIcon from '@material-ui/icons/DeleteOutline';
 import { statusColors } from '../common/statusColors';
+import { useDevSpacesSetup } from '../../hooks/devSpacesSetup';
 
 const useStyles = makeStyles(theme => ({
   infoBox: {
@@ -47,22 +48,20 @@ const useStyles = makeStyles(theme => ({
 
 export const DevSpacesDetailPage = () => {
   const classes = useStyles();
-  const [connected, setConnected] = useState(true);
-  const [savedUrl, setSavedUrl] = useState('https://devspaces.apps.ansible-rhdh.testing.ansible.com');
+  const { connected, url, connect, disconnect } = useDevSpacesSetup();
+  const savedUrl = url;
   const [urlInput, setUrlInput] = useState('');
   const [disconnectOpen, setDisconnectOpen] = useState(false);
 
   const handleSave = () => {
     if (urlInput.trim()) {
-      setSavedUrl(urlInput.trim());
-      setConnected(true);
+      connect(urlInput.trim());
       setUrlInput('');
     }
   };
 
   const handleDisconnect = () => {
-    setConnected(false);
-    setSavedUrl('');
+    disconnect();
     setDisconnectOpen(false);
   };
 
@@ -76,18 +75,24 @@ export const DevSpacesDetailPage = () => {
         subtitle="Browser-based development environments for automation content"
       >
         <Tooltip
-          title={connected ? 'Dev Spaces is connected and available to developers.' : 'Dev Spaces has not been configured yet.'}
+          title={
+            connected
+              ? 'Dev Spaces is connected and available to developers.'
+              : 'Paste a Dev Spaces URL so Edit in Dev Spaces appears on Git Repositories.'
+          }
           arrow
         >
           <Chip
-            label={connected ? 'Connected' : 'Not connected'}
+            label={connected ? 'Connected' : 'Needs setup'}
             size="small"
             style={{
               fontSize: 11,
               height: 22,
               fontWeight: 500,
-              backgroundColor: connected ? 'rgba(99,153,61,0.15)' : 'rgba(255,255,255,0.08)',
-              color: connected ? statusColors.success : 'rgba(255,255,255,0.5)',
+              backgroundColor: connected
+                ? 'rgba(99,153,61,0.15)'
+                : 'rgba(0,102,204,0.15)',
+              color: connected ? statusColors.success : statusColors.info,
             }}
           />
         </Tooltip>
@@ -147,10 +152,10 @@ export const DevSpacesDetailPage = () => {
           ) : (
             <>
               <Typography style={{ fontSize: 15, fontWeight: 600, marginBottom: 4 }}>
-                Connect Dev Spaces to the portal
+                Set up Dev Spaces
               </Typography>
               <Typography style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', lineHeight: 1.5, marginBottom: 24 }}>
-                Connect your OpenShift Dev Spaces instance to enable browser-based editing directly from projects in the portal.
+                Paste your OpenShift Dev Spaces URL so Edit in Dev Spaces appears on Git Repositories.
               </Typography>
 
               <Box style={{ marginBottom: 24 }}>
@@ -176,9 +181,9 @@ export const DevSpacesDetailPage = () => {
                 color="primary"
                 onClick={handleSave}
                 disabled={!urlInput.trim()}
-                style={{ textTransform: 'none', fontSize: 13, marginBottom: 24 }}
+                style={{ textTransform: 'none', fontSize: 13, marginBottom: 24, borderRadius: 20 }}
               >
-                Save
+                Set up
               </Button>
 
               <Box className={classes.infoBox}>

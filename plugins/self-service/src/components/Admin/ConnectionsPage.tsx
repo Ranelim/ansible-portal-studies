@@ -14,6 +14,7 @@ import {
   Tabs,
   SvgIcon,
 } from '@material-ui/core';
+import { ToggleButton, ToggleButtonGroup } from '@mui/material';
 import SyncIcon from '@material-ui/icons/Sync';
 import LinkOffIcon from '@material-ui/icons/LinkOff';
 import ArrowForwardIcon from '@material-ui/icons/ArrowForward';
@@ -28,8 +29,11 @@ import { useIntegrationsOrientIa } from './useIntegrationsOrientIa';
 import { SyncHistoryEmbedded } from './SyncActivityPage';
 import { PageHelpIcon } from '../common/PageHelpIcon';
 import { DismissibleBanner } from '../common/DismissibleBanner';
+import { ReadCountBadge } from '../common/ReadCountBadge';
 import { DEMO_CONNECTIONS, ConnectionProvider } from './syncDemoData';
 import { statusColors } from '../common/statusColors';
+import { useDevSpacesSetup } from '../../hooks/devSpacesSetup';
+import { useAttentionSeen } from '../../hooks/attentionSeen';
 
 const AnsibleIcon = (props: any) => (
   <SvgIcon {...props} viewBox="0 0 24 24">
@@ -141,8 +145,36 @@ const useStyles = makeStyles(theme => ({
     gap: theme.spacing(1.5),
   },
   pageTabs: {
-    marginBottom: theme.spacing(2),
+    marginBottom: 0,
     borderBottom: `1px solid ${theme.palette.divider}`,
+  },
+  filterBar: {
+    display: 'flex',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: theme.spacing(1.5),
+    marginTop: theme.spacing(3),
+    marginBottom: theme.spacing(3),
+  },
+  filterGroup: {
+    '& .MuiToggleButton-root': {
+      textTransform: 'none',
+      fontWeight: 500,
+      fontSize: 13,
+      padding: '4px 12px',
+      lineHeight: 1.4,
+    },
+  },
+  filterLabel: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: theme.spacing(0.75),
+    lineHeight: 1,
+  },
+  empty: {
+    fontSize: 14,
+    color: theme.palette.text.secondary,
+    padding: theme.spacing(3, 0),
   },
 }));
 
@@ -380,16 +412,12 @@ const DevToolsCard = ({ provider }: { provider: ConnectionProvider }) => {
   const { variant: orientVariant } = useIntegrationsOrientIa();
   const orient = orientVariant === 'orient';
   const isConfigured = provider.status !== 'Not configured';
-  const isActive = provider.status === 'Active';
   const { icon, bg } = providerIcon(provider.id);
   const description = getCardDescription(provider.id, isConfigured);
   const jobLine = JOB_LINE[provider.id];
 
   return (
-    <Card
-      className={`${classes.card} ${!isConfigured ? classes.notConfiguredCard : ''}`}
-      variant="outlined"
-    >
+    <Card className={classes.card} variant="outlined">
       <CardActionArea onClick={() => navigate(`/self-service/admin/integrations/${provider.id}`)}>
         <CardContent className={classes.cardContent}>
           <Box className={classes.cardHeader}>
@@ -406,19 +434,24 @@ const DevToolsCard = ({ provider }: { provider: ConnectionProvider }) => {
                 </Typography>
               </Box>
             </Box>
-            <Tooltip title={isConfigured ? 'Dev Spaces is connected and available to developers.' : 'Dev Spaces has not been configured yet.'} arrow>
+            <Tooltip
+              title={
+                isConfigured
+                  ? 'Dev Spaces is connected and available to developers.'
+                  : 'Paste a Dev Spaces URL so Edit in Dev Spaces appears on Git Repositories.'
+              }
+              arrow
+            >
               <Chip
-                label={isConfigured ? 'Connected' : 'Not connected'}
+                label={isConfigured ? 'Connected' : 'Needs setup'}
                 size="small"
                 style={{
                   fontSize: 11,
                   height: 22,
                   backgroundColor: isConfigured
                     ? 'rgba(99,153,61,0.15)'
-                    : 'rgba(255,255,255,0.08)',
-                  color: isConfigured
-                    ? statusColors.success
-                    : '#999',
+                    : 'rgba(0,102,204,0.15)',
+                  color: isConfigured ? statusColors.success : statusColors.info,
                 }}
               />
             </Tooltip>
@@ -456,18 +489,9 @@ const DevToolsCard = ({ provider }: { provider: ConnectionProvider }) => {
                 {orient ? jobLine : description}
               </Typography>
               <Box className={classes.cardFooter}>
-                {orient ? (
-                  <span />
-                ) : (
-                  <Box display="flex" alignItems="center" style={{ gap: 6 }}>
-                    <LinkOffIcon style={{ fontSize: 14, color: '#999' }} />
-                    <Typography style={{ fontSize: 12, color: '#999' }}>
-                      Not configured
-                    </Typography>
-                  </Box>
-                )}
+                <span />
                 <Box display="flex" alignItems="center" style={{ gap: 4, color: '#0066CC', fontSize: 12 }}>
-                  Connect <ArrowForwardIcon style={{ fontSize: 14 }} />
+                  Set up <ArrowForwardIcon style={{ fontSize: 14 }} />
                 </Box>
               </Box>
             </>
@@ -478,28 +502,71 @@ const DevToolsCard = ({ provider }: { provider: ConnectionProvider }) => {
   );
 };
 
+const needsSetup = (provider: ConnectionProvider) =>
+  provider.status !== 'Active';
+
+type ConnectionFilter = 'all' | 'connected' | 'needs-setup';
+
+const filterFromSearch = (search: string): ConnectionFilter => {
+  const raw = new URLSearchParams(search).get('filter');
+  if (raw === 'connected' || raw === 'needs-setup') return raw;
+  return 'all';
+};
+
 export const ConnectionsPage = () => {
   const classes = useStyles();
   const { variant } = useAdminSyncIa();
   const { variant: orientVariant } = useIntegrationsOrientIa();
+  const { connected: devSpacesConnected } = useDevSpacesSetup();
+  const { seen: needsSetupSeen, markSeen: markNeedsSetupSeen } =
+    useAttentionSeen('integrations-needs-setup');
   const location = useLocation();
   const navigate = useNavigate();
   const [syncing, setSyncing] = useState(false);
   const merged = variant === 'opt1';
   const orient = orientVariant === 'orient';
-  const rawTab = new URLSearchParams(location.search).get('tab');
+  const search = new URLSearchParams(location.search);
+  const rawTab = search.get('tab');
   const tabFromUrl: 'connections' | 'history' =
     rawTab === 'history' || rawTab === 'activity' ? 'history' : 'connections';
+  const filterFromUrl = filterFromSearch(location.search);
   const [tab, setTab] = useState<'connections' | 'history'>(tabFromUrl);
+  const [filter, setFilter] = useState<ConnectionFilter>(filterFromUrl);
 
   useEffect(() => {
     setTab(tabFromUrl);
   }, [tabFromUrl]);
 
-  const connections = DEMO_CONNECTIONS.filter(c => c.type === 'aap' || c.type === 'pah');
-  const sourceControl = DEMO_CONNECTIONS.filter(c => c.type === 'git');
-  const containerRegistries = DEMO_CONNECTIONS.filter(c => c.type === 'registry');
-  const devTools = DEMO_CONNECTIONS.filter(c => c.type === 'devtools');
+  useEffect(() => {
+    setFilter(filterFromUrl);
+  }, [filterFromUrl]);
+
+  useEffect(() => {
+    if (tab === 'connections' && filter === 'needs-setup') {
+      markNeedsSetupSeen();
+    }
+  }, [tab, filter, markNeedsSetupSeen]);
+
+  const providers = DEMO_CONNECTIONS.map(c =>
+    c.id === 'devspaces'
+      ? {
+          ...c,
+          status: (devSpacesConnected
+            ? 'Active'
+            : 'Not configured') as ConnectionProvider['status'],
+        }
+      : c,
+  );
+  const visibleProviders = providers.filter(p => {
+    if (filter === 'connected') return !needsSetup(p);
+    if (filter === 'needs-setup') return needsSetup(p);
+    return true;
+  });
+  const connections = visibleProviders.filter(c => c.type === 'aap' || c.type === 'pah');
+  const sourceControl = visibleProviders.filter(c => c.type === 'git');
+  const containerRegistries = visibleProviders.filter(c => c.type === 'registry');
+  const devTools = visibleProviders.filter(c => c.type === 'devtools');
+  const needsSetupCount = providers.filter(needsSetup).length;
 
   const handleSyncAll = () => {
     setSyncing(true);
@@ -512,6 +579,17 @@ export const ConnectionsPage = () => {
       next === 'history'
         ? '/self-service/admin/integrations?tab=history'
         : '/self-service/admin/integrations',
+      { replace: true },
+    );
+  };
+
+  const setConnectionFilter = (next: ConnectionFilter) => {
+    setFilter(next);
+    if (next === 'needs-setup') markNeedsSetupSeen();
+    navigate(
+      next === 'all'
+        ? '/self-service/admin/integrations'
+        : `/self-service/admin/integrations?filter=${next}`,
       { replace: true },
     );
   };
@@ -592,7 +670,38 @@ export const ConnectionsPage = () => {
 
         {showConnections && (
           <>
-            {orient && (
+            <Box className={classes.filterBar}>
+              <ToggleButtonGroup
+                className={classes.filterGroup}
+                exclusive
+                size="small"
+                value={filter}
+                onChange={(_event, next) => {
+                  if (next == null) return;
+                  setConnectionFilter(next);
+                }}
+                aria-label="Filter connections"
+              >
+                <ToggleButton value="all">All</ToggleButton>
+                <ToggleButton value="connected">Connected</ToggleButton>
+                <ToggleButton value="needs-setup">
+                  {needsSetupCount > 0 ? (
+                    <span className={classes.filterLabel}>
+                      <span>Needs setup</span>
+                      <ReadCountBadge
+                        count={needsSetupCount}
+                        label={`${needsSetupCount} ${needsSetupCount === 1 ? 'connection needs' : 'connections need'} setup`}
+                        tone={needsSetupSeen ? 'read' : 'unread'}
+                      />
+                    </span>
+                  ) : (
+                    'Needs setup'
+                  )}
+                </ToggleButton>
+              </ToggleButtonGroup>
+            </Box>
+
+            {orient && filter === 'all' && (
               <DismissibleBanner
                 storageKey="integrations-orient-getting-started"
                 message="Connect Ansible Automation Platform first so job templates and users appear in the Portal. Other systems are optional. After you connect a source, content updates on a schedule you set under Sync."
@@ -601,6 +710,18 @@ export const ConnectionsPage = () => {
               />
             )}
 
+            {visibleProviders.length === 0 ? (
+              <Typography className={classes.empty}>
+                {filter === 'needs-setup'
+                  ? 'No connections need setup.'
+                  : filter === 'connected'
+                    ? 'No connected systems yet.'
+                    : 'No connections in this view.'}
+              </Typography>
+            ) : (
+              <>
+            {connections.length > 0 && (
+              <>
             <Typography className={classes.sectionTitle}>
               Automation platforms
             </Typography>
@@ -609,7 +730,11 @@ export const ConnectionsPage = () => {
                 <ProviderCard key={provider.id} provider={provider} />
               ))}
             </Box>
+              </>
+            )}
 
+            {sourceControl.length > 0 && (
+              <>
             <Typography className={classes.sectionTitle}>
               Source control
             </Typography>
@@ -618,7 +743,11 @@ export const ConnectionsPage = () => {
                 <ProviderCard key={provider.id} provider={provider} />
               ))}
             </Box>
+              </>
+            )}
 
+            {containerRegistries.length > 0 && (
+              <>
             <Typography className={classes.sectionTitle}>
               Container registries
             </Typography>
@@ -630,6 +759,8 @@ export const ConnectionsPage = () => {
                 <ProviderCard key={provider.id} provider={provider} />
               ))}
             </Box>
+              </>
+            )}
 
             {devTools.length > 0 && (
               <>
@@ -646,6 +777,8 @@ export const ConnectionsPage = () => {
                     <DevToolsCard key={provider.id} provider={provider} />
                   ))}
                 </Box>
+              </>
+            )}
               </>
             )}
           </>

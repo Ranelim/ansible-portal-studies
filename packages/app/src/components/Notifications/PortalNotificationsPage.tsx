@@ -26,7 +26,12 @@ import {
   EXPERIENCE_LABELS,
   writeNavExperience,
   SHOW_ASSISTANT_EXPERIENCE,
+  useUserRoleContext,
+  useExperienceSetup,
+  useDevSpacesSetup,
+  markAttentionSeen,
   type NavExperience,
+  type AttentionKey,
 } from '@ansible/plugin-backstage-self-service';
 import {
   NOTIFICATION_PREF_EVENT,
@@ -34,6 +39,7 @@ import {
   type NotificationEventType,
   type NotificationPrefs,
 } from './notificationPrefs';
+import { getAdminSetupNotifications } from './adminSetupNotifications';
 
 type ExperienceFilter = 'all' | Exclude<NavExperience, 'all'>;
 type Severity = 'Critical' | 'Important' | 'Normal';
@@ -47,12 +53,15 @@ type DemoItem = {
   detail: string;
   entity: string;
   experience: Exclude<NavExperience, 'all'>;
-  eventType: NotificationEventType;
+  eventType?: NotificationEventType;
   when: string;
   severity: Severity;
   unread: boolean;
   /** Prototype deep link into the relevant experience surface. */
   href: string;
+  /** Overrides “Open in {experience}”. */
+  ctaLabel?: string;
+  attentionKey?: AttentionKey;
 };
 
 /** PF6 status intent — bar + label share these colors (icon + text, not color alone). */
@@ -318,6 +327,34 @@ const useStyles = makeStyles(theme => ({
   chevronOpen: {
     transform: 'rotate(180deg)',
   },
+  rowActions: {
+    display: 'flex',
+    alignItems: 'center',
+    flexShrink: 0,
+    alignSelf: 'center',
+    paddingRight: theme.spacing(1.5),
+    gap: theme.spacing(0.5),
+  },
+  chevronBtn: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    margin: 0,
+    padding: 6,
+    border: 'none',
+    background: 'transparent',
+    cursor: 'pointer',
+    color: theme.palette.text.secondary,
+    borderRadius: 16,
+    transition: 'transform 160ms ease',
+    '&:hover': {
+      backgroundColor: theme.palette.action.hover,
+    },
+    '&:focus-visible': {
+      outline: `2px solid ${theme.palette.primary.main}`,
+      outlineOffset: 2,
+    },
+  },
   titleRow: {
     display: 'flex',
     flexWrap: 'wrap',
@@ -409,7 +446,12 @@ const useStyles = makeStyles(theme => ({
 export const PortalNotificationsPage = () => {
   const classes = useStyles();
   const navigate = useNavigate();
+  const { hasRole } = useUserRoleContext();
+  const isAdmin = hasRole('admin');
+  const { setup: orchestratorSetup } = useExperienceSetup('orchestrator');
+  const { connected: devSpacesConnected } = useDevSpacesSetup();
   const [items, setItems] = useState<DemoItem[]>(INITIAL_ITEMS);
+  const [readIds, setReadIds] = useState<Set<string>>(() => new Set());
   const [experienceFilter, setExperienceFilter] =
     useState<ExperienceFilter>('all');
   const [readFilter, setReadFilter] = useState<ReadFilter>('all');
@@ -433,9 +475,26 @@ export const PortalNotificationsPage = () => {
     [],
   );
 
+  const setupItems = useMemo<DemoItem[]>(() => {
+    if (!isAdmin) return [];
+    return getAdminSetupNotifications({
+      devSpacesConnected,
+      orchestratorSetup,
+    }).map(item => ({
+      ...item,
+      experience: 'admin' as const,
+      when: 'Needs attention',
+      severity: 'Normal' as const,
+      unread: !readIds.has(item.id),
+    }));
+  }, [isAdmin, devSpacesConnected, orchestratorSetup, readIds]);
+
   const subscribedItems = useMemo(
-    () => items.filter(i => prefs[i.eventType]),
-    [items, prefs],
+    () => [
+      ...setupItems,
+      ...items.filter(i => i.eventType && prefs[i.eventType]),
+    ],
+    [setupItems, items, prefs],
   );
 
   const unreadCount = useMemo(
@@ -479,6 +538,11 @@ export const PortalNotificationsPage = () => {
 
   const markAllRead = () => {
     setItems(prev => prev.map(i => ({ ...i, unread: false })));
+    setReadIds(prev => {
+      const next = new Set(prev);
+      setupItems.forEach(i => next.add(i.id));
+      return next;
+    });
     if (readFilter === 'unread') {
       setReadFilter('all');
     }
@@ -488,6 +552,12 @@ export const PortalNotificationsPage = () => {
     setItems(prev =>
       prev.map(i => (i.id === id ? { ...i, unread: false } : i)),
     );
+    setReadIds(prev => {
+      if (prev.has(id)) return prev;
+      const next = new Set(prev);
+      next.add(id);
+      return next;
+    });
   };
 
   const toggleExpanded = (id: string) => {
@@ -508,6 +578,9 @@ export const PortalNotificationsPage = () => {
 
   const openInExperience = (item: DemoItem) => {
     markItemRead(item.id);
+    if (item.attentionKey) {
+      markAttentionSeen(item.attentionKey);
+    }
     writeNavExperience(item.experience);
     navigate(item.href);
   };
@@ -606,12 +679,14 @@ export const PortalNotificationsPage = () => {
                   style={{ backgroundColor: sev.color }}
                   aria-hidden
                 />
+                <Box display="flex" alignItems="flex-start" width="100%">
                 <button
                   type="button"
                   className={classes.rowHeader}
                   aria-expanded={expanded}
                   aria-controls={panelId}
                   onClick={() => toggleExpanded(item.id)}
+                  style={{ flex: 1 }}
                 >
                   <Box className={classes.rowHeaderBody}>
                     <Box className={classes.titleRow}>
@@ -642,14 +717,47 @@ export const PortalNotificationsPage = () => {
                       {item.entity} · {experienceLabel} · {item.when}
                     </Typography>
                   </Box>
-                  <ExpandMoreIcon
-                    className={`${classes.chevron} ${
-                      expanded ? classes.chevronOpen : ''
-                    }`}
-                    fontSize="small"
-                    aria-hidden
-                  />
+                  {!item.ctaLabel && (
+                    <ExpandMoreIcon
+                      className={`${classes.chevron} ${
+                        expanded ? classes.chevronOpen : ''
+                      }`}
+                      fontSize="small"
+                      aria-hidden
+                    />
+                  )}
                 </button>
+                {item.ctaLabel && (
+                  <Box className={classes.rowActions}>
+                    <Button
+                      className={classes.actionBtn}
+                      color="primary"
+                      variant="contained"
+                      size="small"
+                      onClick={() => openInExperience(item)}
+                      style={{ borderRadius: 20 }}
+                    >
+                      {item.ctaLabel}
+                    </Button>
+                    <button
+                      type="button"
+                      className={`${classes.chevronBtn} ${
+                        expanded ? classes.chevronOpen : ''
+                      }`}
+                      aria-expanded={expanded}
+                      aria-controls={panelId}
+                      aria-label={
+                        expanded
+                          ? `Hide ${item.title} details`
+                          : `Show ${item.title} details`
+                      }
+                      onClick={() => toggleExpanded(item.id)}
+                    >
+                      <ExpandMoreIcon fontSize="small" aria-hidden />
+                    </button>
+                  </Box>
+                )}
+                </Box>
 
                 <Collapse in={expanded} timeout="auto" unmountOnExit>
                   <Box
@@ -667,11 +775,11 @@ export const PortalNotificationsPage = () => {
                         color="primary"
                         variant="contained"
                         size="small"
-                        startIcon={<OpenInNewIcon />}
+                        startIcon={item.ctaLabel ? undefined : <OpenInNewIcon />}
                         onClick={() => openInExperience(item)}
                         style={{ borderRadius: 20 }}
                       >
-                        Open in {experienceLabel}
+                        {item.ctaLabel ?? `Open in ${experienceLabel}`}
                       </Button>
                     </Box>
                   </Box>

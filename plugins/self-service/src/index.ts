@@ -74,8 +74,20 @@ export {
 } from './components/IaPlaceholder/assistantIaTrial';
 export { useAssistantChatTrial } from './components/IaPlaceholder/assistantChatTrialStore';
 export type { UserRole, UseUserRoleResult } from './hooks/useUserRole';
+export { SHOW_ADMIN_PLUGINS } from './components/Admin/adminPluginsTrial';
 export { useAdminSyncIa } from './components/Admin/useAdminSyncIa';
 export type { AdminSyncIaVariant } from './components/Admin/adminSyncIa';
+export {
+  useExperienceSetup,
+  isExperienceSetup,
+} from './hooks/experienceSetup';
+export { useDevSpacesSetup } from './hooks/devSpacesSetup';
+export {
+  useAttentionSeen,
+  isAttentionSeen,
+  markAttentionSeen,
+  type AttentionKey,
+} from './hooks/attentionSeen';
 export {
   FORCED_ADMIN_SYNC_IA,
   readAdminSyncIa,

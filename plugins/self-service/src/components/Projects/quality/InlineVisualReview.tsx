@@ -128,31 +128,39 @@ const useStyles = makeStyles((theme: Theme) => ({
     gap: theme.spacing(2),
   },
   stackFill: {
-    height: 'calc(100vh - 320px)',
-    minHeight: 420,
+    flex: 1,
+    width: '100%',
+    height: '100%',
+    minHeight: 0,
     overflow: 'hidden',
+    gap: theme.spacing(1.5),
   },
   scrollBody: {
     flex: 1,
     minHeight: 0,
-    overflow: 'auto',
+    overflowX: 'hidden',
+    overflowY: 'auto',
     display: 'flex',
     flexDirection: 'column',
     gap: theme.spacing(2),
-    paddingBottom: theme.spacing(0.5),
+    padding: theme.spacing(0, 0.25, 0.5),
+    '& > *': {
+      flexShrink: 0,
+    },
   },
   wizardFooter: {
     flexShrink: 0,
+    zIndex: 3,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: theme.spacing(2),
     flexWrap: 'wrap',
+    margin: theme.spacing(0, 0.25, 0.5),
     padding: theme.spacing(1.5, 2),
     backgroundColor: theme.palette.background.paper,
     border: `1px solid ${theme.palette.divider}`,
     borderRadius: 8,
-    boxShadow: `0 -8px 24px -12px ${fade(theme.palette.common.black, 0.4)}`,
   },
   footerStatus: {
     flex: '1 1 220px',
@@ -183,6 +191,8 @@ const useStyles = makeStyles((theme: Theme) => ({
   box: {
     borderRadius: 8,
     backgroundColor: theme.palette.background.paper,
+    border: `1px solid ${theme.palette.divider}`,
+    overflow: 'visible',
   },
   boxHead: {
     padding: theme.spacing(2, 2, 0),
@@ -297,7 +307,8 @@ const useStyles = makeStyles((theme: Theme) => ({
     borderTopRightRadius: 8,
   },
   remediationHeadInScroll: {
-    top: 0,
+    position: 'relative',
+    top: 'auto',
   },
   remediationRow: {
     display: 'flex',
@@ -625,7 +636,7 @@ export const InlineVisualReview: React.FC<{
 
   const summaryAndFindings = (
     <>
-      <Paper className={classes.box} elevation={2}>
+      <Paper className={classes.box} elevation={0}>
         <div className={classes.boxHead}>
           <Typography className={classes.boxTitle}>Summary</Typography>
         </div>
@@ -713,7 +724,7 @@ export const InlineVisualReview: React.FC<{
         </div>
       </Paper>
 
-      <Paper className={classes.box} elevation={2}>
+      <Paper className={classes.box} elevation={0}>
         <div
           className={`${classes.remediationHead}${
             useFooter ? ` ${classes.remediationHeadInScroll}` : ''
