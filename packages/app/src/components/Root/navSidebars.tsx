@@ -53,6 +53,7 @@ import SyncIcon from '@material-ui/icons/Sync';
 import ExtensionIcon from '@material-ui/icons/Extension';
 import AppsIcon from '@material-ui/icons/Apps';
 import NotificationsIcon from '@material-ui/icons/Notifications';
+import SettingsIcon from '@material-ui/icons/Settings';
 import ViewListIcon from '@material-ui/icons/ViewList';
 import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
 import ExpandLessIcon from '@material-ui/icons/ExpandLess';
@@ -457,28 +458,47 @@ const SearchAndMenu = ({
     )}
     <SidebarGroup label="Menu" icon={<MenuIcon />}>
       {/* Long experience rails must scroll — stock
-          drawer uses flexShrink:0 + hidden scrollbar and clips overflow. */}
+          drawer uses flexShrink:0 + hidden scrollbar and clips overflow.
+          Footer (experience Administration) stays pinned to the rail bottom. */}
       <Box
-        data-portal-sidebar-scroll=""
         sx={{
+          display: 'flex',
+          flexDirection: 'column',
           flex: '1 1 auto',
+          alignSelf: 'stretch',
           minHeight: 0,
+          height: '100%',
           width: '100%',
-          overflowX: 'hidden',
-          overflowY: 'auto',
-          scrollbarWidth: 'thin',
         }}
       >
-        {children}
-      </Box>
-      {footer ? (
-        <>
+        <Box
+          data-portal-sidebar-scroll=""
+          sx={{
+            flex: '1 1 auto',
+            minHeight: 0,
+            width: '100%',
+            overflowX: 'hidden',
+            overflowY: 'auto',
+            scrollbarWidth: 'thin',
+          }}
+        >
+          {children}
+        </Box>
+        {footer ? (
+          <Box
+            sx={{
+              flexShrink: 0,
+              alignSelf: 'stretch',
+              width: '100%',
+            }}
+          >
+            <SidebarDivider />
+            {footer}
+          </Box>
+        ) : (
           <SidebarSpace />
-          {footer}
-        </>
-      ) : (
-        <SidebarSpace />
-      )}
+        )}
+      </Box>
     </SidebarGroup>
   </Sidebar>
 );
@@ -1347,8 +1367,35 @@ const ExperiencesDomainSidebar = () => {
       </>
     );
 
+  const developAdminFooter =
+    domain === 'develop' && isAdmin ? (
+      <ExpandableNavItem
+        id="develop-admin"
+        icon={SettingsIcon}
+        text="Administration"
+        activePathPrefix="/self-service/develop/admin"
+        defaultOpen
+      >
+        <ExpandableNavChild
+          to="/self-service/develop/admin/access"
+          text="Access"
+        />
+        <ExpandableNavChild
+          to="/self-service/develop/admin/content"
+          text="Content"
+          extraActive={path =>
+            path.startsWith('/self-service/develop/admin/content/')
+          }
+        />
+        <ExpandableNavChild
+          to="/self-service/develop/admin/quality"
+          text="Quality"
+        />
+      </ExpandableNavItem>
+    ) : undefined;
+
   return (
-    <SearchAndMenu showSearch={false}>
+    <SearchAndMenu showSearch={false} footer={developAdminFooter}>
       {/* A — quiet “← Experiences” above the label. */}
       {showQuietReturn && (
         <button

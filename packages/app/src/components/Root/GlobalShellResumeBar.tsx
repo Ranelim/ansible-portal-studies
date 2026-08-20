@@ -226,18 +226,16 @@ const useStyles = makeStyles(theme => ({
   },
 }));
 
+export type GlobalShellResume = { label: string; href: string };
+
 /**
- * Conditional resume control on global shell pages only.
- * SME: Search and masthead Create → Back to Automate (no Bridge).
- * Multi-seat: specific label when we know the origin; hidden when waffle is the return.
+ * Destination for rail-less orphan pages. Button copy is the destination
+ * (All scans), not “Back to …”.
+ * SME: Search / masthead Create → Automate. Multi-seat: last experience or Bridge.
  */
-export const GlobalShellResumeBar = () => {
-  const classes = useStyles();
-  const navigate = useNavigate();
+export function useGlobalShellResume(): GlobalShellResume | null {
   const { pathname, search } = useLocation();
   const { role } = useUserRoleContext();
-  const { experience } = useNavIaModel();
-  const { variant: runPairIa } = useTemplatesRunsIa();
   const [ret, setRet] = useState<GlobalReturn | null>(() => readReturn());
 
   useEffect(() => {
@@ -245,37 +243,41 @@ export const GlobalShellResumeBar = () => {
     setRet(readReturn());
   }, [pathname, search]);
 
-  const mastheadPlus = runPairIa === 'masthead-plus';
-  const onAutomateHost = isAutomateFullPagePath(pathname, search);
+  const onSearch = pathname === '/search' || pathname.startsWith('/search/');
   const onGlobalCreate = isGlobalTemplatesRunsPath(pathname, search);
 
-  // SME: no Bridge. Search or masthead Create → back to Automate.
   if (isSmeRole(role)) {
-    const onSearch =
-      pathname === '/search' || pathname.startsWith('/search/');
-    if (!onSearch && !onGlobalCreate) {
-      return null;
-    }
-    return (
-      <Box className={classes.bar} role="navigation" aria-label="Return">
-        <Button
-          className={classes.button}
-          size="small"
-          startIcon={<ArrowBackIcon fontSize="small" />}
-          onClick={() => navigate('/create?scope=experience')}
-        >
-          Back to Automate
-        </Button>
-      </Box>
-    );
+    if (!onSearch && !onGlobalCreate) return null;
+    return { label: 'Automate', href: '/create?scope=experience' };
   }
 
-  // Option B Automate experience (rail-less) — return to Bridge.
-  if (
-    mastheadPlus &&
-    experience === 'automate' &&
-    onAutomateHost
-  ) {
+  if (!isGlobalShellPath(pathname, search)) return null;
+
+  const dest = ret ?? { kind: 'bridge' as const };
+  if (dest.kind === 'bridge') {
+    return { label: 'Experiences', href: '/self-service/experiences' };
+  }
+  return {
+    label: EXPERIENCE_LABELS[dest.experience],
+    href: EXPERIENCE_RESUME[dest.experience],
+  };
+}
+
+/** Automate B (rail-less host) still uses a strip — orphans use the Header back. */
+export const GlobalShellResumeBar = () => {
+  const classes = useStyles();
+  const navigate = useNavigate();
+  const { pathname, search } = useLocation();
+  const { role } = useUserRoleContext();
+  const { experience } = useNavIaModel();
+  const { variant: runPairIa } = useTemplatesRunsIa();
+
+  const mastheadPlus = runPairIa === 'masthead-plus';
+  const onAutomateHost = isAutomateFullPagePath(pathname, search);
+
+  if (isSmeRole(role)) return null;
+
+  if (mastheadPlus && experience === 'automate' && onAutomateHost) {
     return (
       <Box className={classes.bar} role="navigation" aria-label="Return">
         <Button
@@ -284,36 +286,11 @@ export const GlobalShellResumeBar = () => {
           startIcon={<ArrowBackIcon fontSize="small" />}
           onClick={() => navigate('/self-service/experiences')}
         >
-          Back to Experiences
+          Experiences
         </Button>
       </Box>
     );
   }
 
-  if (!isGlobalShellPath(pathname, search) || !ret) {
-    return null;
-  }
-
-  const label =
-    ret.kind === 'bridge'
-      ? 'Back to Experiences'
-      : `Back to ${EXPERIENCE_LABELS[ret.experience]}`;
-
-  const href =
-    ret.kind === 'bridge'
-      ? '/self-service/experiences'
-      : EXPERIENCE_RESUME[ret.experience];
-
-  return (
-    <Box className={classes.bar} role="navigation" aria-label="Return">
-      <Button
-        className={classes.button}
-        size="small"
-        startIcon={<ArrowBackIcon fontSize="small" />}
-        onClick={() => navigate(href)}
-      >
-        {label}
-      </Button>
-    </Box>
-  );
+  return null;
 };

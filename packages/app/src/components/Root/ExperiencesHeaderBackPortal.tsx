@@ -3,12 +3,11 @@ import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { IconButton, makeStyles } from '@material-ui/core';
 import ArrowBackIcon from '@material-ui/icons/ArrowBack';
+import { SHOW_EXPERIENCES_WAFFLE } from '../GlobalHeader/ExperiencesWaffleButton';
 import {
-  isSmeRole,
-  useUserRoleContext,
-  writeNavExperience,
-} from '@ansible/plugin-backstage-self-service';
-import { isGlobalShellPath } from './GlobalShellResumeBar';
+  isGlobalShellPath,
+  useGlobalShellResume,
+} from './GlobalShellResumeBar';
 
 const useStyles = makeStyles(theme => ({
   back: {
@@ -20,14 +19,13 @@ const useStyles = makeStyles(theme => ({
 }));
 
 const MOUNT_ATTR = 'data-experiences-header-back';
+const TITLE_ROW_ATTR = 'data-experiences-header-title-row';
 
 function findHeaderLeftBox(): HTMLElement | null {
   return document.querySelector<HTMLElement>(
     '[class*="BackstageHeader-leftItemsBox"]',
   );
 }
-
-const TITLE_ROW_ATTR = 'data-experiences-header-title-row';
 
 function unwrapTitleRows() {
   document.querySelectorAll(`[${TITLE_ROW_ATTR}]`).forEach(row => {
@@ -70,6 +68,10 @@ function ensureMount(box: HTMLElement): HTMLElement {
     }
   }
 
+  box.querySelectorAll(`[${MOUNT_ATTR}]`).forEach(el => {
+    if (!titleRow.contains(el)) el.remove();
+  });
+
   let mount = titleRow.querySelector<HTMLElement>(`[${MOUNT_ATTR}]`);
   if (!mount) {
     mount = document.createElement('span');
@@ -83,18 +85,20 @@ function ensureMount(box: HTMLElement): HTMLElement {
 }
 
 /**
- * Injects ← next to the stock Backstage page Header title on rail-less
- * orphan pages (Settings, Search, Create, user profile, Notifications, …).
- * Multi-seat only — SME has no Experiences catalog to return to.
+ * Icon-only ← to the left of the Header title on rail-less orphan pages
+ * (Search, Create, Settings, profile, Notifications). Banner is not used.
  */
 export const ExperiencesHeaderBackPortal = () => {
   const classes = useStyles();
   const navigate = useNavigate();
   const { pathname, search } = useLocation();
-  const { role } = useUserRoleContext();
+  const resume = useGlobalShellResume();
   const [mount, setMount] = useState<HTMLElement | null>(null);
 
-  const enabled = !isSmeRole(role) && isGlobalShellPath(pathname, search);
+  const enabled =
+    !SHOW_EXPERIENCES_WAFFLE &&
+    isGlobalShellPath(pathname, search) &&
+    Boolean(resume);
 
   useLayoutEffect(() => {
     if (!enabled) {
@@ -123,18 +127,15 @@ export const ExperiencesHeaderBackPortal = () => {
     };
   }, [enabled, pathname, search]);
 
-  if (!enabled || !mount) return null;
+  if (!enabled || !mount || !resume) return null;
 
   return createPortal(
     <IconButton
       className={classes.back}
       size="small"
       color="inherit"
-      aria-label="Back to Experiences"
-      onClick={() => {
-        writeNavExperience('all');
-        navigate('/self-service/experiences');
-      }}
+      aria-label={`Back to ${resume.label}`}
+      onClick={() => navigate(resume.href)}
     >
       <ArrowBackIcon fontSize="small" />
     </IconButton>,

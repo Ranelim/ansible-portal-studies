@@ -88,7 +88,7 @@ export const PORTAL_CATALOG: PortalCatalogEntry[] = [
   entity(
     'apme',
     'APME Quality Scanning',
-    'Quality analysis on Git repositories. Target AAP version is wired under Integrations.',
+    'Quality analysis on Git repositories. Scan schedule lives under Develop Administration.',
     {
       category: 'Develop',
       highlights: [
@@ -105,12 +105,12 @@ export const PORTAL_CATALOG: PortalCatalogEntry[] = [
         doesNot: [
           'Add a left-nav row',
           'Create an Experience tile',
-          'Replace Integrations for AAP target config',
+          'Put scan schedule on Integrations',
         ],
         about:
-          'Multi-validator static analysis for Ansible content. When enabled, a Quality tab appears on the Git Repositories host inside the Develop experience.',
-        configHref: '/self-service/admin/integrations',
-        configLabel: 'Open Integrations',
+          'Multi-validator static analysis for Ansible content. When enabled, a Quality tab appears on the Git Repositories host inside the Develop experience. Scan schedule and target version live under Develop → Administration → Quality.',
+        configHref: '/self-service/develop/admin/quality',
+        configLabel: 'Open Quality settings',
         openSurfaceHref: '/self-service/repositories',
         openSurfaceLabel: 'Open Git Repositories',
       },

@@ -186,46 +186,26 @@ const useRootStyles = makeStyles(theme => {
       minHeight: '0 !important',
     },
     /**
-     * RHDH PF6 page inset — rounded white content card beside the rail.
-     * SidebarPage no longer wraps a direct `> main` (children are Sidebar + our
-     * wrapper); target nested Backstage Page `main` instead. Chrome-aware
-     * maxHeight so the card isn’t clipped square under the fixed masthead.
+     * RHDH PF6 page inset lives on SidebarPage `> main`. Current Backstage
+     * SidebarPage children are Sidebar + our wrapper (Page `main` is nested),
+     * so the theme selector never matches. Rounding is on `pageInsetWell`.
      */
     '[class*="BackstageSidebarPage-root"]': {
       backgroundColor: `${sidebarBg} !important`,
-      '@media (min-width: 600px)': {
-        '& main[class*="BackstagePage-root"], & main[data-backstage-core-page]': {
-          clipPath: 'inset(0 round 1rem) !important',
-          borderRadius: '1rem !important',
-          overflow: 'auto !important',
-          // Top / right / bottom inset; left stays 0 — rail already pads the root.
-          marginTop: `${pageInset} !important`,
-          marginRight: `${pageInset} !important`,
-          marginBottom: `${pageInset} !important`,
-          marginLeft: '0 !important',
-          maxHeight: `calc(100vh - var(--portal-chrome-top, ${CHROME_TOP_BASE}px) - 2 * ${pageInset}) !important`,
-          height: 'auto !important',
-          backgroundColor: `${theme.palette.background.default} !important`,
-        },
-      },
     },
     /**
      * Assistant chat trial — fill the content card and pin composer to its
      * bottom (no gray page-inset strip under the input).
      */
-    'html[data-portal-assistant-rail] [class*="BackstageSidebarPage-root"]': {
+    'html[data-portal-assistant-rail] [data-portal-page-inset]': {
       '@media (min-width: 600px)': {
-        '& main[class*="BackstagePage-root"], & main[data-backstage-core-page]': {
-          display: 'flex !important',
-          flexDirection: 'column !important',
-          height: `calc(100vh - var(--portal-chrome-top, ${CHROME_TOP_BASE}px) - ${pageInset}) !important`,
-          maxHeight: `calc(100vh - var(--portal-chrome-top, ${CHROME_TOP_BASE}px) - ${pageInset}) !important`,
-          marginBottom: '0 !important',
-          borderBottomLeftRadius: '0 !important',
-          borderBottomRightRadius: '0 !important',
-          clipPath: 'inset(0 round 1rem 1rem 0 0) !important',
-          overflow: 'hidden !important',
-        },
+        display: 'flex !important',
+        flexDirection: 'column !important',
+        height: `calc(100vh - var(--portal-chrome-top, ${CHROME_TOP_BASE}px) - ${pageInset}) !important`,
+        maxHeight: `calc(100vh - var(--portal-chrome-top, ${CHROME_TOP_BASE}px) - ${pageInset}) !important`,
+        marginBottom: '0 !important',
+        clipPath: 'rect(0 100% 100% 0 round 1rem 1rem 0 0) !important',
+        overflow: 'hidden !important',
       },
     },
     'html[data-portal-assistant-rail] [class*="BackstageSidebarPage-root"] main [class*="BackstageContent-root"]':
@@ -278,11 +258,39 @@ const useRootStyles = makeStyles(theme => {
     '[class*="BackstagePage-root"]': {
       overflow: 'hidden',
     },
+    // Fill the inset well — stock Page is `height: 100vh`, which would
+    // overflow the rounded card and square-clip under the masthead.
+    '[data-portal-page-inset] [class*="BackstagePage-root"]': {
+      '@media (min-width: 600px)': {
+        height: '100% !important',
+        maxHeight: '100% !important',
+      },
+    },
   },
   fixedHeaderOffset: {
     minHeight: '100vh',
     // Same gray as RHDH SidebarPage so the rounded main inset reads against chrome.
     backgroundColor: sidebarBg,
+  },
+  /**
+   * Stock RHDH `BackstageSidebarPage` (`createComponents`): desktop
+   * `clipPath: rect(0 100% 100% 0 round 1rem)` + `margin: pageInset` on
+   * `& > main`. Left margin cancelled when a `nav` sibling exists.
+   * Applied here because Page `main` is not a direct SidebarPage child.
+   * maxHeight subtracts the fixed masthead (Portal chrome; RHDH header is in-page).
+   */
+  pageInsetWell: {
+    '@media (min-width: 600px)': {
+      clipPath: 'rect(0 100% 100% 0 round 1rem)',
+      marginTop: pageInset,
+      marginRight: pageInset,
+      marginBottom: pageInset,
+      marginLeft: 0,
+      height: `calc(100vh - var(--portal-chrome-top, ${CHROME_TOP_BASE}px) - 2 * ${pageInset})`,
+      maxHeight: `calc(100vh - var(--portal-chrome-top, ${CHROME_TOP_BASE}px) - 2 * ${pageInset})`,
+      backgroundColor: theme.palette.background.default,
+      overflow: 'auto',
+    },
   },
   /** Bridge: masthead only — full-width content, no experience rail. */
   bridgeContent: {
@@ -377,12 +385,12 @@ export const Root = ({ children }: PropsWithChildren<{}>) => {
     onGlobalShell ||
     (mastheadPlus && inAutomateExperience);
 
-  /** Waffle replaces Back on Automate B / global shell for multi-seat. */
+  /** Automate B strip only. Orphan pages (Search, Settings, …) use Header back. */
   const showResumeBar =
     !sme &&
     !SHOW_EXPERIENCES_WAFFLE &&
-    ((onGlobalShell && !inAutomateExperience) ||
-      (mastheadPlus && inAutomateExperience));
+    mastheadPlus &&
+    inAutomateExperience;
 
   const { visible: magentaBarVisible } = useMagentaIaBarVisible();
   const showAdminSyncBar =
@@ -462,14 +470,10 @@ export const Root = ({ children }: PropsWithChildren<{}>) => {
           <NavIaRouteGuard />
           <GlobalRestartBanner />
           {showResumeBar && <GlobalShellResumeBar />}
-          {/* SME Search / masthead Create — resume to Automate. */}
-          {sme && onGlobalShell && !showAutomateExperienceHostTabs && (
-            <GlobalShellResumeBar />
-          )}
           {showAutomateExperienceHostTabs && (
             <ExperienceRunPairTabs mode="experience" />
           )}
-          {/* Settings / Search / user / Notifications — ← in Header title */}
+          {/* Search / Settings / profile / Create — ← left of Header title */}
           {!showAutomateHostChrome && <ExperiencesHeaderBackPortal />}
           <div
             className={`${rootClasses.bridgeContent}${
@@ -496,11 +500,15 @@ export const Root = ({ children }: PropsWithChildren<{}>) => {
             <ExperienceRunPairTabs mode="experience" />
           )}
           <div
-            className={
+            data-portal-page-inset
+            className={[
+              rootClasses.pageInsetWell,
               showAutomateHostChrome
                 ? rootClasses.hideNestedPageHeader
-                : undefined
-            }
+                : undefined,
+            ]
+              .filter(Boolean)
+              .join(' ')}
           >
             {children}
           </div>

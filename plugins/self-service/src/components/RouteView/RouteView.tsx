@@ -58,6 +58,13 @@ import { ExperiencesAdminPage } from '../Admin/ExperiencesAdminPage';
 import { CreateExperienceWizardPage } from '../Admin/CreateExperienceWizardPage';
 import { NotificationsAdminPage } from '../Admin/NotificationsAdminPage';
 import {
+  DevelopAdminLayout,
+  DevelopAccessPage,
+  DevelopContentPage,
+  DevelopContentSourcePage,
+  DevelopQualityPage,
+} from '../DevelopAdmin';
+import {
   NotificationProvider,
   NotificationStack,
   useNotifications,
@@ -268,6 +275,16 @@ const RouteViewContent = () => {
         <Route path="compliance/profiles" element={<CompliancePage />} />
         <Route path="compliance/profiles/:profileDefId" element={<CompliancePage />} />
         <Route path="learning" element={<LearningPage />} />
+        <Route path="develop/admin" element={<DevelopAdminLayout />}>
+          <Route index element={<Navigate to="access" replace />} />
+          <Route path="access" element={<DevelopAccessPage />} />
+          <Route path="content" element={<DevelopContentPage />} />
+          <Route
+            path="content/:providerId"
+            element={<DevelopContentSourcePage />}
+          />
+          <Route path="quality" element={<DevelopQualityPage />} />
+        </Route>
         <Route path="admin/overview" element={<GeneralPage />} />
         <Route
           path="admin/general"
