@@ -68,7 +68,7 @@ Not eng SoT until ADRs on `ansible-rhdh-plugins` `main`. Mirror: `.cursor/rules/
 | Next | Stakeholder **login → intro → Experiences** flow |
 | Next | Account chrome: **Back** (not “Developer”) |
 | Done (park) | Admin Sync **Option 1** forced (`FORCED_ADMIN_SYNC_IA = 'opt1'`); magenta compare bar hidden; Overview **Sync health** card removed. Opt 2 code kept for revive. Still open under Opt 1: tab **Sync settings**; modal→history; drop Quality from Integrations |
-| Done (park) | Quality remediation wizard **Inline visual** forced (`FORCED_REMEDIATION_WIZARD = 'visual'`). Original · Redesign · Inline AI compare stays hidden. **Continue compare** is live: Current vs Wizard footer (`?cta=current`, default footer). |
+| Done (park) | Quality remediation **Inline visual** forced (`FORCED_REMEDIATION_WIZARD = 'visual'`), Continue in findings header (`FORCED_CTA_LAYOUT = 'current'`). Prototype compare and sticky-footer / Wizard footer compare are hidden. Set either force `null` to revive `?wizard=` / `?cta=`. |
 | Done (park) | **Assistant experience** killed (`SHOW_ASSISTANT_EXPERIENCE = false`). Lightspeed FAB stays. Set `true` in `assistantIaTrial.ts` to revive the Bridge card + `/self-service/assistant`. |
 | Done (park) | Admin **Plugins** killed (`SHOW_ADMIN_PLUGINS = false`). Rail item, page, and Experiences **Manage plugins** hidden. Set `true` in `adminPluginsTrial.ts` to revive. `/self-service/admin/plugins` redirects to Experiences. |
 | Done | Admin **Experiences**; **Notifications** admin shell (platform defaults — personal prefs stay in profile). |
@@ -77,7 +77,7 @@ Not eng SoT until ADRs on `ansible-rhdh-plugins` `main`. Mirror: `.cursor/rules/
 
 Waffle masthead try = parked (`SHOW_EXPERIENCES_WAFFLE = false`). Multi-seat return = rail back chevron + quiet `ExperienceSwitcher` (`EXPERIENCE_CHROME_HIT = 32`, square chevron). Do **not** unify into one split box.
 Admin Sync compare bar = parked (`FORCED_ADMIN_SYNC_IA = 'opt1'`; set `null` + restore `ADMIN_SYNC_IA_BAR_HEIGHT = 36` to revive).
-Quality remediation wizard = Inline visual (`FORCED_REMEDIATION_WIZARD = 'visual'`). Original · Redesign · Inline AI compare parked. **Continue placement** compare is live: Current vs Wizard footer (default footer; `?cta=current` for the findings-header row).
+Quality remediation session = Inline visual 3-step (`FORCED_REMEDIATION_WIZARD = 'visual'`), Continue with findings (`FORCED_CTA_LAYOUT = 'current'`). Prototype and sticky-footer compare parked.
 Content quality **Findings** tab = parked (`SHOW_CONTENT_QUALITY_FINDINGS_TAB = false` in `plugins/self-service/.../quality/contentQualityIa.ts`; set `true` to revive by-rule rollup). Route `/apme/findings` + `QualityDashboardTabContent` kept.
 Assistant experience = parked (`SHOW_ASSISTANT_EXPERIENCE = false`). Lightspeed FAB stays.
 

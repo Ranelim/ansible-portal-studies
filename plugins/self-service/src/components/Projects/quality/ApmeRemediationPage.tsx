@@ -69,11 +69,13 @@ type StepDef = { id: StepId; label: string };
 type WizardChrome = 'original' | 'new' | 'inline' | 'visual';
 
 /**
- * Force Inline visual (latest designed 3-step Inline AI restyle) while the
- * compare strip is parked. Original / Redesign / Inline AI code stays intact.
- * Set null to restore the Prototype toggle + `?wizard=` switching.
+ * Force Inline visual (3-step: Scan → Results & Remediation → Commit)
+ * with Continue in the findings header — not the sticky wizard footer.
+ * Prototype + Continue-placement compare strips stay parked.
+ * Set either force `null` to revive `?wizard=` / `?cta=` switching.
  */
 const FORCED_REMEDIATION_WIZARD: WizardChrome | null = 'visual';
+const FORCED_CTA_LAYOUT: CtaLayout | null = 'current';
 
 function parseWizardChrome(value: string | null): WizardChrome {
   if (FORCED_REMEDIATION_WIZARD) return FORCED_REMEDIATION_WIZARD;
@@ -84,6 +86,7 @@ function parseWizardChrome(value: string | null): WizardChrome {
 }
 
 function parseCtaLayout(value: string | null): CtaLayout {
+  if (FORCED_CTA_LAYOUT) return FORCED_CTA_LAYOUT;
   return value === 'current' ? 'current' : 'footer';
 }
 
@@ -1388,7 +1391,7 @@ export const ApmeRemediationPage = () => {
     <Page themeId="app">
       <Content>
         <Box className={footerMode ? classes.footerSession : undefined}>
-        {visual ? (
+        {visual && !FORCED_CTA_LAYOUT ? (
         <Box
           className={classes.compareStrip}
           role="region"
