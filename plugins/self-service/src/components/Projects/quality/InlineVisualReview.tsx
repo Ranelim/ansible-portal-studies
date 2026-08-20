@@ -298,8 +298,8 @@ const useStyles = makeStyles((theme: Theme) => ({
   },
   remediationHead: {
     position: 'sticky',
-    top: 52,
-    zIndex: 1,
+    top: 0,
+    zIndex: 2,
     padding: theme.spacing(2),
     backgroundColor: theme.palette.background.paper,
     borderBottom: `1px solid ${theme.palette.divider}`,
