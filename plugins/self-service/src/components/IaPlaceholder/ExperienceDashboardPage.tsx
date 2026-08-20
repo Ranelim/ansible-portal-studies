@@ -37,7 +37,8 @@ export const ExperienceDashboardPage = () => {
   const scoped: NavExperience =
     experience === 'admin' ||
     experience === 'all' ||
-    experience === 'automate'
+    experience === 'automate' ||
+    experience === 'assistant'
       ? 'develop'
       : experience;
   const label = isDevelopExperience(scoped)

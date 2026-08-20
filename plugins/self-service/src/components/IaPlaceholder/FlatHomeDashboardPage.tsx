@@ -74,6 +74,13 @@ const SNIPPETS: Record<
     href: '/self-service/admin/overview',
     highlights: ['Sync OK', '1 warning'],
   },
+  assistant: {
+    summary: 'Ask questions and take actions across experiences.',
+    metric: '—',
+    metricLabel: 'chat',
+    href: '/self-service/assistant',
+    highlights: ['Cross-experience help'],
+  },
 };
 
 const useStyles = makeStyles(theme => ({

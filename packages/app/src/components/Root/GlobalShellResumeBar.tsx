@@ -29,6 +29,7 @@ const EXPERIENCE_RESUME: Record<
   develop: '/self-service/repositories/list',
   compliance: '/self-service/experience-dashboard',
   edge: '/self-service/experience-dashboard',
+  assistant: '/self-service/assistant',
   admin: '/self-service/admin/overview',
 };
 

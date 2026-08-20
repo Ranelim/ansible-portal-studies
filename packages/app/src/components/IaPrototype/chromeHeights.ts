@@ -18,8 +18,8 @@ export const MASTHEAD_TOOLBAR_GUTTER_PX = 24;
  */
 export const RETURN_COMPARE_BAR_HEIGHT = 0;
 /**
- * Magenta Admin Sync IA compare bar height.
- * 0 while Opt 1 is forced (Taufique); restore 36 when re-enabling the bar.
+ * Magenta Admin Sync IA compare bar height (Administration only).
+ * 0 while compare UI is parked (Opt 1 forced); restore 36 when re-enabling the bar.
  */
 export const ADMIN_SYNC_IA_BAR_HEIGHT = 0;
 

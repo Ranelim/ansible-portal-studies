@@ -16,6 +16,7 @@ import {
   ASSISTANT_SIDE_NAV_TRIAL,
   isAssistantPath,
   useAssistantChatTrial,
+  experienceFromPath,
 } from '@ansible/plugin-backstage-self-service';
 import { SidebarSectionLabel } from '@ansible/plugin-backstage-rhaap';
 import { SidebarSearchModal } from '@backstage/plugin-search';
@@ -549,7 +550,7 @@ const AdminItems = () => {
         <SidebarItem
           icon={SyncIcon}
           to="/self-service/admin/sync-activity"
-          text="Sync activity"
+          text="Sync"
         />
       )}
       <SidebarItem icon={VpnKeyIcon} to="rbac" text="Access Control" />
@@ -1065,6 +1066,93 @@ const useQuietReturnStyles = makeStyles(theme => ({
   },
 }));
 
+function switcherIds(available: NavExperience[]): ExperienceId[] {
+  return available.filter((id): id is ExperienceId => id !== 'all');
+}
+
+function currentSwitcherId(
+  pathname: string,
+  experience: NavExperience,
+  available: ExperienceId[],
+): ExperienceId {
+  const fromPath = experienceFromPath(pathname);
+  if (fromPath && fromPath !== 'all' && available.includes(fromPath)) {
+    return fromPath;
+  }
+  // Admin / Assistant are path-owned. Don't keep them on a job-mode page.
+  if (experience === 'admin' || experience === 'assistant') {
+    return (
+      available.find(id => id !== 'admin' && id !== 'assistant') ??
+      available[0] ??
+      'automate'
+    );
+  }
+  if (experience !== 'all' && available.includes(experience)) {
+    return experience;
+  }
+  return available[0] ?? 'automate';
+}
+
+/** Shared rail return + experience switcher (Admin + Assistant included). */
+const ExperienceRailHeader = ({
+  current,
+  available,
+  smeLocked,
+}: {
+  current: ExperienceId;
+  available: ExperienceId[];
+  smeLocked: boolean;
+}) => {
+  const quietClasses = useQuietReturnStyles();
+  const navigate = useNavigate();
+  const { variant: returnChrome } = useExperienceReturnChrome();
+  const goExperiences = () => navigate('/self-service/experiences');
+  const experienceLabel = EXPERIENCE_LABELS[current];
+  const showQuietReturn = !smeLocked && returnChrome === 'quiet';
+  const showLabelReturn = !smeLocked && returnChrome === 'waffle';
+
+  return (
+    <>
+      {showQuietReturn && (
+        <button
+          type="button"
+          className={quietClasses.quietReturn}
+          onClick={goExperiences}
+          aria-label="Back to Experiences"
+        >
+          <span className={quietClasses.iconCol} aria-hidden>
+            <ArrowBackIcon className={quietClasses.quietIcon} />
+          </span>
+          Experiences
+        </button>
+      )}
+
+      {showLabelReturn ? (
+        <Box className={quietClasses.labelReturnRow}>
+          <span className={quietClasses.labelReturnHit}>
+            <button
+              type="button"
+              className={quietClasses.labelReturnBtn}
+              onClick={goExperiences}
+              aria-label="Back to Experiences"
+              title="Back to Experiences"
+            >
+              <ChevronLeftIcon className={quietClasses.labelReturnChevron} />
+            </button>
+          </span>
+          <span className={quietClasses.switchSlot}>
+            <ExperienceSwitcher current={current} available={available} />
+          </span>
+        </Box>
+      ) : (
+        !showQuietReturn && <SidebarSectionLabel text={experienceLabel} />
+      )}
+
+      {showQuietReturn && <SidebarSectionLabel text={experienceLabel} />}
+    </>
+  );
+};
+
 const useAssistantRailStyles = makeStyles(theme => ({
   /** Same icon column as return chevron / SidebarItem (gutter align). */
   iconCol: {
@@ -1145,60 +1233,41 @@ const useAssistantRailStyles = makeStyles(theme => ({
  * ROLLBACK: `ASSISTANT_SIDE_NAV_TRIAL = false` in assistantIaTrial.ts
  */
 const AssistantSidebarRail = () => {
-  const quietClasses = useQuietReturnStyles();
   const classes = useAssistantRailStyles();
   const navigate = useNavigate();
-  const { role } = useUserRoleContext();
+  const { pathname } = useLocation();
+  const { role, hasRole } = useUserRoleContext();
+  const { plugins } = useNavPlugins();
+  const { experience, setExperience } = useNavIaModel();
   const smeLocked = isSmeRole(role);
-  const { variant: returnChrome } = useExperienceReturnChrome();
+  const isAdmin = hasRole('admin');
   const { activeId, isNewChat, recents, newChat, selectChat, clearHistory } =
     useAssistantChatTrial();
 
-  const showQuietReturn = !smeLocked && returnChrome === 'quiet';
-  const showLabelReturn = !smeLocked && returnChrome === 'waffle';
-  const goExperiences = () => navigate('/self-service/experiences');
+  const available = switcherIds(
+    availableExperiences({
+      role,
+      isAdmin,
+      compliance: plugins.compliance,
+      rhem: plugins.rhem,
+    }),
+  );
+  const current = currentSwitcherId(pathname, experience, available);
+
+  useEffect(() => {
+    if (smeLocked) return;
+    if (current === experience) return;
+    setExperience(current);
+    writeNavExperience(current);
+  }, [current, experience, smeLocked, setExperience]);
 
   return (
     <SearchAndMenu showSearch={false}>
-      {showQuietReturn && (
-        <button
-          type="button"
-          className={quietClasses.quietReturn}
-          onClick={goExperiences}
-          aria-label="Back to Experiences"
-        >
-          <span className={quietClasses.iconCol} aria-hidden>
-            <ArrowBackIcon className={quietClasses.quietIcon} />
-          </span>
-          Experiences
-        </button>
-      )}
-
-      {showLabelReturn ? (
-        <Box className={quietClasses.labelReturnRow}>
-          <span className={quietClasses.labelReturnHit}>
-            <button
-              type="button"
-              className={quietClasses.labelReturnBtn}
-              onClick={goExperiences}
-              aria-label="Back to Experiences"
-              title="Back to Experiences"
-            >
-              <ChevronLeftIcon className={quietClasses.labelReturnChevron} />
-            </button>
-          </span>
-          <Typography
-            className={quietClasses.labelReturnText}
-            component="span"
-          >
-            Assistant
-          </Typography>
-        </Box>
-      ) : (
-        !showQuietReturn && <SidebarSectionLabel text="Assistant" />
-      )}
-
-      {showQuietReturn && <SidebarSectionLabel text="Assistant" />}
+      <ExperienceRailHeader
+        current={current}
+        available={available}
+        smeLocked={smeLocked}
+      />
 
       {/* Soft gap — experience name vs menu (same as other experience rails). */}
       <SidebarSpacer />
@@ -1280,12 +1349,10 @@ export const ExperiencesSidebar = () => {
 };
 
 const ExperiencesDomainSidebar = () => {
-  const quietClasses = useQuietReturnStyles();
-  const navigate = useNavigate();
+  const { pathname } = useLocation();
   const { role, hasRole } = useUserRoleContext();
   const { plugins } = useNavPlugins();
   const { experience, setExperience } = useNavIaModel();
-  const { variant: returnChrome } = useExperienceReturnChrome();
   const { variant: runPairIa } = useTemplatesRunsIa();
   const automateRail = runPairIa === 'automate-rail';
   const isAdmin = hasRole('admin');
@@ -1296,25 +1363,16 @@ const ExperiencesDomainSidebar = () => {
     compliance: plugins.compliance,
     rhem: plugins.rhem,
   });
+  const switcherAvailable = switcherIds(available);
+  const current = currentSwitcherId(pathname, experience, switcherAvailable);
 
-  const active: NavExperience = available.includes(experience)
-    ? experience
-    : available[0] ?? 'automate';
-
-  // SME: force Automate. Multi-seat: coerce invalid away from Bridge 'all'.
+  // SME: force Automate. Path owns Admin / Assistant. Coerce leftover Bridge 'all'.
   useEffect(() => {
-    let next = active;
-    if (next === 'all') {
-      next =
-        smeLocked
-          ? 'automate'
-          : available.find(id => id !== 'all') ?? 'automate';
-    }
-    if (next !== experience) {
-      setExperience(next);
-      writeNavExperience(next);
-    }
-  }, [active, experience, setExperience, smeLocked, available]);
+    if (smeLocked) return;
+    if (current === experience) return;
+    setExperience(current);
+    writeNavExperience(current);
+  }, [current, experience, setExperience, smeLocked]);
 
   /**
    * Experience Settings rail omitted until real personal prefs exist.
@@ -1330,28 +1388,7 @@ const ExperiencesDomainSidebar = () => {
     />
   );
 
-  const domain =
-    active === 'all'
-      ? smeLocked
-        ? 'automate'
-        : available.find(id => id !== 'all') ?? 'automate'
-      : active;
-
-  const experienceLabel =
-    EXPERIENCE_LABELS[domain] ?? EXPERIENCE_LABELS.develop;
-
-  const jobAvailable = available.filter(
-    (id): id is ExperienceId => id !== 'all' && id !== 'admin',
-  );
-  const currentJob: ExperienceId =
-    domain === 'admin' || domain === 'all'
-      ? jobAvailable[0] ?? 'develop'
-      : domain;
-
-  const showQuietReturn = !smeLocked && returnChrome === 'quiet';
-  const showLabelReturn = !smeLocked && returnChrome === 'waffle';
-
-  const goExperiences = () => navigate('/self-service/experiences');
+  const domain = current;
 
   /** Templates · Runs (or bundled Automate) — soft gap only, no hard rules. */
   const ExperienceRunPair =
@@ -1396,48 +1433,11 @@ const ExperiencesDomainSidebar = () => {
 
   return (
     <SearchAndMenu showSearch={false} footer={developAdminFooter}>
-      {/* A — quiet “← Experiences” above the label. */}
-      {showQuietReturn && (
-        <button
-          type="button"
-          className={quietClasses.quietReturn}
-          onClick={goExperiences}
-          aria-label="Back to Experiences"
-        >
-          <span className={quietClasses.iconCol} aria-hidden>
-            <ArrowBackIcon className={quietClasses.quietIcon} />
-          </span>
-          Experiences
-        </button>
-      )}
-
-      {/* B — left chevron beside experience name (icon-column aligned). */}
-      {showLabelReturn ? (
-        <Box className={quietClasses.labelReturnRow}>
-          <span className={quietClasses.labelReturnHit}>
-            <button
-              type="button"
-              className={quietClasses.labelReturnBtn}
-              onClick={goExperiences}
-              aria-label="Back to Experiences"
-              title="Back to Experiences"
-            >
-              <ChevronLeftIcon className={quietClasses.labelReturnChevron} />
-            </button>
-          </span>
-          <span className={quietClasses.switchSlot}>
-            <ExperienceSwitcher
-              current={currentJob}
-              available={jobAvailable}
-            />
-          </span>
-        </Box>
-      ) : (
-        !showQuietReturn && <SidebarSectionLabel text={experienceLabel} />
-      )}
-
-      {/* A keeps a normal section label under the quiet return. */}
-      {showQuietReturn && <SidebarSectionLabel text={experienceLabel} />}
+      <ExperienceRailHeader
+        current={current}
+        available={switcherAvailable}
+        smeLocked={smeLocked}
+      />
 
       {/* Soft gap — experience name vs menu (invisible spacer, not a rule). */}
       <SidebarSpacer />

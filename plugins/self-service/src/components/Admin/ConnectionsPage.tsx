@@ -10,13 +10,11 @@ import {
   makeStyles,
   Chip,
   Tooltip,
-  IconButton,
   Tab,
   Tabs,
   SvgIcon,
 } from '@material-ui/core';
 import SyncIcon from '@material-ui/icons/Sync';
-import ErrorOutlineIcon from '@material-ui/icons/ErrorOutline';
 import LinkOffIcon from '@material-ui/icons/LinkOff';
 import ArrowForwardIcon from '@material-ui/icons/ArrowForward';
 import WarningAmberIcon from '@material-ui/icons/ReportProblemOutlined';
@@ -24,7 +22,6 @@ import PublicIcon from '@material-ui/icons/Public';
 import ComputerIcon from '@material-ui/icons/Computer';
 import OpenInNewIcon from '@material-ui/icons/OpenInNew';
 import AddIcon from '@material-ui/icons/Add';
-import CloseIcon from '@material-ui/icons/Close';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAdminSyncIa } from './useAdminSyncIa';
 import { SyncHistoryEmbedded } from './SyncActivityPage';
@@ -136,16 +133,6 @@ const useStyles = makeStyles(theme => ({
     display: 'inline-block',
     marginRight: 5,
   },
-  failureBanner: {
-    display: 'flex',
-    alignItems: 'flex-start',
-    gap: theme.spacing(1),
-    padding: theme.spacing(1.5, 2),
-    borderRadius: 6,
-    border: `1px solid rgba(201,25,11,0.3)`,
-    backgroundColor: 'rgba(201,25,11,0.06)',
-    marginBottom: theme.spacing(2),
-  },
   headerActions: {
     display: 'flex',
     alignItems: 'center',
@@ -215,6 +202,8 @@ const getCardWarning = (provider: ConnectionProvider): string | null => {
 const ProviderCard = ({ provider }: { provider: ConnectionProvider }) => {
   const classes = useStyles();
   const navigate = useNavigate();
+  const { variant } = useAdminSyncIa();
+  const connectOnly = variant === 'opt2';
   const [syncing, setSyncing] = useState(false);
 
   const isConfigured = provider.status !== 'Not configured';
@@ -299,16 +288,20 @@ const ProviderCard = ({ provider }: { provider: ConnectionProvider }) => {
                 </Box>
               )}
               <Box className={classes.cardFooter}>
-                <Button
-                  size="small"
-                  color="primary"
-                  startIcon={<SyncIcon style={{ fontSize: 16 }} />}
-                  onClick={handleSync}
-                  disabled={syncing}
-                  style={{ textTransform: 'none', fontSize: 12 }}
-                >
-                  {syncing ? 'Syncing…' : 'Sync now'}
-                </Button>
+                {connectOnly ? (
+                  <span />
+                ) : (
+                  <Button
+                    size="small"
+                    color="primary"
+                    startIcon={<SyncIcon style={{ fontSize: 16 }} />}
+                    onClick={handleSync}
+                    disabled={syncing}
+                    style={{ textTransform: 'none', fontSize: 12 }}
+                  >
+                    {syncing ? 'Syncing…' : 'Sync now'}
+                  </Button>
+                )}
                 <Box display="flex" alignItems="center" style={{ gap: 4, color: '#0066CC', fontSize: 12 }}>
                   Configure <ArrowForwardIcon style={{ fontSize: 14 }} />
                 </Box>
@@ -441,32 +434,6 @@ const DevToolsCard = ({ provider }: { provider: ConnectionProvider }) => {
   );
 };
 
-const SyncFailureBanner = ({ classes }: { classes: ReturnType<typeof useStyles> }) => {
-  const [dismissed, setDismissed] = useState(false);
-  if (dismissed) return null;
-
-  const aapProvider = DEMO_CONNECTIONS.find(c => c.id === 'aap');
-  if (!aapProvider || aapProvider.status !== 'Active') return null;
-
-  return (
-    <Box className={classes.failureBanner}>
-      <ErrorOutlineIcon style={{ fontSize: 18, color: statusColors.error, marginTop: 1 }} />
-      <Box flex={1}>
-        <Typography style={{ fontSize: 13, fontWeight: 500, color: statusColors.error }}>
-          Sync failure detected
-        </Typography>
-        <Typography style={{ fontSize: 12, color: '#999', marginTop: 2 }}>
-          GitHub — ansible-network: Repository scan failed (rate limit exceeded).{' '}
-          <span style={{ color: '#4DA3FF', cursor: 'pointer' }}>View details</span>
-        </Typography>
-      </Box>
-      <IconButton size="small" onClick={() => setDismissed(true)} style={{ marginTop: -4 }}>
-        <CloseIcon style={{ fontSize: 16, color: '#999' }} />
-      </IconButton>
-    </Box>
-  );
-};
-
 export const ConnectionsPage = () => {
   const classes = useStyles();
   const { variant } = useAdminSyncIa();
@@ -518,7 +485,7 @@ export const ConnectionsPage = () => {
               description={
                 merged
                   ? 'Opt 1: Connections (wire systems + Sync all / Sync now) and Sync history live as tabs here — no separate Sync rail.'
-                  : 'Integrations connect Automation Portal to external systems: AAP, Private Automation Hub, GitHub/GitLab (source control for Git repositories), container registries (EE images — not Git repos), and developer tools such as Dev Spaces. Installed Portal capabilities are listed under Plugins.'
+                  : 'Connect systems here. Schedules, Sync all, and history live under Sync.'
               }
             />
           </Box>
@@ -531,16 +498,18 @@ export const ConnectionsPage = () => {
         }
       >
         <Box className={classes.headerActions}>
-          <Button
-            variant="outlined"
-            size="small"
-            startIcon={<SyncIcon style={{ fontSize: 16 }} />}
-            onClick={handleSyncAll}
-            disabled={syncing}
-            style={{ textTransform: 'none', fontSize: 13, borderRadius: 20 }}
-          >
-            {syncing ? 'Syncing…' : 'Sync all connections'}
-          </Button>
+          {merged && (
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<SyncIcon style={{ fontSize: 16 }} />}
+              onClick={handleSyncAll}
+              disabled={syncing}
+              style={{ textTransform: 'none', fontSize: 13, borderRadius: 20 }}
+            >
+              {syncing ? 'Syncing…' : 'Sync all connections'}
+            </Button>
+          )}
           <Button
             variant="contained"
             color="primary"
@@ -571,8 +540,6 @@ export const ConnectionsPage = () => {
 
         {showConnections && (
           <>
-            <SyncFailureBanner classes={classes} />
-
             <Typography className={classes.sectionTitle}>
               Automation platforms
             </Typography>

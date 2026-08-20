@@ -1,5 +1,5 @@
 import { Box, Typography, makeStyles } from '@material-ui/core';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   FORCED_ADMIN_SYNC_IA,
   useAdminSyncIa,
@@ -11,15 +11,15 @@ import { ADMIN_SYNC_IA_BAR_HEIGHT } from './chromeHeights';
 const MAGENTA = '#BE0098';
 
 const OPTIONS: Array<{ id: AdminSyncIaVariant; label: string }> = [
-  { id: 'opt1', label: '1 — Merge under Integrations' },
-  { id: 'opt2', label: '2 — Sync activity + Run sync…' },
+  { id: 'opt1', label: '1 — Merged Integrations' },
+  { id: 'opt2', label: '2 — Integrations / Sync split' },
 ];
 
 const HINTS: Record<AdminSyncIaVariant, string> = {
   opt1:
-    'No Sync rail. Integrations tabs: Connections | Sync history. Sync starts on Connections.',
+    'Connect, Sync now, and history stay on Integrations. No Sync rail.',
   opt2:
-    'Rail = Sync activity. Run sync… opens a scope dialog — history stays a log.',
+    'Integrations = connect only. Sync rail = schedules, Sync all, history.',
 };
 
 const useStyles = makeStyles({
@@ -84,25 +84,53 @@ const useStyles = makeStyles({
   },
 });
 
+function isAdminArea(pathname: string, experience: string): boolean {
+  return (
+    experience === 'admin' ||
+    pathname.startsWith('/self-service/admin') ||
+    pathname === '/rbac' ||
+    pathname.startsWith('/rbac/')
+  );
+}
+
 /**
  * Temp design compare — Admin Sync / Integrations IA.
- * Only while the Administration experience is active.
- * Parked while FORCED_ADMIN_SYNC_IA is set (Opt 1 = Taufique).
+ * Visible only in Administration.
  */
 export const AdminSyncIaCompareBar = () => {
   const classes = useStyles();
   const { variant, setVariant } = useAdminSyncIa();
   const { experience } = useNavIaModel();
   const location = useLocation();
+  const navigate = useNavigate();
 
-  // Both Opt 1 / Opt 2 remain in code; bar hidden while one is forced.
   if (FORCED_ADMIN_SYNC_IA) {
     return null;
   }
 
-  if (experience !== 'admin' || location.pathname.includes('/setup')) {
+  if (
+    !isAdminArea(location.pathname, experience) ||
+    location.pathname.includes('/setup')
+  ) {
     return null;
   }
+
+  const select = (id: AdminSyncIaVariant) => {
+    setVariant(id);
+    if (id === 'opt2' && location.search.includes('tab=history')) {
+      navigate('/self-service/admin/sync-activity?tab=history', {
+        replace: true,
+      });
+    }
+    if (
+      id === 'opt1' &&
+      location.pathname.startsWith('/self-service/admin/sync-activity')
+    ) {
+      navigate('/self-service/admin/integrations?tab=history', {
+        replace: true,
+      });
+    }
+  };
 
   return (
     <Box
@@ -127,7 +155,7 @@ export const AdminSyncIaCompareBar = () => {
             className={`${classes.tab} ${
               variant === opt.id ? classes.tabActive : ''
             }`}
-            onClick={() => setVariant(opt.id)}
+            onClick={() => select(opt.id)}
           >
             {opt.label}
           </button>

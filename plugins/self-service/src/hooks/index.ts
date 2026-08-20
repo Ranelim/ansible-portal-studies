@@ -16,6 +16,7 @@ export {
   EXPERIENCE_LABELS,
   isDevelopExperience,
   isDevelopReposRailMode,
+  experienceFromPath,
   type NavIaModel,
   type NavExperience,
 } from './useNavIaModel';

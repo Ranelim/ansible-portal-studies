@@ -132,6 +132,7 @@ const FILTER_EXPERIENCES: Array<Exclude<NavExperience, 'all'>> = [
   'develop',
   'compliance',
   'edge',
+  'assistant',
   'admin',
 ];
 
@@ -143,6 +144,7 @@ function readLastExperience(): Exclude<NavExperience, 'all'> | null {
       raw === 'develop' ||
       raw === 'compliance' ||
       raw === 'edge' ||
+      raw === 'assistant' ||
       raw === 'admin'
     ) {
       return raw;
@@ -176,6 +178,7 @@ function readReturnExperience(): Exclude<NavExperience, 'all'> | null {
         exp === 'develop' ||
         exp === 'compliance' ||
         exp === 'edge' ||
+        exp === 'assistant' ||
         exp === 'admin'
       ) {
         return exp;

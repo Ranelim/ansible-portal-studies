@@ -37,7 +37,9 @@ import {
   EXPERIENCE_LANDING,
   pushRecentExperience,
   readRecentExperiences,
+  JOB_EXPERIENCE_IDS,
   type ExperienceId,
+  type JobExperienceId,
 } from '../../hooks/experienceRecent';
 import { useNavPlugins } from '../../hooks/useNavPlugins';
 import { useUserRoleContext } from '../../hooks/useUserRole';
@@ -55,7 +57,7 @@ const MAGENTA = '#BE0098';
 const FORCED_CARD_STYLE: CardStyle | null = 'hub';
 
 /** User-facing experience blurbs — not IA documentation. */
-const EXPERIENCE_BLURB: Record<ExperienceId, string> = {
+const EXPERIENCE_BLURB: Record<JobExperienceId, string> = {
   automate: 'Run job templates and track recent activity.',
   develop:
     'Create and manage automation content — git repositories, collections, and execution environments.',
@@ -65,7 +67,7 @@ const EXPERIENCE_BLURB: Record<ExperienceId, string> = {
 
 const CARD_STYLE_KEY = 'portal-experience-card-style';
 
-const EXPERIENCE_ACCENT: Record<ExperienceId, string> = {
+const EXPERIENCE_ACCENT: Record<JobExperienceId, string> = {
   automate: '#0066CC',
   develop: '#7B3DB8',
   compliance: '#C46100',
@@ -554,9 +556,8 @@ export const ExperiencesHomePage = () => {
         isAdmin,
         compliance: plugins.compliance,
         rhem: plugins.rhem,
-      }).filter(
-        (id): id is ExperienceId =>
-          id !== 'all' && id !== 'admin',
+      }).filter((id): id is JobExperienceId =>
+        (JOB_EXPERIENCE_IDS as readonly string[]).includes(id),
       ),
     [role, isAdmin, plugins.compliance, plugins.rhem],
   );
@@ -628,6 +629,10 @@ export const ExperiencesHomePage = () => {
   }, [navigate, setExperience]);
 
   const openAssistant = () => {
+    setExperience('assistant');
+    writeNavExperience('assistant');
+    pushRecentExperience('assistant');
+    setRecent(readRecentExperiences());
     navigate('/self-service/assistant');
   };
 

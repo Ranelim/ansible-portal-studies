@@ -13,6 +13,7 @@ import {
   useUserRoleContext,
   isSmeRole,
   isDevelopExperience,
+  experienceFromPath,
 } from '@ansible/plugin-backstage-self-service';
 import { SidebarPage } from '@backstage/core-components';
 import { ExperiencesSidebar } from './navSidebars';
@@ -395,8 +396,13 @@ export const Root = ({ children }: PropsWithChildren<{}>) => {
     inAutomateExperience;
 
   const { visible: magentaBarVisible } = useMagentaIaBarVisible();
+  const onAdminArea =
+    experience === 'admin' ||
+    location.pathname.startsWith('/self-service/admin') ||
+    location.pathname === '/rbac' ||
+    location.pathname.startsWith('/rbac/');
   const showAdminSyncBar =
-    experience === 'admin' && !isSetup && FORCED_ADMIN_SYNC_IA === null;
+    onAdminArea && !isSetup && FORCED_ADMIN_SYNC_IA === null;
   const templatesRunsBarEligible =
     !isSetup && FORCED_TEMPLATES_RUNS_IA === null;
   const showTemplatesRunsBar = templatesRunsBarEligible && magentaBarVisible;
@@ -436,6 +442,15 @@ export const Root = ({ children }: PropsWithChildren<{}>) => {
     setExperience('all');
     writeNavExperience('all');
   }, [onBridge, sme, setExperience]);
+
+  // Admin / Assistant URLs own the switcher label (don't leave Automate stuck on).
+  useEffect(() => {
+    if (sme || isSetup) return;
+    const fromPath = experienceFromPath(location.pathname);
+    if (!fromPath || fromPath === experience) return;
+    setExperience(fromPath);
+    writeNavExperience(fromPath);
+  }, [location.pathname, experience, sme, isSetup, setExperience]);
 
   // SME always lives in Automate (both A and B).
   useEffect(() => {

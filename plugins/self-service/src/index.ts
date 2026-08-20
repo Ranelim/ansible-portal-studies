@@ -39,6 +39,7 @@ export {
   EXPERIENCE_LABELS,
   isDevelopExperience,
   isDevelopReposRailMode,
+  experienceFromPath,
   type NavIaModel,
   type NavExperience,
 } from './hooks/useNavIaModel';
@@ -47,7 +48,9 @@ export {
   pushRecentExperience,
   readRecentExperiences,
   sortExperiencesByRecent,
+  JOB_EXPERIENCE_IDS,
   type ExperienceId,
+  type JobExperienceId,
 } from './hooks/experienceRecent';
 export {
   NAV_IA_REVIEW_MODS,

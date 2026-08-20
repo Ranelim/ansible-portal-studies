@@ -31,7 +31,7 @@ import ExpandLessIcon from '@material-ui/icons/ExpandLess';
 import AddIcon from '@material-ui/icons/Add';
 import DeleteOutlineIcon from '@material-ui/icons/DeleteOutline';
 import InsertDriveFileOutlinedIcon from '@material-ui/icons/InsertDriveFileOutlined';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import {
   DEMO_CONNECTIONS,
   DEMO_SYNC_SCHEDULES,
@@ -876,7 +876,15 @@ const PAHContentTab = ({ onSave }: { onSave: () => void }) => {
   );
 };
 
-const GitContentTab = ({ provider, onSave }: { provider: ConnectionProvider; onSave: () => void }) => {
+const GitContentTab = ({
+  provider,
+  onSave,
+  hideSyncInterval,
+}: {
+  provider: ConnectionProvider;
+  onSave: () => void;
+  hideSyncInterval?: boolean;
+}) => {
   const classes = useStyles();
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const isGithub = provider.id === 'github';
@@ -921,10 +929,12 @@ const GitContentTab = ({ provider, onSave }: { provider: ConnectionProvider; onS
               <TextField variant="outlined" size="small" type="number" value={org.crawlDepth}
                 style={{ width: 72 }} inputProps={{ min: 1, max: 10 }} />
             </Box>
+            {!hideSyncInterval && (
             <Box style={{ minWidth: 130 }}>
               <Typography className={classes.fieldLabel}>Sync interval</Typography>
               <Typography style={{ fontSize: 13 }}>{org.interval}</Typography>
             </Box>
+            )}
           </Box>
         </Box>
       ))}

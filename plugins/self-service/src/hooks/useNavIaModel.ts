@@ -21,6 +21,7 @@ export type NavExperience =
   | 'develop'
   | 'compliance'
   | 'edge'
+  | 'assistant'
   | 'admin';
 
 const MODEL_KEY = 'portal-nav-ia-model';
@@ -56,6 +57,7 @@ function normalizeExperience(raw: string | null): NavExperience | null {
     raw === 'develop' ||
     raw === 'compliance' ||
     raw === 'edge' ||
+    raw === 'assistant' ||
     raw === 'admin'
   ) {
     return raw;
@@ -130,6 +132,7 @@ export function availableExperiences(args: {
   if ((args.role === 'operator' || args.isAdmin) && args.rhem) {
     list.push('edge');
   }
+  list.push('assistant');
   if (args.isAdmin) list.push('admin');
   return list;
 }
@@ -140,8 +143,27 @@ export const EXPERIENCE_LABELS: Record<NavExperience, string> = {
   develop: 'Develop',
   compliance: 'Compliance',
   edge: 'Edge',
+  assistant: 'Assistant',
   admin: 'Administration',
 };
+
+/** Path owns Admin + Assistant so the switcher label matches the rail. */
+export function experienceFromPath(pathname: string): NavExperience | null {
+  if (
+    pathname.startsWith('/self-service/admin') ||
+    pathname === '/rbac' ||
+    pathname.startsWith('/rbac/')
+  ) {
+    return 'admin';
+  }
+  if (
+    pathname === '/self-service/assistant' ||
+    pathname.startsWith('/self-service/assistant/')
+  ) {
+    return 'assistant';
+  }
+  return null;
+}
 
 /** Shared across header + sidebar so IA model / experience stay in sync. */
 export function useNavIaModel() {

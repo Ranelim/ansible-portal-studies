@@ -1,15 +1,25 @@
 import type { NavExperience } from './useNavIaModel';
 
-/** Job-mode experiences — not Bridge (`all`) or Administration. */
-export type ExperienceId = Exclude<NavExperience, 'all' | 'admin'>;
+/** Switcher destinations — not Bridge (`all`). */
+export type ExperienceId = Exclude<NavExperience, 'all'>;
 
-const RECENT_KEY = 'portal-experience-recent';
-
-const JOB_IDS: ExperienceId[] = [
+/** Job-mode cards on Bridge. Administration = header CTA. Assistant = its own card. */
+export const JOB_EXPERIENCE_IDS = [
   'automate',
   'develop',
   'compliance',
   'edge',
+] as const;
+
+export type JobExperienceId = (typeof JOB_EXPERIENCE_IDS)[number];
+
+const SWITCHER_ORDER: ExperienceId[] = [
+  'automate',
+  'develop',
+  'compliance',
+  'edge',
+  'assistant',
+  'admin',
 ];
 
 export const EXPERIENCE_LANDING: Record<ExperienceId, string> = {
@@ -17,6 +27,8 @@ export const EXPERIENCE_LANDING: Record<ExperienceId, string> = {
   develop: '/self-service/repositories/list',
   compliance: '/self-service/experience-dashboard',
   edge: '/self-service/experience-dashboard',
+  assistant: '/self-service/assistant',
+  admin: '/self-service/admin/overview',
 };
 
 function asExperienceId(raw: unknown): ExperienceId | null {
@@ -28,11 +40,13 @@ function asExperienceId(raw: unknown): ExperienceId | null {
   ) {
     return 'develop';
   }
-  if (typeof raw === 'string' && (JOB_IDS as string[]).includes(raw)) {
+  if (typeof raw === 'string' && (SWITCHER_ORDER as string[]).includes(raw)) {
     return raw as ExperienceId;
   }
   return null;
 }
+
+const RECENT_KEY = 'portal-experience-recent';
 
 export function readRecentExperiences(): ExperienceId[] {
   try {
@@ -64,16 +78,21 @@ export function pushRecentExperience(id: ExperienceId) {
   }
 }
 
-/** Available experiences, most recently entered first. */
+/** Available destinations: recents first, Administration last. */
 export function sortExperiencesByRecent(
   available: ExperienceId[],
   recent: ExperienceId[] = readRecentExperiences(),
 ): ExperienceId[] {
   const rank = new Map(recent.map((id, i) => [id, i]));
+  const order = new Map(SWITCHER_ORDER.map((id, i) => [id, i]));
   return [...available].sort((a, b) => {
+    if (a === 'admin' || b === 'admin') {
+      if (a === 'admin') return 1;
+      if (b === 'admin') return -1;
+    }
     const ra = rank.has(a) ? rank.get(a)! : 999;
     const rb = rank.has(b) ? rank.get(b)! : 999;
     if (ra !== rb) return ra - rb;
-    return a.localeCompare(b);
+    return (order.get(a) ?? 99) - (order.get(b) ?? 99);
   });
 }

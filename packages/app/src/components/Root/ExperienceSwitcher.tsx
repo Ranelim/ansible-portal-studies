@@ -124,12 +124,13 @@ export const ExperienceSwitcher = ({
     [available, open],
   );
 
-  const label = EXPERIENCE_LABELS[current];
+  const fullLabel = EXPERIENCE_LABELS[current];
+  const triggerLabel = current === 'admin' ? 'Admin' : fullLabel;
 
   if (available.length <= 1) {
     return (
       <Typography className={classes.label} component="span">
-        {label}
+        {triggerLabel}
       </Typography>
     );
   }
@@ -150,10 +151,10 @@ export const ExperienceSwitcher = ({
         className={classes.trigger}
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label={`Current experience: ${label}. Switch experience`}
+        aria-label={`Current experience: ${fullLabel}. Switch experience`}
         onClick={e => setAnchor(e.currentTarget)}
       >
-        <span className={classes.label}>{label}</span>
+        <span className={classes.label}>{triggerLabel}</span>
         <ExpandMoreIcon className={classes.caret} />
       </button>
       <Menu
