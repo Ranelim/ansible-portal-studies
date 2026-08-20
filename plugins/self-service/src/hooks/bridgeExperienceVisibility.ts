@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 
 /** Job-mode experiences an admin can show or hide on Bridge + the switcher. */
-export type BridgeExperienceId = 'automate' | 'develop' | 'compliance' | 'edge';
+export type BridgeExperienceId =
+  | 'automate'
+  | 'develop'
+  | 'compliance'
+  | 'edge'
+  | 'orchestrator';
 
 const KEY = 'portal-bridge-experience-visibility';
 
@@ -10,6 +15,7 @@ const DEFAULT_VISIBLE: Record<BridgeExperienceId, boolean> = {
   develop: true,
   compliance: true,
   edge: true,
+  orchestrator: false,
 };
 
 const listeners = new Set<() => void>();
@@ -23,7 +29,8 @@ function isBridgeExperienceId(id: string): id is BridgeExperienceId {
     id === 'automate' ||
     id === 'develop' ||
     id === 'compliance' ||
-    id === 'edge'
+    id === 'edge' ||
+    id === 'orchestrator'
   );
 }
 

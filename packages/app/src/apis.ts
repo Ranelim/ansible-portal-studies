@@ -8,10 +8,13 @@ import {
   configApiRef,
   createApiFactory,
   discoveryApiRef,
+  fetchApiRef,
+  identityApiRef,
   oauthRequestApiRef,
 } from '@backstage/core-plugin-api';
 import { OAuth2 } from '@backstage/core-app-api';
 import { rhAapAuthApiRef } from '@ansible/plugin-backstage-self-service';
+import { ScaffolderClient } from '@backstage/plugin-scaffolder';
 import { scaffolderApiRef } from '@backstage/plugin-scaffolder-react';
 
 const isStaticDeployment =
@@ -58,13 +61,31 @@ export const apis: AnyApiFactory[] = [
         defaultScopes: ['read'],
       }),
   }),
-  ...(isStaticDeployment
-    ? [
-        createApiFactory({
-          api: scaffolderApiRef,
-          deps: {},
-          factory: () => noopScaffolderApi as any,
-        }),
-      ]
-    : []),
+  isStaticDeployment
+    ? createApiFactory({
+        api: scaffolderApiRef,
+        deps: {},
+        factory: () => noopScaffolderApi as any,
+      })
+    : createApiFactory({
+        api: scaffolderApiRef,
+        deps: {
+          discoveryApi: discoveryApiRef,
+          scmIntegrationsApi: scmIntegrationsApiRef,
+          fetchApi: fetchApiRef,
+          identityApi: identityApiRef,
+        },
+        factory: ({
+          discoveryApi,
+          scmIntegrationsApi,
+          fetchApi,
+          identityApi,
+        }) =>
+          new ScaffolderClient({
+            discoveryApi,
+            scmIntegrationsApi,
+            fetchApi,
+            identityApi,
+          }),
+      }),
 ];

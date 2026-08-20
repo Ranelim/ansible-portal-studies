@@ -1,4 +1,5 @@
-import { Page, Header, Content } from '@backstage/core-components';
+import { useEffect, useMemo, useState } from 'react';
+import { Page, Content } from '@backstage/core-components';
 import {
   Box,
   Button,
@@ -8,35 +9,30 @@ import {
   Step,
   StepLabel,
   Stepper,
-  Switch,
-  TextField,
-  Tooltip,
   Typography,
   makeStyles,
 } from '@material-ui/core';
+import ArrowBackIcon from '@material-ui/icons/ArrowBack';
 import { useNavigate } from 'react-router-dom';
-import PlayArrowIcon from '@material-ui/icons/PlayArrow';
-import CodeIcon from '@material-ui/icons/Code';
-import SecurityIcon from '@material-ui/icons/Security';
-import RouterIcon from '@material-ui/icons/Router';
-import DashboardIcon from '@material-ui/icons/Dashboard';
-import type { ComponentType } from 'react';
+import { writeExperienceSetup } from '../../hooks/experienceSetup';
+import { writeBridgeExperienceVisibility } from '../../hooks/bridgeExperienceVisibility';
+import { ExperienceThumbnail } from '../IaPlaceholder/experienceVisuals';
 
-const STEPS = [
-  'Details',
-  'Appearance',
-  'Seats and access',
-  'Plugins',
-  'Notifications',
-  'Review',
-];
+const STEPS = ['Plugins', 'Access and roles', 'Notifications', 'Review'];
 
-const ICONS: Array<{ id: string; label: string; Icon: ComponentType<{ color?: 'primary' | 'action' }> }> = [
-  { id: 'automate', label: 'Run', Icon: PlayArrowIcon },
-  { id: 'develop', label: 'Develop', Icon: CodeIcon },
-  { id: 'compliance', label: 'Compliance', Icon: SecurityIcon },
-  { id: 'edge', label: 'Edge', Icon: RouterIcon },
-  { id: 'overview', label: 'Overview', Icon: DashboardIcon },
+const PLUGINS = [
+  {
+    id: 'orchestrator',
+    label: 'Automation Orchestrator',
+    hint: 'Certified workflows and extra node types for this experience',
+    required: true,
+  },
+  {
+    id: 'self-service',
+    label: 'Templates and activity',
+    hint: 'Run pair for workflows launched from this experience',
+    required: false,
+  },
 ];
 
 const SEATS = [
@@ -46,68 +42,57 @@ const SEATS = [
   { id: 'admin', label: 'Admin' },
 ];
 
-const PLUGINS = [
-  {
-    id: 'self-service',
-    label: 'Self-service (run)',
-    hint: 'Templates and Activity in this experience',
-  },
-  {
-    id: 'apme',
-    label: 'APME Quality Scanning',
-    hint: 'Class B on Git Repositories — not a new rail row',
-  },
-  {
-    id: 'compliance',
-    label: 'Compliance',
-    hint: 'Class B on Inventories',
-  },
-  {
-    id: 'rhem',
-    label: 'RHEM (Edge Manager)',
-    hint: 'Class A Edge fleets when installed',
-  },
-];
-
-const OBJECTS = [
-  'Templates and Activity (run pair)',
-  'Git Repositories',
-  'Collections',
-  'Execution environments',
-  'Inventories',
-  'Edge fleets',
-];
-
 const EVENTS = [
-  { id: 'template-run-failures', label: 'Template run failures' },
-  { id: 'quality-alerts', label: 'Quality alerts' },
-  { id: 'compliance-results', label: 'Compliance results' },
-  { id: 'fleet-updates', label: 'Fleet updates' },
+  { id: 'workflow-failures', label: 'Workflow failures' },
+  { id: 'approvals', label: 'Approvals needed' },
+  { id: 'catalog-updates', label: 'Catalog updates' },
 ];
 
 const useStyles = makeStyles(theme => ({
-  banner: {
-    fontSize: 13,
-    color: theme.palette.text.secondary,
-    marginBottom: theme.spacing(2),
+  column: {
+    width: '100%',
     maxWidth: 720,
+  },
+  back: {
+    textTransform: 'none',
+    fontWeight: 500,
+    fontSize: 14,
+    color: theme.palette.text.secondary,
+    padding: '4px 10px',
+    marginLeft: theme.spacing(-1),
+    marginBottom: theme.spacing(1),
+    minWidth: 0,
+    borderRadius: 16,
+    '&:hover': {
+      backgroundColor: theme.palette.action.hover,
+    },
+    '& .MuiButton-startIcon': {
+      marginRight: 6,
+    },
   },
   titleRow: {
     display: 'flex',
     alignItems: 'center',
-    gap: theme.spacing(1),
+    gap: theme.spacing(1.5),
+    marginBottom: theme.spacing(0.5),
   },
-  preview: {
-    height: 22,
-    fontSize: 11,
-    fontWeight: 600,
-    textTransform: 'none',
+  title: {
+    fontSize: 24,
+    fontWeight: 700,
+    lineHeight: 1.25,
+  },
+  subtitle: {
+    fontSize: 14,
+    color: theme.palette.text.secondary,
+    lineHeight: 1.5,
+    marginBottom: theme.spacing(3),
   },
   stepper: {
-    padding: theme.spacing(1, 0, 3),
+    padding: 0,
+    marginBottom: theme.spacing(3),
     backgroundColor: 'transparent',
   },
-  section: {
+  panel: {
     border: `1px solid ${theme.palette.divider}`,
     borderRadius: 8,
     padding: theme.spacing(2.5),
@@ -123,39 +108,6 @@ const useStyles = makeStyles(theme => ({
     color: theme.palette.text.secondary,
     marginBottom: theme.spacing(2),
     lineHeight: 1.45,
-    maxWidth: 640,
-  },
-  field: {
-    marginBottom: theme.spacing(2),
-    maxWidth: 480,
-  },
-  iconGrid: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: theme.spacing(1),
-  },
-  iconTile: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: 4,
-    minWidth: 88,
-    padding: theme.spacing(1.5, 1),
-    border: `1px solid ${theme.palette.divider}`,
-    borderRadius: 8,
-    background: 'none',
-    cursor: 'default',
-  },
-  iconTileOn: {
-    borderColor: theme.palette.primary.main,
-    backgroundColor:
-      theme.palette.type === 'dark'
-        ? 'rgba(0, 102, 204, 0.12)'
-        : 'rgba(0, 102, 204, 0.06)',
-  },
-  checkCol: {
-    display: 'flex',
-    flexDirection: 'column',
   },
   pluginHint: {
     display: 'block',
@@ -165,11 +117,14 @@ const useStyles = makeStyles(theme => ({
     fontSize: 12,
     color: theme.palette.text.secondary,
   },
+  reviewLine: {
+    fontSize: 14,
+    lineHeight: 1.6,
+  },
   actions: {
     display: 'flex',
     justifyContent: 'flex-end',
     gap: theme.spacing(1.5),
-    paddingTop: theme.spacing(1),
   },
   pill: {
     textTransform: 'none',
@@ -179,233 +134,248 @@ const useStyles = makeStyles(theme => ({
 }));
 
 /**
- * Concept software template — Administration → Experiences.
- * Not wired. Plugins and Access Control remain the systems of record.
+ * One-time setup for an installed experience (software-template stepper).
+ * Does not create an experience at runtime — Enable shows it on the Bridge.
  */
 export const CreateExperienceWizardPage = () => {
   const classes = useStyles();
   const navigate = useNavigate();
+  const [step, setStep] = useState(0);
+  const [plugins, setPlugins] = useState<Record<string, boolean>>({
+    orchestrator: true,
+    'self-service': true,
+  });
+  const [seats, setSeats] = useState<Record<string, boolean>>({
+    sme: false,
+    developer: true,
+    operator: false,
+    admin: true,
+  });
+  const [events, setEvents] = useState<Record<string, boolean>>({
+    'workflow-failures': true,
+    approvals: true,
+    'catalog-updates': false,
+  });
+
   const back = () => navigate('/self-service/admin/experiences');
 
+  useEffect(() => {
+    document.title = 'Set up Orchestrator | Automation Portal';
+  }, []);
+
+  const seatSummary = useMemo(
+    () =>
+      SEATS.filter(s => seats[s.id])
+        .map(s => s.label)
+        .join(', ') || 'None selected',
+    [seats],
+  );
+  const pluginSummary = useMemo(
+    () =>
+      PLUGINS.filter(p => plugins[p.id])
+        .map(p => p.label)
+        .join(', '),
+    [plugins],
+  );
+  const eventSummary = useMemo(
+    () =>
+      EVENTS.filter(e => events[e.id])
+        .map(e => e.label)
+        .join(', ') || 'None',
+    [events],
+  );
+
+  const enable = () => {
+    writeExperienceSetup('orchestrator', true);
+    writeBridgeExperienceVisibility('orchestrator', true);
+    navigate('/self-service/admin/experiences');
+  };
+
   return (
-    <Page themeId="tool">
-      <Header
-        title={
-          <Box className={classes.titleRow}>
-            Create experience
-            <Tooltip
-              title="Preview software template. Not generally available. Does not provision an experience."
-              arrow
-            >
-              <span>
-                <Chip
-                  size="small"
-                  variant="outlined"
-                  label="Preview"
-                  className={classes.preview}
-                  color="primary"
-                />
-              </span>
-            </Tooltip>
-          </Box>
-        }
-        type="Experiences"
-        typeLink="/self-service/admin/experiences"
-        pageTitleOverride="Create experience"
-        subtitle="Software template to propose a Bridge job-mode experience. Plugins and Access Control stay the systems of record."
-      />
+    <Page themeId="app">
       <Content>
-        <Typography className={classes.banner}>
-          Concept wizard — all steps are shown on one page. Create does not
-          add a Bridge card. An experience is a durable job world, not a
-          plugin folder.
-        </Typography>
-
-        <Stepper activeStep={0} alternativeLabel className={classes.stepper}>
-          {STEPS.map(label => (
-            <Step key={label} completed={false}>
-              <StepLabel>{label}</StepLabel>
-            </Step>
-          ))}
-        </Stepper>
-
-        <Box className={classes.section}>
-          <Typography className={classes.sectionTitle}>1. Details</Typography>
-          <Typography className={classes.sectionHint}>
-            Name and describe the job world users enter from the Bridge.
-          </Typography>
-          <TextField
-            className={classes.field}
-            label="Name"
-            variant="outlined"
-            size="small"
-            fullWidth
-            defaultValue="Operate"
-            helperText="Rail and Bridge card title. Prefer a job label, not a product acronym."
-          />
-          <TextField
-            className={classes.field}
-            label="Description"
-            variant="outlined"
-            size="small"
-            fullWidth
-            multiline
-            rows={2}
-            defaultValue="Infrastructure and edge operations for inventories and fleets."
-          />
-          <TextField
-            className={classes.field}
-            label="Documentation link"
-            variant="outlined"
-            size="small"
-            fullWidth
-            defaultValue="https://docs.redhat.com/"
-            helperText="Opens from the Bridge card info icon."
-          />
-        </Box>
-
-        <Box className={classes.section}>
-          <Typography className={classes.sectionTitle}>2. Appearance</Typography>
-          <Typography className={classes.sectionHint}>
-            Icon and one-line summary on the Bridge card.
-          </Typography>
-          <Box className={classes.iconGrid}>
-            {ICONS.map(({ id, label, Icon }) => (
-              <Box
-                key={id}
-                className={`${classes.iconTile} ${
-                  id === 'compliance' ? classes.iconTileOn : ''
-                }`}
-              >
-                <Icon color={id === 'compliance' ? 'primary' : 'action'} />
-                <Typography style={{ fontSize: 12 }}>{label}</Typography>
-              </Box>
-            ))}
-          </Box>
-          <TextField
-            className={classes.field}
-            style={{ marginTop: 16 }}
-            label="Bridge card summary"
-            variant="outlined"
-            size="small"
-            fullWidth
-            defaultValue="Scan inventories, review findings, and remediate hosts."
-          />
-        </Box>
-
-        <Box className={classes.section}>
-          <Typography className={classes.sectionTitle}>
-            3. Seats and access
-          </Typography>
-          <Typography className={classes.sectionHint}>
-            Which Portal seats see this experience on the Bridge. Fine-grained
-            RBAC stays in Access Control — this is orientation, not a second
-            permission model.
-          </Typography>
-          <Box className={classes.checkCol}>
-            {SEATS.map(seat => (
-              <FormControlLabel
-                key={seat.id}
-                control={
-                  <Checkbox
-                    color="primary"
-                    defaultChecked={seat.id !== 'sme'}
-                  />
-                }
-                label={seat.label}
-              />
-            ))}
-          </Box>
-          <FormControlLabel
-            control={<Switch color="primary" defaultChecked />}
-            label="Show on Bridge by default"
-          />
-        </Box>
-
-        <Box className={classes.section}>
-          <Typography className={classes.sectionTitle}>4. Plugins</Typography>
-          <Typography className={classes.sectionHint}>
-            Attach installed capabilities. Install still happens under Plugins.
-            Prefer extending an object host (Class B) over a new rail row.
-          </Typography>
-          {PLUGINS.map(plugin => (
-            <Box key={plugin.id}>
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    color="primary"
-                    defaultChecked={plugin.id === 'compliance'}
-                  />
-                }
-                label={plugin.label}
-              />
-              <Typography className={classes.pluginHint} component="span">
-                {plugin.hint}
-              </Typography>
-            </Box>
-          ))}
-          <Typography className={classes.sectionHint} style={{ marginTop: 8 }}>
-            Primary objects on the experience rail
-          </Typography>
-          {OBJECTS.map(name => (
-            <FormControlLabel
-              key={name}
-              control={
-                <Checkbox
-                  color="primary"
-                  defaultChecked={
-                    name.startsWith('Templates') || name === 'Inventories'
-                  }
-                />
-              }
-              label={name}
-            />
-          ))}
-        </Box>
-
-        <Box className={classes.section}>
-          <Typography className={classes.sectionTitle}>
-            5. Notifications
-          </Typography>
-          <Typography className={classes.sectionHint}>
-            Event types this experience can send to the central inbox. Users
-            mute types in User settings. Platform channels stay in
-            Administration → Notifications.
-          </Typography>
-          {EVENTS.map(event => (
-            <FormControlLabel
-              key={event.id}
-              control={
-                <Checkbox
-                  color="primary"
-                  defaultChecked={event.id === 'compliance-results'}
-                />
-              }
-              label={event.label}
-            />
-          ))}
-        </Box>
-
-        <Box className={classes.section}>
-          <Typography className={classes.sectionTitle}>6. Review</Typography>
-          <Typography className={classes.sectionHint}>
-            Operate · Operator and Admin · Compliance plugin on Inventories ·
-            Compliance results in the inbox · On Bridge.
-          </Typography>
-        </Box>
-
-        <Box className={classes.actions}>
-          <Button className={classes.pill} color="primary" onClick={back}>
-            Cancel
-          </Button>
+        <Box className={classes.column}>
           <Button
-            className={classes.pill}
-            color="primary"
-            variant="contained"
+            className={classes.back}
+            variant="text"
+            color="inherit"
+            size="small"
+            startIcon={<ArrowBackIcon fontSize="small" />}
             onClick={back}
           >
-            Create
+            Experiences
           </Button>
+          <Box className={classes.titleRow}>
+            <ExperienceThumbnail id="orchestrator" size={32} />
+            <Typography className={classes.title} component="h1">
+              Set up Orchestrator
+            </Typography>
+          </Box>
+          <Typography className={classes.subtitle}>
+            Orchestrator is installed with this Portal instance. Choose plugins,
+            seats, and notifications, then enable it for the Bridge and the
+            experience switcher.
+          </Typography>
+
+          <Stepper activeStep={step} alternativeLabel className={classes.stepper}>
+            {STEPS.map(label => (
+              <Step key={label}>
+                <StepLabel>{label}</StepLabel>
+              </Step>
+            ))}
+          </Stepper>
+
+          {step === 0 && (
+            <Box className={classes.panel}>
+              <Typography className={classes.sectionTitle}>Plugins</Typography>
+              <Typography className={classes.sectionHint}>
+                Attach installed capabilities to this experience. Install still
+                happens at deployment — this step chooses what users see.
+              </Typography>
+              {PLUGINS.map(plugin => (
+                <Box key={plugin.id}>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        color="primary"
+                        checked={plugins[plugin.id]}
+                        disabled={plugin.required}
+                        onChange={(_, checked) =>
+                          setPlugins(prev => ({ ...prev, [plugin.id]: checked }))
+                        }
+                      />
+                    }
+                    label={
+                      plugin.required ? (
+                        <Box
+                          component="span"
+                          display="inline-flex"
+                          alignItems="center"
+                          style={{ gap: 8 }}
+                        >
+                          {plugin.label}
+                          <Chip size="small" label="Required" />
+                        </Box>
+                      ) : (
+                        plugin.label
+                      )
+                    }
+                  />
+                  <Typography className={classes.pluginHint} component="span">
+                    {plugin.hint}
+                  </Typography>
+                </Box>
+              ))}
+            </Box>
+          )}
+
+          {step === 1 && (
+            <Box className={classes.panel}>
+              <Typography className={classes.sectionTitle}>
+                Access and roles
+              </Typography>
+              <Typography className={classes.sectionHint}>
+                Which Portal seats can enter Orchestrator. Fine-grained
+                permissions stay in Access Control.
+              </Typography>
+              {SEATS.map(seat => (
+                <FormControlLabel
+                  key={seat.id}
+                  control={
+                    <Checkbox
+                      color="primary"
+                      checked={seats[seat.id]}
+                      onChange={(_, checked) =>
+                        setSeats(prev => ({ ...prev, [seat.id]: checked }))
+                      }
+                    />
+                  }
+                  label={seat.label}
+                />
+              ))}
+            </Box>
+          )}
+
+          {step === 2 && (
+            <Box className={classes.panel}>
+              <Typography className={classes.sectionTitle}>
+                Notifications
+              </Typography>
+              <Typography className={classes.sectionHint}>
+                Event types this experience can send to the central inbox. Users
+                mute types in user settings. Platform channels stay in
+                Administration → Notifications.
+              </Typography>
+              {EVENTS.map(event => (
+                <FormControlLabel
+                  key={event.id}
+                  control={
+                    <Checkbox
+                      color="primary"
+                      checked={events[event.id]}
+                      onChange={(_, checked) =>
+                        setEvents(prev => ({ ...prev, [event.id]: checked }))
+                      }
+                    />
+                  }
+                  label={event.label}
+                />
+              ))}
+            </Box>
+          )}
+
+          {step === 3 && (
+            <Box className={classes.panel}>
+              <Typography className={classes.sectionTitle}>Review</Typography>
+              <Typography className={classes.sectionHint}>
+                Enable Orchestrator for the seats below. It then appears on the
+                Bridge and in the experience switcher.
+              </Typography>
+              <Typography className={classes.reviewLine}>
+                <strong>Plugins:</strong> {pluginSummary}
+              </Typography>
+              <Typography className={classes.reviewLine}>
+                <strong>Seats:</strong> {seatSummary}
+              </Typography>
+              <Typography className={classes.reviewLine}>
+                <strong>Notifications:</strong> {eventSummary}
+              </Typography>
+            </Box>
+          )}
+
+          <Box className={classes.actions}>
+            <Button className={classes.pill} color="primary" onClick={back}>
+              Cancel
+            </Button>
+            {step > 0 && (
+              <Button
+                className={classes.pill}
+                color="primary"
+                onClick={() => setStep(s => s - 1)}
+              >
+                Back
+              </Button>
+            )}
+            {step < STEPS.length - 1 ? (
+              <Button
+                className={classes.pill}
+                color="primary"
+                variant="contained"
+                onClick={() => setStep(s => s + 1)}
+              >
+                Next
+              </Button>
+            ) : (
+              <Button
+                className={classes.pill}
+                color="primary"
+                variant="contained"
+                onClick={enable}
+              >
+                Enable
+              </Button>
+            )}
+          </Box>
         </Box>
       </Content>
     </Page>

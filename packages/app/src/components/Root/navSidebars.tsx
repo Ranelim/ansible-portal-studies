@@ -13,8 +13,7 @@ import {
   useTemplatesRunsIa,
   type NavExperience,
   type ExperienceId,
-  ASSISTANT_SIDE_NAV_TRIAL,
-  isAssistantPath,
+  assistantUsesSideNav,
   useAssistantChatTrial,
   experienceFromPath,
   useBridgeExperienceVisibility,
@@ -46,6 +45,7 @@ import CategoryIcon from '@material-ui/icons/Category';
 import MemoryIcon from '@material-ui/icons/Memory';
 import StorageIcon from '@material-ui/icons/Storage';
 import RouterIcon from '@material-ui/icons/Router';
+import AccountTreeIcon from '@material-ui/icons/AccountTree';
 import DashboardIcon from '@material-ui/icons/Dashboard';
 import LibraryBooks from '@material-ui/icons/LibraryBooks';
 import SchoolIcon from '@material-ui/icons/School';
@@ -1345,7 +1345,7 @@ const AssistantSidebarRail = () => {
  */
 export const ExperiencesSidebar = () => {
   const { pathname } = useLocation();
-  if (ASSISTANT_SIDE_NAV_TRIAL && isAssistantPath(pathname)) {
+  if (assistantUsesSideNav(pathname)) {
     return <AssistantSidebarRail />;
   }
   return <ExperiencesDomainSidebar />;
@@ -1443,7 +1443,7 @@ const ExperiencesDomainSidebar = () => {
       {/* A: Automate = Templates · Runs only (no Learn). B is rail-less — skip. */}
       {domain === 'automate' && automateRail && <RunItems />}
 
-      {/* Develop — Git Repositories expandable; Content quality is nested (tabs on the page). */}
+      {/* Develop — Content expandable; Git Repositories + Content quality nested. */}
       {domain === 'develop' && (
         <>
           {ExperienceDashboardItem}
@@ -1451,13 +1451,13 @@ const ExperiencesDomainSidebar = () => {
           <ExpandableNavItem
             id="develop-git-repos"
             icon={CodeIcon}
-            text="Git Repositories"
+            text="Content"
             activePathPrefix="/self-service/repositories"
             defaultOpen
           >
             <ExpandableNavChild
               to="/self-service/repositories/list"
-              text="Repositories"
+              text="Git Repositories"
             />
             <ExpandableNavChild
               to="/self-service/repositories/dashboard"
@@ -1505,6 +1505,19 @@ const ExperiencesDomainSidebar = () => {
             icon={RouterIcon}
             to="/self-service/edge-fleets"
             text="Edge fleets"
+          />
+          <SidebarSpacer />
+          <LearnItems />
+        </>
+      )}
+
+      {domain === 'orchestrator' && (
+        <>
+          {ExperienceRunPair}
+          <SidebarItem
+            icon={AccountTreeIcon}
+            to="/self-service/orchestrator"
+            text="Workflows"
           />
           <SidebarSpacer />
           <LearnItems />

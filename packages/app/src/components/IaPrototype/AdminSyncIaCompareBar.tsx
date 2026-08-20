@@ -7,6 +7,7 @@ import {
   type AdminSyncIaVariant,
 } from '@ansible/plugin-backstage-self-service';
 import { ADMIN_SYNC_IA_BAR_HEIGHT } from './chromeHeights';
+import { isDay0SetupPath } from '../GlobalHeader/isDay0SetupPath';
 
 const MAGENTA = '#BE0098';
 
@@ -110,7 +111,7 @@ export const AdminSyncIaCompareBar = () => {
 
   if (
     !isAdminArea(location.pathname, experience) ||
-    location.pathname.includes('/setup')
+    isDay0SetupPath(location.pathname)
   ) {
     return null;
   }

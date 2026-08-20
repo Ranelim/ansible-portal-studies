@@ -75,6 +75,11 @@ const COPY: Partial<
       'Edge / fleet preferences for Edge fleets and related rollouts.',
     examples: ['Default fleet health view', 'Update window notifications'],
   },
+  orchestrator: {
+    purpose:
+      'Orchestrator preferences for certified workflows and extra node types.',
+    examples: ['Default catalog filters', 'Workflow approval notifications'],
+  },
 };
 
 const ADMIN_ESCAPES: Partial<
@@ -100,6 +105,12 @@ const ADMIN_ESCAPES: Partial<
   edge: [
     {
       label: 'Connect Edge Manager',
+      to: '/self-service/admin/integrations',
+    },
+  ],
+  orchestrator: [
+    {
+      label: 'Integrations',
       to: '/self-service/admin/integrations',
     },
   ],

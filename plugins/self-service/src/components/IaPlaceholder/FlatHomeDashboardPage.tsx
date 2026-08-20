@@ -68,6 +68,13 @@ const SNIPPETS: Record<
     href: '/self-service/edge-fleets',
     highlights: ['148 devices', '4 degraded'],
   },
+  orchestrator: {
+    summary: 'Certified Automation Orchestrator workflows and extra node types.',
+    metric: '—',
+    metricLabel: 'workflows',
+    href: '/self-service/orchestrator',
+    highlights: ['Setup required until enabled'],
+  },
   admin: {
     summary: 'Integrations, sync health, and access control.',
     metric: '4',

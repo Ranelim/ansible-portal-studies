@@ -30,6 +30,7 @@ import {
   type NavIaModel,
 } from '@ansible/plugin-backstage-self-service';
 import { IA_BANNER_HEIGHT } from './chromeHeights';
+import { isDay0SetupPath } from '../GlobalHeader/isDay0SetupPath';
 import { modelHomePath } from './navIaLandings';
 import {
   getNavIaScorecard,
@@ -260,7 +261,7 @@ export const IaPrototypeBanner = () => {
   const [visualOpen, setVisualOpen] = useState(false);
   const [showScores, setShowScores] = useState(readShowScores);
 
-  if (location.pathname.includes('/setup')) {
+  if (isDay0SetupPath(location.pathname)) {
     return null;
   }
 

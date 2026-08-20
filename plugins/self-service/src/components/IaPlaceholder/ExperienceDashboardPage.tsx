@@ -26,6 +26,8 @@ const PURPOSE: Partial<Record<NavExperience, string>> = {
     'Experience overview for Compliance — posture across inventories. Inventories in the rail opens the list; overview lives here so the entity page stays list-first.',
   edge:
     'Experience overview for Edge — fleet health and devices needing attention. Edge fleets in the rail opens the fleets list; Devices / Images stay as entity tabs.',
+  orchestrator:
+    'Certified Automation Orchestrator workflows and extra node types. Workflows in the rail opens the catalog.',
 };
 
 /**

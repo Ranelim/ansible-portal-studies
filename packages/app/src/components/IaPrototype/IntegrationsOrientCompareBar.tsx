@@ -7,6 +7,7 @@ import {
   type IntegrationsOrientVariant,
 } from '@ansible/plugin-backstage-self-service';
 import { INTEGRATIONS_ORIENT_BAR_HEIGHT } from './chromeHeights';
+import { isDay0SetupPath } from '../GlobalHeader/isDay0SetupPath';
 
 const MAGENTA = '#BE0098';
 
@@ -109,7 +110,7 @@ export const IntegrationsOrientCompareBar = () => {
 
   if (
     !isAdminArea(location.pathname, experience) ||
-    location.pathname.includes('/setup')
+    isDay0SetupPath(location.pathname)
   ) {
     return null;
   }

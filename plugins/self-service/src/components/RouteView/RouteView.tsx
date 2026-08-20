@@ -44,9 +44,11 @@ import {
   HomeBandDashboardPage,
   ExperiencesHomePage,
   PortalAssistantPage,
+  SHOW_ASSISTANT_EXPERIENCE,
   FlatHomeDashboardPage,
   ExperienceSettingsPage,
   ExperienceDashboardPage,
+  OrchestratorPage,
   inventoriesIaPage,
   edgeFleetsIaPage,
 } from '../IaPlaceholder';
@@ -199,8 +201,26 @@ const RouteViewContent = () => {
         <Route path="home/*" element={<FlatHomeDashboardPage />} />
         <Route path="experiences" element={<ExperiencesHomePage />} />
         <Route path="experiences/*" element={<ExperiencesHomePage />} />
-        <Route path="assistant" element={<PortalAssistantPage />} />
-        <Route path="assistant/*" element={<PortalAssistantPage />} />
+        <Route
+          path="assistant"
+          element={
+            SHOW_ASSISTANT_EXPERIENCE ? (
+              <PortalAssistantPage />
+            ) : (
+              <Navigate to="/self-service/experiences" replace />
+            )
+          }
+        />
+        <Route
+          path="assistant/*"
+          element={
+            SHOW_ASSISTANT_EXPERIENCE ? (
+              <PortalAssistantPage />
+            ) : (
+              <Navigate to="/self-service/experiences" replace />
+            )
+          }
+        />
         <Route
           path="experience-settings"
           element={<ExperienceSettingsPage />}
@@ -293,9 +313,15 @@ const RouteViewContent = () => {
         />
         <Route
           path="admin/experiences/create"
+          element={<Navigate to="/self-service/admin/experiences" replace />}
+        />
+        <Route
+          path="admin/experiences/:experienceId/setup"
           element={<CreateExperienceWizardPage />}
         />
         <Route path="admin/experiences" element={<ExperiencesAdminPage />} />
+        <Route path="orchestrator" element={<OrchestratorPage />} />
+        <Route path="orchestrator/*" element={<OrchestratorPage />} />
         <Route path="admin/plugins" element={<PluginsPage />} />
         <Route
           path="admin/notifications"

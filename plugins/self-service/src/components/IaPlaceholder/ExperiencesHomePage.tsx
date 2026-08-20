@@ -25,6 +25,7 @@ import PlayArrowIcon from '@material-ui/icons/PlayArrow';
 import CodeIcon from '@material-ui/icons/Code';
 import VerifiedUserIcon from '@material-ui/icons/VerifiedUser';
 import DevicesOtherIcon from '@material-ui/icons/DevicesOther';
+import AccountTreeIcon from '@material-ui/icons/AccountTree';
 import SettingsIcon from '@material-ui/icons/Settings';
 import ChatIcon from '@material-ui/icons/Chat';
 import {
@@ -44,6 +45,11 @@ import {
 } from '../../hooks/experienceRecent';
 import { useNavPlugins } from '../../hooks/useNavPlugins';
 import { useUserRoleContext } from '../../hooks/useUserRole';
+import { SHOW_ASSISTANT_EXPERIENCE } from './assistantIaTrial';
+import {
+  EXPERIENCE_ACCENT,
+  ExperienceThumbnail,
+} from './experienceVisuals';
 
 type SortMode = 'recent' | 'az';
 type CardStyle = 'accent' | 'hub';
@@ -64,23 +70,18 @@ const EXPERIENCE_BLURB: Record<JobExperienceId, string> = {
     'Create and manage automation content — git repositories, collections, and execution environments.',
   compliance: 'Scan inventories, review findings, and remediate hosts.',
   edge: 'Manage edge device fleets, updates, and desired state.',
+  orchestrator:
+    'Browse certified Automation Orchestrator workflows and extra node types.',
 };
 
 const CARD_STYLE_KEY = 'portal-experience-card-style';
-
-const EXPERIENCE_ACCENT: Record<JobExperienceId, string> = {
-  automate: '#0066CC',
-  develop: '#7B3DB8',
-  compliance: '#C46100',
-  edge: '#147EBC',
-};
 
 /**
  * Prototype doc targets — replace with real Portal experience docs when available.
  * Prefer docs.redhat.com AAP / self-service portal family.
  */
 const EXPERIENCE_DOCS: Record<
-  ExperienceId | 'assistant',
+  JobExperienceId | 'assistant',
   { summary: string; href: string; linkLabel: string }
 > = {
   automate: {
@@ -107,6 +108,12 @@ const EXPERIENCE_DOCS: Record<
     href: 'https://docs.redhat.com/en/documentation/red_hat_ansible_automation_platform',
     linkLabel: 'View Edge documentation',
   },
+  orchestrator: {
+    summary:
+      'Orchestrator is a catalog of certified Automation Orchestrator workflows and extra node types.',
+    href: 'https://docs.redhat.com/en/documentation/red_hat_ansible_automation_platform',
+    linkLabel: 'View Orchestrator documentation',
+  },
   assistant: {
     summary:
       'Assistant helps across experiences — ask questions and take actions without leaving Automation Portal.',
@@ -126,6 +133,8 @@ function experienceIcon(id: ExperienceId | 'assistant'): ReactNode {
       return <VerifiedUserIcon {...props} />;
     case 'edge':
       return <DevicesOtherIcon {...props} />;
+    case 'orchestrator':
+      return <AccountTreeIcon {...props} />;
     case 'assistant':
       return <ChatIcon {...props} />;
     default:
@@ -478,7 +487,7 @@ const ExperienceDocsPopover = ({
   docsKey,
   label,
 }: {
-  docsKey: ExperienceId | 'assistant';
+  docsKey: JobExperienceId | 'assistant';
   label: string;
 }) => {
   const classes = useStyles();
@@ -641,10 +650,11 @@ export const ExperiencesHomePage = () => {
 
   const qNorm = query.trim().toLowerCase();
   const assistantMatches =
-    !qNorm ||
-    ['assistant', 'ai', 'chat', 'help', 'ask'].some(
-      k => qNorm.includes(k) || k.startsWith(qNorm),
-    );
+    SHOW_ASSISTANT_EXPERIENCE &&
+    (!qNorm ||
+      ['assistant', 'ai', 'chat', 'help', 'ask'].some(
+        k => qNorm.includes(k) || k.startsWith(qNorm),
+      ));
 
   // Keep compare bar API warm when re-enabled
   void setCardStylePersist;
@@ -746,15 +756,9 @@ export const ExperiencesHomePage = () => {
           }}
         >
           <Box className={classes.hubLogoRow}>
-            <Box
-              className={classes.hubLogo}
-              style={{ backgroundColor: EXPERIENCE_ACCENT[id] }}
-              aria-hidden
-            >
-              {experienceIcon(id)}
-            </Box>
+            <ExperienceThumbnail id={id} />
             <Box className={classes.hubBadgeArea}>
-              {id === 'edge' || id === 'compliance' ? (
+              {id === 'edge' || id === 'compliance' || id === 'orchestrator' ? (
                 <Chip
                   size="small"
                   label="Preview"

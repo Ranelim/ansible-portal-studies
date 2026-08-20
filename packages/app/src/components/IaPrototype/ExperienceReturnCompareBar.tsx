@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { useExperienceReturnChrome } from './useExperienceReturnChrome';
 import type { ExperienceReturnChrome } from './experienceReturnChrome';
 import { RETURN_COMPARE_BAR_HEIGHT } from './chromeHeights';
+import { isDay0SetupPath } from '../GlobalHeader/isDay0SetupPath';
 
 const MAGENTA = '#BE0098';
 
@@ -81,7 +82,7 @@ export const ExperienceReturnCompareBar = () => {
   const { variant, setChrome } = useExperienceReturnChrome();
   const location = useLocation();
 
-  if (location.pathname.includes('/setup')) {
+  if (isDay0SetupPath(location.pathname)) {
     return null;
   }
 

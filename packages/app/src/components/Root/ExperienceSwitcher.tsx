@@ -14,9 +14,12 @@ import {
   pushRecentExperience,
   readRecentExperiences,
   sortExperiencesByRecent,
+  JOB_EXPERIENCE_IDS,
+  ExperienceThumbnail,
   writeNavExperience,
   useNavIaModel,
   type ExperienceId,
+  type JobExperienceId,
 } from '@ansible/plugin-backstage-self-service';
 
 /** Trial height for rail back + switcher (was 24). Revert this to roll back. */
@@ -97,6 +100,9 @@ const useStyles = makeStyles(theme => ({
     minHeight: 36,
     paddingTop: 6,
     paddingBottom: 6,
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
   },
 }));
 
@@ -177,6 +183,9 @@ export const ExperienceSwitcher = ({
             selected={id === current}
             onClick={() => go(id)}
           >
+            {(JOB_EXPERIENCE_IDS as readonly string[]).includes(id) && (
+              <ExperienceThumbnail id={id as JobExperienceId} size={20} />
+            )}
             {EXPERIENCE_LABELS[id]}
           </MenuItem>
         ))}

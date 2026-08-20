@@ -3,6 +3,8 @@ import {
   readBridgeExperienceVisibility,
   type BridgeExperienceId,
 } from './bridgeExperienceVisibility';
+import { SHOW_ASSISTANT_EXPERIENCE } from '../components/IaPlaceholder/assistantIaTrial';
+import { isExperienceSetup } from './experienceSetup';
 
 /** Prototype IA models — switch to compare side by side. */
 export type NavIaModel =
@@ -16,7 +18,7 @@ export type NavIaModel =
  * Experiences for Option 5 (toggle). Availability depends on seat + plugins.
  * Templates/Activity are duplicated inside each experience's rail.
  *
- * Develop is one experience (nested rail under Git Repositories).
+ * Develop is one experience (nested Content rail: Git Repositories · Content quality).
  * Legacy ids `develop-tabs` / `develop-drawer` / `develop-apme` normalize to `develop`.
  */
 export type NavExperience =
@@ -25,6 +27,7 @@ export type NavExperience =
   | 'develop'
   | 'compliance'
   | 'edge'
+  | 'orchestrator'
   | 'assistant'
   | 'admin';
 
@@ -61,10 +64,19 @@ function normalizeExperience(raw: string | null): NavExperience | null {
     raw === 'develop' ||
     raw === 'compliance' ||
     raw === 'edge' ||
-    raw === 'assistant' ||
+    raw === 'orchestrator' ||
+    (SHOW_ASSISTANT_EXPERIENCE && raw === 'assistant') ||
     raw === 'admin'
   ) {
     return raw;
+  }
+  if (raw === 'assistant') {
+    try {
+      localStorage.setItem(EXPERIENCE_KEY, 'all');
+    } catch {
+      /* ignore */
+    }
+    return 'all';
   }
   // Killed APME A/B ids + older Develop labels → one Develop experience
   if (
@@ -101,12 +113,12 @@ export function writeNavExperience(experience: NavExperience) {
   notify();
 }
 
-/** Develop experience (nested Git Repositories rail). */
+/** Develop experience (nested Content rail: Git Repositories · Content quality). */
 export function isDevelopExperience(experience: NavExperience): boolean {
   return experience === 'develop';
 }
 
-/** Nested rail: Repositories + Content quality (page tabs: Overview / Remediations / Scans). */
+/** Nested rail: Git Repositories + Content quality (page tabs: Overview / Remediations / Scans). */
 export function isDevelopReposRailMode(experience: NavExperience): boolean {
   return experience === 'develop';
 }
@@ -145,7 +157,16 @@ export function availableExperiences(args: {
   if ((args.role === 'operator' || args.isAdmin) && args.rhem && vis.edge) {
     list.push('edge');
   }
-  list.push('assistant');
+  if (
+    isExperienceSetup('orchestrator') &&
+    vis.orchestrator &&
+    (args.role === 'developer' || args.isAdmin)
+  ) {
+    list.push('orchestrator');
+  }
+  if (SHOW_ASSISTANT_EXPERIENCE) {
+    list.push('assistant');
+  }
   if (args.isAdmin) list.push('admin');
   return list;
 }
@@ -156,12 +177,19 @@ export const EXPERIENCE_LABELS: Record<NavExperience, string> = {
   develop: 'Develop',
   compliance: 'Compliance',
   edge: 'Edge',
+  orchestrator: 'Orchestrator',
   assistant: 'Assistant',
   admin: 'Administration',
 };
 
 /** Path owns Admin + Assistant so the switcher label matches the rail. */
 export function experienceFromPath(pathname: string): NavExperience | null {
+  if (
+    pathname === '/self-service/orchestrator' ||
+    pathname.startsWith('/self-service/orchestrator/')
+  ) {
+    return 'orchestrator';
+  }
   if (
     pathname.startsWith('/self-service/admin') ||
     pathname === '/rbac' ||
@@ -170,8 +198,9 @@ export function experienceFromPath(pathname: string): NavExperience | null {
     return 'admin';
   }
   if (
-    pathname === '/self-service/assistant' ||
-    pathname.startsWith('/self-service/assistant/')
+    SHOW_ASSISTANT_EXPERIENCE &&
+    (pathname === '/self-service/assistant' ||
+      pathname.startsWith('/self-service/assistant/'))
   ) {
     return 'assistant';
   }

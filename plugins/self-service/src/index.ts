@@ -59,10 +59,15 @@ export {
   type JobExperienceId,
 } from './hooks/experienceRecent';
 export {
+  ExperienceThumbnail,
+  EXPERIENCE_ACCENT,
+} from './components/IaPlaceholder/experienceVisuals';
+export {
   NAV_IA_REVIEW_MODS,
   isSmeRole,
 } from './components/IaPlaceholder/navIaReviewMods';
 export {
+  SHOW_ASSISTANT_EXPERIENCE,
   ASSISTANT_SIDE_NAV_TRIAL,
   isAssistantPath,
   assistantUsesSideNav,

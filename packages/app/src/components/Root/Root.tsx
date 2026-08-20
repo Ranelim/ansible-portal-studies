@@ -19,7 +19,6 @@ import {
 import { SidebarPage } from '@backstage/core-components';
 import { ExperiencesSidebar } from './navSidebars';
 import {
-  GlobalShellResumeBar,
   isBridgePath,
   isGlobalShellPath,
   useCaptureGlobalShellReturn,
@@ -35,7 +34,7 @@ import {
 } from '../IaPrototype';
 import { useMagentaIaBarVisible } from '../IaPrototype/useMagentaIaBarVisible';
 import { ExperienceRunPairTabs } from '../IaPrototype/ExperienceRunPairTabs';
-import { SHOW_EXPERIENCES_WAFFLE } from '../GlobalHeader/ExperiencesWaffleButton';
+import { isDay0SetupPath } from '../GlobalHeader/isDay0SetupPath';
 import { ExperiencesHeaderBackPortal } from './ExperiencesHeaderBackPortal';
 
 const useRootStyles = makeStyles(theme => {
@@ -359,8 +358,8 @@ const GlobalRestartBanner = () => {
 };
 
 /** Experiences catalog — rail-less; clears domain to Bridge 'all'.
- *  Assistant uses side nav when ASSISTANT_SIDE_NAV_TRIAL (see assistantIaTrial.ts). */
-// Path helpers live in GlobalShellResumeBar (shared with resume bar).
+ *  Assistant experience is parked (`SHOW_ASSISTANT_EXPERIENCE`). Lightspeed FAB stays. */
+// Path helpers live in GlobalShellResumeBar.
 
 export const Root = ({ children }: PropsWithChildren<{}>) => {
   const rootClasses = useRootStyles();
@@ -370,7 +369,7 @@ export const Root = ({ children }: PropsWithChildren<{}>) => {
   const { variant: runPairIa } = useTemplatesRunsIa();
   const mastheadPlus = runPairIa === 'masthead-plus';
   const sme = isSmeRole(role);
-  const isSetup = location.pathname.includes('/setup');
+  const isSetup = isDay0SetupPath(location.pathname);
   const onBridge = isBridgePath(location.pathname);
   const onGlobalShell = isGlobalShellPath(
     location.pathname,
@@ -388,13 +387,6 @@ export const Root = ({ children }: PropsWithChildren<{}>) => {
     onBridge ||
     onGlobalShell ||
     (mastheadPlus && inAutomateExperience);
-
-  /** Automate B strip only. Orphan pages (Search, Settings, …) use Header back. */
-  const showResumeBar =
-    !sme &&
-    !SHOW_EXPERIENCES_WAFFLE &&
-    mastheadPlus &&
-    inAutomateExperience;
 
   const { visible: magentaBarVisible } = useMagentaIaBarVisible();
   const onAdminArea =
@@ -490,7 +482,6 @@ export const Root = ({ children }: PropsWithChildren<{}>) => {
         <div className={rootClasses.fixedHeaderOffset} style={chromeOffsetStyle}>
           <NavIaRouteGuard />
           <GlobalRestartBanner />
-          {showResumeBar && <GlobalShellResumeBar />}
           {showAutomateExperienceHostTabs && (
             <ExperienceRunPairTabs mode="experience" />
           )}

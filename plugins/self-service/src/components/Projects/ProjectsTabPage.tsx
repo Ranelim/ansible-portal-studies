@@ -87,7 +87,7 @@ const isQualitySurface = (surface: Surface) =>
 
 /**
  * Git Repositories host.
- * Develop: list is Repositories; Content quality is a nested rail item with page tabs.
+ * Develop: list is Git Repositories; Content quality is a nested rail item with page tabs.
  */
 export const ProjectsTabs: React.FC = () => {
   const classes = useStyles();

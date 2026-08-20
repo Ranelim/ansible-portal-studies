@@ -39,7 +39,7 @@ import {
   useAssessFilters,
   useGateFilters,
 } from './SpaRemediationReview';
-import { InlineVisualReview } from './InlineVisualReview';
+import { InlineVisualReview, type CtaLayout } from './InlineVisualReview';
 import { RemediationReceipt } from './RemediationReceipt';
 
 /**
@@ -48,6 +48,8 @@ import { RemediationReceipt } from './RemediationReceipt';
  * Redesign = Scan → Review auto-fixes → Choose AI findings → Review AI-fixes → Commit.
  * Inline AI = Scan → Results & Remediation → Commit.
  * Inline visual = clone of Inline AI (`?wizard=visual`) for layout redesign.
+ * CTA compare (`?cta=current|footer`): Current keeps Continue in the findings
+ * header; Wizard footer pins Continue + Cancel to a sticky step footer.
  */
 
 type StepId =
@@ -79,6 +81,10 @@ function parseWizardChrome(value: string | null): WizardChrome {
   if (value === 'inline') return 'inline';
   if (value === 'visual') return 'visual';
   return 'original';
+}
+
+function parseCtaLayout(value: string | null): CtaLayout {
+  return value === 'current' ? 'current' : 'footer';
 }
 
 function isInlineChrome(chrome: WizardChrome): boolean {
@@ -146,6 +152,9 @@ const useStyles = makeStyles(theme => ({
   wrapVisual: {
     maxWidth: 1280,
     paddingBottom: theme.spacing(4),
+  },
+  wrapVisualFooter: {
+    paddingBottom: theme.spacing(1),
   },
   compareStrip: {
     position: 'sticky',
@@ -930,6 +939,7 @@ export const ApmeRemediationPage = () => {
   const fromRemediations = params.get('from') === 'remediations';
   const resume = params.get('resume') === '1';
   const wizard = parseWizardChrome(params.get('wizard'));
+  const ctaLayout = parseCtaLayout(params.get('cta'));
   const compact = wizard !== 'original';
   const inline = isInlineChrome(wizard);
   const visual = isVisualChrome(wizard);
@@ -1124,6 +1134,7 @@ export const ApmeRemediationPage = () => {
             onGenerateAi={generateInlineAi}
             onNext={() => setStep('tier1_applied')}
             onCancel={goBack}
+            ctaLayout={ctaLayout}
           />
         );
       }
@@ -1342,7 +1353,39 @@ export const ApmeRemediationPage = () => {
   return (
     <Page themeId="app">
       <Content>
-        {FORCED_REMEDIATION_WIZARD ? null : (
+        {visual ? (
+        <Box
+          className={classes.compareStrip}
+          role="region"
+          aria-label="Continue button placement compare"
+        >
+          <Typography className={classes.compareLabel}>Continue</Typography>
+          <ToggleButtonGroup
+            exclusive
+            size="small"
+            value={ctaLayout}
+            onChange={(_event, next) => {
+              if (next == null) return;
+              const nextParams = new URLSearchParams(params);
+              if (next === 'footer') {
+                nextParams.delete('cta');
+              } else {
+                nextParams.set('cta', next);
+              }
+              setParams(nextParams, { replace: true });
+            }}
+            aria-label="Continue button placement"
+          >
+            <ToggleButton value="current">Current</ToggleButton>
+            <ToggleButton value="footer">Wizard footer</ToggleButton>
+          </ToggleButtonGroup>
+          <Typography className={classes.compareHint}>
+            {ctaLayout === 'footer'
+              ? 'List actions stay with findings. Continue and Cancel pin to a sticky footer.'
+              : 'Continue sits with Accept remaining at the top of findings.'}
+          </Typography>
+        </Box>
+        ) : FORCED_REMEDIATION_WIZARD ? null : (
         <Box
           className={classes.compareStrip}
           role="region"
@@ -1381,7 +1424,13 @@ export const ApmeRemediationPage = () => {
           </Typography>
         </Box>
         )}
-        <Box className={visual ? classes.wrapVisual : classes.wrap}>
+        <Box
+          className={
+            visual
+              ? `${classes.wrapVisual}${ctaLayout === 'footer' ? ` ${classes.wrapVisualFooter}` : ''}`
+              : classes.wrap
+          }
+        >
           <Button
             variant="text"
             color="inherit"

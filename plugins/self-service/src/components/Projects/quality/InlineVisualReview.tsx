@@ -1,6 +1,7 @@
 /**
  * Visual redesign of Inline AI Results & Remediation (`?wizard=visual`).
  * Results (scan mix) + Remediation (findings). Does not change Inline AI.
+ * `ctaLayout=footer` moves Continue + Cancel into a sticky wizard footer.
  */
 
 import { useMemo, useState, type Dispatch, type SetStateAction } from 'react';
@@ -49,6 +50,8 @@ import { unifiedDiff, type DiffLine } from './qualityDiff';
 
 const PILL = { borderRadius: 20, textTransform: 'none' as const, fontWeight: 600 };
 const PILL_COMPACT = { ...PILL, minWidth: 0, padding: '2px 12px' };
+
+export type CtaLayout = 'current' | 'footer';
 
 const SEV_LABEL: Record<string, string> = {
   critical: 'Critical',
@@ -123,6 +126,59 @@ const useStyles = makeStyles((theme: Theme) => ({
     display: 'flex',
     flexDirection: 'column',
     gap: theme.spacing(2),
+  },
+  stackFill: {
+    height: 'calc(100vh - 320px)',
+    minHeight: 420,
+    overflow: 'hidden',
+  },
+  scrollBody: {
+    flex: 1,
+    minHeight: 0,
+    overflow: 'auto',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: theme.spacing(2),
+    paddingBottom: theme.spacing(0.5),
+  },
+  wizardFooter: {
+    flexShrink: 0,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: theme.spacing(2),
+    flexWrap: 'wrap',
+    padding: theme.spacing(1.5, 2),
+    backgroundColor: theme.palette.background.paper,
+    border: `1px solid ${theme.palette.divider}`,
+    borderRadius: 8,
+    boxShadow: `0 -8px 24px -12px ${fade(theme.palette.common.black, 0.4)}`,
+  },
+  footerStatus: {
+    flex: '1 1 220px',
+    fontSize: 13,
+    color: theme.palette.text.secondary,
+    lineHeight: 1.4,
+  },
+  footerCount: {
+    display: 'block',
+    marginTop: 2,
+    color: theme.palette.text.primary,
+    fontWeight: 600,
+  },
+  footerActions: {
+    display: 'flex',
+    alignItems: 'center',
+    marginLeft: 'auto',
+  },
+  footerCancel: {
+    ...PILL,
+    marginRight: theme.spacing(6),
+    color: theme.palette.text.secondary,
+    '&:hover': {
+      backgroundColor: theme.palette.action.hover,
+      color: theme.palette.text.primary,
+    },
   },
   box: {
     borderRadius: 8,
@@ -239,6 +295,9 @@ const useStyles = makeStyles((theme: Theme) => ({
     borderBottom: `1px solid ${theme.palette.divider}`,
     borderTopLeftRadius: 8,
     borderTopRightRadius: 8,
+  },
+  remediationHeadInScroll: {
+    top: 0,
   },
   remediationRow: {
     display: 'flex',
@@ -380,6 +439,7 @@ export const InlineVisualReview: React.FC<{
   onGenerateAi?: (key: string) => void;
   onNext: () => void;
   onCancel: () => void;
+  ctaLayout?: CtaLayout;
 }> = ({
   findings,
   t1Decisions,
@@ -390,6 +450,7 @@ export const InlineVisualReview: React.FC<{
   onGenerateAi,
   onNext,
   onCancel,
+  ctaLayout = 'current',
 }) => {
   const classes = useStyles();
   const decisions = { ...t1Decisions, ...aiDecisions };
@@ -521,9 +582,49 @@ export const InlineVisualReview: React.FC<{
   const severitySelect =
     severityFilter.size === 1 ? Array.from(severityFilter)[0] : 'all';
   const findingWord = mix.total === 1 ? 'finding' : 'findings';
+  const useFooter = ctaLayout === 'footer';
+  const bulkActions = (
+    <>
+      <Button
+        size="small"
+        variant="outlined"
+        color="primary"
+        startIcon={<CheckIcon />}
+        disabled={pendingVisible === 0}
+        onClick={() => decideItems([...visibleAuto, ...visibleReadyAi], 'accept')}
+        style={PILL}
+      >
+        Accept remaining{pendingVisible > 0 ? ` (${pendingVisible})` : ''}
+      </Button>
+      <Button
+        size="small"
+        variant="outlined"
+        color="primary"
+        startIcon={<CloseIcon />}
+        disabled={pendingVisible === 0}
+        onClick={() => decideItems([...visibleAuto, ...visibleReadyAi], 'decline')}
+        style={PILL}
+      >
+        Decline remaining
+      </Button>
+    </>
+  );
+  const continueButton = (
+    <Button
+      size="small"
+      variant="contained"
+      color="primary"
+      disabled={nextLocked}
+      onClick={onNext}
+      style={PILL}
+      title={nextLocked ? `${jobTitle} ${jobCount}` : undefined}
+    >
+      Continue to commit
+    </Button>
+  );
 
-  return (
-    <div className={classes.stack}>
+  const summaryAndFindings = (
+    <>
       <Paper className={classes.box} elevation={2}>
         <div className={classes.boxHead}>
           <Typography className={classes.boxTitle}>Summary</Typography>
@@ -613,7 +714,11 @@ export const InlineVisualReview: React.FC<{
       </Paper>
 
       <Paper className={classes.box} elevation={2}>
-        <div className={classes.remediationHead}>
+        <div
+          className={`${classes.remediationHead}${
+            useFooter ? ` ${classes.remediationHeadInScroll}` : ''
+          }`}
+        >
           <Typography className={classes.boxTitle}>Findings and remediations</Typography>
           <div className={classes.remediationRow}>
             <Typography className={classes.summaryNote}>
@@ -621,41 +726,15 @@ export const InlineVisualReview: React.FC<{
               <span className={classes.jobCount}>{jobCount}</span>
             </Typography>
             <div className={classes.jobActions}>
-              <Button
-                size="small"
-                variant="outlined"
-                color="primary"
-                startIcon={<CheckIcon />}
-                disabled={pendingVisible === 0}
-                onClick={() => decideItems([...visibleAuto, ...visibleReadyAi], 'accept')}
-                style={PILL}
-              >
-                Accept remaining{pendingVisible > 0 ? ` (${pendingVisible})` : ''}
-              </Button>
-              <Button
-                size="small"
-                variant="outlined"
-                color="primary"
-                startIcon={<CloseIcon />}
-                disabled={pendingVisible === 0}
-                onClick={() => decideItems([...visibleAuto, ...visibleReadyAi], 'decline')}
-                style={PILL}
-              >
-                Decline remaining
-              </Button>
-              <Button
-                size="small"
-                variant="contained"
-                color="primary"
-                disabled={nextLocked}
-                onClick={onNext}
-                style={PILL}
-              >
-                Continue to commit
-              </Button>
-              <Button size="small" variant="outlined" onClick={onCancel} style={PILL}>
-                Cancel
-              </Button>
+              {bulkActions}
+              {useFooter ? null : (
+                <>
+                  {continueButton}
+                  <Button size="small" variant="outlined" onClick={onCancel} style={PILL}>
+                    Cancel
+                  </Button>
+                </>
+              )}
             </div>
           </div>
           {mustDecide > 0 && (
@@ -768,6 +847,32 @@ export const InlineVisualReview: React.FC<{
           </div>
         )}
       </Paper>
+    </>
+  );
+
+  return (
+    <div className={`${classes.stack}${useFooter ? ` ${classes.stackFill}` : ''}`}>
+      {useFooter ? <div className={classes.scrollBody}>{summaryAndFindings}</div> : summaryAndFindings}
+      {useFooter ? (
+        <div className={classes.wizardFooter} role="region" aria-label="Remediation step actions">
+          <Typography className={classes.footerStatus}>
+            {nextLocked ? jobTitle : 'All auto-fixes decided.'}
+            <span className={classes.footerCount}>{jobCount}</span>
+          </Typography>
+          <div className={classes.footerActions}>
+            <Button
+              size="small"
+              variant="text"
+              color="inherit"
+              className={classes.footerCancel}
+              onClick={onCancel}
+            >
+              Cancel
+            </Button>
+            {continueButton}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 };

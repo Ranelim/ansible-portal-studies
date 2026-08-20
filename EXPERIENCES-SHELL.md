@@ -22,15 +22,13 @@ Build the **Experience Bridge** shell from the Aug 11 stakeholder direction:
 | Surface | Chrome | Landing |
 |---|---|---|
 | **Bridge** (`/self-service/experiences`) | Masthead only | Experiences cards · search · sort · **Administration** button (admins, top-right — not a card) |
-| **Assistant** (`/self-service/assistant`) | **Trial:** experience rail (return · New chat · history · Clear). **Rollback:** set `ASSISTANT_SIDE_NAV_TRIAL = false` in `plugins/self-service/.../assistantIaTrial.ts` → rail-less + page-header Back | Chat empty state + sticky composer |
-
 | **Global account** (`/settings`, catalog `user/*`, `/notifications`) | Masthead only | No experience rail; **preserves** last experience for Back |
 | **Inside experience** | Masthead + experience rail | Develop / Compliance / Edge → Dashboard / entity home |
 | **Automate** | Masthead + page tabs (no rail) | Templates \| Activity — marketplace-clean |
 | **Global Templates (`+`)** | Masthead + Back bar only | `/create` — all templates; does **not** enter Automate |
 | **SME** | Masthead + Automate tabs (no Back) | `/create?scope=experience` (never Bridge) |
 
-**Teasers (Aug 12):** Dashboard tab (deferred MVP), catalog search + Recent, AI Assistant experience (full page; masthead Lightspeed stays the quick drawer).
+**Teasers (Aug 12):** Dashboard tab (deferred MVP), catalog search + Recent. **Assistant experience parked** (`SHOW_ASSISTANT_EXPERIENCE = false`) — masthead **Lightspeed** FAB stays. Set the flag `true` to revive the Bridge card + `/self-service/assistant`.
 
 **Masthead / chrome gameplan:** RHDH = base; Portal = justified variation only. Prefer [RHDH Local](https://github.com/redhat-developer/rhdh-local) + global-header defaults for comparison — see `scratch/masthead-rhdh-baseline.md` (awaiting Shiran production header config).
 
@@ -45,7 +43,7 @@ Not eng SoT until ADRs on `ansible-rhdh-plugins` `main`. Mirror: `.cursor/rules/
   - **A — Automate experience + rail:** Automate stays on Bridge; side rail; all experiences use sibling **Templates · Runs** with `SidebarDivider`.
   - **B — No Automate; masthead + tabs:** Automate experience removed; masthead **+** = Templates \| Runs tabs; Develop/Compliance/Edge get one **Automate** rail item + page tabs.
 - **Experience Settings omitted** from Automate / Develop / Compliance / Edge rails until real personal prefs exist (prototype page route may remain; not in nav). Sync schedule → Administration; Sync now → object action.
-- **Develop objects:** One **Develop** experience. Git Repositories (nested: Repositories · Content quality) · Collections · **Execution Env.** (rail; page title stays Execution Environments). Content quality page: **Start scan** in Header; tabs Overview · Remediations · Scans. Overview = each repository’s **latest completed scan** (no 7/30 toggle; do not say current/obsolete). Findings heading: **N findings on latest scans**. History is on Scans. APME = Class B on Git Repositories — not a separate experience, not a Content quality pin. **No truncated rail labels** (`portal-rail-labels.mdc`).
+- **Develop objects:** One **Develop** experience. **Content** (nested: Git Repositories · Content quality) · Collections · **Execution Env.** (rail; page title stays Execution Environments). Content quality page: **Start scan** in Header; tabs Overview · Remediations · Scans. Overview = each repository’s **latest completed scan** (no 7/30 toggle; do not say current/obsolete). Findings heading: **N findings on latest scans**. History is on Scans. APME = Class B on Git Repositories — not a separate experience, not a Content quality pin. **No truncated rail labels** (`portal-rail-labels.mdc`).
 - **Compliance object:** Inventories only. Profiles / Scans = host tabs — not rail, not Settings.
 - **Learn (Develop / Compliance / Edge):** after Class A objects — quiet divider, then **Documentation** + **Learning Paths** (no “Learn” rail label). Not on Automate or Admin.
 - **Automate = rail-less marketplace** — page tabs **Templates | Activity** only (Catalog dropped). Multi-seat: **Back to Experiences**. SME: no Back on Automate; Search → **Back to Automate**.
@@ -70,15 +68,17 @@ Not eng SoT until ADRs on `ansible-rhdh-plugins` `main`. Mirror: `.cursor/rules/
 | Next | Stakeholder **login → intro → Experiences** flow |
 | Next | Account chrome: **Back** (not “Developer”) |
 | Done (park) | Admin Sync **Option 1** forced (`FORCED_ADMIN_SYNC_IA = 'opt1'`); magenta compare bar hidden; Overview **Sync health** card removed. Opt 2 code kept for revive. Still open under Opt 1: tab **Sync settings**; modal→history; drop Quality from Integrations |
-| Done (park) | Quality remediation wizard **Inline visual** forced (`FORCED_REMEDIATION_WIZARD = 'visual'` in `ApmeRemediationPage.tsx`); Prototype compare strip hidden. Original / Redesign / Inline AI code kept — set `null` to revive `?wizard=` toggle. |
+| Done (park) | Quality remediation wizard **Inline visual** forced (`FORCED_REMEDIATION_WIZARD = 'visual'`). Original · Redesign · Inline AI compare stays hidden. **Continue compare** is live: Current vs Wizard footer (`?cta=current`, default footer). |
+| Done (park) | **Assistant experience** killed (`SHOW_ASSISTANT_EXPERIENCE = false`). Lightspeed FAB stays. Set `true` in `assistantIaTrial.ts` to revive the Bridge card + `/self-service/assistant`. |
 | Done | Admin **Experiences** beside **Plugins**; **Notifications** admin shell (platform defaults — personal prefs stay in profile). |
 | Decide | **Resources** header on experience rails for Class A only |
 | Later | Real usage metrics + uninstall; nested-nav example; Cate/Kate APME feedback |
 
 Waffle masthead try = parked (`SHOW_EXPERIENCES_WAFFLE = false`). Multi-seat return = rail back chevron + quiet `ExperienceSwitcher` (`EXPERIENCE_CHROME_HIT = 32`, square chevron). Do **not** unify into one split box.
 Admin Sync compare bar = parked (`FORCED_ADMIN_SYNC_IA = 'opt1'`; set `null` + restore `ADMIN_SYNC_IA_BAR_HEIGHT = 36` to revive).
-Quality remediation compare strip = parked (`FORCED_REMEDIATION_WIZARD = 'visual'` — Inline visual / restyled 3-step Inline AI). Set `null` in `ApmeRemediationPage.tsx` to revive Original · Redesign · Inline AI · Inline visual.
+Quality remediation wizard = Inline visual (`FORCED_REMEDIATION_WIZARD = 'visual'`). Original · Redesign · Inline AI compare parked. **Continue placement** compare is live: Current vs Wizard footer (default footer; `?cta=current` for the findings-header row).
 Content quality **Findings** tab = parked (`SHOW_CONTENT_QUALITY_FINDINGS_TAB = false` in `plugins/self-service/.../quality/contentQualityIa.ts`; set `true` to revive by-rule rollup). Route `/apme/findings` + `QualityDashboardTabContent` kept.
+Assistant experience = parked (`SHOW_ASSISTANT_EXPERIENCE = false`). Lightspeed FAB stays.
 
 
 ## Git

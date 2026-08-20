@@ -7,6 +7,7 @@ export { PortalAssistantPage } from './PortalAssistantPage';
 export { FlatHomeDashboardPage } from './FlatHomeDashboardPage';
 export { ExperienceSettingsPage } from './ExperienceSettingsPage';
 export { ExperienceDashboardPage } from './ExperienceDashboardPage';
+export { OrchestratorPage } from './OrchestratorPage';
 export {
   inventoriesIaPage,
   edgeFleetsIaPage,
@@ -15,6 +16,7 @@ export {
 } from './navIaPages';
 export { NAV_IA_REVIEW_MODS, isSmeRole } from './navIaReviewMods';
 export {
+  SHOW_ASSISTANT_EXPERIENCE,
   ASSISTANT_SIDE_NAV_TRIAL,
   isAssistantPath,
   assistantUsesSideNav,

@@ -3,16 +3,19 @@ import { Page, Header, Content } from '@backstage/core-components';
 import {
   Box,
   Button,
+  Chip,
   Switch,
   Typography,
   makeStyles,
 } from '@material-ui/core';
-import AddIcon from '@material-ui/icons/Add';
 import { PageHelpIcon } from '../common/PageHelpIcon';
 import {
   useBridgeExperienceVisibility,
   type BridgeExperienceId,
 } from '../../hooks/bridgeExperienceVisibility';
+import { useExperienceSetup } from '../../hooks/experienceSetup';
+import { ExperienceThumbnail } from '../IaPlaceholder/experienceVisuals';
+import type { JobExperienceId } from '../../hooks/experienceRecent';
 
 const useStyles = makeStyles(theme => ({
   list: {
@@ -29,6 +32,19 @@ const useStyles = makeStyles(theme => ({
     padding: theme.spacing(2),
     border: `1px solid ${theme.palette.divider}`,
     borderRadius: 8,
+  },
+  identity: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: theme.spacing(1.5),
+    flex: '1 1 240px',
+    minWidth: 0,
+  },
+  titleRow: {
+    display: 'flex',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: theme.spacing(1),
   },
   title: {
     fontSize: 16,
@@ -67,29 +83,24 @@ const useStyles = makeStyles(theme => ({
     borderRadius: 20,
     fontWeight: 500,
   },
-  createBtn: {
-    textTransform: 'none',
-    borderRadius: 20,
-    fontWeight: 600,
-  },
 }));
 
 type AdminExperience = {
-  id: BridgeExperienceId;
+  id: JobExperienceId;
   label: string;
   description: string;
-  /** Plugins catalog filter value */
   pluginsFilter: string;
   seatsSummary: string;
   pluginsSummary: string;
+  needsSetup?: boolean;
 };
 
-/** Job-mode experiences only — Administration is platform chrome, not a Bridge card. */
 const ADMIN_EXPERIENCES: AdminExperience[] = [
   {
     id: 'automate',
     label: 'Automate',
-    description: 'Run job templates and track activity. Always an experience — A/B only changes Templates/Runs chrome.',
+    description:
+      'Run job templates and track activity. Always an experience — A/B only changes Templates/Runs chrome.',
     pluginsFilter: 'Cross-cutting',
     seatsSummary: 'All seats',
     pluginsSummary: 'Self-service (run surfaces)',
@@ -119,6 +130,16 @@ const ADMIN_EXPERIENCES: AdminExperience[] = [
     seatsSummary: 'Operator, Admin',
     pluginsSummary: 'RHEM (when installed)',
   },
+  {
+    id: 'orchestrator',
+    label: 'Orchestrator',
+    description:
+      'Certified Automation Orchestrator workflows and extra node types. Complete setup before this experience appears for users.',
+    pluginsFilter: 'Orchestrator',
+    seatsSummary: 'Developer, Admin',
+    pluginsSummary: 'Automation Orchestrator',
+    needsSetup: true,
+  },
 ];
 
 /**
@@ -129,95 +150,116 @@ export const ExperiencesAdminPage = () => {
   const classes = useStyles();
   const navigate = useNavigate();
   const { visibility, setVisible } = useBridgeExperienceVisibility();
+  const { setup: orchestratorSetup } = useExperienceSetup('orchestrator');
 
   return (
     <Page themeId="app">
       <Header
         title={
-          <Box
-            display="flex"
-            alignItems="center"
-            justifyContent="space-between"
-            width="100%"
-          >
-            <Box display="flex" alignItems="center">
-              Experiences
-              <PageHelpIcon
-                tooltipLabel="What is Experiences admin?"
-                title="Manage Experiences"
-                description="Control which job-mode experiences appear on the Bridge for this Portal instance. Install or remove capabilities under Plugins. Who can enter each experience is defined in Access Control — use Manage access to jump there. This page is not a second plugin catalog."
-              />
-            </Box>
-            <Button
-              color="primary"
-              variant="contained"
-              className={classes.createBtn}
-              startIcon={<AddIcon />}
-              onClick={() => navigate('/self-service/admin/experiences/create')}
-            >
-              Create experience
-            </Button>
+          <Box display="flex" alignItems="center">
+            Experiences
+            <PageHelpIcon
+              tooltipLabel="What is Experiences admin?"
+              title="Manage Experiences"
+              description="Control which job-mode experiences appear on the Bridge for this Portal instance. Experiences that still need setup stay off the switcher until you enable them. Who can enter each experience is defined in Access Control."
+            />
           </Box>
         }
         pageTitleOverride="Experiences"
-        subtitle="Show or hide experiences on the Bridge and in the experience switcher. Plugins and Access Control stay the systems of record for install and RBAC."
+        subtitle="Show or hide experiences on the Bridge and in the experience switcher. Set up installed experiences before they appear for users."
       />
       <Content>
         <Box className={classes.list}>
-          {ADMIN_EXPERIENCES.map(exp => (
-            <Box key={exp.id} className={classes.row}>
-              <Box style={{ flex: '1 1 240px', minWidth: 0 }}>
-                <Typography className={classes.title}>{exp.label}</Typography>
-                <Typography className={classes.description}>
-                  {exp.description}
-                </Typography>
-                <Typography className={classes.meta}>
-                  Seats (summary): {exp.seatsSummary}
-                  {' · '}
-                  Plugins: {exp.pluginsSummary}
-                </Typography>
-              </Box>
-              <Box className={classes.actions}>
-                <Box className={classes.visibility}>
-                  <Typography className={classes.visibilityLabel} component="span">
-                    On Bridge
-                  </Typography>
-                  <Switch
-                    color="primary"
-                    checked={visibility[exp.id]}
-                    onChange={(_, checked) => setVisible(exp.id, checked)}
-                    inputProps={{
-                      'aria-label': `Show ${exp.label} on Experiences Bridge`,
-                    }}
-                  />
+          {ADMIN_EXPERIENCES.map(exp => {
+            const awaitingSetup = Boolean(exp.needsSetup) && !orchestratorSetup;
+            return (
+              <Box key={exp.id} className={classes.row}>
+                <Box className={classes.identity}>
+                  <ExperienceThumbnail id={exp.id} />
+                  <Box style={{ minWidth: 0 }}>
+                    <Box className={classes.titleRow}>
+                      <Typography className={classes.title}>
+                        {exp.label}
+                      </Typography>
+                      {awaitingSetup && (
+                        <Chip size="small" label="Needs setup" />
+                      )}
+                    </Box>
+                    <Typography className={classes.description}>
+                      {exp.description}
+                    </Typography>
+                    <Typography className={classes.meta}>
+                      Seats (summary): {exp.seatsSummary}
+                      {' · '}
+                      Plugins: {exp.pluginsSummary}
+                    </Typography>
+                  </Box>
                 </Box>
-                <Button
-                  size="small"
-                  variant="outlined"
-                  color="primary"
-                  className={classes.btn}
-                  onClick={() =>
-                    navigate(
-                      `/self-service/admin/plugins?experience=${encodeURIComponent(
-                        exp.pluginsFilter,
-                      )}`,
-                    )
-                  }
-                >
-                  Manage plugins
-                </Button>
-                <Button
-                  size="small"
-                  variant="outlined"
-                  color="primary"
-                  className={classes.btn}
-                  onClick={() => navigate('/rbac')}
-                >
-                  Manage access
-                </Button>
+                <Box className={classes.actions}>
+                  {awaitingSetup ? (
+                    <Button
+                      size="small"
+                      variant="contained"
+                      color="primary"
+                      className={classes.btn}
+                      onClick={() =>
+                        navigate(
+                          `/self-service/admin/experiences/${exp.id}/setup`,
+                        )
+                      }
+                    >
+                      Set up
+                    </Button>
+                  ) : (
+                    <>
+                      <Box className={classes.visibility}>
+                        <Typography
+                          className={classes.visibilityLabel}
+                          component="span"
+                        >
+                          On Bridge
+                        </Typography>
+                        <Switch
+                          color="primary"
+                          checked={visibility[exp.id as BridgeExperienceId]}
+                          onChange={(_, checked) =>
+                            setVisible(exp.id as BridgeExperienceId, checked)
+                          }
+                          inputProps={{
+                            'aria-label': `Show ${exp.label} on Experiences Bridge`,
+                          }}
+                        />
+                      </Box>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        color="primary"
+                        className={classes.btn}
+                        onClick={() =>
+                          navigate(
+                            `/self-service/admin/plugins?experience=${encodeURIComponent(
+                              exp.pluginsFilter,
+                            )}`,
+                          )
+                        }
+                      >
+                        Manage plugins
+                      </Button>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        color="primary"
+                        className={classes.btn}
+                        onClick={() => navigate('/rbac')}
+                      >
+                        Manage access
+                      </Button>
+                    </>
+                  )}
+                </Box>
               </Box>
-            </Box>
-          ))}
+            );
+          })}
         </Box>
       </Content>
     </Page>

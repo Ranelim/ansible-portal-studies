@@ -1,4 +1,5 @@
 import type { NavExperience } from './useNavIaModel';
+import { SHOW_ASSISTANT_EXPERIENCE } from '../components/IaPlaceholder/assistantIaTrial';
 
 /** Switcher destinations — not Bridge (`all`). */
 export type ExperienceId = Exclude<NavExperience, 'all'>;
@@ -9,6 +10,7 @@ export const JOB_EXPERIENCE_IDS = [
   'develop',
   'compliance',
   'edge',
+  'orchestrator',
 ] as const;
 
 export type JobExperienceId = (typeof JOB_EXPERIENCE_IDS)[number];
@@ -18,6 +20,7 @@ const SWITCHER_ORDER: ExperienceId[] = [
   'develop',
   'compliance',
   'edge',
+  'orchestrator',
   'assistant',
   'admin',
 ];
@@ -27,6 +30,7 @@ export const EXPERIENCE_LANDING: Record<ExperienceId, string> = {
   develop: '/self-service/repositories/list',
   compliance: '/self-service/experience-dashboard',
   edge: '/self-service/experience-dashboard',
+  orchestrator: '/self-service/orchestrator',
   assistant: '/self-service/assistant',
   admin: '/self-service/admin/overview',
 };
@@ -57,6 +61,7 @@ export function readRecentExperiences(): ExperienceId[] {
     for (const item of raw) {
       const id = asExperienceId(item);
       if (!id || seen.has(id)) continue;
+      if (!SHOW_ASSISTANT_EXPERIENCE && id === 'assistant') continue;
       seen.add(id);
       out.push(id);
     }

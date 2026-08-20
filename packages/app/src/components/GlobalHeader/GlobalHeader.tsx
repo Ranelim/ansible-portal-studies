@@ -15,6 +15,7 @@ import { PortalNotificationButton } from './PortalNotificationButton';
 import { PortalHelpMenu } from './PortalHelpMenu';
 import { PortalStarredMenu } from './PortalStarredMenu';
 import { PortalProfileMenu } from './PortalProfileMenu';
+import { isDay0SetupPath } from './isDay0SetupPath';
 
 /**
  * Brand (waffle + logo, 224 = sidebar) → Search → Spacer →
@@ -74,7 +75,7 @@ export const GlobalHeader = () => {
     [],
   );
 
-  if (location.pathname.includes('/setup')) {
+  if (isDay0SetupPath(location.pathname)) {
     return null;
   }
 

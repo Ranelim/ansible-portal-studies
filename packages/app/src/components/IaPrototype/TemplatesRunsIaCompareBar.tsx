@@ -7,6 +7,7 @@ import {
 } from '@ansible/plugin-backstage-self-service';
 import { TEMPLATES_RUNS_IA_BAR_HEIGHT, RAIL_ICON_GUTTER_PX } from './chromeHeights';
 import { useMagentaIaBarVisible } from './useMagentaIaBarVisible';
+import { isDay0SetupPath } from '../GlobalHeader/isDay0SetupPath';
 
 const MAGENTA = '#BE0098';
 
@@ -105,7 +106,7 @@ export const TemplatesRunsIaCompareBar = () => {
     return null;
   }
 
-  if (location.pathname.includes('/setup')) {
+  if (isDay0SetupPath(location.pathname)) {
     return null;
   }
 

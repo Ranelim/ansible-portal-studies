@@ -25,6 +25,7 @@ import SettingsIcon from '@material-ui/icons/Settings';
 import {
   EXPERIENCE_LABELS,
   writeNavExperience,
+  SHOW_ASSISTANT_EXPERIENCE,
   type NavExperience,
 } from '@ansible/plugin-backstage-self-service';
 import {
@@ -132,7 +133,8 @@ const FILTER_EXPERIENCES: Array<Exclude<NavExperience, 'all'>> = [
   'develop',
   'compliance',
   'edge',
-  'assistant',
+  'orchestrator',
+  ...(SHOW_ASSISTANT_EXPERIENCE ? (['assistant'] as const) : []),
   'admin',
 ];
 
@@ -144,6 +146,7 @@ function readLastExperience(): Exclude<NavExperience, 'all'> | null {
       raw === 'develop' ||
       raw === 'compliance' ||
       raw === 'edge' ||
+      raw === 'orchestrator' ||
       raw === 'assistant' ||
       raw === 'admin'
     ) {
@@ -178,6 +181,7 @@ function readReturnExperience(): Exclude<NavExperience, 'all'> | null {
         exp === 'develop' ||
         exp === 'compliance' ||
         exp === 'edge' ||
+        exp === 'orchestrator' ||
         exp === 'assistant' ||
         exp === 'admin'
       ) {

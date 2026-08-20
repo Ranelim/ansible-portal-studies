@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   identityApiRef,
   useApi,
+  useApiHolder,
   useRouteRef,
 } from '@backstage/core-plugin-api';
 import {
@@ -141,7 +142,7 @@ function TablePaginationActions(props: TablePaginationActionsProps) {
 
 export const TaskList = () => {
   const classes = headerStyles();
-  const scaffolderApi = useApi(scaffolderApiRef);
+  const scaffolderApi = useApiHolder().get(scaffolderApiRef);
   const identityApi = useApi(identityApiRef);
 
   const { value: isAdmin, loading: adminLoading } = useAsync(async () => {
@@ -461,12 +462,14 @@ export const TaskList = () => {
   ], []);
 
   const fetchTasks = useCallback(async () => {
-    if (!scaffolderApi?.listTasks) {
-      setError(new Error('listTasks method is not available on scaffolderApi'));
-      return;
-    }
     setLoading(true);
     setError(undefined);
+    if (!scaffolderApi?.listTasks) {
+      setTasks(demoTasks);
+      setTotalTasks(demoTasks.length);
+      setLoading(false);
+      return;
+    }
     try {
       const response = await scaffolderApi.listTasks({
         filterByOwnership: filters.owner ?? 'all',

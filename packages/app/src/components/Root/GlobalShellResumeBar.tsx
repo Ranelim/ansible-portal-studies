@@ -1,19 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { Box, Button, makeStyles } from '@material-ui/core';
-import ArrowBackIcon from '@material-ui/icons/ArrowBack';
+import { useLocation } from 'react-router-dom';
 import {
   EXPERIENCE_LABELS,
   isSmeRole,
-  useNavIaModel,
-  useTemplatesRunsIa,
   useUserRoleContext,
   type NavExperience,
-  ASSISTANT_SIDE_NAV_TRIAL,
+  assistantUsesSideNav,
   isAssistantPath,
 } from '@ansible/plugin-backstage-self-service';
-import { RAIL_ICON_GUTTER_PX } from '../IaPrototype/chromeHeights';
-import { isAutomateFullPagePath } from './AutomateFullPageChrome';
 
 const RETURN_KEY = 'portal-global-shell-return';
 
@@ -29,6 +23,7 @@ const EXPERIENCE_RESUME: Record<
   develop: '/self-service/repositories/list',
   compliance: '/self-service/experience-dashboard',
   edge: '/self-service/experience-dashboard',
+  orchestrator: '/self-service/orchestrator',
   assistant: '/self-service/assistant',
   admin: '/self-service/admin/overview',
 };
@@ -40,9 +35,9 @@ export function isBridgePath(pathname: string): boolean {
   ) {
     return true;
   }
-  // Assistant: rail-less Bridge sibling unless side-nav trial is on.
+  // Assistant experience is parked — treat leftover URLs as Bridge (Lightspeed stays).
   if (isAssistantPath(pathname)) {
-    return !ASSISTANT_SIDE_NAV_TRIAL;
+    return !assistantUsesSideNav(pathname);
   }
   return false;
 }
@@ -103,6 +98,7 @@ function readStoredExperience(): NavExperience {
       raw === 'develop' ||
       raw === 'compliance' ||
       raw === 'edge' ||
+      raw === 'orchestrator' ||
       raw === 'admin' ||
       raw === 'all'
     ) {
@@ -200,33 +196,6 @@ export function useCaptureGlobalShellReturn(
   }, [pathname, search, experience]);
 }
 
-const useStyles = makeStyles(theme => ({
-  bar: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: theme.spacing(1),
-    paddingTop: theme.spacing(1),
-    paddingBottom: theme.spacing(1),
-    // Align “Back” with waffle / TEMP / page Header (page gutter).
-    paddingLeft: RAIL_ICON_GUTTER_PX,
-    paddingRight: RAIL_ICON_GUTTER_PX,
-    borderBottom: `1px solid ${theme.palette.divider}`,
-    backgroundColor: theme.palette.background.paper,
-  },
-  button: {
-    textTransform: 'none',
-    fontWeight: 500,
-    color: theme.palette.text.primary,
-    paddingLeft: 0,
-    paddingRight: theme.spacing(1),
-    marginLeft: 0,
-    '& .MuiButton-startIcon': {
-      marginLeft: 0,
-      marginRight: 6,
-    },
-  },
-}));
-
 export type GlobalShellResume = { label: string; href: string };
 
 /**
@@ -263,35 +232,3 @@ export function useGlobalShellResume(): GlobalShellResume | null {
     href: EXPERIENCE_RESUME[dest.experience],
   };
 }
-
-/** Automate B (rail-less host) still uses a strip — orphans use the Header back. */
-export const GlobalShellResumeBar = () => {
-  const classes = useStyles();
-  const navigate = useNavigate();
-  const { pathname, search } = useLocation();
-  const { role } = useUserRoleContext();
-  const { experience } = useNavIaModel();
-  const { variant: runPairIa } = useTemplatesRunsIa();
-
-  const mastheadPlus = runPairIa === 'masthead-plus';
-  const onAutomateHost = isAutomateFullPagePath(pathname, search);
-
-  if (isSmeRole(role)) return null;
-
-  if (mastheadPlus && experience === 'automate' && onAutomateHost) {
-    return (
-      <Box className={classes.bar} role="navigation" aria-label="Return">
-        <Button
-          className={classes.button}
-          size="small"
-          startIcon={<ArrowBackIcon fontSize="small" />}
-          onClick={() => navigate('/self-service/experiences')}
-        >
-          Experiences
-        </Button>
-      </Box>
-    );
-  }
-
-  return null;
-};

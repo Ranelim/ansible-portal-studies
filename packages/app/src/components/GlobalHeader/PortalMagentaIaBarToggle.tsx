@@ -5,6 +5,7 @@ import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
 import { useLocation } from 'react-router-dom';
 import { FORCED_TEMPLATES_RUNS_IA } from '@ansible/plugin-backstage-self-service';
+import { isDay0SetupPath } from './isDay0SetupPath';
 import {
   mastheadIconButtonSx,
   mastheadTooltipChildSx,
@@ -20,7 +21,7 @@ export const PortalMagentaIaBarToggle = () => {
   const { visible, toggle } = useMagentaIaBarVisible();
 
   if (FORCED_TEMPLATES_RUNS_IA) return null;
-  if (location.pathname.includes('/setup')) return null;
+  if (isDay0SetupPath(location.pathname)) return null;
 
   const label = visible
     ? 'Hide prototype compare bar'
