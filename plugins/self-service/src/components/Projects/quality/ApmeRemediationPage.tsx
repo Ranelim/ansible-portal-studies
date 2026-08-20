@@ -27,7 +27,6 @@ import { getProjectQuality, type QualityViolation } from '../detail/qualityDemoD
 import {
   NodeReviewList,
   OperationProgressPanel,
-  OperationResultCard,
   ReviewFilterBar,
   ReviewHint,
   ReviewInventoryRow,
@@ -41,6 +40,7 @@ import {
   useGateFilters,
 } from './SpaRemediationReview';
 import { InlineVisualReview } from './InlineVisualReview';
+import { RemediationReceipt } from './RemediationReceipt';
 
 /**
  * Quality remediation session (`/apme/remediate/:repo`).
@@ -979,7 +979,6 @@ export const ApmeRemediationPage = () => {
 
   const quickFix = quality?.violations.filter(v => v.fixTier === 'deterministic') ?? [];
   const aiFix = quality?.violations.filter(v => v.fixTier === 'ai') ?? [];
-  const manual = quality?.violations.filter(v => v.fixTier === 'manual') ?? [];
 
   const spinning =
     step === 'scan' ||
@@ -1097,13 +1096,7 @@ export const ApmeRemediationPage = () => {
   const aiAccepted = inline
     ? aiFix.filter(v => aiDecisions[findingKey(v)] === 'accept').length
     : groupByNode(sessionAiFix).filter(n => aiDecisions[n.id] === 'accept').length;
-  const aiDeclined = inline
-    ? aiFix.filter(v => aiDecisions[findingKey(v)] === 'decline').length
-    : groupByNode(sessionAiFix).filter(n => aiDecisions[n.id] === 'decline').length;
   const remediated = t1Accepted + aiAccepted;
-  const aiProposedCount = inline
-    ? aiFix.filter(v => aiStatus[findingKey(v)] === 'ready').length
-    : sessionAiFix.length;
 
   const body = (() => {
     if (step === 'scan') {
@@ -1332,16 +1325,16 @@ export const ApmeRemediationPage = () => {
     }
 
     return (
-      <OperationResultCard
-        violations={quality.totalViolations}
-        remediated={remediated}
-        manual={manual.length}
-        aiProposed={aiProposedCount}
-        aiAccepted={aiAccepted}
-        aiDeclined={aiDeclined}
+      <RemediationReceipt
+        repoLabel={displayRepo}
+        branchName={branchName}
         prUrl={prUrl}
-        createPr={createPr && pushed}
+        hasPullRequest={Boolean(createPr && pushed && prUrl)}
+        findings={quality.violations}
+        t1Decisions={t1Decisions}
+        aiDecisions={aiDecisions}
         onDone={goBack}
+        doneLabel={`Back to ${backLabel}`}
       />
     );
   })();

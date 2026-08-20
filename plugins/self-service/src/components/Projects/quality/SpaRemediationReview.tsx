@@ -303,16 +303,6 @@ const useStyles = makeStyles((theme: Theme) => ({
     fontSize: 13,
     padding: theme.spacing(0.5, 0),
   },
-  resultStats: {
-    display: 'flex',
-    justifyContent: 'center',
-    flexWrap: 'wrap',
-    gap: theme.spacing(4),
-    margin: theme.spacing(2, 0),
-  },
-  resultStat: { textAlign: 'center', minWidth: 88 },
-  resultVal: { fontSize: 32, fontWeight: 700, lineHeight: 1.1 },
-  resultLabel: { fontSize: 13, color: theme.palette.text.secondary, marginTop: 4 },
 }));
 
 function sevColor(s: SeverityClass): string {
@@ -1089,96 +1079,6 @@ export const OperationProgressPanel: React.FC<{
             <Typography variant="body2">{l.text}</Typography>
           </div>
         ))}
-      </Box>
-    </Paper>
-  );
-};
-
-export const OperationResultCard: React.FC<{
-  violations: number;
-  remediated: number;
-  manual: number;
-  aiProposed: number;
-  aiAccepted: number;
-  aiDeclined: number;
-  prUrl?: string;
-  createPr: boolean;
-  onDone: () => void;
-}> = ({
-  violations,
-  remediated,
-  manual,
-  aiProposed,
-  aiAccepted,
-  aiDeclined,
-  prUrl,
-  createPr,
-  onDone,
-}) => {
-  const classes = useStyles();
-  const hasAi = aiProposed > 0 || aiAccepted > 0 || aiDeclined > 0;
-  return (
-    <Paper className={classes.progressCard} variant="outlined">
-      <Box textAlign="center">
-        <CheckIcon style={{ fontSize: 48, color: '#3E8635' }} />
-        <Typography variant="h5" style={{ fontWeight: 700, marginTop: 8 }}>
-          Operation Complete
-        </Typography>
-        <div className={classes.resultStats}>
-          <div className={classes.resultStat}>
-            <div className={classes.resultVal}>{violations}</div>
-            <div className={classes.resultLabel}>Violations</div>
-          </div>
-          <div className={classes.resultStat}>
-            <div className={classes.resultVal} style={{ color: '#3E8635' }}>
-              {remediated}
-            </div>
-            <div className={classes.resultLabel}>Remediated</div>
-          </div>
-          <div className={classes.resultStat}>
-            <div className={classes.resultVal} style={{ color: '#9e8700' }}>
-              {manual}
-            </div>
-            <div className={classes.resultLabel}>Manual</div>
-          </div>
-        </div>
-        {hasAi && (
-          <div className={classes.resultStats} style={{ marginTop: 0 }}>
-            <div className={classes.resultStat}>
-              <div className={classes.resultVal} style={{ fontSize: 20 }}>
-                {aiProposed}
-              </div>
-              <div className={classes.resultLabel}>AI Proposed</div>
-            </div>
-            <div className={classes.resultStat}>
-              <div className={classes.resultVal} style={{ fontSize: 20, color: '#3E8635' }}>
-                {aiAccepted}
-              </div>
-              <div className={classes.resultLabel}>AI Accepted</div>
-            </div>
-            <div className={classes.resultStat}>
-              <div className={classes.resultVal} style={{ fontSize: 20, color: '#C9190B' }}>
-                {aiDeclined}
-              </div>
-              <div className={classes.resultLabel}>AI Declined</div>
-            </div>
-          </div>
-        )}
-        <Box mt={2} display="flex" justifyContent="center" style={{ gap: 8 }}>
-          {createPr && prUrl && (
-            <Button
-              variant="outlined"
-              color="primary"
-              style={PILL}
-              onClick={() => window.open(prUrl, '_blank', 'noopener,noreferrer')}
-            >
-              View Pull Request
-            </Button>
-          )}
-          <Button variant="contained" color="primary" onClick={onDone} style={PILL}>
-            Done
-          </Button>
-        </Box>
       </Box>
     </Paper>
   );
