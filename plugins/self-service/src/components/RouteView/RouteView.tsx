@@ -60,8 +60,6 @@ import { NotificationsAdminPage } from '../Admin/NotificationsAdminPage';
 import {
   DevelopAdminLayout,
   DevelopAccessPage,
-  DevelopContentPage,
-  DevelopContentSourcePage,
   DevelopQualityPage,
 } from '../DevelopAdmin';
 import {
@@ -278,10 +276,13 @@ const RouteViewContent = () => {
         <Route path="develop/admin" element={<DevelopAdminLayout />}>
           <Route index element={<Navigate to="access" replace />} />
           <Route path="access" element={<DevelopAccessPage />} />
-          <Route path="content" element={<DevelopContentPage />} />
+          <Route
+            path="content"
+            element={<Navigate to="/self-service/admin/integrations" replace />}
+          />
           <Route
             path="content/:providerId"
-            element={<DevelopContentSourcePage />}
+            element={<Navigate to="/self-service/admin/integrations" replace />}
           />
           <Route path="quality" element={<DevelopQualityPage />} />
         </Route>

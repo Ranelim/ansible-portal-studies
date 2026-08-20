@@ -17,6 +17,7 @@ import {
   isAssistantPath,
   useAssistantChatTrial,
   experienceFromPath,
+  useBridgeExperienceVisibility,
 } from '@ansible/plugin-backstage-self-service';
 import { SidebarSectionLabel } from '@ansible/plugin-backstage-rhaap';
 import { SidebarSearchModal } from '@backstage/plugin-search';
@@ -1243,6 +1244,7 @@ const AssistantSidebarRail = () => {
   const isAdmin = hasRole('admin');
   const { activeId, isNewChat, recents, newChat, selectChat, clearHistory } =
     useAssistantChatTrial();
+  const { visibility: bridgeVisibility } = useBridgeExperienceVisibility();
 
   const available = switcherIds(
     availableExperiences({
@@ -1250,6 +1252,7 @@ const AssistantSidebarRail = () => {
       isAdmin,
       compliance: plugins.compliance,
       rhem: plugins.rhem,
+      bridgeVisibility,
     }),
   );
   const current = currentSwitcherId(pathname, experience, available);
@@ -1357,11 +1360,13 @@ const ExperiencesDomainSidebar = () => {
   const automateRail = runPairIa === 'automate-rail';
   const isAdmin = hasRole('admin');
   const smeLocked = isSmeRole(role);
+  const { visibility: bridgeVisibility } = useBridgeExperienceVisibility();
   const available = availableExperiences({
     role,
     isAdmin,
     compliance: plugins.compliance,
     rhem: plugins.rhem,
+    bridgeVisibility,
   });
   const switcherAvailable = switcherIds(available);
   const current = currentSwitcherId(pathname, experience, switcherAvailable);
@@ -1416,13 +1421,6 @@ const ExperiencesDomainSidebar = () => {
         <ExpandableNavChild
           to="/self-service/develop/admin/access"
           text="Access"
-        />
-        <ExpandableNavChild
-          to="/self-service/develop/admin/content"
-          text="Content"
-          extraActive={path =>
-            path.startsWith('/self-service/develop/admin/content/')
-          }
         />
         <ExpandableNavChild
           to="/self-service/develop/admin/quality"

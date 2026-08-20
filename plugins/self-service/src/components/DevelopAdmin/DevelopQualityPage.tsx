@@ -12,7 +12,7 @@ import {
   makeStyles,
 } from '@material-ui/core';
 import { PageHelpIcon } from '../common/PageHelpIcon';
-import { DEVELOP_ADMIN_BASE, DEVELOP_ADMIN_SUBTITLE } from './developAdminShared';
+import { DEVELOP_ADMIN_SUBTITLE } from './developAdminShared';
 
 const useStyles = makeStyles(theme => ({
   intro: {
@@ -73,7 +73,7 @@ export const DevelopQualityPage = () => {
             <PageHelpIcon
               tooltipLabel="What is Quality admin?"
               title="Develop Quality settings"
-              description="Scan schedule and target AAP version for APME. This is not a connection — the AAP instance stays under Integrations. Scans run against repositories already in Content sync."
+              description="Scan schedule and target AAP version for APME. This is not a connection — GitHub, Hub, and AAP stay under Integrations. Scans run against repositories already in the Portal."
             />
           </Box>
         }
@@ -83,7 +83,8 @@ export const DevelopQualityPage = () => {
       <Content>
         <Typography className={classes.intro}>
           Policy for Quality on Git Repositories. Per-repo Scan stays on the
-          repository. APME is enabled under Plugins.
+          repository. APME is enabled under Plugins. Sources are wired in
+          Administration → Integrations.
         </Typography>
         <Box className={classes.card}>
           <Box className={classes.field}>
@@ -126,8 +127,8 @@ export const DevelopQualityPage = () => {
             </Box>
           </Box>
           <Typography className={classes.hint}>
-            4 repositories scanned — same set as Content sync. Quality does not
-            keep a second repo picker.
+            Scans run on repositories already ingested from Integrations. Quality
+            does not keep a second repo picker.
           </Typography>
         </Box>
         <Box className={classes.actions}>
@@ -135,9 +136,17 @@ export const DevelopQualityPage = () => {
             className={classes.pill}
             variant="outlined"
             color="primary"
-            onClick={() => navigate(`${DEVELOP_ADMIN_BASE}/content`)}
+            onClick={() => navigate('/self-service/repositories/list')}
           >
-            Open Content sync
+            Open Git Repositories
+          </Button>
+          <Button
+            className={classes.pill}
+            variant="outlined"
+            color="primary"
+            onClick={() => navigate('/self-service/admin/integrations')}
+          >
+            Open Integrations
           </Button>
         </Box>
       </Content>

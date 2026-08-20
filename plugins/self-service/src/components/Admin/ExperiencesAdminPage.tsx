@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Page, Header, Content } from '@backstage/core-components';
 import {
@@ -10,6 +9,10 @@ import {
 } from '@material-ui/core';
 import AddIcon from '@material-ui/icons/Add';
 import { PageHelpIcon } from '../common/PageHelpIcon';
+import {
+  useBridgeExperienceVisibility,
+  type BridgeExperienceId,
+} from '../../hooks/bridgeExperienceVisibility';
 
 const useStyles = makeStyles(theme => ({
   list: {
@@ -72,14 +75,13 @@ const useStyles = makeStyles(theme => ({
 }));
 
 type AdminExperience = {
-  id: string;
+  id: BridgeExperienceId;
   label: string;
   description: string;
   /** Plugins catalog filter value */
   pluginsFilter: string;
   seatsSummary: string;
   pluginsSummary: string;
-  defaultVisible: boolean;
 };
 
 /** Job-mode experiences only — Administration is platform chrome, not a Bridge card. */
@@ -91,7 +93,6 @@ const ADMIN_EXPERIENCES: AdminExperience[] = [
     pluginsFilter: 'Cross-cutting',
     seatsSummary: 'All seats',
     pluginsSummary: 'Self-service (run surfaces)',
-    defaultVisible: true,
   },
   {
     id: 'develop',
@@ -101,7 +102,6 @@ const ADMIN_EXPERIENCES: AdminExperience[] = [
     pluginsFilter: 'Develop',
     seatsSummary: 'Developer, Admin',
     pluginsSummary: 'Self-service, APME Quality Scanning',
-    defaultVisible: true,
   },
   {
     id: 'compliance',
@@ -110,7 +110,6 @@ const ADMIN_EXPERIENCES: AdminExperience[] = [
     pluginsFilter: 'Compliance',
     seatsSummary: 'Operator, Admin',
     pluginsSummary: 'Compliance',
-    defaultVisible: true,
   },
   {
     id: 'edge',
@@ -119,7 +118,6 @@ const ADMIN_EXPERIENCES: AdminExperience[] = [
     pluginsFilter: 'Edge',
     seatsSummary: 'Operator, Admin',
     pluginsSummary: 'RHEM (when installed)',
-    defaultVisible: true,
   },
 ];
 
@@ -130,9 +128,7 @@ const ADMIN_EXPERIENCES: AdminExperience[] = [
 export const ExperiencesAdminPage = () => {
   const classes = useStyles();
   const navigate = useNavigate();
-  const [visible, setVisible] = useState<Record<string, boolean>>(() =>
-    Object.fromEntries(ADMIN_EXPERIENCES.map(e => [e.id, e.defaultVisible])),
-  );
+  const { visibility, setVisible } = useBridgeExperienceVisibility();
 
   return (
     <Page themeId="app">
@@ -164,7 +160,7 @@ export const ExperiencesAdminPage = () => {
           </Box>
         }
         pageTitleOverride="Experiences"
-        subtitle="Show or hide Bridge experiences. Plugins and Access Control stay the systems of record for install and RBAC."
+        subtitle="Show or hide experiences on the Bridge and in the experience switcher. Plugins and Access Control stay the systems of record for install and RBAC."
       />
       <Content>
         <Box className={classes.list}>
@@ -188,10 +184,8 @@ export const ExperiencesAdminPage = () => {
                   </Typography>
                   <Switch
                     color="primary"
-                    checked={visible[exp.id] ?? false}
-                    onChange={(_, checked) =>
-                      setVisible(prev => ({ ...prev, [exp.id]: checked }))
-                    }
+                    checked={visibility[exp.id]}
+                    onChange={(_, checked) => setVisible(exp.id, checked)}
                     inputProps={{
                       'aria-label': `Show ${exp.label} on Experiences Bridge`,
                     }}

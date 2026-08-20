@@ -5,6 +5,7 @@ import { useLocation } from 'react-router-dom';
 import {
   FORCED_ADMIN_SYNC_IA,
   FORCED_TEMPLATES_RUNS_IA,
+  FORCED_INTEGRATIONS_ORIENT,
   RestartProvider,
   useRestartRequired,
   useNavIaModel,
@@ -403,6 +404,8 @@ export const Root = ({ children }: PropsWithChildren<{}>) => {
     location.pathname.startsWith('/rbac/');
   const showAdminSyncBar =
     onAdminArea && !isSetup && FORCED_ADMIN_SYNC_IA === null;
+  const showIntegrationsOrientBar =
+    onAdminArea && !isSetup && FORCED_INTEGRATIONS_ORIENT === null;
   const templatesRunsBarEligible =
     !isSetup && FORCED_TEMPLATES_RUNS_IA === null;
   const showTemplatesRunsBar = templatesRunsBarEligible && magentaBarVisible;
@@ -425,6 +428,7 @@ export const Root = ({ children }: PropsWithChildren<{}>) => {
 
   const chromeTop = chromeTopForPrototypeBars({
     showAdminSyncBar,
+    showIntegrationsOrientBar,
     showTemplatesRunsBar,
   });
   const magentaBarPx = showTemplatesRunsBar ? TEMPLATES_RUNS_IA_BAR_HEIGHT : 0;

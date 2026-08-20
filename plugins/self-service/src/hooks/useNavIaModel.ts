@@ -1,4 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  readBridgeExperienceVisibility,
+  type BridgeExperienceId,
+} from './bridgeExperienceVisibility';
 
 /** Prototype IA models — switch to compare side by side. */
 export type NavIaModel =
@@ -116,20 +120,29 @@ export function availableExperiences(args: {
    * @deprecated Automate is always an experience. Kept for call-site compat; ignored.
    */
   includeAutomate?: boolean;
+  /** Admin “On Bridge” toggles. Omit to read the persisted prototype store. */
+  bridgeVisibility?: Record<BridgeExperienceId, boolean>;
 }): NavExperience[] {
-  // SME locked to Automate.
+  // SME locked to Automate (no Bridge).
   if (args.role === 'sme') {
     return ['automate'];
   }
+  const vis = args.bridgeVisibility ?? readBridgeExperienceVisibility();
   const list: NavExperience[] = ['all'];
-  list.push('automate');
-  if (args.role === 'developer' || args.isAdmin) {
+  if (vis.automate) {
+    list.push('automate');
+  }
+  if ((args.role === 'developer' || args.isAdmin) && vis.develop) {
     list.push('develop');
   }
-  if ((args.role === 'operator' || args.isAdmin) && args.compliance) {
+  if (
+    (args.role === 'operator' || args.isAdmin) &&
+    args.compliance &&
+    vis.compliance
+  ) {
     list.push('compliance');
   }
-  if ((args.role === 'operator' || args.isAdmin) && args.rhem) {
+  if ((args.role === 'operator' || args.isAdmin) && args.rhem && vis.edge) {
     list.push('edge');
   }
   list.push('assistant');

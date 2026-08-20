@@ -33,6 +33,7 @@ import {
   useNavIaModel,
   writeNavExperience,
 } from '../../hooks/useNavIaModel';
+import { useBridgeExperienceVisibility } from '../../hooks/bridgeExperienceVisibility';
 import {
   EXPERIENCE_LANDING,
   pushRecentExperience,
@@ -541,6 +542,7 @@ export const ExperiencesHomePage = () => {
   const { plugins } = useNavPlugins();
   const { setExperience } = useNavIaModel();
   const isAdmin = hasRole('admin');
+  const { visibility: bridgeVisibility } = useBridgeExperienceVisibility();
 
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<SortMode>('recent');
@@ -556,10 +558,11 @@ export const ExperiencesHomePage = () => {
         isAdmin,
         compliance: plugins.compliance,
         rhem: plugins.rhem,
+        bridgeVisibility,
       }).filter((id): id is JobExperienceId =>
         (JOB_EXPERIENCE_IDS as readonly string[]).includes(id),
       ),
-    [role, isAdmin, plugins.compliance, plugins.rhem],
+    [role, isAdmin, plugins.compliance, plugins.rhem, bridgeVisibility],
   );
 
   // Old /experiences/dashboard bookmark → catalog

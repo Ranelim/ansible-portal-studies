@@ -15,6 +15,7 @@ import {
 } from '../../hooks/useNavIaModel';
 import { useNavPlugins } from '../../hooks/useNavPlugins';
 import { useUserRoleContext } from '../../hooks/useUserRole';
+import { useBridgeExperienceVisibility } from '../../hooks/bridgeExperienceVisibility';
 import { NAV_IA_REVIEW_MODS } from './navIaReviewMods';
 
 type Kpi = {
@@ -172,6 +173,7 @@ export const FlatHomeDashboardPage = () => {
   const { role, hasRole } = useUserRoleContext();
   const { plugins } = useNavPlugins();
   const isAdmin = hasRole('admin');
+  const { visibility: bridgeVisibility } = useBridgeExperienceVisibility();
 
   const available = useMemo(
     () =>
@@ -180,8 +182,9 @@ export const FlatHomeDashboardPage = () => {
         isAdmin,
         compliance: plugins.compliance,
         rhem: plugins.rhem,
+        bridgeVisibility,
       }).filter(id => id !== 'all'),
-    [role, isAdmin, plugins.compliance, plugins.rhem],
+    [role, isAdmin, plugins.compliance, plugins.rhem, bridgeVisibility],
   );
 
   const snippets: ExperienceSnippet[] = useMemo(

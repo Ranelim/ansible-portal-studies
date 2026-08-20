@@ -28,6 +28,7 @@ import { Root } from './components/Root';
 import { GlobalHeader } from './components/GlobalHeader';
 // import { ExperienceReturnCompareBar } from './components/IaPrototype'; // kept — remount when comparing A again
 import { AdminSyncIaCompareBar } from './components/IaPrototype';
+import { IntegrationsOrientCompareBar } from './components/IaPrototype';
 import { TemplatesRunsIaCompareBar } from './components/IaPrototype';
 import { PortalNotificationsPage } from './components/Notifications/PortalNotificationsPage';
 import { PortalNotificationSettingsPage } from './components/Notifications/PortalNotificationSettingsPage';
@@ -160,6 +161,7 @@ export default app.createRoot(
             <GlobalHeader />
             {/* <ExperienceReturnCompareBar /> — B forced; remount to compare A */}
             <AdminSyncIaCompareBar />
+            <IntegrationsOrientCompareBar />
             <TemplatesRunsIaCompareBar />
             <Root>{routes}</Root>
             <LightspeedPanel />

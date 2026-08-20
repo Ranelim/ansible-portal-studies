@@ -24,8 +24,10 @@ import OpenInNewIcon from '@material-ui/icons/OpenInNew';
 import AddIcon from '@material-ui/icons/Add';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAdminSyncIa } from './useAdminSyncIa';
+import { useIntegrationsOrientIa } from './useIntegrationsOrientIa';
 import { SyncHistoryEmbedded } from './SyncActivityPage';
 import { PageHelpIcon } from '../common/PageHelpIcon';
+import { DismissibleBanner } from '../common/DismissibleBanner';
 import { DEMO_CONNECTIONS, ConnectionProvider } from './syncDemoData';
 import { statusColors } from '../common/statusColors';
 
@@ -174,22 +176,39 @@ const providerTypeLabel = (type: ConnectionProvider['type']): string => {
   }
 };
 
+const JOB_LINE: Record<string, string> = {
+  aap: 'Job templates, users, and teams from Controller.',
+  pah: 'Collections, execution environments, and roles from your private Hub.',
+  github: 'Organizations the Portal crawls for automation content.',
+  gitlab: 'Groups the Portal crawls for automation content.',
+  registries: 'Certified and validated EE images — not Git repositories.',
+  devspaces:
+    'Optional. Paste a URL so Edit in Dev Spaces appears on Git Repositories.',
+};
+
 const getCardDescription = (id: string, isConfigured: boolean): string => {
   if (isConfigured) {
     switch (id) {
       case 'aap': return '3 organizations · 42 job templates · 60 users';
-      case 'devspaces': return 'Browser-based VS Code environments with the Ansible extension and Lightspeed AI. When connected, "Edit in Dev Spaces" actions appear on all projects.';
+      case 'devspaces': return JOB_LINE.devspaces;
       default: return '';
     }
   }
   switch (id) {
-    case 'pah': return 'Sync collections, execution environments, and roles from your private hub.';
+    case 'pah': return JOB_LINE.pah;
     case 'github': return 'Import repositories containing playbooks, roles, and automation projects.';
     case 'gitlab': return 'Import repositories containing playbooks, roles, and automation projects.';
     case 'registries': return 'Index certified and validated content from Ansible Galaxy and Red Hat.';
-    case 'devspaces': return 'Provide your OpenShift Dev Spaces URL to enable browser-based editing directly from projects in the portal.';
+    case 'devspaces': return JOB_LINE.devspaces;
     default: return '';
   }
+};
+
+const cadenceLabel = (provider: ConnectionProvider): string | null => {
+  if (provider.type === 'devtools') return null;
+  const job =
+    provider.syncJobs.find(j => j.enabled) ?? provider.syncJobs[0];
+  return job?.interval ?? null;
 };
 
 const getCardWarning = (provider: ConnectionProvider): string | null => {
@@ -203,13 +222,17 @@ const ProviderCard = ({ provider }: { provider: ConnectionProvider }) => {
   const classes = useStyles();
   const navigate = useNavigate();
   const { variant } = useAdminSyncIa();
+  const { variant: orientVariant } = useIntegrationsOrientIa();
   const connectOnly = variant === 'opt2';
+  const orient = orientVariant === 'orient';
   const [syncing, setSyncing] = useState(false);
 
   const isConfigured = provider.status !== 'Not configured';
   const isActive = provider.status === 'Active';
   const { icon, bg } = providerIcon(provider.id);
   const description = getCardDescription(provider.id, isConfigured);
+  const jobLine = JOB_LINE[provider.id];
+  const cadence = cadenceLabel(provider);
   const warning = getCardWarning(provider);
 
   const handleSync = (e: React.MouseEvent) => {
@@ -261,6 +284,11 @@ const ProviderCard = ({ provider }: { provider: ConnectionProvider }) => {
 
           {isConfigured ? (
             <>
+              {orient && jobLine && (
+                <Typography className={classes.cardMeta} style={{ color: 'inherit' }}>
+                  {jobLine}
+                </Typography>
+              )}
               <Typography className={classes.cardMeta}>
                 {provider.host}
                 {provider.lastSync && (
@@ -271,12 +299,23 @@ const ProviderCard = ({ provider }: { provider: ConnectionProvider }) => {
                       style={{ backgroundColor: isActive ? statusColors.success : statusColors.error }}
                     />
                     Last sync {provider.lastSync}
+                    {orient && cadence && <> · {cadence}</>}
                   </>
                 )}
               </Typography>
-              {description && (
+              {!orient && description && (
                 <Typography className={classes.cardMeta} style={{ fontWeight: 500, color: 'inherit' }}>
                   {description}
+                </Typography>
+              )}
+              {orient && provider.id === 'aap' && (
+                <Typography className={classes.cardMeta} style={{ fontWeight: 500, color: 'inherit' }}>
+                  3 organizations · 42 job templates · 60 users
+                </Typography>
+              )}
+              {orient && cadence && (
+                <Typography className={classes.cardMeta}>
+                  Updates on a schedule — change under Sync.
                 </Typography>
               )}
               {warning && (
@@ -309,18 +348,20 @@ const ProviderCard = ({ provider }: { provider: ConnectionProvider }) => {
             </>
           ) : (
             <>
-              {description && (
-                <Typography className={classes.cardMeta}>
-                  {description}
-                </Typography>
-              )}
+              <Typography className={classes.cardMeta}>
+                {orient ? jobLine || description : description}
+              </Typography>
               <Box className={classes.cardFooter}>
-                <Box display="flex" alignItems="center" style={{ gap: 6 }}>
-                  <LinkOffIcon style={{ fontSize: 14, color: '#999' }} />
-                  <Typography style={{ fontSize: 12, color: '#999' }}>
-                    Not configured
-                  </Typography>
-                </Box>
+                {orient ? (
+                  <span />
+                ) : (
+                  <Box display="flex" alignItems="center" style={{ gap: 6 }}>
+                    <LinkOffIcon style={{ fontSize: 14, color: '#999' }} />
+                    <Typography style={{ fontSize: 12, color: '#999' }}>
+                      Not configured
+                    </Typography>
+                  </Box>
+                )}
                 <Box display="flex" alignItems="center" style={{ gap: 4, color: '#0066CC', fontSize: 12 }}>
                   Connect <ArrowForwardIcon style={{ fontSize: 14 }} />
                 </Box>
@@ -336,10 +377,13 @@ const ProviderCard = ({ provider }: { provider: ConnectionProvider }) => {
 const DevToolsCard = ({ provider }: { provider: ConnectionProvider }) => {
   const classes = useStyles();
   const navigate = useNavigate();
+  const { variant: orientVariant } = useIntegrationsOrientIa();
+  const orient = orientVariant === 'orient';
   const isConfigured = provider.status !== 'Not configured';
   const isActive = provider.status === 'Active';
   const { icon, bg } = providerIcon(provider.id);
   const description = getCardDescription(provider.id, isConfigured);
+  const jobLine = JOB_LINE[provider.id];
 
   return (
     <Card
@@ -385,11 +429,9 @@ const DevToolsCard = ({ provider }: { provider: ConnectionProvider }) => {
               <Typography className={classes.cardMeta}>
                 {provider.host}
               </Typography>
-              {description && (
-                <Typography className={classes.cardMeta} style={{ lineHeight: 1.5 }}>
-                  {description}
-                </Typography>
-              )}
+              <Typography className={classes.cardMeta} style={{ lineHeight: 1.5 }}>
+                {orient ? jobLine : description}
+              </Typography>
               <Box className={classes.cardFooter}>
                 <Button
                   size="small"
@@ -410,18 +452,20 @@ const DevToolsCard = ({ provider }: { provider: ConnectionProvider }) => {
             </>
           ) : (
             <>
-              {description && (
-                <Typography className={classes.cardMeta}>
-                  {description}
-                </Typography>
-              )}
+              <Typography className={classes.cardMeta}>
+                {orient ? jobLine : description}
+              </Typography>
               <Box className={classes.cardFooter}>
-                <Box display="flex" alignItems="center" style={{ gap: 6 }}>
-                  <LinkOffIcon style={{ fontSize: 14, color: '#999' }} />
-                  <Typography style={{ fontSize: 12, color: '#999' }}>
-                    Not configured
-                  </Typography>
-                </Box>
+                {orient ? (
+                  <span />
+                ) : (
+                  <Box display="flex" alignItems="center" style={{ gap: 6 }}>
+                    <LinkOffIcon style={{ fontSize: 14, color: '#999' }} />
+                    <Typography style={{ fontSize: 12, color: '#999' }}>
+                      Not configured
+                    </Typography>
+                  </Box>
+                )}
                 <Box display="flex" alignItems="center" style={{ gap: 4, color: '#0066CC', fontSize: 12 }}>
                   Connect <ArrowForwardIcon style={{ fontSize: 14 }} />
                 </Box>
@@ -437,10 +481,12 @@ const DevToolsCard = ({ provider }: { provider: ConnectionProvider }) => {
 export const ConnectionsPage = () => {
   const classes = useStyles();
   const { variant } = useAdminSyncIa();
+  const { variant: orientVariant } = useIntegrationsOrientIa();
   const location = useLocation();
   const navigate = useNavigate();
   const [syncing, setSyncing] = useState(false);
   const merged = variant === 'opt1';
+  const orient = orientVariant === 'orient';
   const rawTab = new URLSearchParams(location.search).get('tab');
   const tabFromUrl: 'connections' | 'history' =
     rawTab === 'history' || rawTab === 'activity' ? 'history' : 'connections';
@@ -483,7 +529,9 @@ export const ConnectionsPage = () => {
               tooltipLabel="What are integrations?"
               title="What are Integrations?"
               description={
-                merged
+                orient
+                  ? 'Each card is an external system. Connect it, then set how often it syncs. Developer tools (Dev Spaces) are a URL only — they do not sync content.'
+                  : merged
                   ? 'Opt 1: Connections (wire systems + Sync all / Sync now) and Sync history live as tabs here — no separate Sync rail.'
                   : 'Connect systems here. Schedules, Sync all, and history live under Sync.'
               }
@@ -492,7 +540,9 @@ export const ConnectionsPage = () => {
         }
         pageTitleOverride="Integrations"
         subtitle={
-          merged
+          orient
+            ? 'Connect systems here. Content then updates on a schedule you set per source.'
+            : merged
             ? 'Connect systems and review sync history in one place'
             : 'Connect AAP, Hub, source control, container registries, and developer tools'
         }
@@ -510,15 +560,17 @@ export const ConnectionsPage = () => {
               {syncing ? 'Syncing…' : 'Sync all connections'}
             </Button>
           )}
-          <Button
-            variant="contained"
-            color="primary"
-            size="small"
-            startIcon={<AddIcon style={{ fontSize: 16 }} />}
-            style={{ textTransform: 'none', fontSize: 13, borderRadius: 20 }}
-          >
-            Add integration
-          </Button>
+          {!orient && (
+            <Button
+              variant="contained"
+              color="primary"
+              size="small"
+              startIcon={<AddIcon style={{ fontSize: 16 }} />}
+              style={{ textTransform: 'none', fontSize: 13, borderRadius: 20 }}
+            >
+              Add integration
+            </Button>
+          )}
         </Box>
       </Header>
       <Content>
@@ -540,6 +592,15 @@ export const ConnectionsPage = () => {
 
         {showConnections && (
           <>
+            {orient && (
+              <DismissibleBanner
+                storageKey="integrations-orient-getting-started"
+                message="Connect Ansible Automation Platform first so job templates and users appear in the Portal. Other systems are optional. After you connect a source, content updates on a schedule you set under Sync."
+                ctaText="Connect AAP"
+                ctaHref="/self-service/admin/integrations/aap"
+              />
+            )}
+
             <Typography className={classes.sectionTitle}>
               Automation platforms
             </Typography>
@@ -576,8 +637,9 @@ export const ConnectionsPage = () => {
                   Developer tools
                 </Typography>
                 <Typography className={classes.sectionDescription}>
-                  Optional tools such as OpenShift Dev Spaces. Connection lives here;
-                  the capability also appears under Plugins.
+                  {orient
+                    ? 'Optional. Paste a Dev Spaces URL so Edit in Dev Spaces appears on Git Repositories.'
+                    : 'Optional tools such as OpenShift Dev Spaces. Connection lives here; the capability also appears under Plugins.'}
                 </Typography>
                 <Box className={classes.cardGrid}>
                   {devTools.map(provider => (

@@ -44,6 +44,12 @@ export {
   type NavExperience,
 } from './hooks/useNavIaModel';
 export {
+  useBridgeExperienceVisibility,
+  readBridgeExperienceVisibility,
+  writeBridgeExperienceVisibility,
+  type BridgeExperienceId,
+} from './hooks/bridgeExperienceVisibility';
+export {
   EXPERIENCE_LANDING,
   pushRecentExperience,
   readRecentExperiences,
@@ -70,6 +76,13 @@ export {
   readAdminSyncIa,
   writeAdminSyncIa,
 } from './components/Admin/adminSyncIa';
+export { useIntegrationsOrientIa } from './components/Admin/useIntegrationsOrientIa';
+export type { IntegrationsOrientVariant } from './components/Admin/integrationsOrientIa';
+export {
+  FORCED_INTEGRATIONS_ORIENT,
+  readIntegrationsOrient,
+  writeIntegrationsOrient,
+} from './components/Admin/integrationsOrientIa';
 export { useTemplatesRunsIa } from './hooks/useTemplatesRunsIa';
 export type { TemplatesRunsIaVariant } from './hooks/templatesRunsIa';
 export {

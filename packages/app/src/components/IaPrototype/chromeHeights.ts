@@ -24,6 +24,12 @@ export const RETURN_COMPARE_BAR_HEIGHT = 0;
 export const ADMIN_SYNC_IA_BAR_HEIGHT = 0;
 
 /**
+ * Magenta Integrations first-time-admin orientation bar (Administration only).
+ * 0 while parked (option 2 forced); restore 36 when re-enabling the bar.
+ */
+export const INTEGRATIONS_ORIENT_BAR_HEIGHT = 0;
+
+/**
  * Magenta Automate-shell IA compare bar height.
  * Tall enough for one row of controls; keep labels short so it does not wrap.
  */
@@ -43,10 +49,12 @@ export function chromeTopForAdminSync(showAdminSyncBar: boolean): number {
 export function chromeTopForPrototypeBars(opts: {
   showAdminSyncBar?: boolean;
   showTemplatesRunsBar?: boolean;
+  showIntegrationsOrientBar?: boolean;
 }): number {
   return (
     CHROME_TOP_BASE +
     (opts.showAdminSyncBar ? ADMIN_SYNC_IA_BAR_HEIGHT : 0) +
+    (opts.showIntegrationsOrientBar ? INTEGRATIONS_ORIENT_BAR_HEIGHT : 0) +
     (opts.showTemplatesRunsBar ? TEMPLATES_RUNS_IA_BAR_HEIGHT : 0)
   );
 }

@@ -20,4 +20,10 @@ export {
   type NavIaModel,
   type NavExperience,
 } from './useNavIaModel';
+export {
+  useBridgeExperienceVisibility,
+  readBridgeExperienceVisibility,
+  writeBridgeExperienceVisibility,
+  type BridgeExperienceId,
+} from './bridgeExperienceVisibility';
 export type { UserRole, UseUserRoleResult } from './useUserRole';
