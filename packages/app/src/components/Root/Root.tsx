@@ -255,15 +255,17 @@ const useRootStyles = makeStyles(theme => {
       paddingLeft: `var(--portal-page-gutter, ${RAIL_ICON_GUTTER_PX}px) !important`,
       paddingRight: `var(--portal-page-gutter, ${RAIL_ICON_GUTTER_PX}px) !important`,
     },
-    '[class*="BackstagePage-root"]': {
-      overflow: 'hidden',
-    },
-    // Fill the inset well — stock Page is `height: 100vh`, which would
-    // overflow the rounded card and square-clip under the masthead.
+    /**
+     * Inset well is the scrollport (rounded card). Stock Page is `100vh` +
+     * `overflow: hidden` here used to fill that card — the page then clipped
+     * its own Content and the well had nothing to scroll.
+     */
     '[data-portal-page-inset] [class*="BackstagePage-root"]': {
       '@media (min-width: 600px)': {
-        height: '100% !important',
-        maxHeight: '100% !important',
+        height: 'auto !important',
+        minHeight: '100%',
+        maxHeight: 'none !important',
+        overflow: 'visible !important',
       },
     },
   },
