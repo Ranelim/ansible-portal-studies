@@ -15,6 +15,7 @@ import {
 } from '@material-ui/core';
 import ArrowBack from '@material-ui/icons/ArrowBack';
 import ChevronRight from '@material-ui/icons/ChevronRight';
+import HelpOutlineIcon from '@material-ui/icons/HelpOutline';
 import { Table, TableColumn } from '@backstage/core-components';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
@@ -23,6 +24,7 @@ import {
   SEVERITY_COLORS,
   apmeCategoryOf,
   getProjectQuality,
+  qualityForScan,
   type ApmeRuleCategory,
   type QualityViolation,
   type RemediationStatus,
@@ -30,6 +32,11 @@ import {
   type SeverityClass,
 } from '../detail/qualityDemoData';
 import { GIT_REPOSITORIES } from '../catalog/unifiedDemoData';
+import {
+  HEALTH_SCORE_HINT,
+  HealthScorePopover,
+  QualityScoreMark,
+} from '../catalog/HealthScorePopover';
 import { CommitSha, shortSha } from './CommitSha';
 import { snippetForFinding } from './findingCodeContext';
 import { SeverityFilterChips } from './SeverityFilterChips';
@@ -126,18 +133,28 @@ const useStyles = makeStyles(theme => ({
   },
   repoLink: {
     display: 'block',
-    fontSize: 14,
-    fontWeight: 400,
-    color: theme.palette.text.primary,
+    fontSize: 13,
+    fontWeight: 500,
+    color: theme.palette.primary.main,
     cursor: 'pointer',
     textDecoration: 'none',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
     '&:hover': {
-      color: theme.palette.primary.main,
       textDecoration: 'underline',
     },
+  },
+  helpIcon: {
+    fontSize: 14,
+    color: theme.palette.text.disabled,
+    cursor: 'help',
+  },
+  cta: {
+    textTransform: 'none',
+    fontWeight: 600,
+    borderRadius: 20,
+    flexShrink: 0,
   },
   findingsCount: {
     fontSize: 14,
@@ -356,13 +373,6 @@ function formatRelativeWhen(createdAt: string): string {
   const weeks = Math.round(days / 7);
   if (weeks < 8) return `${weeks} week${weeks === 1 ? '' : 's'} ago`;
   return createdAt;
-}
-
-function severityTooltip(breakdown: Record<SeverityClass, number>): string {
-  const parts = SEV_ORDER.filter(sev => breakdown[sev] > 0).map(
-    sev => `${sev.charAt(0).toUpperCase()}${sev.slice(1)} ${breakdown[sev]}`,
-  );
-  return parts.join(' · ') || 'No findings';
 }
 
 function liveSession(status: RemediationStatus | undefined): boolean {
@@ -702,6 +712,7 @@ function ScanSnapshotDetail({
   >(initialCategory);
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(() => new Set());
   const quality = getProjectQuality(row.repoName);
+  const scanQuality = qualityForScan(row.repoName, row, row.isLatest);
   const findings: QualityViolation[] =
     row.isLatest && quality ? quality.violations : [];
   const categoryOptions = useMemo(() => {
@@ -797,6 +808,16 @@ function ScanSnapshotDetail({
             {row.org}/{row.repoName}
           </Typography>
           <Box className={classes.meta} mt={0.5}>
+            {scanQuality != null && (
+              <>
+                <QualityScoreMark
+                  score={scanQuality.healthScore}
+                  fontSize={16}
+                  showDenom={false}
+                />
+                <span className={classes.metaDot}>·</span>
+              </>
+            )}
             <span className={classes.metaFindings}>
               {row.totalViolations === 0
                 ? 'No findings'
@@ -820,7 +841,7 @@ function ScanSnapshotDetail({
               style={pill}
               onClick={onResume}
             >
-              Resume remediation
+              Remediate
             </Button>
           )}
           {showPr && (
@@ -1015,7 +1036,7 @@ export const ScanHistoryContent = () => {
       headerStyle: { whiteSpace: 'nowrap' as const },
       render: (row: GlobalScanRow) => (
         <Box>
-          <Tooltip title={row.createdAt} arrow>
+          <Tooltip title={formatRelativeWhen(row.createdAt)} arrow>
             <Link
               className={classes.scanLink}
               onClick={e => {
@@ -1023,7 +1044,7 @@ export const ScanHistoryContent = () => {
                 openScan(row.scanId);
               }}
             >
-              {formatRelativeWhen(row.createdAt)}
+              {row.createdAt}
             </Link>
           </Tooltip>
           <CommitSha sha={row.commitHash} />
@@ -1057,27 +1078,34 @@ export const ScanHistoryContent = () => {
       render: (row: GlobalScanRow) => <ScanStateChip current={row.isLatest} />,
     },
     {
-      title: 'Findings',
-      field: 'totalViolations',
-      width: '20%',
-      cellStyle: { whiteSpace: 'nowrap' as const },
+      title: (
+        <Box display="flex" alignItems="center" style={{ gap: 4, whiteSpace: 'nowrap' }}>
+          Health
+          <Tooltip title={HEALTH_SCORE_HINT} arrow>
+            <HelpOutlineIcon className={classes.helpIcon} />
+          </Tooltip>
+        </Box>
+      ) as unknown as string,
+      width: '22%',
+      cellStyle: { whiteSpace: 'nowrap' as const, overflow: 'hidden' as const },
+      customSort: (a: GlobalScanRow, b: GlobalScanRow) => {
+        const qa = qualityForScan(a.repoName, a, a.isLatest);
+        const qb = qualityForScan(b.repoName, b, b.isLatest);
+        return (qa?.healthScore ?? -1) - (qb?.healthScore ?? -1);
+      },
       render: (row: GlobalScanRow) => (
-        <Tooltip title={severityTooltip(row.severityBreakdown)} arrow>
-          <Box className={classes.findingsCell}>
-            <span className={classes.findingsCount}>
-              {row.totalViolations === 0
-                ? 'No findings'
-                : `${row.totalViolations} finding${
-                    row.totalViolations !== 1 ? 's' : ''
-                  }`}
-            </span>
-            <FindingsBar breakdown={row.severityBreakdown} classes={classes} />
-          </Box>
-        </Tooltip>
+        <HealthScorePopover
+          repoName={row.repoName}
+          quality={qualityForScan(row.repoName, row, row.isLatest)}
+          showFindingsLink
+          showCategoryMix={row.isLatest}
+          viewScanLabel="View details"
+          onViewLastScan={() => openScan(row.scanId)}
+        />
       ),
     },
     {
-      title: '',
+      title: 'Action',
       width: '12%',
       sorting: false,
       cellStyle: {
@@ -1093,8 +1121,8 @@ export const ScanHistoryContent = () => {
         <Button
           size="small"
           color="primary"
-          variant="text"
-          className={classes.viewDetailsBtn}
+          variant="outlined"
+          className={classes.cta}
           onMouseDown={e => e.stopPropagation()}
           onClick={e => {
             e.preventDefault();

@@ -826,7 +826,7 @@ export const GitRepositoriesContent = () => {
             <Box display="flex" alignItems="center" style={{ gap: 4 }}>
               Findings
               <Tooltip
-                title="Content quality findings for this repository. Open Content quality for detail. Resume a live session from the status link."
+                title="Content quality findings for this repository. Open Content quality for detail."
                 arrow
               >
                 <HelpOutlineIcon style={{ fontSize: 14, color: theme.palette.text.disabled, cursor: 'help' }} />

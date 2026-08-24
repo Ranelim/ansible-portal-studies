@@ -431,6 +431,10 @@ interface HealthScorePopoverProps {
   showFindingsLink?: boolean;
   /** Catalog list: also show muted time · SHA after findings. Implies compact score. */
   showScanMeta?: boolean;
+  /** Hide by-category when this cell is a historical scan without finding rows. */
+  showCategoryMix?: boolean;
+  /** Footer control next to the score popover. */
+  viewScanLabel?: string;
   scanning?: boolean;
   onViewLastScan?: () => void;
   onRemediate?: () => void;
@@ -446,6 +450,8 @@ export const HealthScorePopover = ({
   showOpenIcon = false,
   showFindingsLink = false,
   showScanMeta = false,
+  showCategoryMix = true,
+  viewScanLabel = 'View last scan',
   scanning = false,
   onViewLastScan,
   onRemediate,
@@ -491,7 +497,7 @@ export const HealthScorePopover = ({
   const presentSev = SEVERITY_ORDER.filter(sev => (severityBreakdown[sev] ?? 0) > 0);
   const sha = lastScannedCommit ? shortSha(lastScannedCommit) : null;
   const findings = quality.violations ?? [];
-  const remediateLabel = live ? 'Resume remediation' : null;
+  const remediateLabel = live ? 'Remediate' : null;
   const showRemediation = remediationHasStarted(quality.remediationStatus);
   const listCell = showScanMeta || showFindingsLink;
   const findingsLabel =
@@ -576,7 +582,7 @@ export const HealthScorePopover = ({
             </Typography>
           </Box>
 
-          <CategoryMixMini repoName={repoName} />
+          {showCategoryMix ? <CategoryMixMini repoName={repoName} /> : null}
 
           {totalViolations > 0 && presentSev.length > 0 && (
             <Box className={classes.findings}>
@@ -637,7 +643,7 @@ export const HealthScorePopover = ({
                   onViewLastScan();
                 }}
               >
-                View last scan
+                {viewScanLabel}
               </Button>
             )}
             {quality.remediationStatus === 'pr-open' && onViewPullRequest && (

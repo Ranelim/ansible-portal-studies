@@ -505,6 +505,48 @@ export function getProjectQuality(projectName: string): ProjectQualityData | nul
   return QUALITY_DATA[projectName] ?? null;
 }
 
+/** APME-style 0–100 from a scan’s severity mix (prototype; not Gateway). */
+export function healthFromSeverity(
+  breakdown: Record<SeverityClass, number>,
+): number {
+  const penalty =
+    (breakdown.critical ?? 0) * 20 +
+    (breakdown.high ?? 0) * 6 +
+    (breakdown.medium ?? 0) * 3 +
+    (breakdown.low ?? 0) * 1;
+  return Math.max(0, Math.min(100, Math.round(100 * Math.exp(-penalty / 150))));
+}
+
+/** Health cell for a scan row — latest uses the repo score; older rows use that snapshot. */
+export function qualityForScan(
+  repoName: string,
+  scan: ScanResult,
+  isLatest: boolean,
+): ProjectQualityData | null {
+  const base = getProjectQuality(repoName);
+  if (!base) return null;
+  if (isLatest) {
+    return {
+      ...base,
+      lastScannedAt: scan.createdAt,
+      lastScannedCommit: scan.commitHash,
+    };
+  }
+  return {
+    ...base,
+    healthScore: healthFromSeverity(scan.severityBreakdown),
+    totalViolations: scan.totalViolations,
+    lastScannedAt: scan.createdAt,
+    lastScannedCommit: scan.commitHash,
+    severityBreakdown: scan.severityBreakdown,
+    violations: [],
+    latestScan: scan,
+    remediationStatus: 'none',
+    remediationPrUrl: scan.prUrl,
+    remediationSummary: undefined,
+  };
+}
+
 export function getProjectHealthScore(repoName: string): number | undefined {
   return QUALITY_DATA[repoName]?.healthScore;
 }

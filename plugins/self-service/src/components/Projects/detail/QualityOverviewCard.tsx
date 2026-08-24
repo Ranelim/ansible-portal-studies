@@ -153,7 +153,7 @@ export const QualityOverviewCard = ({
               style={pill}
               onClick={() => navigate(scanPath(true))}
             >
-              Resume remediation
+              Remediate
             </Button>
           ) : quality.remediationStatus === 'pr-open' && prUrl ? (
             <Button

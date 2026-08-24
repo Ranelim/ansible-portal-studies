@@ -39,6 +39,7 @@ type ActiveRow = {
   currentStep: 0 | 1 | 2;
   when: string;
   commitHash: string;
+  sortAt: number;
 };
 
 /** Same 3 steps as the inline visual session. Compact on the list; labeled in the session. */
@@ -68,6 +69,9 @@ const useStyles = makeStyles(theme => ({
     fontWeight: 500,
     color: theme.palette.primary.main,
     cursor: 'pointer',
+    '&:hover': {
+      textDecoration: 'underline',
+    },
   },
   helpIcon: {
     fontSize: 14,
@@ -235,6 +239,11 @@ export function countLiveRemediations(): number {
   }).length;
 }
 
+function parseScanDate(createdAt: string): number {
+  const t = Date.parse(createdAt);
+  return Number.isNaN(t) ? 0 : t;
+}
+
 function buildRows(): ActiveRow[] {
   const rows: ActiveRow[] = [];
   for (const repo of GIT_REPOSITORIES) {
@@ -247,14 +256,12 @@ function buildRows(): ActiveRow[] {
       currentStep: sessionStepIndex(q.remediationStatus),
       when: q.lastScannedAt,
       commitHash: q.latestScan.commitHash || q.lastScannedCommit,
+      sortAt: parseScanDate(
+        q.scanHistory[0]?.createdAt ?? q.latestScan.createdAt,
+      ),
     });
   }
-  return rows.sort((a, b) => {
-    if (a.status !== b.status) {
-      return a.status === 'in-progress' ? -1 : 1;
-    }
-    return a.repoName.localeCompare(b.repoName);
-  });
+  return rows.sort((a, b) => b.sortAt - a.sortAt);
 }
 
 type ScanRepoOption = {
@@ -458,6 +465,11 @@ export const RemediationsContent = ({
           </Tooltip>
         </Box>
       ) as unknown as string,
+      customSort: (a: ActiveRow, b: ActiveRow) => {
+        const sa = getProjectQuality(a.repoName)?.healthScore ?? -1;
+        const sb = getProjectQuality(b.repoName)?.healthScore ?? -1;
+        return sa - sb;
+      },
       render: row => (
         <HealthScorePopover
           repoName={row.repoName}
@@ -470,6 +482,8 @@ export const RemediationsContent = ({
     },
     {
       title: 'Scanned',
+      defaultSort: 'desc',
+      customSort: (a: ActiveRow, b: ActiveRow) => a.sortAt - b.sortAt,
       render: row => (
         <Box>
           <Typography style={{ fontSize: 13 }}>
@@ -485,6 +499,16 @@ export const RemediationsContent = ({
     },
     {
       title: 'Action',
+      sorting: false,
+      cellStyle: {
+        whiteSpace: 'nowrap' as const,
+        textAlign: 'right' as const,
+        paddingRight: 8,
+      },
+      headerStyle: {
+        textAlign: 'right' as const,
+        paddingRight: 8,
+      },
       render: row => (
         <Button
           size="small"
@@ -497,7 +521,7 @@ export const RemediationsContent = ({
             resume(row.repoName);
           }}
         >
-          Resume
+          Remediate
         </Button>
       ),
     },
@@ -506,8 +530,8 @@ export const RemediationsContent = ({
   return (
     <Box>
       <QualityTabIntro>
-        Unfinished fix sessions on a repository’s latest scan. Resume to review
-        remaining findings or commit accepted fixes.
+        Unfinished fix sessions on a repository’s latest scan. Remediate to
+        review remaining findings or commit accepted fixes.
       </QualityTabIntro>
       {rows.length === 0 ? (
         <Box className={classes.empty}>
@@ -535,7 +559,7 @@ export const RemediationsContent = ({
           options={{
             paging: false,
             search: false,
-            sorting: false,
+            sorting: true,
             padding: 'dense',
             header: true,
             rowStyle: { cursor: 'pointer' },
