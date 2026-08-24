@@ -71,7 +71,79 @@ git worktree add "$GL_PAGES_DIR" gitlab/gl-pages
 rm -rf "${GL_PAGES_DIR}/public/${SUBPATH}"
 mkdir -p "${GL_PAGES_DIR}/public/${SUBPATH}"
 cp -R packages/app/dist/. "${GL_PAGES_DIR}/public/${SUBPATH}/"
-cp "${GL_PAGES_DIR}/public/${SUBPATH}/index.html" "${GL_PAGES_DIR}/public/${SUBPATH}/404.html"
+INDEX_HTML="${GL_PAGES_DIR}/public/${SUBPATH}/index.html"
+# Stamp so View Source can tell this deploy from a cached older SPA.
+sed -i.bak "1s|^|<!-- experiences-shell $(date '+%Y-%m-%d %H:%M') -->\\n|" "$INDEX_HTML"
+rm -f "${INDEX_HTML}.bak"
+cp "$INDEX_HTML" "${GL_PAGES_DIR}/public/${SUBPATH}/404.html"
+
+# Real files on disk for client routes. GitLab Pages only serves files; a refresh
+# of /portal-experiences/self-service/experiences otherwise hits the ROOT APME 404.
+# Do not use a catch-all /* → /index.html rewrite — that loads APME at this URL.
+SPA_PATHS=(
+  self-service
+  self-service/experiences
+  self-service/admin
+  self-service/admin/overview
+  self-service/repositories
+  self-service/repositories/dashboard
+  self-service/repositories/quality
+  self-service/repositories/remediations
+  self-service/repositories/scans
+  self-service/assistant
+  create
+  settings
+  notifications
+  search
+  catalog
+)
+for rel in "${SPA_PATHS[@]}"; do
+  dest_dir="${GL_PAGES_DIR}/public/${SUBPATH}/${rel}"
+  mkdir -p "$dest_dir"
+  cp "$INDEX_HTML" "${dest_dir}/index.html"
+  parent="$(dirname "$dest_dir")"
+  base="$(basename "$dest_dir")"
+  cp "$INDEX_HTML" "${parent}/${base}.html"
+done
+
+# No catch-all. Nested /a/b/c paths often miss a single splat.
+cat > "${GL_PAGES_DIR}/public/_redirects" << EOF
+/portal-experiences/* /portal-experiences/index.html 200
+/portal-experiences/*/* /portal-experiences/index.html 200
+/portal-experiences/*/*/* /portal-experiences/index.html 200
+/portal-experiences/*/*/*/* /portal-experiences/index.html 200
+/portal-nav-ia/* /portal-nav-ia/index.html 200
+/compliance/* /compliance/index.html 200
+EOF
+
+# Root 404 trampoline: missing paths under /portal-experiences/ load that SPA
+# without changing the URL. Other missing paths still load APME.
+cat > "${GL_PAGES_DIR}/public/404.html" << 'EOF'
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Automation Portal</title>
+  <script>
+    (function () {
+      var p = location.pathname || '';
+      var target = '/index.html';
+      if (p.indexOf('/portal-experiences') === 0) target = '/portal-experiences/index.html';
+      else if (p.indexOf('/portal-nav-ia') === 0) target = '/portal-nav-ia/index.html';
+      else if (p.indexOf('/compliance') === 0) target = '/compliance/index.html';
+      fetch(target, { credentials: 'same-origin' })
+        .then(function (r) { return r.text(); })
+        .then(function (html) {
+          document.open();
+          document.write(html);
+          document.close();
+        });
+    })();
+  </script>
+</head>
+<body>Loading prototype…</body>
+</html>
+EOF
 
 # Lightweight index pointer so reviewers can discover the subpath from root
 cat > "${GL_PAGES_DIR}/public/experiences.html" << EOF
@@ -111,6 +183,8 @@ echo "Shortcut: ${PAGES_HOST}/experiences.html"
 echo "Nav IA museum: ${PAGES_HOST}/portal-nav-ia/"
 echo "APME root left intact: ${PAGES_HOST}/"
 echo ""
-echo "Allow 2–5 min for GitLab Pages + CDN; hard refresh if chunks look stale."
-echo "Deep links: open from in-app nav after landing on ${PAGES_URL}/ (GitLab serves root 404 for unknown paths)."
+echo "Allow 2–5 min for GitLab Pages + CDN."
+echo "Close the old Plugin Factory tab, then open a new tab (or incognito):"
+echo "  ${PAGES_URL}/self-service/experiences"
+echo "Refresh should stay on Experiences (file + 404 trampoline). Do not reuse a tab that already loaded APME."
 echo ""
