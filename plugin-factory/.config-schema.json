@@ -508,6 +508,52 @@
       "packageName": "@ansible/plugin-backstage-rhaap"
     },
     {
+      "path": "node_modules/@backstage/core-components/config.d.ts",
+      "value": {
+        "type": "object",
+        "properties": {
+          "auth": {
+            "type": "object",
+            "properties": {
+              "autologout": {
+                "description": "Autologout feature configuration",
+                "type": "object",
+                "properties": {
+                  "enabled": {
+                    "description": "Enable or disable the autologout feature",
+                    "visibility": "frontend",
+                    "type": "boolean"
+                  },
+                  "idleTimeoutMinutes": {
+                    "description": "Number of minutes after which the inactive user is logged out automatically.\nDefault is 60 minutes (1 hour)",
+                    "visibility": "frontend",
+                    "type": "number"
+                  },
+                  "promptBeforeIdleSeconds": {
+                    "description": "Number of seconds before the idle timeout where the user will be asked if it's still active.\nA dialog will be shown.\nDefault is 10 seconds.\nSet to 0 seconds to disable the prompt.",
+                    "visibility": "frontend",
+                    "type": "number"
+                  },
+                  "useWorkerTimers": {
+                    "description": "Enable/disable the usage of worker thread timers instead of main thread timers.\nDefault is true.\nIf you experience some browser incompatibility, you may try to set this to false.",
+                    "visibility": "frontend",
+                    "type": "boolean"
+                  },
+                  "logoutIfDisconnected": {
+                    "description": "Enable/disable the automatic logout also on users that are logged in but with no Backstage tabs open.\nDefault is true.",
+                    "visibility": "frontend",
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "packageName": "@backstage/core-components"
+    },
+    {
       "path": "node_modules/@backstage/core-app-api/config.d.ts",
       "value": {
         "type": "object",
@@ -735,50 +781,35 @@
       "packageName": "@backstage/core-app-api"
     },
     {
-      "path": "node_modules/@backstage/core-components/config.d.ts",
+      "path": "node_modules/@backstage/plugin-catalog/config.d.ts",
       "value": {
         "type": "object",
         "properties": {
-          "auth": {
+          "catalog": {
             "type": "object",
             "properties": {
-              "autologout": {
-                "description": "Autologout feature configuration",
-                "type": "object",
-                "properties": {
-                  "enabled": {
-                    "description": "Enable or disable the autologout feature",
-                    "visibility": "frontend",
-                    "type": "boolean"
+              "experimentalPagination": {
+                "deepVisibility": "frontend",
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "limit": {
+                        "type": "number"
+                      }
+                    }
                   },
-                  "idleTimeoutMinutes": {
-                    "description": "Number of minutes after which the inactive user is logged out automatically.\nDefault is 60 minutes (1 hour)",
-                    "visibility": "frontend",
-                    "type": "number"
-                  },
-                  "promptBeforeIdleSeconds": {
-                    "description": "Number of seconds before the idle timeout where the user will be asked if it's still active.\nA dialog will be shown.\nDefault is 10 seconds.\nSet to 0 seconds to disable the prompt.",
-                    "visibility": "frontend",
-                    "type": "number"
-                  },
-                  "useWorkerTimers": {
-                    "description": "Enable/disable the usage of worker thread timers instead of main thread timers.\nDefault is true.\nIf you experience some browser incompatibility, you may try to set this to false.",
-                    "visibility": "frontend",
-                    "type": "boolean"
-                  },
-                  "logoutIfDisconnected": {
-                    "description": "Enable/disable the automatic logout also on users that are logged in but with no Backstage tabs open.\nDefault is true.",
-                    "visibility": "frontend",
+                  {
                     "type": "boolean"
                   }
-                }
+                ]
               }
             }
           }
         },
         "$schema": "http://json-schema.org/draft-07/schema#"
       },
-      "packageName": "@backstage/core-components"
+      "packageName": "@backstage/plugin-catalog"
     },
     {
       "path": "node_modules/@backstage/plugin-catalog-import/config.d.ts",
@@ -811,37 +842,6 @@
         "$schema": "http://json-schema.org/draft-07/schema#"
       },
       "packageName": "@backstage/plugin-catalog-import"
-    },
-    {
-      "path": "node_modules/@backstage/plugin-catalog/config.d.ts",
-      "value": {
-        "type": "object",
-        "properties": {
-          "catalog": {
-            "type": "object",
-            "properties": {
-              "experimentalPagination": {
-                "deepVisibility": "frontend",
-                "anyOf": [
-                  {
-                    "type": "object",
-                    "properties": {
-                      "limit": {
-                        "type": "number"
-                      }
-                    }
-                  },
-                  {
-                    "type": "boolean"
-                  }
-                ]
-              }
-            }
-          }
-        },
-        "$schema": "http://json-schema.org/draft-07/schema#"
-      },
-      "packageName": "@backstage/plugin-catalog"
     },
     {
       "path": "node_modules/@backstage/plugin-search/config.d.ts",
@@ -1667,7 +1667,53 @@
       "packageName": "@backstage/plugin-home"
     },
     {
-      "path": "node_modules/@backstage/plugin-permission-common/config.d.ts",
+      "path": "node_modules/@backstage-community/plugin-rbac/node_modules/@backstage/core-components/config.d.ts",
+      "value": {
+        "type": "object",
+        "properties": {
+          "auth": {
+            "type": "object",
+            "properties": {
+              "autologout": {
+                "description": "Autologout feature configuration",
+                "type": "object",
+                "properties": {
+                  "enabled": {
+                    "description": "Enable or disable the autologout feature",
+                    "visibility": "frontend",
+                    "type": "boolean"
+                  },
+                  "idleTimeoutMinutes": {
+                    "description": "Number of minutes after which the inactive user is logged out automatically.\nDefault is 60 minutes (1 hour)",
+                    "visibility": "frontend",
+                    "type": "number"
+                  },
+                  "promptBeforeIdleSeconds": {
+                    "description": "Number of seconds before the idle timeout where the user will be asked if it's still active.\nA dialog will be shown.\nDefault is 10 seconds.\nSet to 0 seconds to disable the prompt.",
+                    "visibility": "frontend",
+                    "type": "number"
+                  },
+                  "useWorkerTimers": {
+                    "description": "Enable/disable the usage of worker thread timers instead of main thread timers.\nDefault is true.\nIf you experience some browser incompatibility, you may try to set this to false.",
+                    "visibility": "frontend",
+                    "type": "boolean"
+                  },
+                  "logoutIfDisconnected": {
+                    "description": "Enable/disable the automatic logout also on users that are logged in but with no Backstage tabs open.\nDefault is true.",
+                    "visibility": "frontend",
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "packageName": "@backstage/core-components"
+    },
+    {
+      "path": "node_modules/@backstage-community/plugin-rbac/node_modules/@backstage/plugin-permission-common/config.d.ts",
       "value": {
         "type": "object",
         "properties": {
@@ -1679,10 +1725,6 @@
                 "description": "Whether authorization is enabled in Backstage. Defaults to false, which means authorization\nrequests will be automatically allowed without invoking the authorization policy.",
                 "visibility": "frontend",
                 "type": "boolean"
-              },
-              "EXPERIMENTAL_enableBatchedRequests": {
-                "visibility": "frontend",
-                "type": "boolean"
               }
             }
           }
@@ -1690,52 +1732,6 @@
         "$schema": "http://json-schema.org/draft-07/schema#"
       },
       "packageName": "@backstage/plugin-permission-common"
-    },
-    {
-      "path": "node_modules/@backstage/plugin-auth-backend-module-guest-provider/config.d.ts",
-      "value": {
-        "type": "object",
-        "properties": {
-          "auth": {
-            "description": "Configuration options for the auth plugin",
-            "type": "object",
-            "properties": {
-              "providers": {
-                "type": "object",
-                "properties": {
-                  "guest": {
-                    "type": "object",
-                    "properties": {
-                      "userEntityRef": {
-                        "description": "The entity reference to use for the guest user.",
-                        "default": "user:development/guest",
-                        "type": "string"
-                      },
-                      "ownershipEntityRefs": {
-                        "description": "A list of entity references to user for ownership of the guest user if the user\n is not found in the catalog.",
-                        "default": "[userEntityRef]",
-                        "type": "array",
-                        "items": {
-                          "type": "string"
-                        }
-                      },
-                      "dangerouslyAllowOutsideDevelopment": {
-                        "description": "Allow users to sign in with the guest provider outside of their development environments.",
-                        "type": "boolean"
-                      }
-                    }
-                  }
-                }
-              }
-            },
-            "required": [
-              "providers"
-            ]
-          }
-        },
-        "$schema": "http://json-schema.org/draft-07/schema#"
-      },
-      "packageName": "@backstage/plugin-auth-backend-module-guest-provider"
     },
     {
       "path": "node_modules/@backstage/plugin-auth-backend/config.d.ts",
@@ -1873,7 +1869,53 @@
       "packageName": "@backstage/plugin-auth-backend"
     },
     {
-      "path": "node_modules/@backstage-community/plugin-rbac/node_modules/@backstage/plugin-permission-common/config.d.ts",
+      "path": "node_modules/@backstage/plugin-auth-backend-module-guest-provider/config.d.ts",
+      "value": {
+        "type": "object",
+        "properties": {
+          "auth": {
+            "description": "Configuration options for the auth plugin",
+            "type": "object",
+            "properties": {
+              "providers": {
+                "type": "object",
+                "properties": {
+                  "guest": {
+                    "type": "object",
+                    "properties": {
+                      "userEntityRef": {
+                        "description": "The entity reference to use for the guest user.",
+                        "default": "user:development/guest",
+                        "type": "string"
+                      },
+                      "ownershipEntityRefs": {
+                        "description": "A list of entity references to user for ownership of the guest user if the user\n is not found in the catalog.",
+                        "default": "[userEntityRef]",
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "dangerouslyAllowOutsideDevelopment": {
+                        "description": "Allow users to sign in with the guest provider outside of their development environments.",
+                        "type": "boolean"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "required": [
+              "providers"
+            ]
+          }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "packageName": "@backstage/plugin-auth-backend-module-guest-provider"
+    },
+    {
+      "path": "node_modules/@backstage/plugin-permission-common/config.d.ts",
       "value": {
         "type": "object",
         "properties": {
@@ -1885,6 +1927,10 @@
                 "description": "Whether authorization is enabled in Backstage. Defaults to false, which means authorization\nrequests will be automatically allowed without invoking the authorization policy.",
                 "visibility": "frontend",
                 "type": "boolean"
+              },
+              "EXPERIMENTAL_enableBatchedRequests": {
+                "visibility": "frontend",
+                "type": "boolean"
               }
             }
           }
@@ -1892,52 +1938,6 @@
         "$schema": "http://json-schema.org/draft-07/schema#"
       },
       "packageName": "@backstage/plugin-permission-common"
-    },
-    {
-      "path": "node_modules/@backstage-community/plugin-rbac/node_modules/@backstage/core-components/config.d.ts",
-      "value": {
-        "type": "object",
-        "properties": {
-          "auth": {
-            "type": "object",
-            "properties": {
-              "autologout": {
-                "description": "Autologout feature configuration",
-                "type": "object",
-                "properties": {
-                  "enabled": {
-                    "description": "Enable or disable the autologout feature",
-                    "visibility": "frontend",
-                    "type": "boolean"
-                  },
-                  "idleTimeoutMinutes": {
-                    "description": "Number of minutes after which the inactive user is logged out automatically.\nDefault is 60 minutes (1 hour)",
-                    "visibility": "frontend",
-                    "type": "number"
-                  },
-                  "promptBeforeIdleSeconds": {
-                    "description": "Number of seconds before the idle timeout where the user will be asked if it's still active.\nA dialog will be shown.\nDefault is 10 seconds.\nSet to 0 seconds to disable the prompt.",
-                    "visibility": "frontend",
-                    "type": "number"
-                  },
-                  "useWorkerTimers": {
-                    "description": "Enable/disable the usage of worker thread timers instead of main thread timers.\nDefault is true.\nIf you experience some browser incompatibility, you may try to set this to false.",
-                    "visibility": "frontend",
-                    "type": "boolean"
-                  },
-                  "logoutIfDisconnected": {
-                    "description": "Enable/disable the automatic logout also on users that are logged in but with no Backstage tabs open.\nDefault is true.",
-                    "visibility": "frontend",
-                    "type": "boolean"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "$schema": "http://json-schema.org/draft-07/schema#"
-      },
-      "packageName": "@backstage/core-components"
     },
     {
       "path": "node_modules/@backstage/plugin-kubernetes-react/config.d.ts",
@@ -2192,41 +2192,6 @@
       "packageName": "@backstage/plugin-search"
     },
     {
-      "path": "node_modules/@red-hat-developer-hub/backstage-plugin-global-header/node_modules/@backstage/plugin-search-backend/config.d.ts",
-      "value": {
-        "type": "object",
-        "properties": {
-          "search": {
-            "description": "Configuration options for the search plugin",
-            "type": "object",
-            "properties": {
-              "maxPageLimit": {
-                "description": "Sets the maximum max page limit size. Defaults to 100.",
-                "type": "number"
-              },
-              "maxTermLength": {
-                "description": "Sets the maximum term length for the search string. Defaults to 100.",
-                "type": "number"
-              },
-              "permissions": {
-                "description": "Options related to the search integration with the Backstage permissions system",
-                "type": "object",
-                "properties": {
-                  "queryLatencyBudgetMs": {
-                    "description": "Limits the amount of time the search backend will spend retrieving and\nauthorizing results from the search engine when permissions are\nenabled. When the latency of the query endpoint reaches this threshold,\nthe results obtained up until that point will be returned, even if the\npage is incomplete.\n\nThis limit is only expected to be hit for broad queries from users with\nextremely restrictive visibility, or for very high page offsets.",
-                    "default": 1000,
-                    "type": "number"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "$schema": "http://json-schema.org/draft-07/schema#"
-      },
-      "packageName": "@backstage/plugin-search-backend"
-    },
-    {
       "path": "node_modules/@red-hat-developer-hub/backstage-plugin-global-header/node_modules/@backstage/plugin-search-backend-module-catalog/config.d.ts",
       "value": {
         "type": "object",
@@ -2388,6 +2353,41 @@
         "$schema": "http://json-schema.org/draft-07/schema#"
       },
       "packageName": "@backstage/plugin-search-backend-module-techdocs"
+    },
+    {
+      "path": "node_modules/@red-hat-developer-hub/backstage-plugin-global-header/node_modules/@backstage/plugin-search-backend/config.d.ts",
+      "value": {
+        "type": "object",
+        "properties": {
+          "search": {
+            "description": "Configuration options for the search plugin",
+            "type": "object",
+            "properties": {
+              "maxPageLimit": {
+                "description": "Sets the maximum max page limit size. Defaults to 100.",
+                "type": "number"
+              },
+              "maxTermLength": {
+                "description": "Sets the maximum term length for the search string. Defaults to 100.",
+                "type": "number"
+              },
+              "permissions": {
+                "description": "Options related to the search integration with the Backstage permissions system",
+                "type": "object",
+                "properties": {
+                  "queryLatencyBudgetMs": {
+                    "description": "Limits the amount of time the search backend will spend retrieving and\nauthorizing results from the search engine when permissions are\nenabled. When the latency of the query endpoint reaches this threshold,\nthe results obtained up until that point will be returned, even if the\npage is incomplete.\n\nThis limit is only expected to be hit for broad queries from users with\nextremely restrictive visibility, or for very high page offsets.",
+                    "default": 1000,
+                    "type": "number"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "packageName": "@backstage/plugin-search-backend"
     },
     {
       "path": "node_modules/@backstage/backend-defaults/config.d.ts",
@@ -3818,6 +3818,30 @@
       "packageName": "@backstage/plugin-catalog-backend"
     },
     {
+      "path": "node_modules/@backstage/plugin-events-node/config.d.ts",
+      "value": {
+        "type": "object",
+        "properties": {
+          "events": {
+            "type": "object",
+            "properties": {
+              "useEventBus": {
+                "description": "Whether to use the event bus API in the events plugin backend to\ndistribute events across multiple instances when publishing and\nsubscribing to events.\n\nThe default is 'auto', which means means that the event bus API will be\nused if it's available, but will be disabled if the events backend\nreturns a 404.\n\nIf set to 'never', the events service will only ever publish events\nlocally to the same instance, while if set to 'always', the event bus API\nwill never be disabled, even if the events backend returns a 404.",
+                "enum": [
+                  "always",
+                  "auto",
+                  "never"
+                ],
+                "type": "string"
+              }
+            }
+          }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "packageName": "@backstage/plugin-events-node"
+    },
+    {
       "path": "node_modules/@backstage/plugin-events-backend/config.d.ts",
       "value": {
         "type": "object",
@@ -3847,30 +3871,6 @@
         "$schema": "http://json-schema.org/draft-07/schema#"
       },
       "packageName": "@backstage/plugin-events-backend"
-    },
-    {
-      "path": "node_modules/@backstage/plugin-events-node/config.d.ts",
-      "value": {
-        "type": "object",
-        "properties": {
-          "events": {
-            "type": "object",
-            "properties": {
-              "useEventBus": {
-                "description": "Whether to use the event bus API in the events plugin backend to\ndistribute events across multiple instances when publishing and\nsubscribing to events.\n\nThe default is 'auto', which means means that the event bus API will be\nused if it's available, but will be disabled if the events backend\nreturns a 404.\n\nIf set to 'never', the events service will only ever publish events\nlocally to the same instance, while if set to 'always', the event bus API\nwill never be disabled, even if the events backend returns a 404.",
-                "enum": [
-                  "always",
-                  "auto",
-                  "never"
-                ],
-                "type": "string"
-              }
-            }
-          }
-        },
-        "$schema": "http://json-schema.org/draft-07/schema#"
-      },
-      "packageName": "@backstage/plugin-events-node"
     },
     {
       "path": "node_modules/@backstage/backend-app-api/config.d.ts",
@@ -4062,6 +4062,211 @@
         "$schema": "http://json-schema.org/draft-07/schema#"
       },
       "packageName": "@backstage/backend-plugin-api"
+    },
+    {
+      "path": "node_modules/@red-hat-developer-hub/backstage-plugin-global-header/node_modules/@backstage/frontend-app-api/config.d.ts",
+      "value": {
+        "type": "object",
+        "properties": {
+          "app": {
+            "type": "object",
+            "properties": {
+              "experimental": {
+                "type": "object",
+                "properties": {
+                  "packages": {
+                    "visibility": "frontend",
+                    "deepVisibility": "frontend",
+                    "deprecated": "This is no longer experimental; use `app.packages` instead.",
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "include": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "exclude": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      {
+                        "const": "all",
+                        "type": "string"
+                      }
+                    ]
+                  }
+                }
+              },
+              "packages": {
+                "description": "Controls what packages are loaded by the new frontend system.",
+                "visibility": "frontend",
+                "deepVisibility": "frontend",
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "include": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "exclude": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "const": "all",
+                    "type": "string"
+                  }
+                ]
+              },
+              "routes": {
+                "type": "object",
+                "properties": {
+                  "bindings": {
+                    "description": "Maps external route references to regular route references. Both the\nkey and the value is expected to be on the form `<pluginId>.<routeId>`.\nIf the value is `false`, the route will be disabled even if it has a\ndefault mapping.",
+                    "deepVisibility": "frontend",
+                    "type": "object",
+                    "additionalProperties": {
+                      "anyOf": [
+                        {
+                          "const": false,
+                          "type": "boolean"
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    }
+                  }
+                }
+              },
+              "extensions": {
+                "deepVisibility": "frontend",
+                "type": "array",
+                "items": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "additionalProperties": {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "attachTo": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "input": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "input"
+                                ]
+                              },
+                              "disabled": {
+                                "type": "boolean"
+                              },
+                              "config": {}
+                            }
+                          },
+                          {
+                            "type": "boolean"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "pluginOverrides": {
+                "description": "This section enables you to override certain properties of specific or\ngroups of plugins.",
+                "deepVisibility": "frontend",
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "match": {
+                      "description": "The criteria for matching plugins to override.",
+                      "type": "object",
+                      "properties": {
+                        "pluginId": {
+                          "description": "A pattern that is matched against the plugin ID.",
+                          "type": "string"
+                        },
+                        "packageName": {
+                          "description": "A pattern that is matched against the package name.",
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "info": {
+                      "description": "Overrides individual top-level fields of the plugin info.",
+                      "type": "object",
+                      "properties": {
+                        "description": {
+                          "description": "Override the description of the plugin.",
+                          "type": "string"
+                        },
+                        "ownerEntityRefs": {
+                          "description": "Override the owner entity references of the plugin.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "links": {
+                          "description": "Override the links of the plugin.",
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "title": {
+                                "type": "string"
+                              },
+                              "url": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "title",
+                              "url"
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "info"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "packageName": "@backstage/frontend-app-api"
     },
     {
       "path": "node_modules/@red-hat-developer-hub/backstage-plugin-global-header/node_modules/@backstage/backend-defaults/config.d.ts",
@@ -5563,211 +5768,6 @@
         "$schema": "http://json-schema.org/draft-07/schema#"
       },
       "packageName": "@backstage/backend-defaults"
-    },
-    {
-      "path": "node_modules/@red-hat-developer-hub/backstage-plugin-global-header/node_modules/@backstage/frontend-app-api/config.d.ts",
-      "value": {
-        "type": "object",
-        "properties": {
-          "app": {
-            "type": "object",
-            "properties": {
-              "experimental": {
-                "type": "object",
-                "properties": {
-                  "packages": {
-                    "visibility": "frontend",
-                    "deepVisibility": "frontend",
-                    "deprecated": "This is no longer experimental; use `app.packages` instead.",
-                    "anyOf": [
-                      {
-                        "type": "object",
-                        "properties": {
-                          "include": {
-                            "type": "array",
-                            "items": {
-                              "type": "string"
-                            }
-                          },
-                          "exclude": {
-                            "type": "array",
-                            "items": {
-                              "type": "string"
-                            }
-                          }
-                        }
-                      },
-                      {
-                        "const": "all",
-                        "type": "string"
-                      }
-                    ]
-                  }
-                }
-              },
-              "packages": {
-                "description": "Controls what packages are loaded by the new frontend system.",
-                "visibility": "frontend",
-                "deepVisibility": "frontend",
-                "anyOf": [
-                  {
-                    "type": "object",
-                    "properties": {
-                      "include": {
-                        "type": "array",
-                        "items": {
-                          "type": "string"
-                        }
-                      },
-                      "exclude": {
-                        "type": "array",
-                        "items": {
-                          "type": "string"
-                        }
-                      }
-                    }
-                  },
-                  {
-                    "const": "all",
-                    "type": "string"
-                  }
-                ]
-              },
-              "routes": {
-                "type": "object",
-                "properties": {
-                  "bindings": {
-                    "description": "Maps external route references to regular route references. Both the\nkey and the value is expected to be on the form `<pluginId>.<routeId>`.\nIf the value is `false`, the route will be disabled even if it has a\ndefault mapping.",
-                    "deepVisibility": "frontend",
-                    "type": "object",
-                    "additionalProperties": {
-                      "anyOf": [
-                        {
-                          "const": false,
-                          "type": "boolean"
-                        },
-                        {
-                          "type": "string"
-                        }
-                      ]
-                    }
-                  }
-                }
-              },
-              "extensions": {
-                "deepVisibility": "frontend",
-                "type": "array",
-                "items": {
-                  "anyOf": [
-                    {
-                      "type": "object",
-                      "additionalProperties": {
-                        "anyOf": [
-                          {
-                            "type": "object",
-                            "properties": {
-                              "attachTo": {
-                                "type": "object",
-                                "properties": {
-                                  "id": {
-                                    "type": "string"
-                                  },
-                                  "input": {
-                                    "type": "string"
-                                  }
-                                },
-                                "required": [
-                                  "id",
-                                  "input"
-                                ]
-                              },
-                              "disabled": {
-                                "type": "boolean"
-                              },
-                              "config": {}
-                            }
-                          },
-                          {
-                            "type": "boolean"
-                          }
-                        ]
-                      }
-                    },
-                    {
-                      "type": "string"
-                    }
-                  ]
-                }
-              },
-              "pluginOverrides": {
-                "description": "This section enables you to override certain properties of specific or\ngroups of plugins.",
-                "deepVisibility": "frontend",
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "properties": {
-                    "match": {
-                      "description": "The criteria for matching plugins to override.",
-                      "type": "object",
-                      "properties": {
-                        "pluginId": {
-                          "description": "A pattern that is matched against the plugin ID.",
-                          "type": "string"
-                        },
-                        "packageName": {
-                          "description": "A pattern that is matched against the package name.",
-                          "type": "string"
-                        }
-                      }
-                    },
-                    "info": {
-                      "description": "Overrides individual top-level fields of the plugin info.",
-                      "type": "object",
-                      "properties": {
-                        "description": {
-                          "description": "Override the description of the plugin.",
-                          "type": "string"
-                        },
-                        "ownerEntityRefs": {
-                          "description": "Override the owner entity references of the plugin.",
-                          "type": "array",
-                          "items": {
-                            "type": "string"
-                          }
-                        },
-                        "links": {
-                          "description": "Override the links of the plugin.",
-                          "type": "array",
-                          "items": {
-                            "type": "object",
-                            "properties": {
-                              "title": {
-                                "type": "string"
-                              },
-                              "url": {
-                                "type": "string"
-                              }
-                            },
-                            "required": [
-                              "title",
-                              "url"
-                            ]
-                          }
-                        }
-                      }
-                    }
-                  },
-                  "required": [
-                    "info"
-                  ]
-                }
-              }
-            }
-          }
-        },
-        "$schema": "http://json-schema.org/draft-07/schema#"
-      },
-      "packageName": "@backstage/frontend-app-api"
     },
     {
       "path": "node_modules/@backstage/integration-aws-node/config.d.ts",
