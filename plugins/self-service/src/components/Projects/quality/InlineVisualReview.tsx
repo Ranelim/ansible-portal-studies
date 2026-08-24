@@ -1,7 +1,10 @@
 /**
  * Visual redesign of Inline AI Results & Remediation (`?wizard=visual`).
- * Results (scan mix) + Remediation (findings). Does not change Inline AI.
- * `ctaLayout=footer` moves Continue + Cancel into a sticky wizard footer.
+ * Structure follows the ephemeral step-2 prototype: Continue under the
+ * stepper, Summary (severity), then findings with Auto-fix / AI / Not
+ * fixable tabs. AI spend lives on the AI tab (Lightspeed quota — no fake
+ * token or dollar estimates). `ctaLayout=footer` parks Continue in a sticky
+ * footer instead.
  */
 
 import { useMemo, useState, type Dispatch, type SetStateAction } from 'react';
@@ -12,10 +15,11 @@ import {
   Collapse,
   FormControl,
   InputLabel,
-  LinearProgress,
   MenuItem,
   Paper,
   Select,
+  Tab,
+  Tabs,
   TextField,
   Tooltip,
   Typography,
@@ -64,11 +68,11 @@ const SEV_LABEL: Record<string, string> = {
 type FixLane = 'Auto-fix' | 'AI-fix' | 'Manual-fix';
 const SEV_ORDER: SeverityClass[] = ['critical', 'high', 'medium', 'low', 'info'];
 const FINDINGS_BAR_HEIGHT = 6;
-
-const LANE_TIP: Record<FixLane, string> = {
-  'Auto-fix': 'Can be applied automatically. Accept or Decline the proposed change.',
-  'AI-fix': 'Needs an AI suggestion. Generate one, then Accept or Decline it.',
-  'Manual-fix': 'No automatic or AI suggestion. Change this in the file.',
+const LANE_TABS: FixLane[] = ['Auto-fix', 'AI-fix', 'Manual-fix'];
+const TAB_LABEL: Record<FixLane, string> = {
+  'Auto-fix': 'Auto-fix',
+  'AI-fix': 'AI-fixes',
+  'Manual-fix': 'Not fixable',
 };
 
 function laneOf(v: QualityViolation): FixLane {
@@ -123,6 +127,11 @@ function groupByFile(findings: QualityViolation[]): { file: string; findings: Qu
 
 const useStyles = makeStyles((theme: Theme) => ({
   stack: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: theme.spacing(1),
+  },
+  cards: {
     display: 'flex',
     flexDirection: 'column',
     gap: theme.spacing(2),
@@ -296,60 +305,96 @@ const useStyles = makeStyles((theme: Theme) => ({
     display: 'flex',
     alignItems: 'center',
   },
-  remediationHead: {
+  stepChrome: {
     position: 'sticky',
+    // Scrollport is the inset well under the masthead — not the viewport —
+    // so top: 0, not --portal-chrome-top.
     top: 0,
-    zIndex: 2,
-    padding: theme.spacing(2),
-    backgroundColor: theme.palette.background.paper,
-    borderBottom: `1px solid ${theme.palette.divider}`,
-    borderTopLeftRadius: 8,
-    borderTopRightRadius: 8,
-  },
-  remediationHeadInScroll: {
-    position: 'relative',
-    top: 'auto',
-  },
-  remediationRow: {
+    zIndex: 4,
     display: 'flex',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     justifyContent: 'space-between',
     gap: theme.spacing(2),
     flexWrap: 'wrap',
-    marginTop: theme.spacing(1.25),
+    marginBottom: 0,
+    paddingTop: theme.spacing(1),
+    paddingBottom: theme.spacing(1),
+    backgroundColor: theme.palette.background.default,
   },
-  summaryNote: {
-    flex: '1 1 220px',
-    fontSize: 13,
+  stepCopy: {
+    flex: 1,
+    minWidth: 0,
+    fontSize: 14,
     color: theme.palette.text.secondary,
     lineHeight: 1.4,
   },
-  jobCount: {
-    display: 'block',
-    marginTop: 2,
-    color: theme.palette.text.primary,
-    fontWeight: 600,
-  },
-  jobActions: {
+  stepActions: {
     display: 'flex',
-    flexWrap: 'wrap',
-    gap: 8,
     alignItems: 'center',
-    justifyContent: 'flex-end',
+    gap: theme.spacing(1.5),
+    flexShrink: 0,
     marginLeft: 'auto',
   },
-  progress: { marginTop: theme.spacing(1.5), height: 4, borderRadius: 2 },
+  stepProgress: {
+    fontSize: 13,
+    color: theme.palette.text.secondary,
+    whiteSpace: 'nowrap',
+  },
+  tabs: {
+    minHeight: 40,
+    paddingLeft: theme.spacing(2),
+    borderBottom: `1px solid ${theme.palette.divider}`,
+  },
+  tab: {
+    textTransform: 'none',
+    fontWeight: 600,
+    minHeight: 40,
+    minWidth: 0,
+    padding: theme.spacing(1, 1.25, 0.75),
+    marginRight: theme.spacing(1),
+  },
   toolbar: {
     display: 'flex',
     alignItems: 'center',
     flexWrap: 'wrap',
-    gap: theme.spacing(1.5),
-    padding: theme.spacing(2, 2, 0),
+    gap: theme.spacing(1),
+    padding: theme.spacing(1.5, 2),
   },
   search: { width: 220 },
   select: { minWidth: 168 },
+  bulkBar: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: theme.spacing(1),
+    padding: theme.spacing(0, 2, 1),
+  },
+  bulkRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: theme.spacing(2),
+    width: '100%',
+  },
+  bulkCount: {
+    fontSize: 13,
+    color: theme.palette.text.secondary,
+    whiteSpace: 'nowrap',
+  },
+  bulkNote: {
+    fontSize: 13,
+    color: theme.palette.text.secondary,
+    lineHeight: 1.4,
+  },
+  bulkActions: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginLeft: 'auto',
+  },
   fileList: {
-    padding: theme.spacing(2),
+    padding: theme.spacing(0, 2, 2),
     display: 'flex',
     flexDirection: 'column',
     gap: theme.spacing(1.5),
@@ -448,6 +493,7 @@ export const InlineVisualReview: React.FC<{
   setAiDecisions?: Dispatch<SetStateAction<Record<string, WizardDecision>>>;
   aiStatus: Record<string, AiRowStatus>;
   onGenerateAi?: (key: string) => void;
+  onGenerateAllAi?: (keys: string[]) => void;
   onNext: () => void;
   onCancel: () => void;
   ctaLayout?: CtaLayout;
@@ -459,6 +505,7 @@ export const InlineVisualReview: React.FC<{
   setAiDecisions,
   aiStatus,
   onGenerateAi,
+  onGenerateAllAi,
   onNext,
   onCancel,
   ctaLayout = 'current',
@@ -467,26 +514,36 @@ export const InlineVisualReview: React.FC<{
   const decisions = { ...t1Decisions, ...aiDecisions };
   const auto = findings.filter(v => v.fixTier === 'deterministic');
   const ai = findings.filter(v => v.fixTier === 'ai');
-  const lanes = useMemo(() => {
-    const set = new Set<FixLane>();
-    findings.forEach(f => set.add(laneOf(f)));
-    return Array.from(set);
-  }, [findings]);
-  const contentTypes = useMemo(() => Array.from(new Set(findings.map(kindLabel))).sort(), [findings]);
-  const sevs = useMemo(() => Array.from(new Set(findings.map(f => f.severity))), [findings]);
+  const manual = findings.filter(v => v.fixTier !== 'deterministic' && v.fixTier !== 'ai');
+  const laneCount: Record<FixLane, number> = {
+    'Auto-fix': auto.length,
+    'AI-fix': ai.length,
+    'Manual-fix': manual.length,
+  };
 
   const mix = useMemo(() => mixFromFindings(findings), [findings]);
-  const presentCategories = useMemo(
-    () => mix.categories.map(c => c.id),
-    [mix.categories],
-  );
 
   const [query, setQuery] = useState('');
   const [contentType, setContentType] = useState<'all' | string>('all');
   const [category, setCategory] = useState<'all' | ApmeRuleCategory>('all');
   const [severityFilter, setSeverityFilter] = useState<Set<SeverityClass>>(() => new Set());
-  const [fixType, setFixType] = useState<'all' | FixLane>('all');
+  const [fixType, setFixType] = useState<FixLane>('Auto-fix');
   const [breakdownOpen, setBreakdownOpen] = useState(false);
+
+  const tabFindings = findings.filter(f => laneOf(f) === fixType);
+  const contentTypes = useMemo(
+    () =>
+      Array.from(
+        new Set(findings.filter(f => laneOf(f) === fixType).map(kindLabel)),
+      ).sort(),
+    [findings, fixType],
+  );
+  const presentCategories = useMemo(() => {
+    const ids = new Set(
+      findings.filter(f => laneOf(f) === fixType).map(apmeCategoryOf),
+    );
+    return APME_CATEGORY_ORDER.filter(id => ids.has(id));
+  }, [findings, fixType]);
 
   const toggleSeverity = (sev: SeverityClass) => {
     setBreakdownOpen(true);
@@ -523,27 +580,25 @@ export const InlineVisualReview: React.FC<{
     [visibleCategories],
   );
 
-  const pendingT1 = auto.filter(v => !t1Decisions[findingKey(v)]).length;
+  const autoDecided = auto.filter(v => Boolean(t1Decisions[findingKey(v)])).length;
+  const pendingT1 = auto.length - autoDecided;
   const readyAi = ai.filter(v => aiStatus[findingKey(v)] === 'ready');
   const pendingGeneratedAi = readyAi.filter(v => !aiDecisions[findingKey(v)]).length;
+  const idleAi = ai.filter(v => (aiStatus[findingKey(v)] ?? 'idle') === 'idle');
   const aiLoading = ai.some(v => aiStatus[findingKey(v)] === 'loading');
-  const mustDecide = auto.length + readyAi.length;
-  const decidedMust =
-    auto.filter(v => Boolean(t1Decisions[findingKey(v)])).length +
-    readyAi.filter(v => Boolean(aiDecisions[findingKey(v)])).length;
   const nextLocked = pendingT1 > 0 || pendingGeneratedAi > 0 || aiLoading;
 
-  const filtered = findings.filter(f => {
+  const filtered = tabFindings.filter(f => {
     if (contentType !== 'all' && kindLabel(f) !== contentType) return false;
     if (category !== 'all' && apmeCategoryOf(f) !== category) return false;
     if (severityFilter.size > 0 && !severityFilter.has(f.severity)) return false;
-    if (fixType !== 'all' && laneOf(f) !== fixType) return false;
     const q = query.trim().toLowerCase();
     if (!q) return true;
     return (
       f.ruleId.toLowerCase().includes(q) ||
       f.message.toLowerCase().includes(q) ||
-      f.file.toLowerCase().includes(q)
+      f.file.toLowerCase().includes(q) ||
+      APME_CATEGORY_LABEL[apmeCategoryOf(f)].toLowerCase().includes(q)
     );
   });
   const files = groupByFile(filtered);
@@ -551,9 +606,6 @@ export const InlineVisualReview: React.FC<{
   const visibleReadyAi = filtered.filter(
     v => v.fixTier === 'ai' && aiStatus[findingKey(v)] === 'ready' && !aiDecisions[findingKey(v)],
   );
-  const pendingVisible = visibleAuto.length + visibleReadyAi.length;
-  const hiddenPending =
-    pendingT1 - visibleAuto.length + (pendingGeneratedAi - visibleReadyAi.length);
 
   const decideItems = (items: QualityViolation[], value: WizardDecision | null) => {
     items.forEach(v => {
@@ -574,46 +626,60 @@ export const InlineVisualReview: React.FC<{
     else setT1Decisions?.(prev => ({ ...prev, [k]: d }));
   };
 
+  const generateAll = () => {
+    const keys = idleAi.map(findingKey);
+    if (keys.length === 0) return;
+    if (onGenerateAllAi) onGenerateAllAi(keys);
+    else keys.forEach(k => onGenerateAi?.(k));
+  };
+
   const jobTitle =
     pendingT1 > 0
-      ? 'Accept or Decline every auto-fix to continue.'
-      : pendingGeneratedAi > 0
-        ? 'Accept or Decline every generated AI suggestion to continue.'
-        : aiLoading
-          ? 'Wait for AI suggestions to finish generating.'
-          : 'Continue to commit. Un-generated AI findings stay in the file.';
+      ? 'Decide auto-fixes to continue. AI is optional.'
+      : aiLoading
+        ? 'Wait for AI generation to finish.'
+        : pendingGeneratedAi > 0
+          ? 'Accept or decline generated AI suggestions to continue.'
+          : 'Auto-fixes decided. Ungenerated AI stays in the file.';
 
-  const jobCount =
-    mustDecide === 0
-      ? 'No auto-fixes to decide.'
-      : `${decidedMust} of ${mustDecide} decided${
-          hiddenPending > 0 ? ' · some hidden by filters' : ''
-        }.`;
+  const decideCount =
+    auto.length === 0
+      ? 'No auto-fixes to decide'
+      : `${autoDecided} of ${auto.length} auto-fixes decided`;
 
-  const severitySelect =
-    severityFilter.size === 1 ? Array.from(severityFilter)[0] : 'all';
   const findingWord = mix.total === 1 ? 'finding' : 'findings';
   const useFooter = ctaLayout === 'footer';
-  const bulkActions = (
+  const searchPlaceholder =
+    fixType === 'Auto-fix'
+      ? 'Search auto-fixes'
+      : fixType === 'AI-fix'
+        ? 'Search AI-fixes'
+        : 'Search not-fixable findings';
+
+  const showingCount = filtered.length;
+  const showingLabel = `${showingCount} showing`;
+  const remainingForTab = fixType === 'AI-fix' ? visibleReadyAi.length : visibleAuto.length;
+  const remainingItems = fixType === 'AI-fix' ? visibleReadyAi : visibleAuto;
+  const bulkAcceptDecline = (
     <>
       <Button
         size="small"
         variant="outlined"
         color="primary"
         startIcon={<CheckIcon />}
-        disabled={pendingVisible === 0}
-        onClick={() => decideItems([...visibleAuto, ...visibleReadyAi], 'accept')}
+        disabled={remainingForTab === 0}
+        onClick={() => decideItems(remainingItems, 'accept')}
         style={PILL}
       >
-        Accept remaining{pendingVisible > 0 ? ` (${pendingVisible})` : ''}
+        Accept remaining{remainingForTab > 0 ? ` (${remainingForTab})` : ''}
       </Button>
       <Button
         size="small"
         variant="outlined"
         color="primary"
         startIcon={<CloseIcon />}
-        disabled={pendingVisible === 0}
-        onClick={() => decideItems([...visibleAuto, ...visibleReadyAi], 'decline')}
+        disabled={remainingForTab === 0}
+        onClick={() => decideItems(remainingItems, 'decline')}
         style={PILL}
       >
         Decline remaining
@@ -628,7 +694,7 @@ export const InlineVisualReview: React.FC<{
       disabled={nextLocked}
       onClick={onNext}
       style={PILL}
-      title={nextLocked ? `${jobTitle} ${jobCount}` : undefined}
+      title={nextLocked ? `${jobTitle} ${decideCount}` : undefined}
     >
       Continue to commit
     </Button>
@@ -657,6 +723,13 @@ export const InlineVisualReview: React.FC<{
               onSegmentClick={toggleSeverity}
             />
           </div>
+          <div className={classes.mixChips}>
+            <SeverityFilterChips
+              breakdown={mix.bySeverity}
+              active={severityFilter}
+              onToggle={toggleSeverity}
+            />
+          </div>
           <div className={classes.toggleRow}>
             <Button
               variant="text"
@@ -671,13 +744,6 @@ export const InlineVisualReview: React.FC<{
             </Button>
           </div>
           <Collapse in={breakdownOpen}>
-            <div className={classes.mixChips}>
-              <SeverityFilterChips
-                breakdown={mix.bySeverity}
-                active={severityFilter}
-                onToggle={toggleSeverity}
-              />
-            </div>
             {visibleCategories.map(cat => (
               <div
                 key={cat.id}
@@ -725,47 +791,37 @@ export const InlineVisualReview: React.FC<{
       </Paper>
 
       <Paper className={classes.box} elevation={0}>
-        <div
-          className={`${classes.remediationHead}${
-            useFooter ? ` ${classes.remediationHeadInScroll}` : ''
-          }`}
+        <Tabs
+          className={classes.tabs}
+          value={fixType}
+          onChange={(_event, next: FixLane) => {
+            setFixType(next);
+            setContentType('all');
+            setCategory('all');
+          }}
+          indicatorColor="primary"
+          textColor="primary"
+          aria-label="Fix type"
         >
-          <Typography className={classes.boxTitle}>Findings and remediations</Typography>
-          <div className={classes.remediationRow}>
-            <Typography className={classes.summaryNote}>
-              {jobTitle}
-              <span className={classes.jobCount}>{jobCount}</span>
-            </Typography>
-            <div className={classes.jobActions}>
-              {bulkActions}
-              {useFooter ? null : (
-                <>
-                  {continueButton}
-                  <Button size="small" variant="outlined" onClick={onCancel} style={PILL}>
-                    Cancel
-                  </Button>
-                </>
-              )}
-            </div>
-          </div>
-          {mustDecide > 0 && (
-            <LinearProgress
-              className={classes.progress}
-              variant="determinate"
-              value={Math.round((decidedMust / mustDecide) * 100)}
+          {LANE_TABS.map(lane => (
+            <Tab
+              key={lane}
+              className={classes.tab}
+              value={lane}
+              label={`${TAB_LABEL[lane]} ${laneCount[lane]}`}
             />
-          )}
-        </div>
+          ))}
+        </Tabs>
 
         <div className={classes.toolbar}>
           <TextField
             className={classes.search}
             size="small"
             variant="outlined"
-            placeholder="Search findings"
+            placeholder={searchPlaceholder}
             value={query}
             onChange={e => setQuery(e.target.value)}
-            inputProps={{ 'aria-label': 'Search findings' }}
+            inputProps={{ 'aria-label': searchPlaceholder }}
           />
           <FormControl variant="outlined" size="small" className={classes.select}>
             <InputLabel id="visual-content-type-label">Content type</InputLabel>
@@ -778,7 +834,7 @@ export const InlineVisualReview: React.FC<{
               <MenuItem value="all">All content types</MenuItem>
               {contentTypes.map(k => (
                 <MenuItem key={k} value={k}>
-                  {k} ({findings.filter(f => kindLabel(f) === k).length})
+                  {k} ({tabFindings.filter(f => kindLabel(f) === k).length})
                 </MenuItem>
               ))}
             </Select>
@@ -795,49 +851,49 @@ export const InlineVisualReview: React.FC<{
               {presentCategories.map(id => (
                 <MenuItem key={id} value={id}>
                   {APME_CATEGORY_LABEL[id]} (
-                  {findings.filter(f => apmeCategoryOf(f) === id).length})
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <FormControl variant="outlined" size="small" className={classes.select}>
-            <InputLabel id="visual-severity-label">Severity</InputLabel>
-            <Select
-              labelId="visual-severity-label"
-              label="Severity"
-              value={severitySelect}
-              onChange={e => {
-                const value = e.target.value as string;
-                setSeverityFilter(
-                  value === 'all' ? new Set() : new Set([value as SeverityClass]),
-                );
-              }}
-            >
-              <MenuItem value="all">All severities</MenuItem>
-              {sevs.map(s => (
-                <MenuItem key={s} value={s}>
-                  {SEV_LABEL[s] ?? s} ({findings.filter(f => f.severity === s).length})
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <FormControl variant="outlined" size="small" className={classes.select}>
-            <InputLabel id="visual-fix-type-label">Fix type</InputLabel>
-            <Select
-              labelId="visual-fix-type-label"
-              label="Fix type"
-              value={fixType}
-              onChange={e => setFixType(e.target.value as 'all' | FixLane)}
-            >
-              <MenuItem value="all">All fix types</MenuItem>
-              {lanes.map(lane => (
-                <MenuItem key={lane} value={lane}>
-                  {lane} ({findings.filter(f => laneOf(f) === lane).length})
+                  {tabFindings.filter(f => apmeCategoryOf(f) === id).length})
                 </MenuItem>
               ))}
             </Select>
           </FormControl>
         </div>
+
+        {fixType !== 'Manual-fix' ? (
+          <div className={classes.bulkBar}>
+            {fixType === 'AI-fix' && idleAi.length > 0 && !aiLoading ? (
+              <Typography className={classes.bulkNote}>
+                Optional. Generating suggestions uses Lightspeed quota.
+              </Typography>
+            ) : null}
+            <div className={classes.bulkRow}>
+              <Typography className={classes.bulkCount}>{showingLabel}</Typography>
+              {fixType === 'AI-fix' && aiLoading ? (
+                <div className={classes.bulkActions}>
+                  <Button size="small" variant="contained" color="primary" disabled style={PILL}>
+                    Generating…
+                  </Button>
+                </div>
+              ) : fixType === 'AI-fix' && idleAi.length > 0 ? (
+                <div className={classes.bulkActions}>
+                  <Button
+                    size="small"
+                    variant="contained"
+                    color="primary"
+                    onClick={generateAll}
+                    style={PILL}
+                  >
+                    {readyAi.length > 0
+                      ? `Generate remaining (${idleAi.length})`
+                      : `Generate AI suggestions (${idleAi.length})`}
+                  </Button>
+                  {readyAi.length > 0 ? bulkAcceptDecline : null}
+                </div>
+              ) : (
+                <div className={classes.bulkActions}>{bulkAcceptDecline}</div>
+              )}
+            </div>
+          </div>
+        ) : null}
 
         {files.length === 0 ? (
           <Typography className={classes.empty} color="textSecondary">
@@ -863,12 +919,30 @@ export const InlineVisualReview: React.FC<{
 
   return (
     <div className={`${classes.stack}${useFooter ? ` ${classes.stackFill}` : ''}`}>
-      {useFooter ? <div className={classes.scrollBody}>{summaryAndFindings}</div> : summaryAndFindings}
+      {useFooter ? null : (
+        <div className={classes.stepChrome} role="region" aria-label="Remediation step actions">
+          <Typography className={classes.stepCopy}>{jobTitle}</Typography>
+          <div className={classes.stepActions}>
+            <Typography className={classes.stepProgress} component="span">
+              {decideCount}
+            </Typography>
+            {continueButton}
+            <Button size="small" variant="outlined" onClick={onCancel} style={PILL}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
+      {useFooter ? (
+        <div className={classes.scrollBody}>{summaryAndFindings}</div>
+      ) : (
+        <div className={classes.cards}>{summaryAndFindings}</div>
+      )}
       {useFooter ? (
         <div className={classes.wizardFooter} role="region" aria-label="Remediation step actions">
           <Typography className={classes.footerStatus}>
-            {nextLocked ? jobTitle : 'All auto-fixes decided.'}
-            <span className={classes.footerCount}>{jobCount}</span>
+            {jobTitle}
+            <span className={classes.footerCount}>{decideCount}</span>
           </Typography>
           <div className={classes.footerActions}>
             <Button
@@ -925,7 +999,7 @@ const FindingRow: React.FC<{
           style={PILL_COMPACT}
           onClick={() => onDecision('accept')}
         >
-          Accept
+          {decision === 'accept' ? 'Accepted' : 'Accept'}
         </Button>
         <Button
           size="small"
@@ -934,7 +1008,7 @@ const FindingRow: React.FC<{
           style={PILL_COMPACT}
           onClick={() => onDecision('decline')}
         >
-          Decline
+          {decision === 'decline' ? 'Declined' : 'Decline'}
         </Button>
       </>
     ) : lane === 'AI-fix' && aiStatus === 'loading' ? null : lane === 'AI-fix' ? (
@@ -975,9 +1049,12 @@ const FindingRow: React.FC<{
                 color: '#fff',
               }}
             />
-            <Tooltip title={LANE_TIP[lane]} placement="top">
-              <Chip size="small" variant="outlined" label={lane} className={classes.chip} />
-            </Tooltip>
+            <Chip
+              size="small"
+              variant="outlined"
+              label={APME_CATEGORY_LABEL[apmeCategoryOf(finding)]}
+              className={classes.chip}
+            />
           </div>
         </div>
         {actions && <div className={classes.cardActions}>{actions}</div>}
@@ -1011,10 +1088,14 @@ const FindingRow: React.FC<{
           </div>
         )}
         {lane === 'AI-fix' && aiStatus === 'idle' && (
-          <Typography className={classes.suggestionEmpty}>No suggestion yet.</Typography>
+            <div className={classes.suggestionEmpty}>
+              No suggestion yet. Generate this row, or generate all on this tab.
+            </div>
         )}
         {lane === 'Manual-fix' && (
-          <Typography className={classes.suggestionEmpty}>Change this in the file.</Typography>
+          <Typography className={classes.suggestionEmpty}>
+            No automatic or AI suggestion. Change this in the file, or leave it.
+          </Typography>
         )}
       </div>
     </div>

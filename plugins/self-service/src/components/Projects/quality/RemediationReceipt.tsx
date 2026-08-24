@@ -6,6 +6,7 @@
 import { useMemo } from 'react';
 import { Button, Paper, Typography, makeStyles } from '@material-ui/core';
 import { fade } from '@material-ui/core/styles';
+import CodeIcon from '@material-ui/icons/Code';
 import OpenInNewIcon from '@material-ui/icons/OpenInNew';
 import type { QualityViolation } from '../detail/qualityDemoData';
 import { snippetForRule } from './spaWizardSnippets';
@@ -330,9 +331,25 @@ export const RemediationReceipt: React.FC<{
             </Typography>
           </div>
           <div className={classes.actions}>
-            {hasPullRequest && prUrl && (
+            {hasPullRequest && (
               <Button
                 variant="contained"
+                color="primary"
+                style={PILL}
+                startIcon={<CodeIcon fontSize="small" />}
+                onClick={() =>
+                  window.open(
+                    `/devspaces-mockup.html?state=pr-review&branch=${encodeURIComponent(branchName)}`,
+                    '_blank',
+                  )
+                }
+              >
+                Review in Dev Spaces (IDE)
+              </Button>
+            )}
+            {hasPullRequest && prUrl && (
+              <Button
+                variant="outlined"
                 color="primary"
                 style={PILL}
                 endIcon={<OpenInNewIcon fontSize="small" />}

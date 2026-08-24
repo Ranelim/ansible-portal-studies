@@ -48,8 +48,9 @@ import { RemediationReceipt } from './RemediationReceipt';
  * Redesign = Scan → Review auto-fixes → Choose AI findings → Review AI-fixes → Commit.
  * Inline AI = Scan → Results & Remediation → Commit.
  * Inline visual = clone of Inline AI (`?wizard=visual`) for layout redesign.
- * CTA compare (`?cta=current|footer`): Current keeps Continue in the findings
- * header; Wizard footer pins Continue + Cancel to a sticky step footer.
+ * CTA compare (`?cta=current|footer`): Current puts Continue + Cancel under
+ * the stepper (with auto-fix decided count). Wizard footer pins them to a
+ * sticky step footer. Findings bulk actions stay with the open tab.
  */
 
 type StepId =
@@ -70,7 +71,7 @@ type WizardChrome = 'original' | 'new' | 'inline' | 'visual';
 
 /**
  * Force Inline visual (3-step: Scan → Results & Remediation → Commit)
- * with Continue in the findings header — not the sticky wizard footer.
+ * with Continue under the stepper — not mixed with Accept/Decline.
  * Prototype + Continue-placement compare strips stay parked.
  * Set either force `null` to revive `?wizard=` / `?cta=` switching.
  */
@@ -1011,6 +1012,25 @@ export const ApmeRemediationPage = () => {
       setAiStatus(prev => ({ ...prev, [key]: 'ready' }));
     }, 900);
   }, []);
+  const generateAllInlineAi = useCallback((keys: string[]) => {
+    if (keys.length === 0) return;
+    setAiStatus(prev => {
+      const next = { ...prev };
+      keys.forEach(key => {
+        next[key] = 'loading';
+      });
+      return next;
+    });
+    window.setTimeout(() => {
+      setAiStatus(prev => {
+        const next = { ...prev };
+        keys.forEach(key => {
+          next[key] = 'ready';
+        });
+        return next;
+      });
+    }, 1100);
+  }, []);
   const [createPr, setCreatePr] = useState(true);
   const [branchName, setBranchName] = useState(
     `apme/remediate-${(quality?.latestScan.scanId ?? 'fix').slice(0, 12)}`,
@@ -1167,6 +1187,7 @@ export const ApmeRemediationPage = () => {
             setAiDecisions={setAiDecisions}
             aiStatus={aiStatus}
             onGenerateAi={generateInlineAi}
+            onGenerateAllAi={generateAllInlineAi}
             onNext={() => setStep('tier1_applied')}
             onCancel={goBack}
             ctaLayout={ctaLayout}
@@ -1295,28 +1316,36 @@ export const ApmeRemediationPage = () => {
               </Typography>
             </Box>
             <Box display="flex" flexDirection="column" alignItems="flex-end" style={{ gap: 8 }}>
-              <Box display="flex" style={{ gap: 8 }}>
-                <Button
-                  className={classes.pill}
-                  color="primary"
-                  variant="contained"
-                  onClick={() => setStep('complete')}
-                >
-                  Next
-                </Button>
+              {visual ? (
                 <Button className={classes.pill} onClick={goBack} disabled={committing}>
                   Cancel
                 </Button>
-              </Box>
-              <Typography variant="caption" color="textSecondary" style={{ textAlign: 'right', maxWidth: 360 }}>
-                {pushed
-                  ? inline || craig
-                    ? 'Finish this session.'
-                    : 'Continue to the complete step.'
-                  : craig
-                    ? 'Continue without pushing. Use Create below to push or open a PR first.'
-                    : 'Continue without pushing. Use Commit below to push or open a PR first.'}
-              </Typography>
+              ) : (
+                <>
+                  <Box display="flex" style={{ gap: 8 }}>
+                    <Button
+                      className={classes.pill}
+                      color="primary"
+                      variant="contained"
+                      onClick={() => setStep('complete')}
+                    >
+                      Next
+                    </Button>
+                    <Button className={classes.pill} onClick={goBack} disabled={committing}>
+                      Cancel
+                    </Button>
+                  </Box>
+                  <Typography variant="caption" color="textSecondary" style={{ textAlign: 'right', maxWidth: 360 }}>
+                    {pushed
+                      ? inline || craig
+                        ? 'Finish this session.'
+                        : 'Continue to the complete step.'
+                      : craig
+                        ? 'Continue without pushing. Use Create below to push or open a PR first.'
+                        : 'Continue without pushing. Use Commit below to push or open a PR first.'}
+                  </Typography>
+                </>
+              )}
             </Box>
           </div>
           <Box className={classes.formRow}>
@@ -1420,7 +1449,7 @@ export const ApmeRemediationPage = () => {
           <Typography className={classes.compareHint}>
             {ctaLayout === 'footer'
               ? 'List actions stay with findings. Continue and Cancel stay in the step footer.'
-              : 'Continue sits with Accept remaining at the top of findings.'}
+              : 'Continue sits under the stepper, with Accept remaining on the findings list.'}
           </Typography>
         </Box>
         ) : FORCED_REMEDIATION_WIZARD ? null : (
