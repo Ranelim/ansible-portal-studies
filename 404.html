@@ -1,18 +1,25 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <meta name="robots" content="noindex"/>
-  <title>Automation Portal studies</title>
-  <style>
-    body { font-family: system-ui, sans-serif; margin: 4rem auto; max-width: 36rem; color: #151515; line-height: 1.5; }
-    h1 { font-size: 1.25rem; font-weight: 600; }
-    p { color: #6a6e73; }
-  </style>
+  <meta charset="utf-8" />
+  <title>Automation Portal</title>
+  <script>
+    (function () {
+      var p = location.pathname || '';
+      var prefix = '/ansible-portal-studies/plugin-factory';
+      if (p.indexOf(prefix) === 0) {
+        fetch(prefix + '/index.html', { credentials: 'same-origin' })
+          .then(function (r) { return r.text(); })
+          .then(function (html) {
+            document.open();
+            document.write(html);
+            document.close();
+          });
+        return;
+      }
+      location.replace('/ansible-portal-studies/');
+    })();
+  </script>
 </head>
-<body>
-  <h1>This prototype has been retired</h1>
-  <p>The Automation Portal APME study builds that lived here are no longer published. New prototypes will use this same GitHub Pages path.</p>
-</body>
+<body>Loading prototype…</body>
 </html>

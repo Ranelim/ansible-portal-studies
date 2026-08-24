@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#000000" />
+    <meta
+      name="description"
+      content="Backstage is an open source framework for building developer self-services"
+    />
+    <!--
+      manifest.json provides metadata used when your web app is installed on a
+      user's mobile device or desktop. See https://developers.google.com/web/fundamentals/web-app-manifest/
+    -->
+    <link
+      rel="manifest"
+      href="<%= publicPath %>/manifest.json"
+      crossorigin="use-credentials"
+    />
+    <link rel="icon" href="<%= publicPath %>/favicon.ico" />
+    <link rel="shortcut icon" href="<%= publicPath %>/favicon.ico" />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="<%= publicPath %>/apple-touch-icon.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="<%= publicPath %>/favicon-32x32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="<%= publicPath %>/favicon-16x16.png"
+    />
+    <link
+      rel="mask-icon"
+      href="<%= publicPath %>/safari-pinned-tab.svg"
+      color="#5bbad5"
+    />
+    <title><%= config.getOptionalString('app.title') ?? 'Backstage' %></title>
+  <meta name="backstage-app-mode" content="public"><meta name="backstage-public-path" content="<%= publicPath %>/"><script defer src="<%= publicPath %>/static/runtime.c6126b4c.js"></script><script defer src="<%= publicPath %>/static/module-backstage.c8105018.js"></script><script defer src="<%= publicPath %>/static/module-material-ui.b1d38d27.js"></script><script defer src="<%= publicPath %>/static/module-mui.a9853698.js"></script><script defer src="<%= publicPath %>/static/module-lodash.53e16c48.js"></script><script defer src="<%= publicPath %>/static/module-date-fns.8ab02e49.js"></script><script defer src="<%= publicPath %>/static/module-azure.77a3d3e9.js"></script><script defer src="<%= publicPath %>/static/module-yaml.40a37ea3.js"></script><script defer src="<%= publicPath %>/static/module-typespec.c93b2a56.js"></script><script defer src="<%= publicPath %>/static/module-material-table.72703169.js"></script><script defer src="<%= publicPath %>/static/module-dagrejs.5a550727.js"></script><script defer src="<%= publicPath %>/static/module-luxon.dc0014b3.js"></script><script defer src="<%= publicPath %>/static/module-micromark-core-commonmark.19d1ef56.js"></script><script defer src="<%= publicPath %>/static/module-octokit.59fbc0a5.js"></script><script defer src="<%= publicPath %>/static/module-zod.b7a8f32e.js"></script><script defer src="<%= publicPath %>/static/module-react-dom.838807de.js"></script><script defer src="<%= publicPath %>/static/module-xterm.453ee31d.js"></script><script defer src="<%= publicPath %>/static/module-photoswipe.037ba024.js"></script><script defer src="<%= publicPath %>/static/module-react-hook-form.40e2ff9a.js"></script><script defer src="<%= publicPath %>/static/module-js-yaml.42bf1bfc.js"></script><script defer src="<%= publicPath %>/static/module-i18next.8038a8e4.js"></script><script defer src="<%= publicPath %>/static/module-react-beautiful-dnd.41a45b8f.js"></script><script defer src="<%= publicPath %>/static/module-remix-run.754186ac.js"></script><script defer src="<%= publicPath %>/static/vendor.c6126b4c.js"></script><script defer src="<%= publicPath %>/static/main.c6126b4c.js"></script><link href="<%= publicPath %>/static/vendor.172d3b5d.css" rel="stylesheet"></head>
+  <body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root"></div>
+    <!--
+      This HTML file is a template.
+      If you open it directly in the browser, you will see an empty page.
+
+      You can add webfonts, meta tags, or analytics to this file.
+      The build step will place the bundled scripts into the <body> tag.
+
+      To begin the development, run `yarn start`.
+      To create a production bundle, use `yarn build`.
+    -->
+  </body>
+</html>

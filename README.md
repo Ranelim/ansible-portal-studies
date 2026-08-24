@@ -2,6 +2,12 @@
 
 Static prototype deployments for usability studies. Each subdirectory is an independent study.
 
-GitHub Pages stays enabled at https://ranelim.github.io/ansible-portal-studies/
+GitHub Pages: https://ranelim.github.io/ansible-portal-studies/
 
-APME study builds (`apme-integration/`, `apme-latest/`) were retired. Paths are reserved for the next prototypes.
+## plugin-factory (Experiences shell)
+
+- URL: https://ranelim.github.io/ansible-portal-studies/plugin-factory/
+- Access code: shared separately with the team
+- Source: `design/portal-experiences-shell` (built files only)
+
+APME study paths (`apme-integration/`, `apme-latest/`) are retired placeholders.
