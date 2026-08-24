@@ -90,7 +90,7 @@ export const HomeBandDashboardPage = () => {
     ...(showDevelop
       ? [
           { value: '12', label: 'Git repositories' },
-          { value: '78', label: 'Avg quality' },
+          { value: '78', label: 'Avg health' },
         ]
       : []),
     ...(showInventories

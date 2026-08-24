@@ -20,7 +20,7 @@ import { Table, TableColumn } from '@backstage/core-components';
 import { useNavigate } from 'react-router-dom';
 import { useNavIaModel } from '../../../hooks/useNavIaModel';
 import { statusColors } from '../../common/statusColors';
-import { HealthScorePopover } from '../catalog/HealthScorePopover';
+import { HEALTH_SCORE_HINT, HealthScorePopover } from '../catalog/HealthScorePopover';
 import { GIT_REPOSITORIES } from '../catalog/unifiedDemoData';
 import {
   getProjectQuality,
@@ -452,8 +452,8 @@ export const RemediationsContent = ({
     {
       title: (
         <Box display="flex" alignItems="center" style={{ gap: 4, whiteSpace: 'nowrap' }}>
-          Quality
-          <Tooltip title="Opens findings by category and severity." arrow>
+          Health
+          <Tooltip title={HEALTH_SCORE_HINT} arrow>
             <HelpOutlineIcon className={classes.helpIcon} />
           </Tooltip>
         </Box>

@@ -234,7 +234,7 @@ export const FlatHomeDashboardPage = () => {
       items.push({
         id: 'quality',
         value: '78',
-        label: 'Avg quality score',
+        label: 'Avg health score',
         hint: 'Across scanned repositories',
         href: '/self-service/repositories',
       });

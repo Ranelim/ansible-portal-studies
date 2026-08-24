@@ -95,7 +95,7 @@ const INITIAL_ITEMS: DemoItem[] = [
   },
   {
     id: '2',
-    title: 'Quality score dropped',
+    title: 'Health score dropped',
     description: 'edge-firewall fell from 82 to 64 after the latest scan.',
     detail:
       'APME reported new high-severity findings in roles/firewall. Score impact is concentrated in policy and security validators. Open the repository Quality tab to triage findings.',

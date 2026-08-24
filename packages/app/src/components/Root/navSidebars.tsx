@@ -247,6 +247,23 @@ const useExpandableNavItemStyles = makeStyles(theme => {
   };
 });
 
+const GIT_REPO_HOST_SEGMENTS = new Set([
+  'list',
+  'dashboard',
+  'remediations',
+  'scans',
+  'quality',
+  'ci-activity',
+  'create',
+]);
+
+/** Repo object pages (`/repositories/:name`) — keep Git Repositories selected. */
+function isGitRepoDetailPath(pathname: string): boolean {
+  const match = pathname.match(/^\/self-service\/repositories\/([^/]+)/);
+  if (!match) return false;
+  return !GIT_REPO_HOST_SEGMENTS.has(match[1]);
+}
+
 type ExpandableNavChildProps = {
   to: string;
   text: string;
@@ -1487,6 +1504,7 @@ const ExperiencesDomainSidebar = () => {
             <ExpandableNavChild
               to="/self-service/repositories/list"
               text="Git Repositories"
+              extraActive={isGitRepoDetailPath}
             />
             <ExpandableNavChild
               to="/self-service/repositories/dashboard"

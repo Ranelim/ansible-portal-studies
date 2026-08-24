@@ -1,7 +1,10 @@
 import type { CSSProperties } from 'react';
-import { Box, Button, Card, CardContent, Typography } from '@material-ui/core';
+import { Box, Button, Card, CardContent, Tooltip, Typography } from '@material-ui/core';
+import InfoOutlinedIcon from '@material-ui/icons/InfoOutlined';
 import { useNavigate } from 'react-router-dom';
 import {
+  CategoryMixMini,
+  HEALTH_SCORE_HINT,
   HealthScorePopover,
   REMEDIATION_STATUS_LABEL,
   remediationHasStarted,
@@ -21,6 +24,26 @@ const pill: CSSProperties = {
   fontWeight: 600,
   borderRadius: 20,
 };
+
+function HealthScoreHeading({ className }: { className: string }) {
+  return (
+    <Box display="flex" alignItems="center" style={{ gap: 4, marginBottom: 8 }}>
+      <Typography className={className} component="span" style={{ marginBottom: 0 }}>
+        Health score
+      </Typography>
+      <Tooltip title={HEALTH_SCORE_HINT} arrow>
+        <span
+          tabIndex={0}
+          role="img"
+          aria-label="About health score"
+          style={{ display: 'inline-flex', cursor: 'help' }}
+        >
+          <InfoOutlinedIcon style={{ fontSize: 16, opacity: 0.55 }} aria-hidden />
+        </span>
+      </Tooltip>
+    </Box>
+  );
+}
 
 /**
  * Object-home summary when Remediations / Scans live on a fleet surface.
@@ -56,7 +79,7 @@ export const QualityOverviewCard = ({
     return (
       <Card className={classes.card} variant="outlined">
         <CardContent className={classes.cardContent}>
-          <Typography className={classes.cardTitle}>Quality score</Typography>
+          <HealthScoreHeading className={classes.cardTitle} />
           <Typography color="textSecondary" style={{ fontSize: 14, marginBottom: 16 }}>
             This repository has not been scanned yet.
           </Typography>
@@ -84,15 +107,12 @@ export const QualityOverviewCard = ({
   return (
     <Card className={classes.card} variant="outlined">
       <CardContent className={classes.cardContent}>
-        <Typography className={classes.cardTitle} style={{ marginBottom: 8 }}>
-          Quality score
-        </Typography>
+        <HealthScoreHeading className={classes.cardTitle} />
         <HealthScorePopover
           repoName={repoName}
           quality={quality}
           fontSize={36}
           denomSize={18}
-          showOpenIcon
           onViewLastScan={() => navigate(lastScanPath())}
           onRemediate={() => navigate(scanPath(live))}
           onViewPullRequest={
@@ -119,6 +139,7 @@ export const QualityOverviewCard = ({
             Remediation: {REMEDIATION_STATUS_LABEL[quality.remediationStatus]}
           </Typography>
         )}
+        <CategoryMixMini repoName={repoName} divided={false} />
         <Box
           display="flex"
           alignItems="center"

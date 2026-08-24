@@ -50,7 +50,7 @@ import { statusColors } from '../../common/statusColors';
 import { isDevelopExperience, useNavIaModel } from '../../../hooks/useNavIaModel';
 import { scansListPath, scanSnapshotPath } from '../quality/qualitySurfacePaths';
 import { isWithinQualityWindow } from '../quality/qualityWindow';
-import { HealthScorePopover } from './HealthScorePopover';
+import { HEALTH_SCORE_HINT, HealthScorePopover } from './HealthScorePopover';
 import {
   GIT_REPOSITORIES,
   type GitRepository,
@@ -797,9 +797,9 @@ export const GitRepositoriesContent = () => {
       ? {
           title: (
             <Box display="flex" alignItems="center" style={{ gap: 4, whiteSpace: 'nowrap' }}>
-              Quality
+              Health
               <Tooltip
-                title="Opens findings by category and severity."
+                title={HEALTH_SCORE_HINT}
                 arrow
               >
                 <HelpOutlineIcon style={{ fontSize: 14, color: theme.palette.text.disabled, cursor: 'help' }} />

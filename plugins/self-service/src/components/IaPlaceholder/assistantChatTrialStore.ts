@@ -59,7 +59,7 @@ function readStore(): Store {
   };
   const pastB: AssistantChatThread = {
     id: uid(),
-    title: 'Check repo quality score',
+    title: 'Check repo health score',
     updatedAt: Date.now() - 172_800_000,
   };
   return { threads: [draft, pastA, pastB], activeId: draft.id };

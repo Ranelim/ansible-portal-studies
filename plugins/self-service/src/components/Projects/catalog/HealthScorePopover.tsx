@@ -100,6 +100,10 @@ function nodesForSeverity(
   return unique;
 }
 
+/** Hover / ⓘ copy for the 0–100 metric (card title, column header). */
+export const HEALTH_SCORE_HINT =
+  '0–100, higher is better. Rollup of finding severities from this scan.';
+
 /** Portal list bands — same as QualityOverviewCard. Not SPA 4-band. */
 export const healthColor = (score: number): string => {
   if (score >= 80) return statusColors.success;
@@ -347,6 +351,44 @@ const useStyles = makeStyles(theme => ({
   },
 }));
 
+/** Miniature by-category bars — repo Overview card and the score popover. */
+export function CategoryMixMini({
+  repoName,
+  divided = true,
+}: {
+  repoName: string;
+  divided?: boolean;
+}) {
+  const classes = useStyles();
+  const { total, categories } = getApmeFleetFindings([repoName]);
+  if (categories.length === 0) return null;
+  return (
+    <Box
+      className={divided ? classes.catSection : undefined}
+      style={divided ? undefined : { marginTop: 12, marginBottom: 4 }}
+    >
+      <Typography className={classes.sectionLabel}>By category</Typography>
+      {categories.map(cat => (
+        <Box key={cat.id} className={classes.catRow}>
+          <Typography className={classes.catName} component="span">
+            {cat.label}
+          </Typography>
+          <Typography className={classes.catCount} component="span">
+            {cat.count}
+          </Typography>
+          <Box className={classes.catBar}>
+            <SeverityMixBar
+              breakdown={cat.breakdown}
+              height={6}
+              shareOfTotal={total > 0 ? cat.count / total : 0}
+            />
+          </Box>
+        </Box>
+      ))}
+    </Box>
+  );
+}
+
 /** Contrast-safe severity count — tint + border, same ink on every hue. */
 export function SeverityCountBadge({
   severity,
@@ -449,7 +491,6 @@ export const HealthScorePopover = ({
   const presentSev = SEVERITY_ORDER.filter(sev => (severityBreakdown[sev] ?? 0) > 0);
   const sha = lastScannedCommit ? shortSha(lastScannedCommit) : null;
   const findings = quality.violations ?? [];
-  const categoryMix = getApmeFleetFindings([repoName]).categories;
   const remediateLabel = live ? 'Resume remediation' : null;
   const showRemediation = remediationHasStarted(quality.remediationStatus);
   const listCell = showScanMeta || showFindingsLink;
@@ -466,7 +507,7 @@ export const HealthScorePopover = ({
         onClick={handleOpen}
         aria-haspopup="dialog"
         aria-expanded={Boolean(anchorEl)}
-        aria-label={`Quality score ${healthScore} out of 100. ${findingsLabel}. Opens findings by category and severity.`}
+        aria-label={`Health score ${healthScore} out of 100. ${findingsLabel}. Opens findings by category and severity.`}
       >
         <span className={classes.scoreLock}>
           <QualityScoreMark
@@ -531,36 +572,11 @@ export const HealthScorePopover = ({
               </Typography>
             )}
             <Typography style={{ fontSize: 11, color: theme.palette.text.disabled, marginTop: 2, lineHeight: 1.45 }}>
-              0–100, higher is better. Rollup of finding severities from this scan.
+              {HEALTH_SCORE_HINT}
             </Typography>
           </Box>
 
-          {categoryMix.length > 0 && (
-            <Box className={classes.catSection}>
-              <Typography className={classes.sectionLabel}>
-                By category
-              </Typography>
-              {categoryMix.map(cat => (
-                <Box key={cat.id} className={classes.catRow}>
-                  <Typography className={classes.catName} component="span">
-                    {cat.label}
-                  </Typography>
-                  <Typography className={classes.catCount} component="span">
-                    {cat.count}
-                  </Typography>
-                  <Box className={classes.catBar}>
-                    <SeverityMixBar
-                      breakdown={cat.breakdown}
-                      height={6}
-                      shareOfTotal={
-                        totalViolations > 0 ? cat.count / totalViolations : 0
-                      }
-                    />
-                  </Box>
-                </Box>
-              ))}
-            </Box>
-          )}
+          <CategoryMixMini repoName={repoName} />
 
           {totalViolations > 0 && presentSev.length > 0 && (
             <Box className={classes.findings}>

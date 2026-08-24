@@ -24,7 +24,7 @@ export const NOTIFICATION_EVENT_OPTIONS: Array<{
   {
     id: 'quality-alerts',
     title: 'Quality alerts',
-    description: 'When a repository quality score drops or new high findings appear.',
+    description: 'When a repository health score drops or new high findings appear.',
   },
   {
     id: 'compliance-results',

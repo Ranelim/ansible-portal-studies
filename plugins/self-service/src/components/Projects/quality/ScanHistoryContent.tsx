@@ -557,7 +557,7 @@ function SeverityFilterRow({
 
 function ScanStateChip({ current }: { current: boolean }) {
   return current ? (
-    <Tooltip title="Latest scan for this repository. The quality score is based on this snapshot." arrow>
+    <Tooltip title="Latest scan for this repository. The health score is based on this snapshot." arrow>
       <Chip
         size="small"
         label="Latest"
