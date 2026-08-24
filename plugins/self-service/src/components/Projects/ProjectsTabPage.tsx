@@ -24,16 +24,16 @@ import { useAttentionClearOnActive } from '../../hooks/attentionSeen';
 const HOST_TABS = [
   { id: 'repositories', label: 'Repositories', path: 'list' },
   { id: 'dashboard', label: 'Content quality', path: 'dashboard' },
-  { id: 'remediations', label: 'Remediations', path: 'remediations' },
   { id: 'scans', label: 'Scans', path: 'scans' },
+  { id: 'remediations', label: 'Remediations', path: 'remediations' },
   { id: 'ci-activity', label: 'Pipeline activity', path: 'ci-activity' },
 ];
 
-/** Develop Content quality page — Overview / Remediations / Scans. */
+/** Develop Content quality page — Overview / Scans / Remediations. */
 const QUALITY_TABS = [
   { id: 'overview', label: 'Overview', path: 'dashboard' },
-  { id: 'remediations', label: 'Remediations', path: 'remediations' },
   { id: 'scans', label: 'Scans', path: 'scans' },
+  { id: 'remediations', label: 'Remediations', path: 'remediations' },
 ];
 
 type Surface = 'list' | 'dashboard' | 'remediations' | 'scans' | 'ci-activity';
@@ -70,16 +70,16 @@ const getSurfaceFromPath = (pathname: string): Surface => {
 const getHostTabIndexFromPath = (pathname: string): number => {
   const surface = getSurfaceFromPath(pathname);
   if (surface === 'dashboard') return 1;
-  if (surface === 'remediations') return 2;
-  if (surface === 'scans') return 3;
+  if (surface === 'scans') return 2;
+  if (surface === 'remediations') return 3;
   if (surface === 'ci-activity') return 4;
   return 0;
 };
 
 const getQualityTabIndexFromPath = (pathname: string): number => {
   const surface = getSurfaceFromPath(pathname);
-  if (surface === 'remediations') return 1;
-  if (surface === 'scans') return 2;
+  if (surface === 'scans') return 1;
+  if (surface === 'remediations') return 2;
   return 0;
 };
 
@@ -213,7 +213,7 @@ export const ProjectsTabs: React.FC = () => {
                 <PageHelpIcon
                   tooltipLabel="What is Content quality?"
                   title="What is Content quality?"
-                  description="Scans Ansible content in your git repositories. Overview uses each repository’s latest completed scan. Remediations are live fix sessions. Scans is history."
+                  description="Scans Ansible content in your git repositories. Overview uses each repository’s latest completed scan. Scans is history. Remediations are live fix sessions."
                 />
               ) : (
                 surface === 'list' && (

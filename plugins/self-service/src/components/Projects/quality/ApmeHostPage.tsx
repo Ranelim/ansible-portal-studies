@@ -18,9 +18,9 @@ type Surface = 'overview' | 'remediations' | 'findings' | 'scans';
 
 const ALL_TABS = [
   { id: 'overview', label: 'Overview' },
+  { id: 'scans', label: 'Scans' },
   { id: 'remediations', label: 'Remediations' },
   { id: 'findings', label: 'Findings' },
-  { id: 'scans', label: 'Scans' },
 ];
 
 /** Findings tab parked — set SHOW_CONTENT_QUALITY_FINDINGS_TAB to revive. */
@@ -96,7 +96,7 @@ export const ApmeHostPage = () => {
             <PageHelpIcon
               tooltipLabel="What is content quality?"
               title="What is content quality?"
-              description="Scans Ansible content in your git repositories for policy, quality, secrets, and modernization findings. Overview is fleet posture. Remediations are live sessions. Scans lists history."
+              description="Scans Ansible content in your git repositories for policy, quality, secrets, and modernization findings. Overview is fleet posture. Scans lists history. Remediations are live sessions."
             />
           </Box>
         }

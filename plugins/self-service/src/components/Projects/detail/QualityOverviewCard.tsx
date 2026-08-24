@@ -61,9 +61,8 @@ export const QualityOverviewCard = ({
   const navigate = useNavigate();
   const { experience } = useNavIaModel();
 
-  const lastScanPath = () => {
+  const historyPath = () => {
     const qs = new URLSearchParams({ repo: repoName });
-    if (quality?.latestScan.scanId) qs.set('scan', quality.latestScan.scanId);
     return `${scansListPath(experience)}?${qs.toString()}`;
   };
 
@@ -113,7 +112,8 @@ export const QualityOverviewCard = ({
           quality={quality}
           fontSize={36}
           denomSize={18}
-          onViewLastScan={() => navigate(lastScanPath())}
+          onViewLastScan={() => navigate(historyPath())}
+          viewScanLabel="View scan history"
           onRemediate={() => navigate(scanPath(live))}
           onViewPullRequest={
             prUrl
@@ -181,9 +181,9 @@ export const QualityOverviewCard = ({
             color="primary"
             size="small"
             style={pill}
-            onClick={() => navigate(lastScanPath())}
+            onClick={() => navigate(historyPath())}
           >
-            View last scan
+            View scan history
           </Button>
           {(live || quality.remediationStatus === 'pr-open') && (
             <Button

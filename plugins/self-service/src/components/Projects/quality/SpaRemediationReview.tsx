@@ -1170,7 +1170,7 @@ export function useAssessFilters(findings: QualityViolation[]) {
       })),
     },
     {
-      label: 'Kind',
+      label: 'Content type',
       options: universe.kinds.map(k => ({
         id: k,
         label: k,
@@ -1270,7 +1270,7 @@ export function useGateFilters(
       })),
     },
     {
-      label: 'Kind',
+      label: 'Content type',
       options: universe.kinds.map(k => ({
         id: k,
         label: k,

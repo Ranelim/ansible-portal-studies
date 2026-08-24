@@ -229,7 +229,7 @@ const useStyles = makeStyles(theme => ({
     color: theme.palette.text.secondary,
   },
   kindSelect: {
-    minWidth: 168,
+    minWidth: 200,
   },
   categorySelect: {
     minWidth: 200,
@@ -549,14 +549,16 @@ function SeverityFilterRow({
             )}
             {showKind && (
               <FormControl variant="outlined" size="small" className={classes.kindSelect}>
-                <InputLabel id="scan-kind-filter-label">Kind</InputLabel>
+                <InputLabel id="scan-content-type-filter-label">
+                  Content type
+                </InputLabel>
                 <Select
-                  labelId="scan-kind-filter-label"
-                  label="Kind"
+                  labelId="scan-content-type-filter-label"
+                  label="Content type"
                   value={kind}
                   onChange={e => onKindChange(e.target.value as FindingKind | 'all')}
                 >
-                  <MenuItem value="all">All kinds</MenuItem>
+                  <MenuItem value="all">All content types</MenuItem>
                   {kindOptions.map(opt => (
                     <MenuItem key={opt.kind} value={opt.kind}>
                       {KIND_LABELS[opt.kind]} ({opt.count})
@@ -573,10 +575,10 @@ function SeverityFilterRow({
 
 function ScanStateChip({ current }: { current: boolean }) {
   return current ? (
-    <Tooltip title="Latest scan for this repository. The health score is based on this snapshot." arrow>
+    <Tooltip title="Active scan for this repository. The health score is based on this snapshot." arrow>
       <Chip
         size="small"
-        label="Latest"
+        label="Active"
         style={{
           height: 20,
           fontSize: 11,
@@ -904,12 +906,12 @@ function ScanSnapshotDetail({
           color="textSecondary"
           style={{ fontSize: 13, marginBottom: 16 }}
         >
-          A later scan replaced this snapshot. Remediation uses the latest scan.
+          A later scan replaced this snapshot. Remediation uses the active scan.
           {currentScanId ? (
             <>
               {' '}
               <Link component="button" onClick={onViewCurrent} underline="always">
-                View latest scan
+                View active scan
               </Link>
             </>
           ) : null}
@@ -1179,7 +1181,7 @@ export const ScanHistoryContent = () => {
   return (
     <Box>
       <QualityTabIntro>
-        Every scan as a receipt. Latest is the most recent completed scan per
+        Every scan as a receipt. Active is the most recent completed scan per
         repository; older scans are superseded.
       </QualityTabIntro>
       <Box className={classes.toolbar}>
@@ -1218,7 +1220,7 @@ export const ScanHistoryContent = () => {
             }
           >
             <MenuItem value="all">All scans</MenuItem>
-            <MenuItem value="latest">Latest</MenuItem>
+            <MenuItem value="latest">Active</MenuItem>
             <MenuItem value="superseded">Superseded</MenuItem>
           </Select>
         </FormControl>

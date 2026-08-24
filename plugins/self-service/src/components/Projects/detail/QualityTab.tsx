@@ -2148,7 +2148,7 @@ const ScanHistoryView = ({
                       <Box display="flex" alignItems="center" style={{ gap: 6 }}>
                         <span style={{ fontWeight: isLatest ? 600 : 400 }}>{scan.createdAt}</span>
                         {isLatest && (
-                          <Chip label="Latest" size="small" style={{
+                          <Chip label="Active" size="small" style={{
                             height: 16, fontSize: 9, fontWeight: 600,
                             background: isDark ? 'rgba(56,139,253,0.15)' : '#dbeafe',
                             color: isDark ? '#58a6ff' : '#1d4ed8',
