@@ -1,8 +1,8 @@
 /**
  * Visual redesign of Inline AI Results & Remediation (`?wizard=visual`).
  * Structure follows the ephemeral step-2 prototype: Continue under the
- * stepper, Summary (severity), then findings with Auto-fix / AI / Not
- * fixable tabs. AI spend lives on the AI tab (Lightspeed quota — no fake
+ * stepper, Summary (severity), then findings with Auto-fix / AI-fix / Not
+ * fixable tabs. AI spend lives on the AI-fix tab (Lightspeed quota — no fake
  * token or dollar estimates). `ctaLayout=footer` parks Continue in a sticky
  * footer instead.
  */
@@ -51,6 +51,7 @@ import {
 } from './SpaRemediationReview';
 import { snippetForRule } from './spaWizardSnippets';
 import { unifiedDiff, type DiffLine } from './qualityDiff';
+import { ReadCountBadge } from '../../common/ReadCountBadge';
 
 const PILL = { borderRadius: 20, textTransform: 'none' as const, fontWeight: 600 };
 const PILL_COMPACT = { ...PILL, minWidth: 0, padding: '2px 12px' };
@@ -71,8 +72,14 @@ const FINDINGS_BAR_HEIGHT = 6;
 const LANE_TABS: FixLane[] = ['Auto-fix', 'AI-fix', 'Manual-fix'];
 const TAB_LABEL: Record<FixLane, string> = {
   'Auto-fix': 'Auto-fix',
-  'AI-fix': 'AI-fixes',
+  'AI-fix': 'AI-fix',
   'Manual-fix': 'Not fixable',
+};
+
+const TAB_COUNT_LABEL: Record<FixLane, (n: number) => string> = {
+  'Auto-fix': n => `${n} auto-fixes`,
+  'AI-fix': n => `${n} AI-fixes`,
+  'Manual-fix': n => `${n} not-fixable findings`,
 };
 
 function laneOf(v: QualityViolation): FixLane {
@@ -352,6 +359,13 @@ const useStyles = makeStyles((theme: Theme) => ({
     minWidth: 0,
     padding: theme.spacing(1, 1.25, 0.75),
     marginRight: theme.spacing(1),
+  },
+  tabLabel: {
+    display: 'inline-flex',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing(0.75),
+    lineHeight: 1,
   },
   toolbar: {
     display: 'flex',
@@ -656,6 +670,12 @@ export const InlineVisualReview: React.FC<{
         ? 'Search AI-fixes'
         : 'Search not-fixable findings';
 
+  const severitySelect =
+    severityFilter.size === 1 ? Array.from(severityFilter)[0] : 'all';
+  const presentSeverities = SEV_ORDER.filter(sev =>
+    tabFindings.some(f => f.severity === sev),
+  );
+
   const showingCount = filtered.length;
   const showingLabel = `${showingCount} showing`;
   const remainingForTab = fixType === 'AI-fix' ? visibleReadyAi.length : visibleAuto.length;
@@ -808,7 +828,16 @@ export const InlineVisualReview: React.FC<{
               key={lane}
               className={classes.tab}
               value={lane}
-              label={`${TAB_LABEL[lane]} ${laneCount[lane]}`}
+              label={
+                <span className={classes.tabLabel}>
+                  <span>{TAB_LABEL[lane]}</span>
+                  <ReadCountBadge
+                    count={laneCount[lane]}
+                    label={TAB_COUNT_LABEL[lane](laneCount[lane])}
+                    tone="read"
+                  />
+                </span>
+              }
             />
           ))}
         </Tabs>
@@ -852,6 +881,26 @@ export const InlineVisualReview: React.FC<{
                 <MenuItem key={id} value={id}>
                   {APME_CATEGORY_LABEL[id]} (
                   {tabFindings.filter(f => apmeCategoryOf(f) === id).length})
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <FormControl variant="outlined" size="small" className={classes.select}>
+            <InputLabel id="visual-severity-label">Severity</InputLabel>
+            <Select
+              labelId="visual-severity-label"
+              label="Severity"
+              value={severitySelect}
+              onChange={e => {
+                const next = e.target.value as 'all' | SeverityClass;
+                setSeverityFilter(next === 'all' ? new Set() : new Set([next]));
+              }}
+            >
+              <MenuItem value="all">All severities</MenuItem>
+              {presentSeverities.map(sev => (
+                <MenuItem key={sev} value={sev}>
+                  {SEV_LABEL[sev]} (
+                  {tabFindings.filter(f => f.severity === sev).length})
                 </MenuItem>
               ))}
             </Select>
