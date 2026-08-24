@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 
-export type AttentionKey = 'integrations-needs-setup' | 'experiences-discover';
+export type AttentionKey =
+  | 'integrations-needs-setup'
+  | 'experiences-discover'
+  | 'content-quality-remediations';
 
 type AttentionPhase = 'unread' | 'exiting' | 'seen';
 

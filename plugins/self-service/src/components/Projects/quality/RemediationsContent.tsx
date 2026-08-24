@@ -7,6 +7,7 @@ import {
   DialogContent,
   DialogTitle,
   IconButton,
+  Link,
   TextField,
   Tooltip,
   Typography,
@@ -27,7 +28,8 @@ import {
   type RemediationStatus,
 } from '../detail/qualityDemoData';
 import { CommitSha } from './CommitSha';
-import { scansListPath } from './qualitySurfacePaths';
+import { SHOW_REMEDIATION_PROGRESS_COLUMN } from './contentQualityIa';
+import { scanSnapshotPath } from './qualitySurfacePaths';
 import { QualityTabIntro } from './QualityTabIntro';
 
 type ActiveStatus = 'in-progress' | 'proposals-ready';
@@ -37,6 +39,7 @@ type ActiveRow = {
   org: string;
   status: ActiveStatus;
   currentStep: 0 | 1 | 2;
+  scanId: string;
   when: string;
   commitHash: string;
   sortAt: number;
@@ -64,11 +67,26 @@ const useStyles = makeStyles(theme => ({
     borderRadius: 20,
     flexShrink: 0,
   },
+  scanLink: {
+    display: 'inline',
+    cursor: 'pointer',
+    fontWeight: 500,
+    fontSize: 14,
+    color: theme.palette.primary.main,
+    textDecoration: 'none',
+    whiteSpace: 'nowrap',
+    '&:hover': { textDecoration: 'underline' },
+  },
   repoLink: {
+    display: 'block',
     fontSize: 13,
     fontWeight: 500,
     color: theme.palette.primary.main,
     cursor: 'pointer',
+    textDecoration: 'none',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
     '&:hover': {
       textDecoration: 'underline',
     },
@@ -96,6 +114,15 @@ const useStyles = makeStyles(theme => ({
     maxWidth: 420,
     margin: '0 auto',
     marginBottom: theme.spacing(2),
+  },
+  tableHost: {
+    '& table': {
+      width: '100%',
+    },
+    '& thead th:last-child, & tbody td:last-child': {
+      width: '1% !important',
+      whiteSpace: 'nowrap',
+    },
   },
   dialogTitleRow: {
     display: 'flex',
@@ -244,21 +271,38 @@ function parseScanDate(createdAt: string): number {
   return Number.isNaN(t) ? 0 : t;
 }
 
+function formatRelativeWhen(createdAt: string): string {
+  const t = parseScanDate(createdAt);
+  if (!t) return createdAt;
+  const diffMs = Date.now() - t;
+  if (diffMs < 0) return createdAt;
+  const mins = Math.round(diffMs / 60000);
+  if (mins < 1) return 'Just now';
+  if (mins < 60) return `${mins} min ago`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`;
+  const days = Math.round(hours / 24);
+  if (days < 14) return `${days} day${days === 1 ? '' : 's'} ago`;
+  const weeks = Math.round(days / 7);
+  if (weeks < 8) return `${weeks} week${weeks === 1 ? '' : 's'} ago`;
+  return createdAt;
+}
+
 function buildRows(): ActiveRow[] {
   const rows: ActiveRow[] = [];
   for (const repo of GIT_REPOSITORIES) {
     const q = getProjectQuality(repo.name);
     if (!q || !isActive(q.remediationStatus)) continue;
+    const scan = q.latestScan;
     rows.push({
       repoName: repo.name,
       org: repo.org,
       status: q.remediationStatus,
       currentStep: sessionStepIndex(q.remediationStatus),
-      when: q.lastScannedAt,
-      commitHash: q.latestScan.commitHash || q.lastScannedCommit,
-      sortAt: parseScanDate(
-        q.scanHistory[0]?.createdAt ?? q.latestScan.createdAt,
-      ),
+      scanId: scan.scanId,
+      when: scan.createdAt,
+      commitHash: scan.commitHash || q.lastScannedCommit,
+      sortAt: parseScanDate(scan.createdAt),
     });
   }
   return rows.sort((a, b) => b.sortAt - a.sortAt);
@@ -434,26 +478,57 @@ export const RemediationsContent = ({
     navigate(sessionPath(repoName, true));
   };
 
-  const viewLastScan = (repoName: string) => {
-    const quality = getProjectQuality(repoName);
-    const qs = new URLSearchParams({ repo: repoName });
-    if (quality?.latestScan.scanId) qs.set('scan', quality.latestScan.scanId);
-    navigate(`${scansListPath(experience)}?${qs.toString()}`);
+  const viewScan = (row: ActiveRow) => {
+    navigate(
+      scanSnapshotPath(experience, row.scanId, { repo: row.repoName }),
+    );
   };
 
   const columns: TableColumn<ActiveRow>[] = [
     {
-      title: 'Repository',
+      title: 'Scan',
+      width: '33%',
+      defaultSort: 'desc',
+      customSort: (a: ActiveRow, b: ActiveRow) => a.sortAt - b.sortAt,
+      cellStyle: { whiteSpace: 'nowrap' as const, overflow: 'hidden' as const },
+      headerStyle: { whiteSpace: 'nowrap' as const },
       render: row => (
-        <Typography
+        <Box>
+          <Tooltip title={formatRelativeWhen(row.when)} arrow>
+            <Link
+              className={classes.scanLink}
+              href={scanSnapshotPath(experience, row.scanId, {
+                repo: row.repoName,
+              })}
+              onMouseDown={e => e.stopPropagation()}
+              onClick={e => {
+                e.preventDefault();
+                e.stopPropagation();
+                viewScan(row);
+              }}
+            >
+              {row.when}
+            </Link>
+          </Tooltip>
+          <CommitSha sha={row.commitHash} />
+        </Box>
+      ),
+    },
+    {
+      title: 'Repository',
+      width: '33%',
+      cellStyle: { overflow: 'hidden' },
+      render: row => (
+        <Link
           className={classes.repoLink}
+          onMouseDown={e => e.stopPropagation()}
           onClick={e => {
             e.stopPropagation();
             openRepo(row.repoName);
           }}
         >
           {row.org}/{row.repoName}
-        </Typography>
+        </Link>
       ),
     },
     {
@@ -465,6 +540,7 @@ export const RemediationsContent = ({
           </Tooltip>
         </Box>
       ) as unknown as string,
+      width: '33%',
       customSort: (a: ActiveRow, b: ActiveRow) => {
         const sa = getProjectQuality(a.repoName)?.healthScore ?? -1;
         const sb = getProjectQuality(b.repoName)?.healthScore ?? -1;
@@ -475,39 +551,39 @@ export const RemediationsContent = ({
           repoName={row.repoName}
           quality={getProjectQuality(row.repoName)}
           showFindingsLink
-          onViewLastScan={() => viewLastScan(row.repoName)}
+          onViewLastScan={() => viewScan(row)}
           onRemediate={() => resume(row.repoName)}
         />
       ),
     },
-    {
-      title: 'Scanned',
-      defaultSort: 'desc',
-      customSort: (a: ActiveRow, b: ActiveRow) => a.sortAt - b.sortAt,
-      render: row => (
-        <Box>
-          <Typography style={{ fontSize: 13 }}>
-            {row.when}
-          </Typography>
-          <CommitSha sha={row.commitHash} />
-        </Box>
-      ),
-    },
-    {
-      title: 'Remediation progress',
-      render: row => <CompactSessionStepper currentStep={row.currentStep} />,
-    },
+    ...(SHOW_REMEDIATION_PROGRESS_COLUMN
+      ? [
+          {
+            title: 'Remediation progress',
+            sorting: false,
+            render: (row: ActiveRow) => (
+              <CompactSessionStepper currentStep={row.currentStep} />
+            ),
+          } as TableColumn<ActiveRow>,
+        ]
+      : []),
     {
       title: 'Action',
+      width: '1%',
       sorting: false,
       cellStyle: {
         whiteSpace: 'nowrap' as const,
-        textAlign: 'right' as const,
-        paddingRight: 8,
+        textAlign: 'left' as const,
+        width: 1,
+        paddingLeft: 16,
+        paddingRight: 16,
       },
       headerStyle: {
-        textAlign: 'right' as const,
-        paddingRight: 8,
+        textAlign: 'left' as const,
+        whiteSpace: 'nowrap' as const,
+        width: 1,
+        paddingLeft: 16,
+        paddingRight: 16,
       },
       render: row => (
         <Button
@@ -552,6 +628,7 @@ export const RemediationsContent = ({
           </Button>
         </Box>
       ) : (
+        <Box className={classes.tableHost}>
         <Table<ActiveRow>
           columns={columns}
           data={rows}
@@ -564,10 +641,15 @@ export const RemediationsContent = ({
             header: true,
             rowStyle: { cursor: 'pointer' },
           }}
-          onRowClick={(_e, rowData) => {
+          onRowClick={(event, rowData) => {
+            const el = (event as { target?: EventTarget } | undefined)?.target;
+            if (el instanceof Element && el.closest('button, a, [role="button"]')) {
+              return;
+            }
             if (rowData) resume((rowData as ActiveRow).repoName);
           }}
         />
+        </Box>
       )}
       {!onStartScan && (
         <StartScanDialog open={scanOpen} onClose={() => setScanOpen(false)} />

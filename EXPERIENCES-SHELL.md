@@ -79,6 +79,7 @@ Waffle masthead try = parked (`SHOW_EXPERIENCES_WAFFLE = false`). Multi-seat ret
 Admin Sync compare bar = parked (`FORCED_ADMIN_SYNC_IA = 'opt1'`; set `null` + restore `ADMIN_SYNC_IA_BAR_HEIGHT = 36` to revive).
 Quality remediation session = Inline visual 3-step (`FORCED_REMEDIATION_WIZARD = 'visual'`), Continue with findings (`FORCED_CTA_LAYOUT = 'current'`). Prototype and sticky-footer compare parked.
 Content quality **Findings** tab = parked (`SHOW_CONTENT_QUALITY_FINDINGS_TAB = false` in `plugins/self-service/.../quality/contentQualityIa.ts`; set `true` to revive by-rule rollup). Route `/apme/findings` + `QualityDashboardTabContent` kept.
+Remediations **progress** column = parked (`SHOW_REMEDIATION_PROGRESS_COLUMN = false` in the same file; set `true` to revive the compact stepper). `CompactSessionStepper` stays in `RemediationsContent`.
 Assistant experience = parked (`SHOW_ASSISTANT_EXPERIENCE = false`). Lightspeed FAB stays.
 
 

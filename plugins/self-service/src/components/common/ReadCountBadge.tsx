@@ -1,5 +1,4 @@
 import { makeStyles } from '@material-ui/core';
-import { statusColors } from './statusColors';
 
 const useStyles = makeStyles(theme => ({
   badge: {
@@ -28,15 +27,15 @@ const useStyles = makeStyles(theme => ({
     },
   },
   unread: {
-    backgroundColor: statusColors.info,
-    color: '#fff',
+    backgroundColor: theme.palette.primary.main,
+    color: theme.palette.primary.contrastText || '#fff',
   },
 }));
 
 /**
  * PatternFly count badge as an MUI span.
  * Chip is the wrong control — its metrics sit above RHDH HeaderTabs text.
- * `read` = grey (`pf-m-read`). `unread` = info blue for setup attention.
+ * `read` = grey (`pf-m-read`). `unread` = theme primary (same as tab ink).
  */
 export const ReadCountBadge = ({
   count,

@@ -18,6 +18,7 @@ import {
 } from './quality/RemediationsContent';
 import { ScanHistoryContent } from './quality/ScanHistoryContent';
 import { isDevelopExperience, useNavIaModel } from '../../hooks/useNavIaModel';
+import { useAttentionClearOnActive } from '../../hooks/attentionSeen';
 
 /** Non-Develop fallback — full Git Repositories host tabs. */
 const HOST_TABS = [
@@ -117,6 +118,12 @@ export const ProjectsTabs: React.FC = () => {
     [location.pathname],
   );
 
+  const { seen: remediationsSeen, exiting: remediationsExiting } =
+    useAttentionClearOnActive(
+      'content-quality-remediations',
+      surface === 'remediations' && liveCount > 0,
+    );
+
   const qualityPage = sectionMode && isQualitySurface(surface);
 
   const onHostTabSelect = useCallback(
@@ -181,6 +188,9 @@ export const ProjectsTabs: React.FC = () => {
         <ReadCountBadge
           count={liveCount}
           label={`${liveCount} pending remediations`}
+          tone={
+            remediationsSeen || remediationsExiting ? 'read' : 'unread'
+          }
         />
       </span>
     ) : (

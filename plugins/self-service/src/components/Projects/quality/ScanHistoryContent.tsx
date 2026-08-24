@@ -115,14 +115,20 @@ const useStyles = makeStyles(theme => ({
   repoFilter: {
     minWidth: 260,
   },
+  showFilter: {
+    minWidth: 168,
+  },
   tableHost: {
     '& table': {
-      tableLayout: 'fixed',
       width: '100%',
+    },
+    '& thead th:last-child, & tbody td:last-child': {
+      width: '1% !important',
+      whiteSpace: 'nowrap',
     },
   },
   scanLink: {
-    display: 'block',
+    display: 'inline',
     cursor: 'pointer',
     fontWeight: 500,
     fontSize: 14,
@@ -946,6 +952,9 @@ export const ScanHistoryContent = () => {
   const [repoFilter, setRepoFilter] = useState(
     () => searchParams.get('repo') || 'all',
   );
+  const [showFilter, setShowFilter] = useState<'all' | 'latest' | 'superseded'>(
+    'all',
+  );
 
   const globalScans: GlobalScanRow[] = useMemo(() => {
     const rows: GlobalScanRow[] = [];
@@ -986,10 +995,13 @@ export const ScanHistoryContent = () => {
 
   const filteredScans = useMemo(
     () =>
-      repoFilter === 'all'
-        ? globalScans
-        : globalScans.filter(row => row.repoName === repoFilter),
-    [globalScans, repoFilter],
+      globalScans.filter(row => {
+        if (repoFilter !== 'all' && row.repoName !== repoFilter) return false;
+        if (showFilter === 'latest' && !row.isLatest) return false;
+        if (showFilter === 'superseded' && row.isLatest) return false;
+        return true;
+      }),
+    [globalScans, repoFilter, showFilter],
   );
 
   const setScanParam = useCallback(
@@ -1027,33 +1039,36 @@ export const ScanHistoryContent = () => {
 
   const columns: TableColumn<GlobalScanRow>[] = [
     {
-      title: 'When',
+      title: 'Scan',
       field: 'createdAt',
-      width: '22%',
+      width: '33%',
       defaultSort: 'desc',
       customSort: (a, b) => parseScanDate(a.createdAt) - parseScanDate(b.createdAt),
-      cellStyle: { whiteSpace: 'nowrap' as const },
+      cellStyle: { whiteSpace: 'nowrap' as const, overflow: 'hidden' as const },
       headerStyle: { whiteSpace: 'nowrap' as const },
       render: (row: GlobalScanRow) => (
         <Box>
-          <Tooltip title={formatRelativeWhen(row.createdAt)} arrow>
-            <Link
-              className={classes.scanLink}
-              onClick={e => {
-                e.stopPropagation();
-                openScan(row.scanId);
-              }}
-            >
-              {row.createdAt}
-            </Link>
-          </Tooltip>
+          <Box display="flex" alignItems="center" style={{ gap: 8, minWidth: 0 }}>
+            <Tooltip title={formatRelativeWhen(row.createdAt)} arrow>
+              <Link
+                className={classes.scanLink}
+                onClick={e => {
+                  e.stopPropagation();
+                  openScan(row.scanId);
+                }}
+              >
+                {row.createdAt}
+              </Link>
+            </Tooltip>
+            <ScanStateChip current={row.isLatest} />
+          </Box>
           <CommitSha sha={row.commitHash} />
         </Box>
       ),
     },
     {
       title: 'Repository',
-      width: '30%',
+      width: '33%',
       cellStyle: {
         overflow: 'hidden',
       },
@@ -1070,14 +1085,6 @@ export const ScanHistoryContent = () => {
       ),
     },
     {
-      title: 'Scan',
-      width: '16%',
-      sorting: false,
-      cellStyle: { whiteSpace: 'nowrap' as const },
-      headerStyle: { whiteSpace: 'nowrap' as const },
-      render: (row: GlobalScanRow) => <ScanStateChip current={row.isLatest} />,
-    },
-    {
       title: (
         <Box display="flex" alignItems="center" style={{ gap: 4, whiteSpace: 'nowrap' }}>
           Health
@@ -1086,7 +1093,7 @@ export const ScanHistoryContent = () => {
           </Tooltip>
         </Box>
       ) as unknown as string,
-      width: '22%',
+      width: '33%',
       cellStyle: { whiteSpace: 'nowrap' as const, overflow: 'hidden' as const },
       customSort: (a: GlobalScanRow, b: GlobalScanRow) => {
         const qa = qualityForScan(a.repoName, a, a.isLatest);
@@ -1106,16 +1113,21 @@ export const ScanHistoryContent = () => {
     },
     {
       title: 'Action',
-      width: '12%',
+      width: '1%',
       sorting: false,
       cellStyle: {
         whiteSpace: 'nowrap' as const,
-        textAlign: 'right' as const,
-        paddingRight: 8,
+        textAlign: 'left' as const,
+        width: 1,
+        paddingLeft: 16,
+        paddingRight: 16,
       },
       headerStyle: {
-        textAlign: 'right' as const,
-        paddingRight: 8,
+        textAlign: 'left' as const,
+        whiteSpace: 'nowrap' as const,
+        width: 1,
+        paddingLeft: 16,
+        paddingRight: 16,
       },
       render: (row: GlobalScanRow) => (
         <Button
@@ -1191,6 +1203,25 @@ export const ScanHistoryContent = () => {
             ))}
           </Select>
         </FormControl>
+        <FormControl
+          variant="outlined"
+          size="small"
+          className={classes.showFilter}
+        >
+          <InputLabel id="scan-history-show-label">Show</InputLabel>
+          <Select
+            labelId="scan-history-show-label"
+            label="Show"
+            value={showFilter}
+            onChange={e =>
+              setShowFilter(e.target.value as 'all' | 'latest' | 'superseded')
+            }
+          >
+            <MenuItem value="all">All scans</MenuItem>
+            <MenuItem value="latest">Latest</MenuItem>
+            <MenuItem value="superseded">Superseded</MenuItem>
+          </Select>
+        </FormControl>
       </Box>
       <Box className={classes.tableHost}>
       <Table<GlobalScanRow>
@@ -1206,14 +1237,13 @@ export const ScanHistoryContent = () => {
           sorting: true,
           padding: 'dense',
           header: true,
-          tableLayout: 'fixed',
           rowStyle: { cursor: 'pointer' },
         }}
         style={{ width: '100%', overflowX: 'hidden' }}
         emptyContent={
           <Box py={4} textAlign="center">
             <Typography color="textSecondary">
-              No scans match this repository.
+              No scans match these filters.
             </Typography>
           </Box>
         }

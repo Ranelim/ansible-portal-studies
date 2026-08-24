@@ -8,3 +8,12 @@
  * Route `/self-service/apme/findings` and `QualityDashboardTabContent` stay intact.
  */
 export const SHOW_CONTENT_QUALITY_FINDINGS_TAB = false;
+
+/**
+ * Remediations list stepper (Scan → Results & Remediation → Commit).
+ * Hidden Aug 24: almost every live row sits on step 2, so the column
+ * does not discriminate. CompactSessionStepper stays in RemediationsContent.
+ *
+ * ROLLBACK: set `SHOW_REMEDIATION_PROGRESS_COLUMN` to `true` and hard-refresh.
+ */
+export const SHOW_REMEDIATION_PROGRESS_COLUMN = false;

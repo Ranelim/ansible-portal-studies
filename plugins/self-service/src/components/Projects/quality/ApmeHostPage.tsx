@@ -4,6 +4,7 @@ import { Box, makeStyles } from '@material-ui/core';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { PageHelpIcon } from '../../common/PageHelpIcon';
 import { ReadCountBadge } from '../../common/ReadCountBadge';
+import { useAttentionClearOnActive } from '../../../hooks/attentionSeen';
 import { QualityOverviewContent } from './QualityOverviewContent';
 import { QualityPostureOverview } from './QualityPostureOverview';
 import {
@@ -66,6 +67,11 @@ export const ApmeHostPage = () => {
     TABS.findIndex(tab => tab.id === surface),
   );
   const liveCount = countLiveRemediations();
+  const { seen: remediationsSeen, exiting: remediationsExiting } =
+    useAttentionClearOnActive(
+      'content-quality-remediations',
+      surface === 'remediations' && liveCount > 0,
+    );
 
   useEffect(() => {
     if (!SHOW_CONTENT_QUALITY_FINDINGS_TAB && surface === 'findings') {
@@ -109,6 +115,11 @@ export const ApmeHostPage = () => {
                 <ReadCountBadge
                   count={liveCount}
                   label={`${liveCount} live remediations`}
+                  tone={
+                    remediationsSeen || remediationsExiting
+                      ? 'read'
+                      : 'unread'
+                  }
                 />
               </span>
             ) : (
