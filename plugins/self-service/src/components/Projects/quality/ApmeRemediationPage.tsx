@@ -165,8 +165,17 @@ const useStyles = makeStyles(theme => ({
   wrap: {
     maxWidth: 1200,
   },
+  visualSession: {
+    width: '100%',
+    maxWidth: '100%',
+    minWidth: 0,
+    boxSizing: 'border-box',
+  },
   wrapVisual: {
-    maxWidth: 1280,
+    width: '100%',
+    maxWidth: '100%',
+    minWidth: 0,
+    boxSizing: 'border-box',
     paddingBottom: theme.spacing(4),
   },
   /**
@@ -182,6 +191,7 @@ const useStyles = makeStyles(theme => ({
     overflow: 'hidden',
     boxSizing: 'border-box',
     width: '100%',
+    maxWidth: '100%',
   },
   wrapVisualFooter: {
     flex: 1,
@@ -191,6 +201,7 @@ const useStyles = makeStyles(theme => ({
     overflow: 'hidden',
     paddingBottom: 0,
     width: '100%',
+    maxWidth: '100%',
   },
   chrome: {
     flexShrink: 0,
@@ -199,9 +210,12 @@ const useStyles = makeStyles(theme => ({
   reviewFill: {
     flex: 1,
     minHeight: 0,
+    minWidth: 0,
+    width: '100%',
+    maxWidth: '100%',
     display: 'flex',
     flexDirection: 'column',
-    overflow: 'hidden',
+    overflow: 'auto',
   },
   compareStrip: {
     flexShrink: 0,
@@ -261,7 +275,7 @@ const useStyles = makeStyles(theme => ({
     marginBottom: theme.spacing(2),
   },
   stepperBare: {
-    padding: theme.spacing(1, 0, 2.5),
+    padding: theme.spacing(1, 0, 1),
     marginBottom: 0,
   },
   stepper: {
@@ -1118,8 +1132,8 @@ export const ApmeRemediationPage = () => {
   const fillWell =
     Boolean(quality && repo) &&
     visual &&
-    step === 'findings' &&
     (ctaLayout === 'footer' || reviewLayout === 'work' || reviewLayout === 'redesign');
+  const hidePageChrome = fillWell && reviewLayout === 'redesign' && step === 'findings';
 
   useEffect(() => {
     if (!fillWell) return undefined;
@@ -1235,7 +1249,7 @@ export const ApmeRemediationPage = () => {
         {reviewLayout === 'work'
           ? 'Compact summary. Accept is the work. Continue stays in the footer until you decide.'
           : reviewLayout === 'redesign'
-            ? 'All is the default. Footer: accept-all-auto checkbox, selected count next to Continue. Actions and Generate sit under the showing count.'
+            ? 'All is the default. Actions follow the tab: remaining and all, plus type-specific items on All. Footer checkbox is the auto-fix default.'
             : 'Continue sits under the stepper. Summary and filters stay expanded.'}
       </Typography>
     </Box>
@@ -1514,7 +1528,15 @@ export const ApmeRemediationPage = () => {
   return (
     <Page themeId="app">
       <Content>
-        <Box className={fillWell ? classes.footerSession : undefined}>
+        <Box
+          className={
+            fillWell
+              ? `${classes.visualSession} ${classes.footerSession}`
+              : visual
+                ? classes.visualSession
+                : undefined
+          }
+        >
         {showReviewCompare && reviewLayout !== 'redesign' ? (
         layoutCompare
         ) : visual && !FORCED_CTA_LAYOUT ? (
@@ -1595,7 +1617,7 @@ export const ApmeRemediationPage = () => {
               : classes.wrap
           }
         >
-          {!(fillWell && reviewLayout === 'redesign') ? pageChrome : null}
+          {hidePageChrome ? null : pageChrome}
           {fillWell ? <Box className={classes.reviewFill}>{body}</Box> : body}
         </Box>
         </Box>

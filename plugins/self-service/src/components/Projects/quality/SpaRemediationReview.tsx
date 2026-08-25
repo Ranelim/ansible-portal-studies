@@ -295,13 +295,28 @@ const useStyles = makeStyles((theme: Theme) => ({
     padding: theme.spacing(0.75, 1.5),
     backgroundColor: theme.palette.background.default,
   },
-  progressCard: { padding: theme.spacing(3) },
+  progressCard: {
+    padding: theme.spacing(3),
+    maxWidth: '100%',
+    minWidth: 0,
+    overflow: 'hidden',
+    boxSizing: 'border-box',
+  },
+  progressHead: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: theme.spacing(2),
+    minWidth: 0,
+    marginBottom: theme.spacing(2),
+  },
   logLine: {
     display: 'flex',
     gap: theme.spacing(1.5),
     alignItems: 'flex-start',
     fontSize: 13,
     padding: theme.spacing(0.5, 0),
+    minWidth: 0,
   },
 }));
 
@@ -1065,12 +1080,14 @@ export const OperationProgressPanel: React.FC<{
   const classes = useStyles();
   return (
     <Paper className={classes.progressCard} variant="outlined">
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-        <Typography variant="h6">{heading}</Typography>
-        <Button onClick={onCancel} style={PILL}>
+      <div className={classes.progressHead}>
+        <Typography variant="h6" style={{ minWidth: 0 }}>
+          {heading}
+        </Typography>
+        <Button onClick={onCancel} style={{ ...PILL, flexShrink: 0 }}>
           Cancel
         </Button>
-      </Box>
+      </div>
       <LinearProgress variant="determinate" value={progress} style={{ height: 8, borderRadius: 4 }} />
       <Box mt={2}>
         {lines.map((l, i) => (

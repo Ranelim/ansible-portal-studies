@@ -38,6 +38,7 @@ import { fade, type Theme } from '@material-ui/core/styles';
 import ArrowDropDownIcon from '@material-ui/icons/ArrowDropDown';
 import CheckIcon from '@material-ui/icons/Check';
 import CloseIcon from '@material-ui/icons/Close';
+import CodeIcon from '@material-ui/icons/Code';
 import ExpandLessIcon from '@material-ui/icons/ExpandLess';
 import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
 import HelpOutlineIcon from '@material-ui/icons/HelpOutline';
@@ -65,6 +66,12 @@ import { ReadCountBadge } from '../../common/ReadCountBadge';
 
 const PILL = { borderRadius: 20, textTransform: 'none' as const, fontWeight: 600 };
 const PILL_COMPACT = { ...PILL, minWidth: 0, padding: '2px 12px' };
+
+const LightspeedSpark = ({ size = 14 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 16 16" fill="currentColor" aria-hidden>
+    <path d="M8 0L9.8 6.2L16 8L9.8 9.8L8 16L6.2 9.8L0 8L6.2 6.2L8 0Z" />
+  </svg>
+);
 
 export type CtaLayout = 'current' | 'footer';
 /** Current = Continue under the stepper. Redesign = fork of Current. Work-first = density proposal. */
@@ -117,16 +124,6 @@ type BulkPolicyId =
   | 'accept-ai'
   | 'decline-ai'
   | 'mixed';
-
-const BULK_POLICY_LABEL: Record<BulkPolicyId, string> = {
-  'accept-auto': 'Accept all auto-fixes',
-  'decline-auto': 'Decline auto-fixes',
-  'accept-all': 'Accept all',
-  'decline-all': 'Decline all',
-  'accept-ai': 'Accept AI-fixes',
-  'decline-ai': 'Decline AI-fixes',
-  mixed: 'Mixed',
-};
 
 function laneUniform(
   items: QualityViolation[],
@@ -253,6 +250,9 @@ const useStyles = makeStyles((theme: Theme) => ({
       flexShrink: 0,
     },
   },
+  scrollBodyRedesign: {
+    gap: theme.spacing(1),
+  },
   wizardFooter: {
     flexShrink: 0,
     zIndex: 3,
@@ -300,8 +300,6 @@ const useStyles = makeStyles((theme: Theme) => ({
     color: theme.palette.text.secondary,
   },
   footerSelected: {
-    fontSize: 13,
-    color: theme.palette.text.secondary,
     whiteSpace: 'nowrap',
   },
   footerCount: {
@@ -425,16 +423,53 @@ const useStyles = makeStyles((theme: Theme) => ({
   },
   scanCountHead: {
     display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: theme.spacing(2),
-    padding: theme.spacing(2, 2, 0.5),
+    flexDirection: 'column',
+    alignItems: 'stretch',
+    gap: theme.spacing(1),
+    padding: theme.spacing(2, 2, 1),
     '& p': {
       margin: 0,
     },
   },
+  scanCountRow: {
+    display: 'flex',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    gap: theme.spacing(2),
+    width: '100%',
+  },
   scanCountCopy: {
+    display: 'flex',
+    alignItems: 'baseline',
+    gap: theme.spacing(1),
     minWidth: 0,
+    flexShrink: 0,
+  },
+  scanSevCounts: {
+    display: 'flex',
+    alignItems: 'baseline',
+    justifyContent: 'flex-end',
+    flexWrap: 'wrap',
+    gap: theme.spacing(1.5),
+    minWidth: 0,
+  },
+  scanSevCount: {
+    ...theme.typography.body2,
+    fontSize: 13,
+    fontWeight: 600,
+    lineHeight: 1.2,
+    padding: 0,
+    border: 'none',
+    background: 'none',
+    cursor: 'pointer',
+    whiteSpace: 'nowrap',
+    '&:hover': {
+      textDecoration: 'underline',
+    },
+  },
+  scanMixBar: {
+    width: '100%',
+    height: FINDINGS_BAR_HEIGHT,
   },
   mixBar: {
     height: FINDINGS_BAR_HEIGHT,
@@ -594,9 +629,19 @@ const useStyles = makeStyles((theme: Theme) => ({
     flexWrap: 'wrap',
     gap: theme.spacing(1),
     padding: theme.spacing(1.5, 2),
+    width: '100%',
+    boxSizing: 'border-box',
   },
   search: { width: 220 },
-  select: { minWidth: 168 },
+  searchFill: {
+    flex: '1 1 220px',
+    minWidth: 160,
+    width: 'auto',
+    '& .MuiOutlinedInput-root': {
+      width: '100%',
+    },
+  },
+  select: { minWidth: 168, flexShrink: 0 },
   bulkBar: {
     display: 'flex',
     flexDirection: 'column',
@@ -605,6 +650,7 @@ const useStyles = makeStyles((theme: Theme) => ({
   },
   bulkBarSpaced: {
     paddingTop: theme.spacing(1.5),
+    paddingBottom: theme.spacing(2.5),
   },
   bulkRow: {
     display: 'flex',
@@ -953,43 +999,6 @@ export const InlineVisualReview: React.FC<{
     });
   };
 
-  const stampDecisions = (scope: 'all' | 'auto' | 'ai', value: WizardDecision) => {
-    if (scope === 'auto' || scope === 'all') stampAutoFixes(value);
-    if (scope === 'ai' || scope === 'all') stampAiFixes(value);
-    setActionsAnchor(null);
-  };
-
-  const clearAiDecisions = () => {
-    setAiDecisions?.(prev => {
-      const next = { ...prev };
-      ai.forEach(v => {
-        delete next[findingKey(v)];
-      });
-      return next;
-    });
-  };
-
-  const applyBulkPolicy = (policy: Exclude<BulkPolicyId, 'mixed'>) => {
-    if (policy === 'accept-auto') {
-      stampAutoFixes('accept');
-      clearAiDecisions();
-    } else if (policy === 'decline-auto') {
-      stampAutoFixes('decline');
-      clearAiDecisions();
-    } else if (policy === 'accept-all') {
-      stampDecisions('all', 'accept');
-      return;
-    } else if (policy === 'decline-all') {
-      stampDecisions('all', 'decline');
-      return;
-    } else if (policy === 'accept-ai') {
-      stampAiFixes('accept');
-    } else {
-      stampAiFixes('decline');
-    }
-    setActionsAnchor(null);
-  };
-
   const bulkPolicy = deriveBulkPolicy(auto, ai, readyAi, t1Decisions, aiDecisions);
 
   const jobTitle = currentRedesign
@@ -1061,8 +1070,13 @@ export const InlineVisualReview: React.FC<{
 
   const showingCount = filtered.length;
   const showingLabel = `${showingCount} showing`;
-  const remainingForTab = fixType === 'AI-fix' ? visibleReadyAi.length : visibleAuto.length;
-  const remainingItems = fixType === 'AI-fix' ? visibleReadyAi : visibleAuto;
+  const remainingItems =
+    fixType === 'AI-fix'
+      ? visibleReadyAi
+      : fixType === 'All'
+        ? [...visibleAuto, ...visibleReadyAi]
+        : visibleAuto;
+  const remainingForTab = remainingItems.length;
   const bulkAcceptDecline = (
     <>
       <Button
@@ -1115,7 +1129,14 @@ export const InlineVisualReview: React.FC<{
   );
   const generateButton =
     aiLoading ? (
-      <Button size="small" variant="outlined" color="primary" disabled style={PILL}>
+      <Button
+        size="small"
+        variant="contained"
+        color="primary"
+        disabled
+        startIcon={<LightspeedSpark size={14} />}
+        style={PILL}
+      >
         Generating…
       </Button>
     ) : idleAi.length > 0 ? (
@@ -1123,8 +1144,9 @@ export const InlineVisualReview: React.FC<{
         <span>
           <Button
             size="small"
-            variant="outlined"
+            variant="contained"
             color="primary"
+            startIcon={<LightspeedSpark size={14} />}
             onClick={generateAll}
             style={PILL}
           >
@@ -1135,61 +1157,117 @@ export const InlineVisualReview: React.FC<{
         </span>
       </Tooltip>
     ) : null;
+  const closeActions = () => setActionsAnchor(null);
+
+  const stampTabAll = (value: WizardDecision) => {
+    if (fixType === 'Auto-fix') stampAutoFixes(value);
+    else if (fixType === 'AI-fix') stampAiFixes(value);
+    else {
+      stampAutoFixes(value);
+      stampAiFixes(value);
+    }
+    closeActions();
+  };
+
+  const stampRemaining = (value: WizardDecision) => {
+    decideItems(remainingItems, value);
+    closeActions();
+  };
+
+  const tabCanAcceptAll =
+    fixType === 'AI-fix'
+      ? readyAi.length > 0
+      : fixType === 'Auto-fix'
+        ? auto.length > 0
+        : auto.length > 0 || readyAi.length > 0;
+  const tabCanDeclineAll =
+    fixType === 'AI-fix'
+      ? ai.length > 0
+      : fixType === 'Auto-fix'
+        ? auto.length > 0
+        : auto.length > 0 || ai.length > 0;
+  const acceptAllLabel =
+    fixType === 'Auto-fix'
+      ? 'Accept all auto-fixes'
+      : fixType === 'AI-fix'
+        ? 'Accept all AI-fixes'
+        : 'Accept all';
+  const declineAllLabel =
+    fixType === 'Auto-fix'
+      ? 'Decline all auto-fixes'
+      : fixType === 'AI-fix'
+        ? 'Decline all AI-fixes'
+        : 'Decline all';
+
   const bulkActionsMenu = (
     <Menu
       id="finding-actions-menu"
       className={classes.actionsMenu}
       anchorEl={actionsAnchor}
       open={Boolean(actionsAnchor)}
-      onClose={() => setActionsAnchor(null)}
+      onClose={closeActions}
       getContentAnchorEl={null}
       anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
       transformOrigin={{ vertical: 'top', horizontal: 'left' }}
     >
-      <MenuItem
-        disabled={auto.length === 0}
-        selected={bulkPolicy === 'accept-auto'}
-        onClick={() => applyBulkPolicy('accept-auto')}
-      >
-        Accept all auto-fixes
+      <MenuItem disabled={remainingForTab === 0} onClick={() => stampRemaining('accept')}>
+        Accept remaining{remainingForTab > 0 ? ` (${remainingForTab})` : ''}
       </MenuItem>
-      <MenuItem
-        disabled={auto.length === 0}
-        selected={bulkPolicy === 'decline-auto'}
-        onClick={() => applyBulkPolicy('decline-auto')}
-      >
-        Decline auto-fixes
+      <MenuItem disabled={remainingForTab === 0} onClick={() => stampRemaining('decline')}>
+        Decline remaining
       </MenuItem>
       <Divider />
-      <MenuItem
-        disabled={auto.length === 0 && readyAi.length === 0}
-        selected={bulkPolicy === 'accept-all'}
-        onClick={() => applyBulkPolicy('accept-all')}
-      >
-        Accept all
+      <MenuItem disabled={!tabCanAcceptAll} onClick={() => stampTabAll('accept')}>
+        {acceptAllLabel}
       </MenuItem>
-      <MenuItem
-        disabled={auto.length === 0 && ai.length === 0}
-        selected={bulkPolicy === 'decline-all'}
-        onClick={() => applyBulkPolicy('decline-all')}
-      >
-        Decline all
+      <MenuItem disabled={!tabCanDeclineAll} onClick={() => stampTabAll('decline')}>
+        {declineAllLabel}
       </MenuItem>
-      <Divider />
-      <MenuItem
-        disabled={readyAi.length === 0}
-        selected={bulkPolicy === 'accept-ai'}
-        onClick={() => applyBulkPolicy('accept-ai')}
-      >
-        Accept AI-fixes
-      </MenuItem>
-      <MenuItem
-        disabled={ai.length === 0}
-        selected={bulkPolicy === 'decline-ai'}
-        onClick={() => applyBulkPolicy('decline-ai')}
-      >
-        Decline AI-fixes
-      </MenuItem>
+      {fixType === 'All' ? (
+        <>
+          <Divider />
+          <MenuItem
+            disabled={auto.length === 0}
+            selected={bulkPolicy === 'accept-auto'}
+            onClick={() => {
+              stampAutoFixes('accept');
+              closeActions();
+            }}
+          >
+            Accept all auto-fixes
+          </MenuItem>
+          <MenuItem
+            disabled={auto.length === 0}
+            selected={bulkPolicy === 'decline-auto'}
+            onClick={() => {
+              stampAutoFixes('decline');
+              closeActions();
+            }}
+          >
+            Decline auto-fixes
+          </MenuItem>
+          <MenuItem
+            disabled={readyAi.length === 0}
+            selected={bulkPolicy === 'accept-ai'}
+            onClick={() => {
+              stampAiFixes('accept');
+              closeActions();
+            }}
+          >
+            Accept AI-fixes
+          </MenuItem>
+          <MenuItem
+            disabled={ai.length === 0}
+            selected={bulkPolicy === 'decline-ai'}
+            onClick={() => {
+              stampAiFixes('decline');
+              closeActions();
+            }}
+          >
+            Decline AI-fixes
+          </MenuItem>
+        </>
+      ) : null}
     </Menu>
   );
   const allAutoAccepted = auto.length > 0 && auto.every(v => t1Decisions[findingKey(v)] === 'accept');
@@ -1403,13 +1481,45 @@ export const InlineVisualReview: React.FC<{
       <Paper className={classes.box} elevation={0}>
         {currentRedesign ? (
           <div className={classes.scanCountHead}>
-            <div className={classes.scanCountCopy}>
-              <Typography className={classes.mixTotal} component="p">
-                {mix.total}
-              </Typography>
-              <Typography className={classes.mixMeta} component="p">
-                {findingWord} on this scan
-              </Typography>
+            <div className={classes.scanCountRow}>
+              <div className={classes.scanCountCopy}>
+                <Typography className={classes.mixTotal} component="span">
+                  {mix.total}
+                </Typography>
+                <Typography className={classes.mixMeta} component="span">
+                  {findingWord} on this scan
+                </Typography>
+              </div>
+              <div className={classes.scanSevCounts} aria-label="Findings by severity">
+                {SEV_ORDER.filter(sev => (mix.bySeverity[sev] ?? 0) > 0).map(sev => {
+                  const count = mix.bySeverity[sev];
+                  const isActive = severityFilter.has(sev);
+                  const dim = severityFilter.size > 0 && !isActive;
+                  return (
+                    <button
+                      key={sev}
+                      type="button"
+                      className={classes.scanSevCount}
+                      style={{
+                        color: SEVERITY_COLORS[sev],
+                        opacity: dim ? 0.4 : 1,
+                      }}
+                      aria-pressed={isActive}
+                      onClick={() => toggleSeverity(sev)}
+                    >
+                      {SEV_LABEL[sev]} {count}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div className={classes.scanMixBar}>
+              <SeverityMixBar
+                breakdown={mix.bySeverity}
+                height={FINDINGS_BAR_HEIGHT}
+                activeSeverities={severityFilter}
+                onSegmentClick={toggleSeverity}
+              />
             </div>
           </div>
         ) : null}
@@ -1447,7 +1557,7 @@ export const InlineVisualReview: React.FC<{
         {showListChrome ? (
         <div className={classes.toolbar}>
           <TextField
-            className={classes.search}
+            className={currentRedesign ? classes.searchFill : classes.search}
             size="small"
             variant="outlined"
             placeholder={searchPlaceholder}
@@ -1624,7 +1734,11 @@ export const InlineVisualReview: React.FC<{
         </div>
       )}
       {useFooter ? (
-        <div className={classes.scrollBody}>
+        <div
+          className={`${classes.scrollBody}${
+            currentRedesign ? ` ${classes.scrollBodyRedesign}` : ''
+          }`}
+        >
           {header}
           {summaryAndFindings}
         </div>
@@ -1661,14 +1775,14 @@ export const InlineVisualReview: React.FC<{
             style={currentRedesign ? { gap: 8 } : undefined}
           >
             {currentRedesign ? (
-              <>
-                <Button size="small" variant="outlined" onClick={onCancel} style={PILL}>
-                  Cancel
-                </Button>
-                <span className={classes.footerSelected}>
-                  {selectedLabel}
-                </span>
-              </>
+              <Typography
+                className={classes.footerSelected}
+                variant="body2"
+                color="textSecondary"
+                component="span"
+              >
+                {selectedLabel}
+              </Typography>
             ) : (
               <Button
                 size="small"
@@ -1776,6 +1890,24 @@ const FindingRow: React.FC<{
           Generate AI suggestion
         </Button>
       ) : null
+    ) : lane === 'Manual-fix' ? (
+      <Button
+        size="small"
+        variant="outlined"
+        color="primary"
+        startIcon={<CodeIcon style={{ fontSize: 16 }} />}
+        style={PILL_COMPACT}
+        onClick={() =>
+          window.open(
+            `/devspaces-mockup.html?file=${encodeURIComponent(
+              finding.file || '',
+            )}&line=${finding.lineStart}&tier=${finding.fixTier}&status=open`,
+            '_blank',
+          )
+        }
+      >
+        Open in Dev Spaces
+      </Button>
     ) : null;
 
   return (
