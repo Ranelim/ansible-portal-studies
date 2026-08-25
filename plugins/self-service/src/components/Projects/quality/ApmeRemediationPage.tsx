@@ -56,8 +56,8 @@ import { RemediationReceipt } from './RemediationReceipt';
  * CTA compare (`?cta=current|footer`): Current puts Continue + Cancel under
  * the stepper (with auto-fix decided count). Wizard footer pins them to a
  * sticky step footer. Findings bulk actions stay with the open tab.
- * Review-layout compare (`?review=work|redesign|redesign3`): Work-first
- * density option, Current redesign, or Redesign 3 (copy of Current redesign).
+ * Review-layout compare (`?review=redesign|redesign3|redesign4`):
+ * Current redesign, Redesign 3, or Redesign 4 (copy of Redesign 3).
  */
 
 type StepId =
@@ -81,7 +81,7 @@ type WizardChrome = 'original' | 'new' | 'inline' | 'visual';
  * with Continue under the stepper — not mixed with Accept/Decline.
  * Prototype wizard + Continue-placement compares stay parked.
  * Results & Remediation shows Current / Current redesign / Redesign 3 /
- * Work-first (`?review=redesign`, `?review=redesign3`, or `?review=work`).
+ * Redesign 4 (`?review=redesign`, `?review=redesign3`, or `?review=redesign4`).
  * Set FORCED_REMEDIATION_WIZARD / FORCED_CTA_LAYOUT `null` to revive
  * `?wizard=` / `?cta=`.
  */
@@ -103,7 +103,7 @@ function parseCtaLayout(value: string | null): CtaLayout {
 }
 
 function parseReviewLayout(value: string | null): ReviewLayout {
-  if (value === 'work') return 'work';
+  if (value === 'redesign4') return 'redesign4';
   if (value === 'redesign3') return 'redesign3';
   if (value === 'redesign') return 'redesign';
   return 'current';
@@ -198,7 +198,7 @@ const useStyles = makeStyles(theme => ({
     boxSizing: 'border-box',
   },
   /**
-   * Work-first fills the inset well (`data-portal-remediate-fill` on html).
+   * Redesign layouts fill the inset well (`data-portal-remediate-fill` on html).
    * Height comes from that flex chain — do not nest a `100vh` calc here.
    */
   footerSession: {
@@ -1156,7 +1156,7 @@ export const ApmeRemediationPage = () => {
     Boolean(quality && repo) &&
     visual &&
     step === 'findings' &&
-    (ctaLayout === 'footer' || reviewLayout === 'work' || isRedesignLayout(reviewLayout));
+    (ctaLayout === 'footer' || isRedesignLayout(reviewLayout));
   const hidePageChrome = fillWell && isRedesignLayout(reviewLayout) && step === 'findings';
 
   useEffect(() => {
@@ -1268,16 +1268,16 @@ export const ApmeRemediationPage = () => {
         <ToggleButton value="current">Current</ToggleButton>
         <ToggleButton value="redesign">Current redesign</ToggleButton>
         <ToggleButton value="redesign3">Redesign 3</ToggleButton>
-        <ToggleButton value="work">Work-first</ToggleButton>
+        <ToggleButton value="redesign4">Redesign 4</ToggleButton>
       </ToggleButtonGroup>
       <Typography className={classes.compareHint}>
-        {reviewLayout === 'work'
-          ? 'Compact summary. Accept is the work. Continue stays in the footer until you decide.'
-          : isRedesignLayout(reviewLayout)
-            ? reviewLayout === 'redesign3'
-              ? 'Copy of Current redesign. Iterate here.'
-              : 'All is the default. Tab copy sits above the filters. Footer shows accepted counts by kind, then Continue.'
-            : 'Continue sits under the stepper. Summary and filters stay expanded.'}
+        {reviewLayout === 'redesign4'
+          ? 'Copy of Redesign 3. Accepted rows show Decline; otherwise Accept.'
+          : reviewLayout === 'redesign3'
+            ? 'Copy of Current redesign. Accepted is a toggle. No Decline.'
+            : isRedesignLayout(reviewLayout)
+              ? 'All is the default. Tab copy sits above the filters. Footer shows accepted counts by kind, then Continue.'
+              : 'Continue sits under the stepper. Summary and filters stay expanded.'}
       </Typography>
     </Box>
   ) : null;

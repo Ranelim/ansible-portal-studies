@@ -5,11 +5,11 @@
  * Not fixable. Current redesign: All / Auto-fix / AI-fix / Manual. AI spend
  * lives with Generate AI suggestions (Lightspeed quota — no fake
  * token or dollar estimates). `ctaLayout=footer` parks Continue in a sticky
- * footer instead. `reviewLayout=work` is the density option: compact Summary,
- * hide filters/bulk on small tabs, filled Accept, Continue in the footer.
- * `reviewLayout=redesign` is a fork of Current: All tab, Actions + Generate
- * under the showing count, Continue in a sticky footer. `redesign3` starts
- * as a duplicate of that fork.
+ * footer instead. `reviewLayout=redesign` is a fork of Current: All tab,
+ * Actions + Generate under the showing count, Continue in a sticky footer.
+ * `redesign3` starts as a duplicate of that fork. `redesign4` copies
+ * Redesign 3 and uses opposite row actions (Decline when accepted, Accept
+ * otherwise) with a quiet Accepted status.
  */
 
 import { useLayoutEffect, useMemo, useRef, useState, type Dispatch, type ReactNode, type SetStateAction } from 'react';
@@ -21,6 +21,7 @@ import {
   Divider,
   FormControl,
   InputLabel,
+  ListItemText,
   Menu,
   MenuItem,
   Paper,
@@ -73,11 +74,11 @@ const LightspeedSpark = ({ size = 14 }: { size?: number }) => (
 );
 
 export type CtaLayout = 'current' | 'footer';
-/** Current = Continue under the stepper. Redesign / Redesign 3 = forks of Current. Work-first = density proposal. */
-export type ReviewLayout = 'current' | 'redesign' | 'redesign3' | 'work';
+/** Current = Continue under the stepper. Redesign / 3 / 4 = forks of Current. */
+export type ReviewLayout = 'current' | 'redesign' | 'redesign3' | 'redesign4';
 
 export function isRedesignLayout(layout: ReviewLayout): boolean {
-  return layout === 'redesign' || layout === 'redesign3';
+  return layout === 'redesign' || layout === 'redesign3' || layout === 'redesign4';
 }
 
 const SEV_LABEL: Record<string, string> = {
@@ -92,7 +93,6 @@ type FixLane = 'Auto-fix' | 'AI-fix' | 'Manual-fix';
 type ReviewTab = 'All' | FixLane;
 const SEV_ORDER: SeverityClass[] = ['critical', 'high', 'medium', 'low', 'info'];
 const FINDINGS_BAR_HEIGHT = 6;
-const FILTER_THRESHOLD = 6;
 const LANE_TABS: FixLane[] = ['Auto-fix', 'AI-fix', 'Manual-fix'];
 const REDESIGN_TABS: ReviewTab[] = ['All', 'Auto-fix', 'AI-fix', 'Manual-fix'];
 const TAB_LABEL: Record<FixLane, string> = {
@@ -141,6 +141,18 @@ const REDESIGN_TAB_HINT: Record<ReviewTab, string> = {
   'Auto-fix': 'Replacements the scan already suggested.',
   'AI-fix': 'Optional Lightspeed suggestions. Generating uses quota.',
   'Manual-fix': 'No suggestion. Change these in the file, or leave them.',
+};
+
+/** What each fix type is — no product names, no quota talk. */
+const LANE_EXPLAIN: Record<FixLane, string> = {
+  'Auto-fix': 'Exact replacement the scan already computed',
+  'AI-fix': 'Suggested replacement you generate, then review',
+  'Manual-fix': 'No replacement. Change this in the file yourself',
+};
+
+const LANE_MENU_EXPLAIN = {
+  auto: 'Exact replacements the scan already computed. These start accepted.',
+  ai: 'Suggested replacements you generate for a finding, then review.',
 };
 
 type BulkPolicyId =
@@ -205,9 +217,15 @@ function emptySev(): Record<SeverityClass, number> {
 
 function mixFromFindings(findings: QualityViolation[]) {
   const bySeverity = emptySev();
+  const byLane: Record<FixLane, Record<SeverityClass, number>> = {
+    'Auto-fix': emptySev(),
+    'AI-fix': emptySev(),
+    'Manual-fix': emptySev(),
+  };
   const catMap = new Map<ApmeRuleCategory, Record<SeverityClass, number>>();
   findings.forEach(f => {
     bySeverity[f.severity] += 1;
+    byLane[laneOf(f)][f.severity] += 1;
     const id = apmeCategoryOf(f);
     const rec = catMap.get(id) ?? emptySev();
     rec[f.severity] += 1;
@@ -224,7 +242,7 @@ function mixFromFindings(findings: QualityViolation[]) {
       breakdown,
     };
   });
-  return { total: findings.length, bySeverity, categories };
+  return { total: findings.length, bySeverity, byLane, categories };
 }
 
 function groupByFile(findings: QualityViolation[]): { file: string; findings: QualityViolation[] }[] {
@@ -316,6 +334,11 @@ const useStyles = makeStyles((theme: Theme) => ({
     display: 'block',
     color: theme.palette.text.primary,
     fontWeight: 600,
+  },
+  footerHint: {
+    fontWeight: 400,
+    fontSize: 12,
+    color: theme.palette.text.secondary,
   },
   footerCount: {
     display: 'block',
@@ -453,6 +476,9 @@ const useStyles = makeStyles((theme: Theme) => ({
     gap: theme.spacing(2),
     width: '100%',
   },
+  scanCountRowSplit: {
+    alignItems: 'center',
+  },
   scanCountCopy: {
     display: 'flex',
     alignItems: 'baseline',
@@ -528,6 +554,21 @@ const useStyles = makeStyles((theme: Theme) => ({
   aiBannerAction: {
     flexShrink: 0,
   },
+  aiBannerLink: {
+    textTransform: 'none',
+    fontWeight: 500,
+    fontSize: 13,
+    padding: '4px 8px',
+    minWidth: 0,
+    borderRadius: 16,
+    flexShrink: 0,
+    whiteSpace: 'nowrap',
+    textDecoration: 'none',
+    '&:hover': {
+      backgroundColor: theme.palette.action.hover,
+      textDecoration: 'none',
+    },
+  },
   mixBar: {
     height: FINDINGS_BAR_HEIGHT,
   },
@@ -552,6 +593,46 @@ const useStyles = makeStyles((theme: Theme) => ({
       backgroundColor: theme.palette.action.hover,
       color: theme.palette.text.primary,
     },
+  },
+  drawerToggleEnd: {
+    textTransform: 'none',
+    fontWeight: 500,
+    fontSize: 13,
+    color: theme.palette.text.secondary,
+    padding: '4px 10px',
+    minWidth: 0,
+    borderRadius: 16,
+    flexShrink: 0,
+    whiteSpace: 'nowrap',
+    marginLeft: 'auto',
+    '& .MuiButton-endIcon': {
+      marginLeft: 4,
+    },
+    '&:hover': {
+      backgroundColor: theme.palette.action.hover,
+      color: theme.palette.text.primary,
+    },
+  },
+  findingsBreakdown: {
+    paddingTop: theme.spacing(1),
+  },
+  breakdownSectionTitle: {
+    fontSize: 13,
+    fontWeight: 600,
+    color: theme.palette.text.primary,
+    marginTop: theme.spacing(2),
+    marginBottom: theme.spacing(0.75),
+    '&:first-of-type': {
+      marginTop: theme.spacing(0.5),
+    },
+  },
+  breakdownLaneRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: theme.spacing(1.5),
+    paddingTop: theme.spacing(1.25),
+    paddingBottom: theme.spacing(1.25),
+    borderTop: `1px solid ${theme.palette.divider}`,
   },
   mixChips: {
     marginTop: theme.spacing(1.5),
@@ -589,6 +670,12 @@ const useStyles = makeStyles((theme: Theme) => ({
     fontSize: 14,
     color: theme.palette.text.disabled,
     cursor: 'help',
+  },
+  catHelpHit: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    cursor: 'help',
+    lineHeight: 0,
   },
   catCount: {
     height: 20,
@@ -640,6 +727,13 @@ const useStyles = makeStyles((theme: Theme) => ({
     flexWrap: 'wrap',
     gap: 8,
     width: '100%',
+  },
+  bulkTwinActions: {
+    display: 'flex',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
+    justifyContent: 'flex-end',
   },
   stepCopy: {
     flex: 1,
@@ -728,6 +822,17 @@ const useStyles = makeStyles((theme: Theme) => ({
     color: theme.palette.text.secondary,
     whiteSpace: 'nowrap',
   },
+  bulkCountWrap: {
+    whiteSpace: 'normal',
+  },
+  bulkCountNum: {
+    fontWeight: 700,
+    color: theme.palette.text.primary,
+  },
+  bulkCountPhrase: {
+    fontWeight: 700,
+    color: theme.palette.text.primary,
+  },
   bulkNote: {
     fontSize: 13,
     color: theme.palette.text.secondary,
@@ -744,6 +849,23 @@ const useStyles = makeStyles((theme: Theme) => ({
   actionsMenu: {
     '& .MuiMenuItem-root': {
       fontSize: 14,
+    },
+  },
+  menuItemDescribed: {
+    whiteSpace: 'normal',
+    alignItems: 'flex-start',
+    maxWidth: 360,
+    '& .MuiListItemText-root': {
+      margin: 0,
+    },
+    '& .MuiListItemText-primary': {
+      fontSize: 14,
+    },
+    '& .MuiListItemText-secondary': {
+      fontSize: 12,
+      lineHeight: 1.4,
+      marginTop: 2,
+      whiteSpace: 'normal',
     },
   },
   fileList: {
@@ -799,8 +921,25 @@ const useStyles = makeStyles((theme: Theme) => ({
   rowBtnDeclined: {
     backgroundColor: fade(theme.palette.text.primary, 0.06),
   },
+  rowStatus: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 4,
+    fontSize: 13,
+    fontWeight: 600,
+    lineHeight: 1,
+    whiteSpace: 'nowrap',
+    color:
+      theme.palette.type === 'dark'
+        ? theme.palette.success.light
+        : theme.palette.success.dark,
+    '& svg': {
+      fontSize: 18,
+    },
+  },
   rowAccept: { backgroundColor: fade(theme.palette.success.main, 0.06) },
   rowDecline: { backgroundColor: fade(theme.palette.error.main, 0.06) },
+  rowNeutral: { backgroundColor: theme.palette.background.paper },
   diffBlock: {
     borderTop: `1px solid ${theme.palette.divider}`,
     padding: theme.spacing(1.5, 2, 2),
@@ -901,11 +1040,16 @@ export const InlineVisualReview: React.FC<{
     isRedesignLayout(reviewLayout) ? 'All' : 'Auto-fix',
   );
   const [actionsAnchor, setActionsAnchor] = useState<null | HTMLElement>(null);
+  const [acceptMenuEl, setAcceptMenuEl] = useState<null | HTMLElement>(null);
+  const [declineMenuEl, setDeclineMenuEl] = useState<null | HTMLElement>(null);
   const [breakdownOpen, setBreakdownOpen] = useState(false);
+  const [findingsBreakdownOpen, setFindingsBreakdownOpen] = useState(false);
+  const [filterGeneratedAi, setFilterGeneratedAi] = useState(false);
   const [pulseKey, setPulseKey] = useState<string | null>(null);
-  const workFirst = reviewLayout === 'work';
   const currentRedesign = isRedesignLayout(reviewLayout);
+  const redesign3Plus = reviewLayout === 'redesign3' || reviewLayout === 'redesign4';
   const redesign3 = reviewLayout === 'redesign3';
+  const redesign4 = reviewLayout === 'redesign4';
   const autoKeys = auto.map(findingKey).join('|');
   const seededAutoAccept = useRef(false);
 
@@ -981,12 +1125,32 @@ export const InlineVisualReview: React.FC<{
     [visibleCategories],
   );
 
+  const visibleLanes = useMemo(() => {
+    const any = severityFilter.size > 0;
+    return LANE_TABS.map(lane => {
+      const breakdown = { ...mix.byLane[lane] };
+      if (any) {
+        for (const sev of SEV_ORDER) {
+          if (!severityFilter.has(sev)) breakdown[sev] = 0;
+        }
+      }
+      const count = SEV_ORDER.reduce((sum, sev) => sum + (breakdown[sev] ?? 0), 0);
+      return { lane, breakdown, count };
+    }).filter(row => row.count > 0);
+  }, [mix.byLane, severityFilter]);
+
+  const visibleLaneTotal = useMemo(
+    () => visibleLanes.reduce((sum, row) => sum + row.count, 0),
+    [visibleLanes],
+  );
+
   const autoDecided = auto.filter(v => Boolean(t1Decisions[findingKey(v)])).length;
   const pendingT1 = auto.length - autoDecided;
   const readyAi = ai.filter(v => aiStatus[findingKey(v)] === 'ready');
   const pendingGeneratedAi = readyAi.filter(v => !aiDecisions[findingKey(v)]).length;
   const idleAi = ai.filter(v => (aiStatus[findingKey(v)] ?? 'idle') === 'idle');
-  const aiLoading = ai.some(v => aiStatus[findingKey(v)] === 'loading');
+  const loadingAiCount = ai.filter(v => aiStatus[findingKey(v)] === 'loading').length;
+  const aiLoading = loadingAiCount > 0;
   const remediationCount = auto.length + readyAi.length;
   const autoAccepted = auto.filter(v => t1Decisions[findingKey(v)] === 'accept').length;
   const aiAccepted = ai.filter(v => aiDecisions[findingKey(v)] === 'accept').length;
@@ -996,6 +1160,9 @@ export const InlineVisualReview: React.FC<{
     : pendingT1 > 0 || pendingGeneratedAi > 0 || aiLoading;
 
   const filtered = tabFindings.filter(f => {
+    if (filterGeneratedAi) {
+      if (laneOf(f) !== 'AI-fix' || aiStatus[findingKey(f)] !== 'ready') return false;
+    }
     if (contentType !== 'all' && kindLabel(f) !== contentType) return false;
     if (category !== 'all' && apmeCategoryOf(f) !== category) return false;
     if (severityFilter.size > 0 && !severityFilter.has(f.severity)) return false;
@@ -1039,10 +1206,15 @@ export const InlineVisualReview: React.FC<{
     });
   };
 
-  const onDecision = (v: QualityViolation, d: WizardDecision) => {
+  const onDecision = (v: QualityViolation, d: WizardDecision | null) => {
     const k = findingKey(v);
-    if (v.fixTier === 'ai') setAiDecisions?.(prev => ({ ...prev, [k]: d }));
-    else setT1Decisions?.(prev => ({ ...prev, [k]: d }));
+    const setter = v.fixTier === 'ai' ? setAiDecisions : setT1Decisions;
+    setter?.(prev => {
+      const next = { ...prev };
+      if (d === null) delete next[k];
+      else next[k] = d;
+      return next;
+    });
   };
 
   const generateAll = () => {
@@ -1076,16 +1248,12 @@ export const InlineVisualReview: React.FC<{
           ? 'Accept the auto-fixes you want, then continue.'
           : ''
     : pendingT1 > 0
-      ? workFirst
-        ? 'Accept or decline each auto-fix.'
-        : 'Decide auto-fixes to continue. AI is optional.'
+      ? 'Decide auto-fixes to continue. AI is optional.'
       : aiLoading
         ? 'Wait for AI generation to finish.'
         : pendingGeneratedAi > 0
           ? 'Accept or decline generated AI suggestions to continue.'
-          : workFirst
-            ? 'Auto-fixes decided. Continue when you are ready.'
-            : 'Auto-fixes decided. Ungenerated AI stays in the file.';
+          : 'Auto-fixes decided. Ungenerated AI stays in the file.';
 
   const selectedLabel =
     selectedSuggestions === 1
@@ -1105,28 +1273,11 @@ export const InlineVisualReview: React.FC<{
   const decideCount =
     auto.length === 0
       ? 'No auto-fixes to decide'
-      : workFirst && pendingT1 > 0
-        ? pendingT1 === 1
-          ? '1 auto-fix still needs a decision'
-          : `${pendingT1} auto-fixes still need a decision`
-        : `${autoDecided} of ${auto.length} auto-fixes decided`;
+      : `${autoDecided} of ${auto.length} auto-fixes decided`;
 
   const findingWord = mix.total === 1 ? 'finding' : 'findings';
-  const useFooter = ctaLayout === 'footer' || workFirst || currentRedesign;
-  const showListChrome = !workFirst || tabFindings.length >= FILTER_THRESHOLD;
-  const pulseWork = () => {
-    const first = visibleAuto[0] ?? visibleReadyAi[0];
-    if (!first) return;
-    const key = findingKey(first);
-    setPulseKey(key);
-    window.setTimeout(() => {
-      document.getElementById(`finding-${key}`)?.scrollIntoView({
-        behavior: 'smooth',
-        block: 'center',
-      });
-    }, 0);
-    window.setTimeout(() => setPulseKey(null), 1600);
-  };
+  const useFooter = ctaLayout === 'footer' || currentRedesign;
+  const showListChrome = true;
   const searchPlaceholder =
     fixType === 'All'
       ? 'Search findings'
@@ -1145,6 +1296,8 @@ export const InlineVisualReview: React.FC<{
   );
 
   const showingCount = filtered.length;
+  const showingAccepted = filtered.filter(f => decisions[findingKey(f)] === 'accept').length;
+  const showingDeclined = filtered.filter(f => decisions[findingKey(f)] === 'decline').length;
   const showingLabel = `${showingCount} showing`;
   const remainingItems =
     fixType === 'AI-fix'
@@ -1180,10 +1333,7 @@ export const InlineVisualReview: React.FC<{
     </>
   );
   const continueButton = (
-    <span
-      className={workFirst && nextLocked ? classes.continueHit : undefined}
-      onClick={workFirst && nextLocked ? pulseWork : undefined}
-    >
+    <span>
       <Button
         size="small"
         variant="contained"
@@ -1199,7 +1349,7 @@ export const InlineVisualReview: React.FC<{
             : undefined
         }
       >
-        {workFirst ? 'Continue' : 'Continue to commit'}
+        Continue to commit
       </Button>
     </span>
   );
@@ -1233,7 +1383,11 @@ export const InlineVisualReview: React.FC<{
         </span>
       </Tooltip>
     ) : null;
-  const closeActions = () => setActionsAnchor(null);
+  const closeActions = () => {
+    setActionsAnchor(null);
+    setAcceptMenuEl(null);
+    setDeclineMenuEl(null);
+  };
 
   const stampTabAll = (value: WizardDecision) => {
     if (fixType === 'Auto-fix') stampAutoFixes(value);
@@ -1275,6 +1429,96 @@ export const InlineVisualReview: React.FC<{
         ? 'Decline all AI-fixes'
         : 'Decline all';
 
+  const acceptMenuItems = (
+    <>
+      <MenuItem disabled={remainingForTab === 0} onClick={() => stampRemaining('accept')}>
+        Accept remaining{remainingForTab > 0 ? ` (${remainingForTab})` : ''}
+      </MenuItem>
+      <Divider />
+      <MenuItem disabled={!tabCanAcceptAll} onClick={() => stampTabAll('accept')}>
+        {acceptAllLabel}
+      </MenuItem>
+      {fixType === 'All' ? (
+        <>
+          <Divider />
+          <MenuItem
+            className={classes.menuItemDescribed}
+            disabled={auto.length === 0}
+            selected={bulkPolicy === 'accept-auto'}
+            onClick={() => {
+              stampAutoFixes('accept');
+              closeActions();
+            }}
+          >
+            <ListItemText
+              primary="Accept all auto-fixes"
+              secondary={LANE_MENU_EXPLAIN.auto}
+            />
+          </MenuItem>
+          <MenuItem
+            className={classes.menuItemDescribed}
+            disabled={readyAi.length === 0}
+            selected={bulkPolicy === 'accept-ai'}
+            onClick={() => {
+              stampAiFixes('accept');
+              closeActions();
+            }}
+          >
+            <ListItemText
+              primary="Accept AI-fixes"
+              secondary={LANE_MENU_EXPLAIN.ai}
+            />
+          </MenuItem>
+        </>
+      ) : null}
+    </>
+  );
+
+  const declineMenuItems = (
+    <>
+      <MenuItem disabled={remainingForTab === 0} onClick={() => stampRemaining('decline')}>
+        Decline remaining{remainingForTab > 0 ? ` (${remainingForTab})` : ''}
+      </MenuItem>
+      <Divider />
+      <MenuItem disabled={!tabCanDeclineAll} onClick={() => stampTabAll('decline')}>
+        {declineAllLabel}
+      </MenuItem>
+      {fixType === 'All' ? (
+        <>
+          <Divider />
+          <MenuItem
+            className={classes.menuItemDescribed}
+            disabled={auto.length === 0}
+            selected={bulkPolicy === 'decline-auto'}
+            onClick={() => {
+              stampAutoFixes('decline');
+              closeActions();
+            }}
+          >
+            <ListItemText
+              primary="Decline all auto-fixes"
+              secondary={LANE_MENU_EXPLAIN.auto}
+            />
+          </MenuItem>
+          <MenuItem
+            className={classes.menuItemDescribed}
+            disabled={ai.length === 0}
+            selected={bulkPolicy === 'decline-ai'}
+            onClick={() => {
+              stampAiFixes('decline');
+              closeActions();
+            }}
+          >
+            <ListItemText
+              primary="Decline AI-fixes"
+              secondary={LANE_MENU_EXPLAIN.ai}
+            />
+          </MenuItem>
+        </>
+      ) : null}
+    </>
+  );
+
   const bulkActionsMenu = (
     <Menu
       id="finding-actions-menu"
@@ -1289,7 +1533,7 @@ export const InlineVisualReview: React.FC<{
       <MenuItem disabled={remainingForTab === 0} onClick={() => stampRemaining('accept')}>
         Accept remaining{remainingForTab > 0 ? ` (${remainingForTab})` : ''}
       </MenuItem>
-      {redesign3 ? null : (
+      {redesign3Plus ? null : (
         <MenuItem disabled={remainingForTab === 0} onClick={() => stampRemaining('decline')}>
           Decline remaining
         </MenuItem>
@@ -1298,7 +1542,7 @@ export const InlineVisualReview: React.FC<{
       <MenuItem disabled={!tabCanAcceptAll} onClick={() => stampTabAll('accept')}>
         {acceptAllLabel}
       </MenuItem>
-      {redesign3 ? null : (
+      {redesign3Plus ? null : (
         <MenuItem disabled={!tabCanDeclineAll} onClick={() => stampTabAll('decline')}>
           {declineAllLabel}
         </MenuItem>
@@ -1316,7 +1560,7 @@ export const InlineVisualReview: React.FC<{
           >
             Accept all auto-fixes
           </MenuItem>
-          {redesign3 ? null : (
+          {redesign3Plus ? null : (
             <MenuItem
               disabled={auto.length === 0}
               selected={bulkPolicy === 'decline-auto'}
@@ -1338,7 +1582,7 @@ export const InlineVisualReview: React.FC<{
           >
             Accept AI-fixes
           </MenuItem>
-          {redesign3 ? null : (
+          {redesign3Plus ? null : (
             <MenuItem
               disabled={ai.length === 0}
               selected={bulkPolicy === 'decline-ai'}
@@ -1357,145 +1601,208 @@ export const InlineVisualReview: React.FC<{
 
   const redesignActionsControl =
     currentRedesign && fixType !== 'Manual-fix' && (auto.length > 0 || ai.length > 0) ? (
-      <>
-        <Button
-          size="small"
-          variant="outlined"
-          color="primary"
-          endIcon={<ArrowDropDownIcon />}
-          onClick={event => setActionsAnchor(event.currentTarget)}
-          aria-haspopup="menu"
-          aria-expanded={Boolean(actionsAnchor)}
-          aria-controls={actionsAnchor ? 'finding-actions-menu' : undefined}
-          aria-label={redesign3 ? 'Accept suggestions' : undefined}
-          style={PILL}
-        >
-          {redesign3 ? 'Accept...' : 'Actions'}
-        </Button>
-        {bulkActionsMenu}
-      </>
+      redesign4 ? (
+        <div className={classes.bulkTwinActions}>
+          <Button
+            size="small"
+            variant="outlined"
+            color="primary"
+            startIcon={<CheckIcon />}
+            endIcon={<ArrowDropDownIcon />}
+            onClick={event => {
+              setDeclineMenuEl(null);
+              setAcceptMenuEl(event.currentTarget);
+            }}
+            aria-haspopup="menu"
+            aria-expanded={Boolean(acceptMenuEl)}
+            aria-controls={acceptMenuEl ? 'accept-remediations-menu' : undefined}
+            style={PILL}
+          >
+            Accept remediations
+          </Button>
+          <Menu
+            id="accept-remediations-menu"
+            className={classes.actionsMenu}
+            anchorEl={acceptMenuEl}
+            open={Boolean(acceptMenuEl)}
+            onClose={closeActions}
+            getContentAnchorEl={null}
+            anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+            transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+          >
+            {acceptMenuItems}
+          </Menu>
+          <Button
+            size="small"
+            variant="outlined"
+            color="primary"
+            startIcon={<CloseIcon />}
+            endIcon={<ArrowDropDownIcon />}
+            onClick={event => {
+              setAcceptMenuEl(null);
+              setDeclineMenuEl(event.currentTarget);
+            }}
+            aria-haspopup="menu"
+            aria-expanded={Boolean(declineMenuEl)}
+            aria-controls={declineMenuEl ? 'decline-remediations-menu' : undefined}
+            style={PILL}
+          >
+            Decline remediations
+          </Button>
+          <Menu
+            id="decline-remediations-menu"
+            className={classes.actionsMenu}
+            anchorEl={declineMenuEl}
+            open={Boolean(declineMenuEl)}
+            onClose={closeActions}
+            getContentAnchorEl={null}
+            anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+            transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+          >
+            {declineMenuItems}
+          </Menu>
+        </div>
+      ) : (
+        <>
+          <Button
+            size="small"
+            variant="outlined"
+            color="primary"
+            endIcon={<ArrowDropDownIcon />}
+            onClick={event => setActionsAnchor(event.currentTarget)}
+            aria-haspopup="menu"
+            aria-expanded={Boolean(actionsAnchor)}
+            aria-controls={actionsAnchor ? 'finding-actions-menu' : undefined}
+            style={PILL}
+          >
+            {redesign3Plus ? 'Accept suggestions' : 'Actions'}
+          </Button>
+          {bulkActionsMenu}
+        </>
+      )
     ) : null;
 
   const redesignGenerate =
-    currentRedesign && !redesign3 && (fixType === 'All' || fixType === 'AI-fix')
+    currentRedesign && !redesign3Plus && (fixType === 'All' || fixType === 'AI-fix')
       ? generateButton
       : null;
 
-  const summaryMix = (
-    <>
-      <Typography className={workFirst ? classes.mixTotalCompact : classes.mixTotal} component="span">
-        {mix.total}
-      </Typography>
-      <Typography className={classes.mixMeta} component="span">
-        {findingWord} on this scan
-      </Typography>
-      <div className={workFirst ? classes.compactBar : classes.mixBar}>
-        <SeverityMixBar
-          breakdown={mix.bySeverity}
-          height={FINDINGS_BAR_HEIGHT}
-          activeSeverities={severityFilter}
-          onSegmentClick={toggleSeverity}
-        />
-      </div>
-      <div className={workFirst ? classes.compactChips : classes.mixChips}>
-        <SeverityFilterChips
-          breakdown={mix.bySeverity}
-          active={severityFilter}
-          onToggle={toggleSeverity}
-        />
-      </div>
-      <Button
-        variant="text"
-        color="inherit"
-        size="small"
-        className={`${classes.drawerToggle}${workFirst ? ` ${classes.compactToggle}` : ''}`}
-        endIcon={breakdownOpen ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
-        aria-expanded={breakdownOpen}
-        onClick={() => setBreakdownOpen(open => !open)}
+  const renderCategoryBreakdownRows = () =>
+    visibleCategories.map(cat => (
+      <div
+        key={cat.id}
+        className={`${classes.catRow} ${
+          category === cat.id ? classes.catRowSelected : ''
+        }`}
+        role="button"
+        tabIndex={0}
+        aria-pressed={category === cat.id}
+        aria-label={`${cat.label}, ${cat.count} findings. ${
+          category === cat.id ? 'Clear' : 'Apply'
+        } filter.`}
+        onClick={() => toggleCategory(cat.id)}
+        onKeyDown={event => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            toggleCategory(cat.id);
+          }
+        }}
       >
-        {breakdownOpen ? 'Hide breakdown' : 'Show breakdown'}
-      </Button>
-    </>
-  );
+        <Typography className={classes.catName} component="div">
+          {cat.label}
+          <Tooltip title={cat.hint} arrow>
+            <HelpOutlineIcon
+              className={classes.catHelp}
+              onClick={event => event.stopPropagation()}
+              onKeyDown={event => event.stopPropagation()}
+            />
+          </Tooltip>
+        </Typography>
+        <Chip size="small" label={cat.count} className={classes.catCount} />
+        <div className={classes.catBar}>
+          <SeverityMixBar
+            breakdown={cat.breakdown}
+            height={FINDINGS_BAR_HEIGHT}
+            shareOfTotal={
+              visibleCatTotal > 0 ? cat.count / visibleCatTotal : 0
+            }
+          />
+        </div>
+      </div>
+    ));
 
   const breakdown = (
     <Collapse in={breakdownOpen}>
-      {visibleCategories.map(cat => (
-        <div
-          key={cat.id}
-          className={`${classes.catRow} ${
-            category === cat.id ? classes.catRowSelected : ''
-          }`}
-          role="button"
-          tabIndex={0}
-          aria-pressed={category === cat.id}
-          aria-label={`${cat.label}, ${cat.count} findings. ${
-            category === cat.id ? 'Clear' : 'Apply'
-          } filter.`}
-          onClick={() => toggleCategory(cat.id)}
-          onKeyDown={event => {
-            if (event.key === 'Enter' || event.key === ' ') {
-              event.preventDefault();
-              toggleCategory(cat.id);
-            }
-          }}
-        >
-          <Typography className={classes.catName} component="div">
-            {cat.label}
-            <Tooltip title={cat.hint} arrow>
-              <HelpOutlineIcon
-                className={classes.catHelp}
-                onClick={event => event.stopPropagation()}
-                onKeyDown={event => event.stopPropagation()}
-              />
-            </Tooltip>
-          </Typography>
-          <Chip size="small" label={cat.count} className={classes.catCount} />
-          <div className={classes.catBar}>
-            <SeverityMixBar
-              breakdown={cat.breakdown}
-              height={FINDINGS_BAR_HEIGHT}
-              shareOfTotal={
-                visibleCatTotal > 0 ? cat.count / visibleCatTotal : 0
-              }
-            />
-          </div>
-        </div>
-      ))}
+      {renderCategoryBreakdownRows()}
     </Collapse>
   );
 
-  const gateCopy =
-    fixType === 'Auto-fix'
-      ? pendingT1 > 0
-        ? pendingT1 === 1
-          ? '1 auto-fix still needs a decision'
-          : `${pendingT1} auto-fixes still need a decision`
-        : 'Auto-fixes decided'
-      : fixType === 'AI-fix'
-        ? 'AI is optional. Ungenerated suggestions stay in the file.'
-        : 'These findings have no automated fix. They stay in the file.';
+  const findingsBreakdown = (
+    <Collapse in={findingsBreakdownOpen}>
+      <div className={classes.findingsBreakdown}>
+        <Typography className={classes.breakdownSectionTitle} component="h3">
+          Issues by severity
+        </Typography>
+        <div className={classes.mixBar}>
+          <SeverityMixBar
+            breakdown={mix.bySeverity}
+            height={FINDINGS_BAR_HEIGHT}
+            activeSeverities={severityFilter}
+            onSegmentClick={toggleSeverity}
+          />
+        </div>
+        <div className={classes.mixChips}>
+          <SeverityFilterChips
+            breakdown={mix.bySeverity}
+            active={severityFilter}
+            onToggle={toggleSeverity}
+          />
+        </div>
+        <Typography className={classes.breakdownSectionTitle} component="h3">
+          Issues by fix type
+        </Typography>
+        {visibleLanes.map(row => (
+          <div key={row.lane} className={classes.breakdownLaneRow}>
+            <Typography className={classes.catName} component="div">
+              {reviewTabLabel(row.lane, true)}
+              <Tooltip title={LANE_EXPLAIN[row.lane]} arrow>
+                <span
+                  className={classes.catHelpHit}
+                  tabIndex={0}
+                  aria-label={LANE_EXPLAIN[row.lane]}
+                >
+                  <HelpOutlineIcon className={classes.catHelp} aria-hidden />
+                </span>
+              </Tooltip>
+            </Typography>
+            <Chip
+              size="small"
+              label={row.count}
+              className={classes.catCount}
+            />
+            <div className={classes.catBar}>
+              <SeverityMixBar
+                breakdown={row.breakdown}
+                height={FINDINGS_BAR_HEIGHT}
+                shareOfTotal={
+                  visibleLaneTotal > 0 ? row.count / visibleLaneTotal : 0
+                }
+              />
+            </div>
+          </div>
+        ))}
+        <Typography className={classes.breakdownSectionTitle} component="h3">
+          Issues by category
+        </Typography>
+        {renderCategoryBreakdownRows()}
+      </div>
+    </Collapse>
+  );
 
   const summaryAndFindings = (
     <>
-      {workFirst ? (
-        <Typography className={classes.jobLine} component="p">
-          <strong>{jobTitle}</strong>
-        </Typography>
-      ) : null}
       {currentRedesign ? null : (
       <Paper className={classes.box} elevation={0}>
-        {workFirst ? (
-          <>
-            <div className={classes.compactSummary}>
-              <div className={classes.compactSummaryRow}>{summaryMix}</div>
-            </div>
-            <div className={classes.resultsBody} style={{ paddingTop: 0 }}>
-              {breakdown}
-            </div>
-          </>
-        ) : (
-          <>
             <div className={classes.boxHead}>
               <Typography className={classes.boxTitle}>Summary</Typography>
             </div>
@@ -1538,30 +1845,60 @@ export const InlineVisualReview: React.FC<{
               </div>
               {breakdown}
             </div>
-          </>
-        )}
       </Paper>
       )}
 
       <Paper className={classes.box} elevation={0}>
         {currentRedesign ? (
           <div className={classes.scanCountHead}>
-            <div className={classes.scanCountRow}>
+            <div
+              className={`${classes.scanCountRow}${
+                redesign4 ? ` ${classes.scanCountRowSplit}` : ''
+              }`}
+            >
               <div className={classes.scanCountCopy}>
                 <Typography className={classes.mixTotal} component="span">
                   {mix.total}
                 </Typography>
                 <Typography className={classes.mixMeta} component="span">
                   {findingWord} on this scan
+                  {redesign4 ? (
+                    <>
+                      {`, ${remediationCount} ${
+                        remediationCount === 1 ? 'remediation' : 'remediations'
+                      }`}
+                    </>
+                  ) : null}
                 </Typography>
-                {redesign3 ? (
+                {redesign3Plus && !redesign4 ? (
                   <Typography className={classes.scanAside} component="span">
                     <strong>{remediationCount}</strong>
                     {remediationCount === 1 ? ' remediation' : ' remediations'}
                   </Typography>
                 ) : null}
               </div>
-              {redesign3 ? null : (
+              {redesign4 ? (
+                <Button
+                  variant="text"
+                  color="inherit"
+                  size="small"
+                  className={classes.drawerToggleEnd}
+                  endIcon={
+                    findingsBreakdownOpen ? (
+                      <ExpandLessIcon fontSize="small" />
+                    ) : (
+                      <ExpandMoreIcon fontSize="small" />
+                    )
+                  }
+                  aria-expanded={findingsBreakdownOpen}
+                  aria-controls="findings-breakdown"
+                  onClick={() => setFindingsBreakdownOpen(open => !open)}
+                >
+                  {findingsBreakdownOpen
+                    ? 'Hide findings breakdown'
+                    : 'Show findings breakdown'}
+                </Button>
+              ) : redesign3Plus ? null : (
                 <div className={classes.scanSevCounts} aria-label="Findings by severity">
                   {SEV_ORDER.filter(sev => (mix.bySeverity[sev] ?? 0) > 0).map(sev => {
                     const count = mix.bySeverity[sev];
@@ -1586,7 +1923,10 @@ export const InlineVisualReview: React.FC<{
                 </div>
               )}
             </div>
-            {redesign3 ? null : (
+            {redesign4 ? (
+              <div id="findings-breakdown">{findingsBreakdown}</div>
+            ) : null}
+            {redesign3Plus ? null : (
               <div className={classes.scanMixBar}>
                 <SeverityMixBar
                   breakdown={mix.bySeverity}
@@ -1598,35 +1938,64 @@ export const InlineVisualReview: React.FC<{
             )}
           </div>
         ) : null}
-        {redesign3 && (idleAi.length > 0 || aiLoading) ? (
+        {redesign3Plus &&
+        (idleAi.length > 0 || aiLoading || pendingGeneratedAi > 0) ? (
           <div className={classes.aiBanner} role="status">
             <InfoOutlinedIcon className={classes.aiBannerIcon} aria-hidden />
             <Typography className={classes.aiBannerCopy}>
               {aiLoading
-                ? idleAi.length > 0
-                  ? `Generating suggestions for ${idleAi.length} finding${
-                      idleAi.length === 1 ? '' : 's'
-                    }. This uses Lightspeed quota.`
-                  : 'Generating AI suggestions. This uses Lightspeed quota.'
-                : idleAi.length === 1
-                  ? '1 finding requires AI to generate a suggestion. Generating uses Lightspeed quota.'
-                  : `${idleAi.length} findings require AI to generate suggestions. Generating uses Lightspeed quota.`}
+                ? loadingAiCount === 1
+                  ? 'Generating 1 AI-fix.'
+                  : `Generating ${loadingAiCount} AI-fixes.`
+                : idleAi.length > 0
+                  ? idleAi.length === 1
+                    ? '1 finding has no replacement yet. Generate an AI-fix to review it.'
+                    : `${idleAi.length} findings have no replacement yet. Generate AI-fixes to review them.`
+                  : pendingGeneratedAi === 1
+                    ? '1 AI-fix generated. Review it below.'
+                    : `${pendingGeneratedAi} AI-fixes generated. Review them below.`}
             </Typography>
-            <Button
-              className={classes.aiBannerAction}
-              size="small"
-              variant="contained"
-              color="primary"
-              disabled={aiLoading || idleAi.length === 0}
-              startIcon={<LightspeedSpark size={14} />}
-              onClick={generateAll}
-              style={PILL}
-            >
-              {aiLoading ? 'Generating…' : 'Generate remediations'}
-            </Button>
+            {idleAi.length > 0 || aiLoading ? (
+              <Button
+                className={classes.aiBannerAction}
+                size="small"
+                variant="contained"
+                color="primary"
+                disabled={aiLoading || idleAi.length === 0}
+                startIcon={<LightspeedSpark size={14} />}
+                onClick={generateAll}
+                style={PILL}
+              >
+                {aiLoading ? 'Generating…' : 'Generate remediations'}
+              </Button>
+            ) : pendingGeneratedAi > 0 ? (
+              <Button
+                className={classes.aiBannerLink}
+                size="small"
+                variant="text"
+                color="primary"
+                onClick={() => {
+                  if (filterGeneratedAi) {
+                    setFilterGeneratedAi(false);
+                    return;
+                  }
+                  setFilterGeneratedAi(true);
+                  setQuery('');
+                  setContentType('all');
+                  setCategory('all');
+                  setSeverityFilter(new Set());
+                }}
+              >
+                {filterGeneratedAi
+                  ? 'Show all findings'
+                  : readyAi.length === 1
+                    ? 'View AI remediation'
+                    : 'View AI remediations'}
+              </Button>
+            ) : null}
           </div>
         ) : null}
-        {redesign3 ? null : (
+        {redesign3Plus ? null : (
         <Tabs
           className={classes.tabs}
           value={fixType}
@@ -1658,7 +2027,7 @@ export const InlineVisualReview: React.FC<{
           ))}
         </Tabs>
         )}
-        {currentRedesign && !redesign3 ? (
+        {currentRedesign && !redesign3Plus ? (
           <Typography className={classes.tabPageHint}>
             {REDESIGN_TAB_HINT[fixType]}
           </Typography>
@@ -1731,21 +2100,6 @@ export const InlineVisualReview: React.FC<{
         </div>
         ) : null}
 
-        {workFirst ? (
-          <Typography
-            className={`${classes.gate} ${
-              fixType === 'Auto-fix' && pendingT1 === 0
-                ? classes.gateDone
-                : fixType !== 'Auto-fix'
-                  ? classes.gateMuted
-                  : ''
-            }`}
-            style={{ paddingLeft: 16, paddingRight: 16, paddingTop: showListChrome ? 0 : 8 }}
-          >
-            {gateCopy}
-          </Typography>
-        ) : null}
-
         {(currentRedesign ||
           (fixType !== 'Manual-fix' &&
             (showListChrome || fixType === 'AI-fix' || fixType === 'All'))) ? (
@@ -1759,7 +2113,7 @@ export const InlineVisualReview: React.FC<{
                 Optional. Generating suggestions uses Lightspeed quota.
               </Typography>
             ) : null}
-            {redesign3 ? null : (
+            {redesign3Plus ? null : (
             <div className={classes.bulkRow}>
               <Typography className={classes.bulkCount}>{showingLabel}</Typography>
               {currentRedesign ? null : fixType === 'AI-fix' && aiLoading ? (
@@ -1789,14 +2143,29 @@ export const InlineVisualReview: React.FC<{
             </div>
             )}
             {currentRedesign &&
-            (redesign3 || redesignActionsControl || redesignGenerate) ? (
+            (redesign3Plus || redesignActionsControl || redesignGenerate) ? (
               <div className={classes.bulkListActions} role="region" aria-label="Bulk finding actions">
-                {redesign3 ? (
-                  <Typography className={classes.bulkCount}>{showingLabel}</Typography>
+                {redesign3Plus ? (
+                  <Typography
+                    className={`${classes.bulkCount}${
+                      redesign4 ? ` ${classes.bulkCountWrap}` : ''
+                    }`}
+                  >
+                    {redesign4 ? (
+                      <>
+                        <span className={classes.bulkCountPhrase}>
+                          {showingCount} showing
+                        </span>
+                        {`, ${showingAccepted} accepted, ${showingDeclined} declined`}
+                      </>
+                    ) : (
+                      showingLabel
+                    )}
+                  </Typography>
                 ) : (
                   <div>{redesignActionsControl}</div>
                 )}
-                <div>{redesign3 ? redesignActionsControl : redesignGenerate}</div>
+                <div>{redesign3Plus ? redesignActionsControl : redesignGenerate}</div>
               </div>
             ) : null}
           </div>
@@ -1816,8 +2185,9 @@ export const InlineVisualReview: React.FC<{
                 aiStatus={aiStatus[findingKey(f)] ?? 'idle'}
                 onDecision={d => onDecision(f, d)}
                 onGenerateAi={onGenerateAi}
-                workFirst={workFirst}
                 quietRowActions={currentRedesign}
+                hideDecline={redesign3}
+                oppositeAction={redesign4}
                 highlight={pulseKey === findingKey(f)}
                 showLane={currentRedesign && fixType === 'All'}
               />
@@ -1865,7 +2235,7 @@ export const InlineVisualReview: React.FC<{
       {useFooter ? (
         <div
           className={`${classes.wizardFooter}${
-            workFirst || currentRedesign ? ` ${classes.wizardFooterWork}` : ''
+            currentRedesign ? ` ${classes.wizardFooterWork}` : ''
           }`}
           role="region"
           aria-label="Remediation step actions"
@@ -1873,13 +2243,16 @@ export const InlineVisualReview: React.FC<{
           <div className={classes.footerStatus}>
             {currentRedesign ? (
               <>
-                <span className={classes.footerLead}>{selectedLabel}</span>
-                {redesign3 ? null : selectedBreakdown || 'No suggestions to accept'}
-              </>
-            ) : workFirst ? (
-              <>
-                <span className={classes.footerCount}>{decideCount}</span>
-                {nextLocked ? 'Then you can continue.' : jobTitle}
+                <span className={classes.footerLead}>
+                  {selectedLabel}
+                  {redesign4 ? (
+                    <span className={classes.footerHint}>
+                      {' '}
+                      (auto-fixes are accepted by default)
+                    </span>
+                  ) : null}
+                </span>
+                {redesign3Plus ? null : selectedBreakdown || 'No suggestions to accept'}
               </>
             ) : (
               <>
@@ -1890,7 +2263,7 @@ export const InlineVisualReview: React.FC<{
           </div>
           <div
             className={`${classes.footerActions}${
-              workFirst || currentRedesign ? ` ${classes.footerClearFab}` : ''
+              currentRedesign ? ` ${classes.footerClearFab}` : ''
             }`}
           >
             {currentRedesign ? null : (
@@ -1916,10 +2289,11 @@ const FindingRow: React.FC<{
   finding: QualityViolation;
   decision?: WizardDecision;
   aiStatus: AiRowStatus;
-  onDecision: (d: WizardDecision) => void;
+  onDecision: (d: WizardDecision | null) => void;
   onGenerateAi?: (key: string) => void;
-  workFirst?: boolean;
   quietRowActions?: boolean;
+  hideDecline?: boolean;
+  oppositeAction?: boolean;
   highlight?: boolean;
   showLane?: boolean;
 }> = ({
@@ -1928,8 +2302,9 @@ const FindingRow: React.FC<{
   aiStatus,
   onDecision,
   onGenerateAi,
-  workFirst,
   quietRowActions,
+  hideDecline,
+  oppositeAction,
   highlight,
   showLane,
 }) => {
@@ -1948,32 +2323,69 @@ const FindingRow: React.FC<{
   const rowClass =
     decision === 'accept'
       ? `${classes.issueCard} ${classes.rowAccept}`
-      : decision === 'decline'
-        ? `${classes.issueCard} ${classes.rowDecline}`
-        : classes.issueCard;
+      : oppositeAction
+        ? `${classes.issueCard} ${classes.rowNeutral}`
+        : decision === 'decline'
+          ? `${classes.issueCard} ${classes.rowDecline}`
+          : classes.issueCard;
   const acceptFilled = quietRowActions
     ? false
-    : workFirst
-      ? decision !== 'decline'
-      : decision === 'accept';
+    : decision === 'accept';
   const declineFilled = quietRowActions ? false : decision === 'decline';
 
-  const actions =
-    lane === 'Auto-fix' || (lane === 'AI-fix' && aiStatus === 'ready') ? (
-      <>
+  const suggestionActions = oppositeAction ? (
+    <>
+      {decision === 'accept' ? (
+        <Typography className={classes.rowStatus} component="span">
+          <CheckIcon aria-hidden />
+          Accepted
+        </Typography>
+      ) : null}
+      {decision === 'accept' ? (
         <Button
           size="small"
-          variant={acceptFilled ? 'contained' : 'outlined'}
+          variant="outlined"
           color="primary"
-          className={
-            quietRowActions && decision === 'accept' ? classes.rowBtnAccepted : undefined
-          }
+          startIcon={<CloseIcon />}
+          style={PILL_COMPACT}
+          onClick={() => onDecision('decline')}
+        >
+          Decline remediation
+        </Button>
+      ) : (
+        <Button
+          size="small"
+          variant="outlined"
+          color="primary"
           startIcon={<CheckIcon />}
           style={PILL_COMPACT}
           onClick={() => onDecision('accept')}
         >
-          {decision === 'accept' ? 'Accepted' : 'Accept'}
+          Accept remediation
         </Button>
+      )}
+    </>
+  ) : (
+    <>
+      <Button
+        size="small"
+        variant={acceptFilled ? 'contained' : 'outlined'}
+        color="primary"
+        className={
+          quietRowActions && decision === 'accept' ? classes.rowBtnAccepted : undefined
+        }
+        startIcon={<CheckIcon />}
+        style={PILL_COMPACT}
+        aria-pressed={hideDecline ? decision === 'accept' : undefined}
+        onClick={() =>
+          hideDecline && decision === 'accept'
+            ? onDecision(null)
+            : onDecision('accept')
+        }
+      >
+        {decision === 'accept' ? 'Accepted' : 'Accept'}
+      </Button>
+      {hideDecline ? null : (
         <Button
           size="small"
           variant={declineFilled ? 'contained' : 'outlined'}
@@ -1987,7 +2399,13 @@ const FindingRow: React.FC<{
         >
           {decision === 'decline' ? 'Declined' : 'Decline'}
         </Button>
-      </>
+      )}
+    </>
+  );
+
+  const actions =
+    lane === 'Auto-fix' || (lane === 'AI-fix' && aiStatus === 'ready') ? (
+      suggestionActions
     ) : lane === 'AI-fix' && aiStatus === 'loading' ? null : lane === 'AI-fix' ? (
       onGenerateAi ? (
         <Button

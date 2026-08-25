@@ -232,7 +232,7 @@ const useRootStyles = makeStyles(theme => {
         overflow: 'hidden !important',
       },
     /**
-     * Work-first remediations — fill the inset well and pin Cancel/Continue
+     * Redesign remediations — fill the inset well and pin Cancel/Continue
      * to its bottom. Do not use a nested `100vh` calc: the well is already
      * the scrollport (`pageInsetWell`), and a second height clip collapses
      * findings and hides the footer.
