@@ -1119,7 +1119,7 @@ export const ApmeRemediationPage = () => {
     Boolean(quality && repo) &&
     visual &&
     step === 'findings' &&
-    (ctaLayout === 'footer' || reviewLayout === 'work');
+    (ctaLayout === 'footer' || reviewLayout === 'work' || reviewLayout === 'redesign');
 
   useEffect(() => {
     if (!fillWell) return undefined;
@@ -1177,6 +1177,69 @@ export const ApmeRemediationPage = () => {
   }
 
   const displayRepo = `${repo.org}/${repo.name}`;
+  const pageChrome = (
+    <Box className={classes.chrome}>
+      <Button
+        variant="text"
+        color="inherit"
+        size="small"
+        className={classes.backButton}
+        startIcon={<ArrowBack fontSize="small" />}
+        onClick={goBack}
+      >
+        {backLabel}
+      </Button>
+      <Typography className={classes.title}>{displayRepo}</Typography>
+      <Typography className={classes.meta}>
+        {quality.latestScan.scanId} · commit {quality.lastScannedCommit} · {quality.lastScannedAt}
+      </Typography>
+      <WorkflowStepper
+        steps={steps}
+        current={stepperCurrent}
+        spinning={spinning && !sessionDone}
+        sessionDone={sessionDone}
+        bare={visual}
+      />
+    </Box>
+  );
+  const showReviewCompare =
+    visual && SHOW_REVIEW_LAYOUT_COMPARE && step === 'findings';
+  const layoutCompare = showReviewCompare ? (
+    <Box
+      className={classes.compareStrip}
+      role="region"
+      aria-label="Remediation layout compare"
+    >
+      <Typography className={classes.compareLabel}>Layout</Typography>
+      <ToggleButtonGroup
+        exclusive
+        size="small"
+        value={reviewLayout}
+        onChange={(_event, next) => {
+          if (next == null) return;
+          const nextParams = new URLSearchParams(params);
+          if (next === 'current') {
+            nextParams.delete('review');
+          } else {
+            nextParams.set('review', next);
+          }
+          setParams(nextParams, { replace: true });
+        }}
+        aria-label="Remediation layout"
+      >
+        <ToggleButton value="current">Current</ToggleButton>
+        <ToggleButton value="redesign">Current redesign</ToggleButton>
+        <ToggleButton value="work">Work-first</ToggleButton>
+      </ToggleButtonGroup>
+      <Typography className={classes.compareHint}>
+        {reviewLayout === 'work'
+          ? 'Compact summary. Accept is the work. Continue stays in the footer until you decide.'
+          : reviewLayout === 'redesign'
+            ? 'All is the default. Footer: accept-all-auto checkbox, selected count next to Continue. Actions and Generate sit under the showing count.'
+            : 'Continue sits under the stepper. Summary and filters stay expanded.'}
+      </Typography>
+    </Box>
+  ) : null;
   const sessionAiFix = aiFix.filter(v => Boolean(aiOptIn[findingKey(v)]));
   const t1Accepted = resultsFix
     ? groupByNode(quickFix).filter(n =>
@@ -1217,6 +1280,14 @@ export const ApmeRemediationPage = () => {
             onCancel={goBack}
             ctaLayout={ctaLayout}
             reviewLayout={reviewLayout}
+            header={
+              reviewLayout === 'redesign' ? (
+                <>
+                  {layoutCompare}
+                  {pageChrome}
+                </>
+              ) : undefined
+            }
           />
         );
       }
@@ -1440,48 +1511,12 @@ export const ApmeRemediationPage = () => {
     );
   })();
 
-  const showReviewCompare =
-    visual && SHOW_REVIEW_LAYOUT_COMPARE && step === 'findings';
-
   return (
     <Page themeId="app">
       <Content>
         <Box className={fillWell ? classes.footerSession : undefined}>
-        {showReviewCompare ? (
-        <Box
-          className={classes.compareStrip}
-          role="region"
-          aria-label="Remediation layout compare"
-        >
-          <Typography className={classes.compareLabel}>Layout</Typography>
-          <ToggleButtonGroup
-            exclusive
-            size="small"
-            value={reviewLayout}
-            onChange={(_event, next) => {
-              if (next == null) return;
-              const nextParams = new URLSearchParams(params);
-              if (next === 'current') {
-                nextParams.delete('review');
-              } else {
-                nextParams.set('review', next);
-              }
-              setParams(nextParams, { replace: true });
-            }}
-            aria-label="Remediation layout"
-          >
-            <ToggleButton value="current">Current</ToggleButton>
-            <ToggleButton value="redesign">Current redesign</ToggleButton>
-            <ToggleButton value="work">Work-first</ToggleButton>
-          </ToggleButtonGroup>
-          <Typography className={classes.compareHint}>
-            {reviewLayout === 'work'
-              ? 'Compact summary. Accept is the work. Continue stays in the footer until you decide.'
-              : reviewLayout === 'redesign'
-                ? 'All is the default. Actions accept or decline by type. Generate AI suggestions is on All and AI-fix.'
-                : 'Continue sits under the stepper. Summary and filters stay expanded.'}
-          </Typography>
-        </Box>
+        {showReviewCompare && reviewLayout !== 'redesign' ? (
+        layoutCompare
         ) : visual && !FORCED_CTA_LAYOUT ? (
         <Box
           className={classes.compareStrip}
@@ -1560,29 +1595,7 @@ export const ApmeRemediationPage = () => {
               : classes.wrap
           }
         >
-          <Box className={classes.chrome}>
-          <Button
-            variant="text"
-            color="inherit"
-            size="small"
-            className={classes.backButton}
-            startIcon={<ArrowBack fontSize="small" />}
-            onClick={goBack}
-          >
-            {backLabel}
-          </Button>
-          <Typography className={classes.title}>{displayRepo}</Typography>
-          <Typography className={classes.meta}>
-            {quality.latestScan.scanId} · commit {quality.lastScannedCommit} · {quality.lastScannedAt}
-          </Typography>
-          <WorkflowStepper
-            steps={steps}
-            current={stepperCurrent}
-            spinning={spinning && !sessionDone}
-            sessionDone={sessionDone}
-            bare={visual}
-          />
-          </Box>
+          {!(fillWell && reviewLayout === 'redesign') ? pageChrome : null}
           {fillWell ? <Box className={classes.reviewFill}>{body}</Box> : body}
         </Box>
         </Box>

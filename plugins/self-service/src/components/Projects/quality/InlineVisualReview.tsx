@@ -7,10 +7,12 @@
  * token or dollar estimates). `ctaLayout=footer` parks Continue in a sticky
  * footer instead. `reviewLayout=work` is the density option: compact Summary,
  * hide filters/bulk on small tabs, filled Accept, Continue in the footer.
- * `reviewLayout=redesign` is a fork of Current (same chrome) to iterate on.
+ * `reviewLayout=redesign` is a fork of Current: All tab, Accept-all-auto
+ * checkbox in the footer, Actions + Generate under the showing count,
+ * Continue in a sticky footer.
  */
 
-import { useLayoutEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState, type Dispatch, type ReactNode, type SetStateAction } from 'react';
 import {
   Button,
   Checkbox,
@@ -105,6 +107,66 @@ function reviewTabCountLabel(tab: ReviewTab, n: number, redesign: boolean): stri
   if (tab === 'All') return `${n} findings`;
   if (tab === 'Manual-fix' && redesign) return `${n} manual findings`;
   return TAB_COUNT_LABEL[tab](n);
+}
+
+type BulkPolicyId =
+  | 'accept-auto'
+  | 'decline-auto'
+  | 'accept-all'
+  | 'decline-all'
+  | 'accept-ai'
+  | 'decline-ai'
+  | 'mixed';
+
+const BULK_POLICY_LABEL: Record<BulkPolicyId, string> = {
+  'accept-auto': 'Accept all auto-fixes',
+  'decline-auto': 'Decline auto-fixes',
+  'accept-all': 'Accept all',
+  'decline-all': 'Decline all',
+  'accept-ai': 'Accept AI-fixes',
+  'decline-ai': 'Decline AI-fixes',
+  mixed: 'Mixed',
+};
+
+function laneUniform(
+  items: QualityViolation[],
+  decisions: Record<string, WizardDecision>,
+  value: WizardDecision,
+): boolean {
+  return items.length > 0 && items.every(v => decisions[findingKey(v)] === value);
+}
+
+function laneUntouched(
+  items: QualityViolation[],
+  decisions: Record<string, WizardDecision>,
+): boolean {
+  return items.every(v => {
+    const d = decisions[findingKey(v)];
+    return d !== 'accept' && d !== 'decline';
+  });
+}
+
+function deriveBulkPolicy(
+  auto: QualityViolation[],
+  ai: QualityViolation[],
+  readyAi: QualityViolation[],
+  t1Decisions: Record<string, WizardDecision>,
+  aiDecisions: Record<string, WizardDecision>,
+): BulkPolicyId {
+  const autoAccept = laneUniform(auto, t1Decisions, 'accept');
+  const autoDecline = laneUniform(auto, t1Decisions, 'decline');
+  const autoUntouched = laneUntouched(auto, t1Decisions);
+  const aiUntouched = laneUntouched(ai, aiDecisions);
+  const readyAccept = laneUniform(readyAi, aiDecisions, 'accept');
+  const aiDecline = laneUniform(ai, aiDecisions, 'decline');
+
+  if (autoAccept && aiUntouched) return 'accept-auto';
+  if (autoDecline && aiUntouched) return 'decline-auto';
+  if (readyAccept && autoUntouched) return 'accept-ai';
+  if (aiDecline && autoUntouched) return 'decline-ai';
+  if (autoAccept && readyAccept) return 'accept-all';
+  if (autoDecline && (ai.length === 0 || aiDecline)) return 'decline-all';
+  return 'mixed';
 }
 
 function laneOf(v: QualityViolation): FixLane {
@@ -221,6 +283,26 @@ const useStyles = makeStyles((theme: Theme) => ({
     fontSize: 13,
     color: theme.palette.text.secondary,
     lineHeight: 1.4,
+    minWidth: 0,
+  },
+  footerCheck: {
+    marginLeft: 0,
+    marginRight: 0,
+    flexShrink: 0,
+  },
+  footerCheckBox: {
+    padding: 4,
+  },
+  footerCheckLabel: {
+    fontSize: 13,
+    fontWeight: 400,
+    lineHeight: 1.4,
+    color: theme.palette.text.secondary,
+  },
+  footerSelected: {
+    fontSize: 13,
+    color: theme.palette.text.secondary,
+    whiteSpace: 'nowrap',
   },
   footerCount: {
     display: 'block',
@@ -342,10 +424,17 @@ const useStyles = makeStyles((theme: Theme) => ({
     color: theme.palette.text.secondary,
   },
   scanCountHead: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: theme.spacing(2),
     padding: theme.spacing(2, 2, 0.5),
     '& p': {
       margin: 0,
     },
+  },
+  scanCountCopy: {
+    minWidth: 0,
   },
   mixBar: {
     height: FINDINGS_BAR_HEIGHT,
@@ -452,24 +541,13 @@ const useStyles = makeStyles((theme: Theme) => ({
     flexWrap: 'wrap',
     width: '100%',
   },
-  autoAccept: {
-    marginLeft: 0,
-    marginRight: theme.spacing(1),
-    flexShrink: 0,
-    '& > [class*="MuiFormControlLabel-label"]': {
-      fontSize: 13,
-      fontWeight: 400,
-      lineHeight: 1.4,
-    },
-  },
-  autoAcceptBox: {
-    padding: 4,
-  },
-  autoAcceptLabel: {
-    fontSize: 13,
-    fontWeight: 400,
-    lineHeight: 1.4,
-    color: theme.palette.text.primary,
+  bulkListActions: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 8,
+    width: '100%',
   },
   stepCopy: {
     flex: 1,
@@ -675,6 +753,7 @@ export const InlineVisualReview: React.FC<{
   onCancel: () => void;
   ctaLayout?: CtaLayout;
   reviewLayout?: ReviewLayout;
+  header?: ReactNode;
 }> = ({
   findings,
   t1Decisions,
@@ -688,6 +767,7 @@ export const InlineVisualReview: React.FC<{
   onCancel,
   ctaLayout = 'current',
   reviewLayout = 'current',
+  header,
 }) => {
   const classes = useStyles();
   const decisions = { ...t1Decisions, ...aiDecisions };
@@ -716,8 +796,6 @@ export const InlineVisualReview: React.FC<{
   const workFirst = reviewLayout === 'work';
   const currentRedesign = reviewLayout === 'redesign';
   const autoKeys = auto.map(findingKey).join('|');
-  const allAutoAccepted =
-    auto.length > 0 && auto.every(v => t1Decisions[findingKey(v)] === 'accept');
   const seededAutoAccept = useRef(false);
 
   useLayoutEffect(() => {
@@ -881,6 +959,39 @@ export const InlineVisualReview: React.FC<{
     setActionsAnchor(null);
   };
 
+  const clearAiDecisions = () => {
+    setAiDecisions?.(prev => {
+      const next = { ...prev };
+      ai.forEach(v => {
+        delete next[findingKey(v)];
+      });
+      return next;
+    });
+  };
+
+  const applyBulkPolicy = (policy: Exclude<BulkPolicyId, 'mixed'>) => {
+    if (policy === 'accept-auto') {
+      stampAutoFixes('accept');
+      clearAiDecisions();
+    } else if (policy === 'decline-auto') {
+      stampAutoFixes('decline');
+      clearAiDecisions();
+    } else if (policy === 'accept-all') {
+      stampDecisions('all', 'accept');
+      return;
+    } else if (policy === 'decline-all') {
+      stampDecisions('all', 'decline');
+      return;
+    } else if (policy === 'accept-ai') {
+      stampAiFixes('accept');
+    } else {
+      stampAiFixes('decline');
+    }
+    setActionsAnchor(null);
+  };
+
+  const bulkPolicy = deriveBulkPolicy(auto, ai, readyAi, t1Decisions, aiDecisions);
+
   const jobTitle = currentRedesign
     ? pendingGeneratedAi > 0
       ? 'Accept or decline generated AI suggestions to continue.'
@@ -916,7 +1027,7 @@ export const InlineVisualReview: React.FC<{
         : `${autoDecided} of ${auto.length} auto-fixes decided`;
 
   const findingWord = mix.total === 1 ? 'finding' : 'findings';
-  const useFooter = ctaLayout === 'footer' || workFirst;
+  const useFooter = ctaLayout === 'footer' || workFirst || currentRedesign;
   const showListChrome = !workFirst || tabFindings.length >= FILTER_THRESHOLD;
   const pulseWork = () => {
     const first = visibleAuto[0] ?? visibleReadyAi[0];
@@ -1024,72 +1135,108 @@ export const InlineVisualReview: React.FC<{
         </span>
       </Tooltip>
     ) : null;
-  const actionsMenu = (
-    <>
-      <Button
-        size="small"
-        variant="outlined"
-        color="primary"
-        endIcon={<ArrowDropDownIcon />}
-        onClick={event => setActionsAnchor(event.currentTarget)}
-        aria-haspopup="menu"
-        aria-expanded={Boolean(actionsAnchor)}
-        aria-controls={actionsAnchor ? 'finding-actions-menu' : undefined}
-        style={PILL}
+  const bulkActionsMenu = (
+    <Menu
+      id="finding-actions-menu"
+      className={classes.actionsMenu}
+      anchorEl={actionsAnchor}
+      open={Boolean(actionsAnchor)}
+      onClose={() => setActionsAnchor(null)}
+      getContentAnchorEl={null}
+      anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+      transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+    >
+      <MenuItem
+        disabled={auto.length === 0}
+        selected={bulkPolicy === 'accept-auto'}
+        onClick={() => applyBulkPolicy('accept-auto')}
       >
-        Actions
-      </Button>
-      <Menu
-        id="finding-actions-menu"
-        className={classes.actionsMenu}
-        anchorEl={actionsAnchor}
-        open={Boolean(actionsAnchor)}
-        onClose={() => setActionsAnchor(null)}
-        getContentAnchorEl={null}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+        Accept all auto-fixes
+      </MenuItem>
+      <MenuItem
+        disabled={auto.length === 0}
+        selected={bulkPolicy === 'decline-auto'}
+        onClick={() => applyBulkPolicy('decline-auto')}
       >
-        <MenuItem
-          disabled={auto.length === 0 && readyAi.length === 0}
-          onClick={() => stampDecisions('all', 'accept')}
-        >
-          Accept all
-        </MenuItem>
-        <MenuItem
-          disabled={auto.length === 0 && ai.length === 0}
-          onClick={() => stampDecisions('all', 'decline')}
-        >
-          Decline all
-        </MenuItem>
-        <Divider />
-        <MenuItem
-          disabled={auto.length === 0}
-          onClick={() => stampDecisions('auto', 'accept')}
-        >
-          Accept auto-fixes
-        </MenuItem>
-        <MenuItem
-          disabled={auto.length === 0}
-          onClick={() => stampDecisions('auto', 'decline')}
-        >
-          Decline auto-fixes
-        </MenuItem>
-        <Divider />
-        <MenuItem
-          disabled={readyAi.length === 0}
-          onClick={() => stampDecisions('ai', 'accept')}
-        >
-          Accept AI-fixes
-        </MenuItem>
-        <MenuItem
-          disabled={ai.length === 0}
-          onClick={() => stampDecisions('ai', 'decline')}
-        >
-          Decline AI-fixes
-        </MenuItem>
-      </Menu>
-    </>
+        Decline auto-fixes
+      </MenuItem>
+      <Divider />
+      <MenuItem
+        disabled={auto.length === 0 && readyAi.length === 0}
+        selected={bulkPolicy === 'accept-all'}
+        onClick={() => applyBulkPolicy('accept-all')}
+      >
+        Accept all
+      </MenuItem>
+      <MenuItem
+        disabled={auto.length === 0 && ai.length === 0}
+        selected={bulkPolicy === 'decline-all'}
+        onClick={() => applyBulkPolicy('decline-all')}
+      >
+        Decline all
+      </MenuItem>
+      <Divider />
+      <MenuItem
+        disabled={readyAi.length === 0}
+        selected={bulkPolicy === 'accept-ai'}
+        onClick={() => applyBulkPolicy('accept-ai')}
+      >
+        Accept AI-fixes
+      </MenuItem>
+      <MenuItem
+        disabled={ai.length === 0}
+        selected={bulkPolicy === 'decline-ai'}
+        onClick={() => applyBulkPolicy('decline-ai')}
+      >
+        Decline AI-fixes
+      </MenuItem>
+    </Menu>
   );
+  const allAutoAccepted = auto.length > 0 && auto.every(v => t1Decisions[findingKey(v)] === 'accept');
+  const someAutoAccepted = auto.some(v => t1Decisions[findingKey(v)] === 'accept');
+  const autoAcceptCheckbox =
+    currentRedesign && auto.length > 0 ? (
+      <FormControlLabel
+        className={classes.footerCheck}
+        disableTypography
+        control={
+          <Checkbox
+            className={classes.footerCheckBox}
+            size="small"
+            color="primary"
+            checked={allAutoAccepted}
+            indeterminate={someAutoAccepted && !allAutoAccepted}
+            onChange={(_event, checked) => stampAutoFixes(checked ? 'accept' : null)}
+          />
+        }
+        label={
+          <span className={classes.footerCheckLabel}>Accept all auto-fix suggestions</span>
+        }
+      />
+    ) : null;
+
+  const redesignActionsControl =
+    currentRedesign && fixType !== 'Manual-fix' && (auto.length > 0 || ai.length > 0) ? (
+      <>
+        <Button
+          size="small"
+          variant="outlined"
+          color="primary"
+          endIcon={<ArrowDropDownIcon />}
+          onClick={event => setActionsAnchor(event.currentTarget)}
+          aria-haspopup="menu"
+          aria-expanded={Boolean(actionsAnchor)}
+          aria-controls={actionsAnchor ? 'finding-actions-menu' : undefined}
+          style={PILL}
+        >
+          Actions
+        </Button>
+        {bulkActionsMenu}
+      </>
+    ) : null;
+
+  const redesignGenerate =
+    currentRedesign && (fixType === 'All' || fixType === 'AI-fix') ? generateButton : null;
 
   const summaryMix = (
     <>
@@ -1256,12 +1403,14 @@ export const InlineVisualReview: React.FC<{
       <Paper className={classes.box} elevation={0}>
         {currentRedesign ? (
           <div className={classes.scanCountHead}>
-            <Typography className={classes.mixTotal} component="p">
-              {mix.total}
-            </Typography>
-            <Typography className={classes.mixMeta} component="p">
-              {findingWord} on this scan
-            </Typography>
+            <div className={classes.scanCountCopy}>
+              <Typography className={classes.mixTotal} component="p">
+                {mix.total}
+              </Typography>
+              <Typography className={classes.mixMeta} component="p">
+                {findingWord} on this scan
+              </Typography>
+            </div>
           </div>
         ) : null}
         <Tabs
@@ -1377,7 +1526,9 @@ export const InlineVisualReview: React.FC<{
           </Typography>
         ) : null}
 
-        {fixType !== 'Manual-fix' && (showListChrome || fixType === 'AI-fix' || fixType === 'All') ? (
+        {(currentRedesign ||
+          (fixType !== 'Manual-fix' &&
+            (showListChrome || fixType === 'AI-fix' || fixType === 'All'))) ? (
           <div
             className={`${classes.bulkBar}${
               currentRedesign ? ` ${classes.bulkBarSpaced}` : ''
@@ -1390,12 +1541,7 @@ export const InlineVisualReview: React.FC<{
             ) : null}
             <div className={classes.bulkRow}>
               <Typography className={classes.bulkCount}>{showingLabel}</Typography>
-              {currentRedesign ? (
-                <div className={classes.bulkActions}>
-                  {actionsMenu}
-                  {fixType === 'All' || fixType === 'AI-fix' ? generateButton : null}
-                </div>
-              ) : fixType === 'AI-fix' && aiLoading ? (
+              {currentRedesign ? null : fixType === 'AI-fix' && aiLoading ? (
                 <div className={classes.bulkActions}>
                   <Button size="small" variant="contained" color="primary" disabled style={PILL}>
                     Generating…
@@ -1420,6 +1566,12 @@ export const InlineVisualReview: React.FC<{
                 <div className={classes.bulkActions}>{bulkAcceptDecline}</div>
               )}
             </div>
+            {currentRedesign && (redesignActionsControl || redesignGenerate) ? (
+              <div className={classes.bulkListActions} role="region" aria-label="Bulk finding actions">
+                <div>{redesignActionsControl}</div>
+                <div>{redesignGenerate}</div>
+              </div>
+            ) : null}
           </div>
         ) : null}
 
@@ -1451,46 +1603,18 @@ export const InlineVisualReview: React.FC<{
 
   return (
     <div className={`${classes.stack}${useFooter ? ` ${classes.stackFill}` : ''}`}>
-      {useFooter ? null : (
+      {currentRedesign ? null : useFooter ? null : (
         <div
           className={classes.stepChrome}
           role="region"
           aria-label="Remediation step actions"
         >
           <div className={classes.stepChromeTop}>
-          {currentRedesign && auto.length > 0 ? (
-            <FormControlLabel
-              className={classes.autoAccept}
-              disableTypography
-              control={
-                <Checkbox
-                  className={classes.autoAcceptBox}
-                  color="primary"
-                  size="small"
-                  checked={allAutoAccepted}
-                  onChange={(_event, checked) =>
-                    stampAutoFixes(checked ? 'accept' : null)
-                  }
-                  inputProps={{ 'aria-label': 'Accept all auto-fixes' }}
-                />
-              }
-              label={
-                <span className={classes.autoAcceptLabel}>Accept all auto-fixes</span>
-              }
-            />
-          ) : currentRedesign ? null : (
-            <Typography className={classes.stepCopy}>{jobTitle}</Typography>
-          )}
+          <Typography className={classes.stepCopy}>{jobTitle}</Typography>
           <div className={classes.stepActions}>
-            {currentRedesign ? (
-              <Typography className={classes.stepProgress} component="span">
-                {selectedLabel}
-              </Typography>
-            ) : (
-              <Typography className={classes.stepProgress} component="span">
-                {decideCount}
-              </Typography>
-            )}
+            <Typography className={classes.stepProgress} component="span">
+              {decideCount}
+            </Typography>
             {continueButton}
             <Button size="small" variant="outlined" onClick={onCancel} style={PILL}>
               Cancel
@@ -1500,18 +1624,25 @@ export const InlineVisualReview: React.FC<{
         </div>
       )}
       {useFooter ? (
-        <div className={classes.scrollBody}>{summaryAndFindings}</div>
+        <div className={classes.scrollBody}>
+          {header}
+          {summaryAndFindings}
+        </div>
       ) : (
         <div className={classes.cards}>{summaryAndFindings}</div>
       )}
       {useFooter ? (
         <div
-          className={`${classes.wizardFooter}${workFirst ? ` ${classes.wizardFooterWork}` : ''}`}
+          className={`${classes.wizardFooter}${
+            workFirst || currentRedesign ? ` ${classes.wizardFooterWork}` : ''
+          }`}
           role="region"
           aria-label="Remediation step actions"
         >
-          <Typography className={classes.footerStatus}>
-            {workFirst ? (
+          <div className={classes.footerStatus}>
+            {currentRedesign ? (
+              autoAcceptCheckbox
+            ) : workFirst ? (
               <>
                 <span className={classes.footerCount}>{decideCount}</span>
                 {nextLocked ? 'Then you can continue.' : jobTitle}
@@ -1522,17 +1653,33 @@ export const InlineVisualReview: React.FC<{
                 <span className={classes.footerCount}>{decideCount}</span>
               </>
             )}
-          </Typography>
-          <div className={`${classes.footerActions}${workFirst ? ` ${classes.footerClearFab}` : ''}`}>
-            <Button
-              size="small"
-              variant="text"
-              color="inherit"
-              className={classes.footerCancel}
-              onClick={onCancel}
-            >
-              Cancel
-            </Button>
+          </div>
+          <div
+            className={`${classes.footerActions}${
+              workFirst || currentRedesign ? ` ${classes.footerClearFab}` : ''
+            }`}
+            style={currentRedesign ? { gap: 8 } : undefined}
+          >
+            {currentRedesign ? (
+              <>
+                <Button size="small" variant="outlined" onClick={onCancel} style={PILL}>
+                  Cancel
+                </Button>
+                <span className={classes.footerSelected}>
+                  {selectedLabel}
+                </span>
+              </>
+            ) : (
+              <Button
+                size="small"
+                variant="text"
+                color="inherit"
+                className={classes.footerCancel}
+                onClick={onCancel}
+              >
+                Cancel
+              </Button>
+            )}
             {continueButton}
           </div>
         </div>
