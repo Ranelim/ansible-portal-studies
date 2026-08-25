@@ -218,6 +218,41 @@ const useRootStyles = makeStyles(theme => {
         padding: '0 !important',
         overflow: 'hidden !important',
       },
+    /**
+     * Work-first remediations — fill the inset well and pin Cancel/Continue
+     * to its bottom. Do not use a nested `100vh` calc: the well is already
+     * the scrollport (`pageInsetWell`), and a second height clip collapses
+     * findings and hides the footer.
+     */
+    'html[data-portal-remediate-fill] [data-portal-page-inset]': {
+      '@media (min-width: 600px)': {
+        display: 'flex !important',
+        flexDirection: 'column !important',
+        overflow: 'hidden !important',
+      },
+    },
+    'html[data-portal-remediate-fill] [data-portal-page-inset] [class*="BackstagePage-root"]':
+      {
+        '@media (min-width: 600px)': {
+          flex: '1 1 auto !important',
+          minHeight: '0 !important',
+          height: '100% !important',
+          maxHeight: 'none !important',
+          overflow: 'hidden !important',
+          display: 'flex !important',
+          flexDirection: 'column !important',
+        },
+      },
+    'html[data-portal-remediate-fill] [class*="BackstageSidebarPage-root"] main [class*="BackstageContent-root"]':
+      {
+        flex: '1 1 auto !important',
+        minHeight: '0 !important',
+        height: '100% !important',
+        display: 'flex !important',
+        flexDirection: 'column !important',
+        overflow: 'hidden !important',
+        paddingBottom: '0 !important',
+      },
     'body, html': {
       backgroundColor: `${sidebarBg} !important`,
     },

@@ -37,3 +37,4 @@ export function unifiedDiff(current: string[], proposed: string[]): DiffLine[] {
   }
   return out;
 }
+

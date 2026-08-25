@@ -39,7 +39,7 @@ import {
   useAssessFilters,
   useGateFilters,
 } from './SpaRemediationReview';
-import { InlineVisualReview, type CtaLayout } from './InlineVisualReview';
+import { InlineVisualReview, type CtaLayout, type ReviewLayout } from './InlineVisualReview';
 import { RemediationReceipt } from './RemediationReceipt';
 
 /**
@@ -51,6 +51,8 @@ import { RemediationReceipt } from './RemediationReceipt';
  * CTA compare (`?cta=current|footer`): Current puts Continue + Cancel under
  * the stepper (with auto-fix decided count). Wizard footer pins them to a
  * sticky step footer. Findings bulk actions stay with the open tab.
+ * Review-layout compare (`?review=work|redesign`): Work-first density
+ * option, or Current redesign (fork of Current) on Results & Remediation.
  */
 
 type StepId =
@@ -72,11 +74,15 @@ type WizardChrome = 'original' | 'new' | 'inline' | 'visual';
 /**
  * Force Inline visual (3-step: Scan → Results & Remediation → Commit)
  * with Continue under the stepper — not mixed with Accept/Decline.
- * Prototype + Continue-placement compare strips stay parked.
- * Set either force `null` to revive `?wizard=` / `?cta=` switching.
+ * Prototype wizard + Continue-placement compares stay parked.
+ * Results & Remediation shows Current / Current redesign / Work-first
+ * (`?review=redesign` or `?review=work`).
+ * Set FORCED_REMEDIATION_WIZARD / FORCED_CTA_LAYOUT `null` to revive
+ * `?wizard=` / `?cta=`.
  */
 const FORCED_REMEDIATION_WIZARD: WizardChrome | null = 'visual';
 const FORCED_CTA_LAYOUT: CtaLayout | null = 'current';
+const SHOW_REVIEW_LAYOUT_COMPARE = true;
 
 function parseWizardChrome(value: string | null): WizardChrome {
   if (FORCED_REMEDIATION_WIZARD) return FORCED_REMEDIATION_WIZARD;
@@ -89,6 +95,12 @@ function parseWizardChrome(value: string | null): WizardChrome {
 function parseCtaLayout(value: string | null): CtaLayout {
   if (FORCED_CTA_LAYOUT) return FORCED_CTA_LAYOUT;
   return value === 'current' ? 'current' : 'footer';
+}
+
+function parseReviewLayout(value: string | null): ReviewLayout {
+  if (value === 'work') return 'work';
+  if (value === 'redesign') return 'redesign';
+  return 'current';
 }
 
 function isInlineChrome(chrome: WizardChrome): boolean {
@@ -158,17 +170,18 @@ const useStyles = makeStyles(theme => ({
     paddingBottom: theme.spacing(4),
   },
   /**
-   * Fill the remaining well under the compare strip so the step footer
-   * stays on screen. `100vh - 320px` sat below the fold (masthead +
-   * compare + stepper) while the findings action bar stayed sticky.
+   * Work-first fills the inset well (`data-portal-remediate-fill` on html).
+   * Height comes from that flex chain — do not nest a `100vh` calc here.
    */
   footerSession: {
     display: 'flex',
     flexDirection: 'column',
+    flex: 1,
+    minHeight: 0,
+    height: '100%',
     overflow: 'hidden',
     boxSizing: 'border-box',
-    height: 'calc(100vh - var(--portal-chrome-top, 64px) - 3rem - 40px)',
-    maxHeight: 'calc(100vh - var(--portal-chrome-top, 64px) - 3rem - 40px)',
+    width: '100%',
   },
   wrapVisualFooter: {
     flex: 1,
@@ -191,9 +204,6 @@ const useStyles = makeStyles(theme => ({
     overflow: 'hidden',
   },
   compareStrip: {
-    position: 'sticky',
-    top: 0,
-    zIndex: 2,
     flexShrink: 0,
     display: 'flex',
     alignItems: 'center',
@@ -976,6 +986,7 @@ export const ApmeRemediationPage = () => {
   const resume = params.get('resume') === '1';
   const wizard = parseWizardChrome(params.get('wizard'));
   const ctaLayout = parseCtaLayout(params.get('cta'));
+  const reviewLayout = parseReviewLayout(params.get('review'));
   const compact = wizard !== 'original';
   const inline = isInlineChrome(wizard);
   const visual = isVisualChrome(wizard);
@@ -1104,6 +1115,20 @@ export const ApmeRemediationPage = () => {
     };
   }, [step, includeAi, inline, aiGenerating]);
 
+  const fillWell =
+    Boolean(quality && repo) &&
+    visual &&
+    step === 'findings' &&
+    (ctaLayout === 'footer' || reviewLayout === 'work');
+
+  useEffect(() => {
+    if (!fillWell) return undefined;
+    document.documentElement.setAttribute('data-portal-remediate-fill', '');
+    return () => {
+      document.documentElement.removeAttribute('data-portal-remediate-fill');
+    };
+  }, [fillWell]);
+
   const goBack = useCallback(() => {
     if (fromRepo) {
       navigate(`/self-service/repositories/${encodeURIComponent(repoName)}`);
@@ -1191,6 +1216,7 @@ export const ApmeRemediationPage = () => {
             onNext={() => setStep('tier1_applied')}
             onCancel={goBack}
             ctaLayout={ctaLayout}
+            reviewLayout={reviewLayout}
           />
         );
       }
@@ -1414,13 +1440,49 @@ export const ApmeRemediationPage = () => {
     );
   })();
 
-  const footerMode = visual && ctaLayout === 'footer';
+  const showReviewCompare =
+    visual && SHOW_REVIEW_LAYOUT_COMPARE && step === 'findings';
 
   return (
     <Page themeId="app">
       <Content>
-        <Box className={footerMode ? classes.footerSession : undefined}>
-        {visual && !FORCED_CTA_LAYOUT ? (
+        <Box className={fillWell ? classes.footerSession : undefined}>
+        {showReviewCompare ? (
+        <Box
+          className={classes.compareStrip}
+          role="region"
+          aria-label="Remediation layout compare"
+        >
+          <Typography className={classes.compareLabel}>Layout</Typography>
+          <ToggleButtonGroup
+            exclusive
+            size="small"
+            value={reviewLayout}
+            onChange={(_event, next) => {
+              if (next == null) return;
+              const nextParams = new URLSearchParams(params);
+              if (next === 'current') {
+                nextParams.delete('review');
+              } else {
+                nextParams.set('review', next);
+              }
+              setParams(nextParams, { replace: true });
+            }}
+            aria-label="Remediation layout"
+          >
+            <ToggleButton value="current">Current</ToggleButton>
+            <ToggleButton value="redesign">Current redesign</ToggleButton>
+            <ToggleButton value="work">Work-first</ToggleButton>
+          </ToggleButtonGroup>
+          <Typography className={classes.compareHint}>
+            {reviewLayout === 'work'
+              ? 'Compact summary. Accept is the work. Continue stays in the footer until you decide.'
+              : reviewLayout === 'redesign'
+                ? 'All is the default. Actions accept or decline by type. Generate AI suggestions is on All and AI-fix.'
+                : 'Continue sits under the stepper. Summary and filters stay expanded.'}
+          </Typography>
+        </Box>
+        ) : visual && !FORCED_CTA_LAYOUT ? (
         <Box
           className={classes.compareStrip}
           role="region"
@@ -1494,7 +1556,7 @@ export const ApmeRemediationPage = () => {
         <Box
           className={
             visual
-              ? `${classes.wrapVisual}${footerMode ? ` ${classes.wrapVisualFooter}` : ''}`
+              ? `${classes.wrapVisual}${fillWell ? ` ${classes.wrapVisualFooter}` : ''}`
               : classes.wrap
           }
         >
@@ -1521,7 +1583,7 @@ export const ApmeRemediationPage = () => {
             bare={visual}
           />
           </Box>
-          {footerMode ? <Box className={classes.reviewFill}>{body}</Box> : body}
+          {fillWell ? <Box className={classes.reviewFill}>{body}</Box> : body}
         </Box>
         </Box>
       </Content>
