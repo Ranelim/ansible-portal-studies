@@ -303,12 +303,32 @@ const useStyles = makeStyles((theme: Theme) => ({
     boxSizing: 'border-box',
   },
   progressHead: {
-    display: 'flex',
-    justifyContent: 'space-between',
+    display: 'grid',
+    gridTemplateColumns: 'minmax(0, 1fr) auto',
     alignItems: 'center',
-    gap: theme.spacing(2),
+    columnGap: theme.spacing(2),
     minWidth: 0,
+    maxWidth: '100%',
     marginBottom: theme.spacing(2),
+  },
+  progressTrack: {
+    display: 'block',
+    width: '100%',
+    maxWidth: '100%',
+    minWidth: 0,
+    height: 8,
+    borderRadius: 4,
+    overflow: 'hidden',
+    backgroundColor:
+      theme.palette.type === 'dark'
+        ? 'rgba(43, 154, 249, 0.24)'
+        : 'rgba(0, 102, 204, 0.16)',
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 4,
+    backgroundColor: theme.palette.primary.main,
+    transition: 'width 0.3s ease',
   },
   logLine: {
     display: 'flex',
@@ -1084,11 +1104,16 @@ export const OperationProgressPanel: React.FC<{
         <Typography variant="h6" style={{ minWidth: 0 }}>
           {heading}
         </Typography>
-        <Button onClick={onCancel} style={{ ...PILL, flexShrink: 0 }}>
+        <Button onClick={onCancel} style={{ ...PILL, justifySelf: 'end' }}>
           Cancel
         </Button>
       </div>
-      <LinearProgress variant="determinate" value={progress} style={{ height: 8, borderRadius: 4 }} />
+      <div className={classes.progressTrack} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}>
+        <div
+          className={classes.progressFill}
+          style={{ width: `${Math.max(0, Math.min(100, progress))}%` }}
+        />
+      </div>
       <Box mt={2}>
         {lines.map((l, i) => (
           <div key={`${l.phase}-${i}`} className={classes.logLine}>

@@ -190,9 +190,22 @@ const useRootStyles = makeStyles(theme => {
      * RHDH PF6 page inset lives on SidebarPage `> main`. Current Backstage
      * SidebarPage children are Sidebar + our wrapper (Page `main` is nested),
      * so the theme selector never matches. Rounding is on `pageInsetWell`.
+     *
+     * Stock SidebarPage is `width: 100%` + `paddingLeft: 224`. Without
+     * border-box + a flex column, the well can size to the viewport and
+     * paint under the window edge (scan Cancel clips to a stray “c”).
      */
     '[class*="BackstageSidebarPage-root"]': {
       backgroundColor: `${sidebarBg} !important`,
+      boxSizing: 'border-box !important',
+      width: '100% !important',
+      maxWidth: '100% !important',
+      minWidth: '0 !important',
+      minHeight: '0 !important',
+      flex: '1 1 0% !important',
+      display: 'flex !important',
+      flexDirection: 'column !important',
+      overflow: 'hidden !important',
     },
     /**
      * Assistant chat trial — fill the content card and pin composer to its
@@ -228,7 +241,11 @@ const useRootStyles = makeStyles(theme => {
       '@media (min-width: 600px)': {
         display: 'flex !important',
         flexDirection: 'column !important',
+        flex: '1 1 0% !important',
+        minWidth: '0 !important',
+        minHeight: '0 !important',
         overflow: 'hidden !important',
+        overflowX: 'hidden !important',
       },
     },
     'html[data-portal-remediate-fill] [data-portal-page-inset] [class*="BackstagePage-root"]':
@@ -236,6 +253,9 @@ const useRootStyles = makeStyles(theme => {
         '@media (min-width: 600px)': {
           flex: '1 1 auto !important',
           minHeight: '0 !important',
+          minWidth: '0 !important',
+          width: 'auto !important',
+          maxWidth: '100% !important',
           height: '100% !important',
           maxHeight: 'none !important',
           overflow: 'hidden !important',
@@ -243,15 +263,20 @@ const useRootStyles = makeStyles(theme => {
           flexDirection: 'column !important',
         },
       },
-    'html[data-portal-remediate-fill] [class*="BackstageSidebarPage-root"] main [class*="BackstageContent-root"]':
+    'html[data-portal-remediate-fill] [data-portal-page-inset] [class*="BackstageContent-root"]':
       {
         flex: '1 1 auto !important',
         minHeight: '0 !important',
+        minWidth: '0 !important',
+        width: 'auto !important',
+        maxWidth: '100% !important',
         height: '100% !important',
         display: 'flex !important',
         flexDirection: 'column !important',
         overflow: 'hidden !important',
+        overflowX: 'hidden !important',
         paddingBottom: '0 !important',
+        boxSizing: 'border-box !important',
       },
     'body, html': {
       backgroundColor: `${sidebarBg} !important`,
@@ -301,12 +326,27 @@ const useRootStyles = makeStyles(theme => {
         height: 'auto !important',
         minHeight: '100%',
         maxHeight: 'none !important',
+        minWidth: '0 !important',
+        maxWidth: '100% !important',
         overflow: 'visible !important',
+        overflowX: 'hidden !important',
+        boxSizing: 'border-box !important',
       },
     },
   },
   fixedHeaderOffset: {
     minHeight: '100vh',
+    height: '100vh',
+    maxHeight: '100vh',
+    '@supports (height: 100dvh)': {
+      minHeight: '100dvh',
+      height: '100dvh',
+      maxHeight: '100dvh',
+    },
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden',
+    boxSizing: 'border-box',
     // Same gray as RHDH SidebarPage so the rounded main inset reads against chrome.
     backgroundColor: sidebarBg,
   },
@@ -324,10 +364,18 @@ const useRootStyles = makeStyles(theme => {
       marginRight: pageInset,
       marginBottom: pageInset,
       marginLeft: 0,
-      height: `calc(100vh - var(--portal-chrome-top, ${CHROME_TOP_BASE}px) - 2 * ${pageInset})`,
-      maxHeight: `calc(100vh - var(--portal-chrome-top, ${CHROME_TOP_BASE}px) - 2 * ${pageInset})`,
+      flex: '1 1 0%',
+      alignSelf: 'stretch',
+      minWidth: 0,
+      minHeight: 0,
+      width: 'auto',
+      height: 'auto',
+      maxHeight: 'none',
+      boxSizing: 'border-box',
+      contain: 'inline-size',
       backgroundColor: theme.palette.background.default,
       overflow: 'auto',
+      overflowX: 'hidden',
     },
   },
   /** Bridge: masthead only — full-width content, no experience rail. */

@@ -39,7 +39,12 @@ import {
   useAssessFilters,
   useGateFilters,
 } from './SpaRemediationReview';
-import { InlineVisualReview, type CtaLayout, type ReviewLayout } from './InlineVisualReview';
+import {
+  InlineVisualReview,
+  isRedesignLayout,
+  type CtaLayout,
+  type ReviewLayout,
+} from './InlineVisualReview';
 import { RemediationReceipt } from './RemediationReceipt';
 
 /**
@@ -51,8 +56,8 @@ import { RemediationReceipt } from './RemediationReceipt';
  * CTA compare (`?cta=current|footer`): Current puts Continue + Cancel under
  * the stepper (with auto-fix decided count). Wizard footer pins them to a
  * sticky step footer. Findings bulk actions stay with the open tab.
- * Review-layout compare (`?review=work|redesign`): Work-first density
- * option, or Current redesign (fork of Current) on Results & Remediation.
+ * Review-layout compare (`?review=work|redesign|redesign3`): Work-first
+ * density option, Current redesign, or Redesign 3 (copy of Current redesign).
  */
 
 type StepId =
@@ -75,8 +80,8 @@ type WizardChrome = 'original' | 'new' | 'inline' | 'visual';
  * Force Inline visual (3-step: Scan → Results & Remediation → Commit)
  * with Continue under the stepper — not mixed with Accept/Decline.
  * Prototype wizard + Continue-placement compares stay parked.
- * Results & Remediation shows Current / Current redesign / Work-first
- * (`?review=redesign` or `?review=work`).
+ * Results & Remediation shows Current / Current redesign / Redesign 3 /
+ * Work-first (`?review=redesign`, `?review=redesign3`, or `?review=work`).
  * Set FORCED_REMEDIATION_WIZARD / FORCED_CTA_LAYOUT `null` to revive
  * `?wizard=` / `?cta=`.
  */
@@ -99,6 +104,7 @@ function parseCtaLayout(value: string | null): CtaLayout {
 
 function parseReviewLayout(value: string | null): ReviewLayout {
   if (value === 'work') return 'work';
+  if (value === 'redesign3') return 'redesign3';
   if (value === 'redesign') return 'redesign';
   return 'current';
 }
@@ -165,18 +171,31 @@ const useStyles = makeStyles(theme => ({
   wrap: {
     maxWidth: 1200,
   },
-  visualSession: {
+  pageFit: {
+    minWidth: 0,
+    maxWidth: '100%',
     width: '100%',
+    overflowX: 'hidden',
+    boxSizing: 'border-box',
+  },
+  visualSession: {
     maxWidth: '100%',
     minWidth: 0,
     boxSizing: 'border-box',
   },
   wrapVisual: {
-    width: '100%',
     maxWidth: '100%',
     minWidth: 0,
     boxSizing: 'border-box',
+    overflowX: 'hidden',
     paddingBottom: theme.spacing(4),
+  },
+  pageClip: {
+    minWidth: 0,
+    maxWidth: '100%',
+    width: '100%',
+    overflowX: 'hidden',
+    boxSizing: 'border-box',
   },
   /**
    * Work-first fills the inset well (`data-portal-remediate-fill` on html).
@@ -196,9 +215,11 @@ const useStyles = makeStyles(theme => ({
   wrapVisualFooter: {
     flex: 1,
     minHeight: 0,
+    minWidth: 0,
     display: 'flex',
     flexDirection: 'column',
     overflow: 'hidden',
+    overflowX: 'hidden',
     paddingBottom: 0,
     width: '100%',
     maxWidth: '100%',
@@ -206,6 +227,8 @@ const useStyles = makeStyles(theme => ({
   chrome: {
     flexShrink: 0,
     width: '100%',
+    maxWidth: '100%',
+    minWidth: 0,
   },
   reviewFill: {
     flex: 1,
@@ -1132,8 +1155,9 @@ export const ApmeRemediationPage = () => {
   const fillWell =
     Boolean(quality && repo) &&
     visual &&
-    (ctaLayout === 'footer' || reviewLayout === 'work' || reviewLayout === 'redesign');
-  const hidePageChrome = fillWell && reviewLayout === 'redesign' && step === 'findings';
+    step === 'findings' &&
+    (ctaLayout === 'footer' || reviewLayout === 'work' || isRedesignLayout(reviewLayout));
+  const hidePageChrome = fillWell && isRedesignLayout(reviewLayout) && step === 'findings';
 
   useEffect(() => {
     if (!fillWell) return undefined;
@@ -1243,13 +1267,16 @@ export const ApmeRemediationPage = () => {
       >
         <ToggleButton value="current">Current</ToggleButton>
         <ToggleButton value="redesign">Current redesign</ToggleButton>
+        <ToggleButton value="redesign3">Redesign 3</ToggleButton>
         <ToggleButton value="work">Work-first</ToggleButton>
       </ToggleButtonGroup>
       <Typography className={classes.compareHint}>
         {reviewLayout === 'work'
           ? 'Compact summary. Accept is the work. Continue stays in the footer until you decide.'
-          : reviewLayout === 'redesign'
-            ? 'All is the default. Actions follow the tab: remaining and all, plus type-specific items on All. Footer checkbox is the auto-fix default.'
+          : isRedesignLayout(reviewLayout)
+            ? reviewLayout === 'redesign3'
+              ? 'Copy of Current redesign. Iterate here.'
+              : 'All is the default. Tab copy sits above the filters. Footer shows accepted counts by kind, then Continue.'
             : 'Continue sits under the stepper. Summary and filters stay expanded.'}
       </Typography>
     </Box>
@@ -1295,7 +1322,7 @@ export const ApmeRemediationPage = () => {
             ctaLayout={ctaLayout}
             reviewLayout={reviewLayout}
             header={
-              reviewLayout === 'redesign' ? (
+              isRedesignLayout(reviewLayout) ? (
                 <>
                   {layoutCompare}
                   {pageChrome}
@@ -1526,8 +1553,8 @@ export const ApmeRemediationPage = () => {
   })();
 
   return (
-    <Page themeId="app">
-      <Content>
+    <Page themeId="app" className={classes.pageFit}>
+      <Content className={classes.pageClip}>
         <Box
           className={
             fillWell
@@ -1537,7 +1564,7 @@ export const ApmeRemediationPage = () => {
                 : undefined
           }
         >
-        {showReviewCompare && reviewLayout !== 'redesign' ? (
+        {showReviewCompare && !isRedesignLayout(reviewLayout) ? (
         layoutCompare
         ) : visual && !FORCED_CTA_LAYOUT ? (
         <Box

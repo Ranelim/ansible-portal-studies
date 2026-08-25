@@ -7,21 +7,19 @@
  * token or dollar estimates). `ctaLayout=footer` parks Continue in a sticky
  * footer instead. `reviewLayout=work` is the density option: compact Summary,
  * hide filters/bulk on small tabs, filled Accept, Continue in the footer.
- * `reviewLayout=redesign` is a fork of Current: All tab, Accept-all-auto
- * checkbox in the footer, Actions + Generate under the showing count,
- * Continue in a sticky footer.
+ * `reviewLayout=redesign` is a fork of Current: All tab, Actions + Generate
+ * under the showing count, Continue in a sticky footer. `redesign3` starts
+ * as a duplicate of that fork.
  */
 
 import { useLayoutEffect, useMemo, useRef, useState, type Dispatch, type ReactNode, type SetStateAction } from 'react';
 import {
   Button,
-  Checkbox,
   Chip,
   CircularProgress,
   Collapse,
   Divider,
   FormControl,
-  FormControlLabel,
   InputLabel,
   Menu,
   MenuItem,
@@ -42,6 +40,7 @@ import CodeIcon from '@material-ui/icons/Code';
 import ExpandLessIcon from '@material-ui/icons/ExpandLess';
 import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
 import HelpOutlineIcon from '@material-ui/icons/HelpOutline';
+import InfoOutlinedIcon from '@material-ui/icons/InfoOutlined';
 import {
   APME_CATEGORY_HINT,
   APME_CATEGORY_LABEL,
@@ -74,8 +73,12 @@ const LightspeedSpark = ({ size = 14 }: { size?: number }) => (
 );
 
 export type CtaLayout = 'current' | 'footer';
-/** Current = Continue under the stepper. Redesign = fork of Current. Work-first = density proposal. */
-export type ReviewLayout = 'current' | 'redesign' | 'work';
+/** Current = Continue under the stepper. Redesign / Redesign 3 = forks of Current. Work-first = density proposal. */
+export type ReviewLayout = 'current' | 'redesign' | 'redesign3' | 'work';
+
+export function isRedesignLayout(layout: ReviewLayout): boolean {
+  return layout === 'redesign' || layout === 'redesign3';
+}
 
 const SEV_LABEL: Record<string, string> = {
   critical: 'Critical',
@@ -104,17 +107,41 @@ const TAB_COUNT_LABEL: Record<FixLane, (n: number) => string> = {
   'Manual-fix': n => `${n} not-fixable findings`,
 };
 
-function reviewTabLabel(tab: ReviewTab, redesign: boolean): string {
+function reviewTabLabel(tab: ReviewTab, redesign: boolean, redesign3 = false): string {
+  if (redesign3) {
+    if (tab === 'All') return 'All findings';
+    if (tab === 'Auto-fix') return 'Auto-fix remediations';
+    if (tab === 'AI-fix') return 'AI-fix remediations';
+    return 'Manual remediations';
+  }
   if (tab === 'All') return 'All';
   if (tab === 'Manual-fix') return redesign ? 'Manual' : 'Not fixable';
   return TAB_LABEL[tab];
 }
 
-function reviewTabCountLabel(tab: ReviewTab, n: number, redesign: boolean): string {
+function reviewTabCountLabel(
+  tab: ReviewTab,
+  n: number,
+  redesign: boolean,
+  redesign3 = false,
+): string {
+  if (redesign3) {
+    if (tab === 'All') return `${n} findings`;
+    if (tab === 'Auto-fix') return `${n} auto-fix remediations`;
+    if (tab === 'AI-fix') return `${n} AI-fix remediations`;
+    return `${n} manual remediations`;
+  }
   if (tab === 'All') return `${n} findings`;
   if (tab === 'Manual-fix' && redesign) return `${n} manual findings`;
   return TAB_COUNT_LABEL[tab](n);
 }
+
+const REDESIGN_TAB_HINT: Record<ReviewTab, string> = {
+  All: 'Auto-fix, AI-fix, and manual findings together.',
+  'Auto-fix': 'Replacements the scan already suggested.',
+  'AI-fix': 'Optional Lightspeed suggestions. Generating uses quota.',
+  'Manual-fix': 'No suggestion. Change these in the file, or leave them.',
+};
 
 type BulkPolicyId =
   | 'accept-auto'
@@ -285,22 +312,10 @@ const useStyles = makeStyles((theme: Theme) => ({
     lineHeight: 1.4,
     minWidth: 0,
   },
-  footerCheck: {
-    marginLeft: 0,
-    marginRight: 0,
-    flexShrink: 0,
-  },
-  footerCheckBox: {
-    padding: 4,
-  },
-  footerCheckLabel: {
-    fontSize: 13,
-    fontWeight: 400,
-    lineHeight: 1.4,
-    color: theme.palette.text.secondary,
-  },
-  footerSelected: {
-    whiteSpace: 'nowrap',
+  footerLead: {
+    display: 'block',
+    color: theme.palette.text.primary,
+    fontWeight: 600,
   },
   footerCount: {
     display: 'block',
@@ -443,7 +458,19 @@ const useStyles = makeStyles((theme: Theme) => ({
     alignItems: 'baseline',
     gap: theme.spacing(1),
     minWidth: 0,
-    flexShrink: 0,
+    flexWrap: 'wrap',
+  },
+  scanAside: {
+    fontSize: 13,
+    color: theme.palette.text.secondary,
+    whiteSpace: 'nowrap',
+    marginLeft: theme.spacing(1.5),
+    '& strong': {
+      color: theme.palette.text.primary,
+      fontWeight: 700,
+      fontSize: 16,
+      marginRight: 4,
+    },
   },
   scanSevCounts: {
     display: 'flex',
@@ -470,6 +497,36 @@ const useStyles = makeStyles((theme: Theme) => ({
   scanMixBar: {
     width: '100%',
     height: FINDINGS_BAR_HEIGHT,
+  },
+  aiBanner: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: theme.spacing(1.5),
+    flexWrap: 'wrap',
+    margin: theme.spacing(0, 2, 1.5),
+    padding: theme.spacing(1.25, 1.5),
+    backgroundColor:
+      theme.palette.type === 'light' ? '#e7f1fa' : 'rgba(38, 117, 195, 0.12)',
+    border: `1px solid ${
+      theme.palette.type === 'light' ? '#bee1f4' : 'rgba(38, 117, 195, 0.3)'
+    }`,
+    borderRadius: theme.shape.borderRadius,
+  },
+  aiBannerIcon: {
+    color: '#2b9af3',
+    fontSize: 20,
+    flexShrink: 0,
+  },
+  aiBannerCopy: {
+    flex: '1 1 220px',
+    minWidth: 0,
+    fontSize: 13,
+    lineHeight: 1.5,
+    color: theme.palette.text.primary,
+    overflowWrap: 'break-word',
+  },
+  aiBannerAction: {
+    flexShrink: 0,
   },
   mixBar: {
     height: FINDINGS_BAR_HEIGHT,
@@ -622,6 +679,13 @@ const useStyles = makeStyles((theme: Theme) => ({
     alignItems: 'center',
     gap: theme.spacing(0.75),
     lineHeight: 1,
+    whiteSpace: 'nowrap',
+  },
+  tabPageHint: {
+    padding: theme.spacing(1.25, 2, 0),
+    fontSize: 13,
+    color: theme.palette.text.secondary,
+    lineHeight: 1.4,
   },
   toolbar: {
     display: 'flex',
@@ -834,13 +898,14 @@ export const InlineVisualReview: React.FC<{
   const [category, setCategory] = useState<'all' | ApmeRuleCategory>('all');
   const [severityFilter, setSeverityFilter] = useState<Set<SeverityClass>>(() => new Set());
   const [fixType, setFixType] = useState<ReviewTab>(() =>
-    reviewLayout === 'redesign' ? 'All' : 'Auto-fix',
+    isRedesignLayout(reviewLayout) ? 'All' : 'Auto-fix',
   );
   const [actionsAnchor, setActionsAnchor] = useState<null | HTMLElement>(null);
   const [breakdownOpen, setBreakdownOpen] = useState(false);
   const [pulseKey, setPulseKey] = useState<string | null>(null);
   const workFirst = reviewLayout === 'work';
-  const currentRedesign = reviewLayout === 'redesign';
+  const currentRedesign = isRedesignLayout(reviewLayout);
+  const redesign3 = reviewLayout === 'redesign3';
   const autoKeys = auto.map(findingKey).join('|');
   const seededAutoAccept = useRef(false);
 
@@ -922,6 +987,7 @@ export const InlineVisualReview: React.FC<{
   const pendingGeneratedAi = readyAi.filter(v => !aiDecisions[findingKey(v)]).length;
   const idleAi = ai.filter(v => (aiStatus[findingKey(v)] ?? 'idle') === 'idle');
   const aiLoading = ai.some(v => aiStatus[findingKey(v)] === 'loading');
+  const remediationCount = auto.length + readyAi.length;
   const autoAccepted = auto.filter(v => t1Decisions[findingKey(v)] === 'accept').length;
   const aiAccepted = ai.filter(v => aiDecisions[findingKey(v)] === 'accept').length;
   const selectedSuggestions = autoAccepted + aiAccepted;
@@ -1025,6 +1091,16 @@ export const InlineVisualReview: React.FC<{
     selectedSuggestions === 1
       ? '1 suggestion accepted'
       : `${selectedSuggestions} suggestions accepted`;
+  const selectedBreakdown = [
+    auto.length > 0
+      ? `${autoAccepted} out of ${auto.length} auto-fix${auto.length === 1 ? '' : 'es'}`
+      : null,
+    ai.length > 0
+      ? `${aiAccepted} out of ${ai.length} AI-fix${ai.length === 1 ? '' : 'es'}`
+      : null,
+  ]
+    .filter(Boolean)
+    .join(', ');
 
   const decideCount =
     auto.length === 0
@@ -1213,16 +1289,20 @@ export const InlineVisualReview: React.FC<{
       <MenuItem disabled={remainingForTab === 0} onClick={() => stampRemaining('accept')}>
         Accept remaining{remainingForTab > 0 ? ` (${remainingForTab})` : ''}
       </MenuItem>
-      <MenuItem disabled={remainingForTab === 0} onClick={() => stampRemaining('decline')}>
-        Decline remaining
-      </MenuItem>
+      {redesign3 ? null : (
+        <MenuItem disabled={remainingForTab === 0} onClick={() => stampRemaining('decline')}>
+          Decline remaining
+        </MenuItem>
+      )}
       <Divider />
       <MenuItem disabled={!tabCanAcceptAll} onClick={() => stampTabAll('accept')}>
         {acceptAllLabel}
       </MenuItem>
-      <MenuItem disabled={!tabCanDeclineAll} onClick={() => stampTabAll('decline')}>
-        {declineAllLabel}
-      </MenuItem>
+      {redesign3 ? null : (
+        <MenuItem disabled={!tabCanDeclineAll} onClick={() => stampTabAll('decline')}>
+          {declineAllLabel}
+        </MenuItem>
+      )}
       {fixType === 'All' ? (
         <>
           <Divider />
@@ -1236,16 +1316,18 @@ export const InlineVisualReview: React.FC<{
           >
             Accept all auto-fixes
           </MenuItem>
-          <MenuItem
-            disabled={auto.length === 0}
-            selected={bulkPolicy === 'decline-auto'}
-            onClick={() => {
-              stampAutoFixes('decline');
-              closeActions();
-            }}
-          >
-            Decline auto-fixes
-          </MenuItem>
+          {redesign3 ? null : (
+            <MenuItem
+              disabled={auto.length === 0}
+              selected={bulkPolicy === 'decline-auto'}
+              onClick={() => {
+                stampAutoFixes('decline');
+                closeActions();
+              }}
+            >
+              Decline auto-fixes
+            </MenuItem>
+          )}
           <MenuItem
             disabled={readyAi.length === 0}
             selected={bulkPolicy === 'accept-ai'}
@@ -1256,42 +1338,22 @@ export const InlineVisualReview: React.FC<{
           >
             Accept AI-fixes
           </MenuItem>
-          <MenuItem
-            disabled={ai.length === 0}
-            selected={bulkPolicy === 'decline-ai'}
-            onClick={() => {
-              stampAiFixes('decline');
-              closeActions();
-            }}
-          >
-            Decline AI-fixes
-          </MenuItem>
+          {redesign3 ? null : (
+            <MenuItem
+              disabled={ai.length === 0}
+              selected={bulkPolicy === 'decline-ai'}
+              onClick={() => {
+                stampAiFixes('decline');
+                closeActions();
+              }}
+            >
+              Decline AI-fixes
+            </MenuItem>
+          )}
         </>
       ) : null}
     </Menu>
   );
-  const allAutoAccepted = auto.length > 0 && auto.every(v => t1Decisions[findingKey(v)] === 'accept');
-  const someAutoAccepted = auto.some(v => t1Decisions[findingKey(v)] === 'accept');
-  const autoAcceptCheckbox =
-    currentRedesign && auto.length > 0 ? (
-      <FormControlLabel
-        className={classes.footerCheck}
-        disableTypography
-        control={
-          <Checkbox
-            className={classes.footerCheckBox}
-            size="small"
-            color="primary"
-            checked={allAutoAccepted}
-            indeterminate={someAutoAccepted && !allAutoAccepted}
-            onChange={(_event, checked) => stampAutoFixes(checked ? 'accept' : null)}
-          />
-        }
-        label={
-          <span className={classes.footerCheckLabel}>Accept all auto-fix suggestions</span>
-        }
-      />
-    ) : null;
 
   const redesignActionsControl =
     currentRedesign && fixType !== 'Manual-fix' && (auto.length > 0 || ai.length > 0) ? (
@@ -1305,16 +1367,19 @@ export const InlineVisualReview: React.FC<{
           aria-haspopup="menu"
           aria-expanded={Boolean(actionsAnchor)}
           aria-controls={actionsAnchor ? 'finding-actions-menu' : undefined}
+          aria-label={redesign3 ? 'Accept suggestions' : undefined}
           style={PILL}
         >
-          Actions
+          {redesign3 ? 'Accept...' : 'Actions'}
         </Button>
         {bulkActionsMenu}
       </>
     ) : null;
 
   const redesignGenerate =
-    currentRedesign && (fixType === 'All' || fixType === 'AI-fix') ? generateButton : null;
+    currentRedesign && !redesign3 && (fixType === 'All' || fixType === 'AI-fix')
+      ? generateButton
+      : null;
 
   const summaryMix = (
     <>
@@ -1489,40 +1554,79 @@ export const InlineVisualReview: React.FC<{
                 <Typography className={classes.mixMeta} component="span">
                   {findingWord} on this scan
                 </Typography>
+                {redesign3 ? (
+                  <Typography className={classes.scanAside} component="span">
+                    <strong>{remediationCount}</strong>
+                    {remediationCount === 1 ? ' remediation' : ' remediations'}
+                  </Typography>
+                ) : null}
               </div>
-              <div className={classes.scanSevCounts} aria-label="Findings by severity">
-                {SEV_ORDER.filter(sev => (mix.bySeverity[sev] ?? 0) > 0).map(sev => {
-                  const count = mix.bySeverity[sev];
-                  const isActive = severityFilter.has(sev);
-                  const dim = severityFilter.size > 0 && !isActive;
-                  return (
-                    <button
-                      key={sev}
-                      type="button"
-                      className={classes.scanSevCount}
-                      style={{
-                        color: SEVERITY_COLORS[sev],
-                        opacity: dim ? 0.4 : 1,
-                      }}
-                      aria-pressed={isActive}
-                      onClick={() => toggleSeverity(sev)}
-                    >
-                      {SEV_LABEL[sev]} {count}
-                    </button>
-                  );
-                })}
+              {redesign3 ? null : (
+                <div className={classes.scanSevCounts} aria-label="Findings by severity">
+                  {SEV_ORDER.filter(sev => (mix.bySeverity[sev] ?? 0) > 0).map(sev => {
+                    const count = mix.bySeverity[sev];
+                    const isActive = severityFilter.has(sev);
+                    const dim = severityFilter.size > 0 && !isActive;
+                    return (
+                      <button
+                        key={sev}
+                        type="button"
+                        className={classes.scanSevCount}
+                        style={{
+                          color: SEVERITY_COLORS[sev],
+                          opacity: dim ? 0.4 : 1,
+                        }}
+                        aria-pressed={isActive}
+                        onClick={() => toggleSeverity(sev)}
+                      >
+                        {SEV_LABEL[sev]} {count}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+            {redesign3 ? null : (
+              <div className={classes.scanMixBar}>
+                <SeverityMixBar
+                  breakdown={mix.bySeverity}
+                  height={FINDINGS_BAR_HEIGHT}
+                  activeSeverities={severityFilter}
+                  onSegmentClick={toggleSeverity}
+                />
               </div>
-            </div>
-            <div className={classes.scanMixBar}>
-              <SeverityMixBar
-                breakdown={mix.bySeverity}
-                height={FINDINGS_BAR_HEIGHT}
-                activeSeverities={severityFilter}
-                onSegmentClick={toggleSeverity}
-              />
-            </div>
+            )}
           </div>
         ) : null}
+        {redesign3 && (idleAi.length > 0 || aiLoading) ? (
+          <div className={classes.aiBanner} role="status">
+            <InfoOutlinedIcon className={classes.aiBannerIcon} aria-hidden />
+            <Typography className={classes.aiBannerCopy}>
+              {aiLoading
+                ? idleAi.length > 0
+                  ? `Generating suggestions for ${idleAi.length} finding${
+                      idleAi.length === 1 ? '' : 's'
+                    }. This uses Lightspeed quota.`
+                  : 'Generating AI suggestions. This uses Lightspeed quota.'
+                : idleAi.length === 1
+                  ? '1 finding requires AI to generate a suggestion. Generating uses Lightspeed quota.'
+                  : `${idleAi.length} findings require AI to generate suggestions. Generating uses Lightspeed quota.`}
+            </Typography>
+            <Button
+              className={classes.aiBannerAction}
+              size="small"
+              variant="contained"
+              color="primary"
+              disabled={aiLoading || idleAi.length === 0}
+              startIcon={<LightspeedSpark size={14} />}
+              onClick={generateAll}
+              style={PILL}
+            >
+              {aiLoading ? 'Generating…' : 'Generate remediations'}
+            </Button>
+          </div>
+        ) : null}
+        {redesign3 ? null : (
         <Tabs
           className={classes.tabs}
           value={fixType}
@@ -1553,6 +1657,12 @@ export const InlineVisualReview: React.FC<{
             />
           ))}
         </Tabs>
+        )}
+        {currentRedesign && !redesign3 ? (
+          <Typography className={classes.tabPageHint}>
+            {REDESIGN_TAB_HINT[fixType]}
+          </Typography>
+        ) : null}
 
         {showListChrome ? (
         <div className={classes.toolbar}>
@@ -1649,6 +1759,7 @@ export const InlineVisualReview: React.FC<{
                 Optional. Generating suggestions uses Lightspeed quota.
               </Typography>
             ) : null}
+            {redesign3 ? null : (
             <div className={classes.bulkRow}>
               <Typography className={classes.bulkCount}>{showingLabel}</Typography>
               {currentRedesign ? null : fixType === 'AI-fix' && aiLoading ? (
@@ -1676,10 +1787,16 @@ export const InlineVisualReview: React.FC<{
                 <div className={classes.bulkActions}>{bulkAcceptDecline}</div>
               )}
             </div>
-            {currentRedesign && (redesignActionsControl || redesignGenerate) ? (
+            )}
+            {currentRedesign &&
+            (redesign3 || redesignActionsControl || redesignGenerate) ? (
               <div className={classes.bulkListActions} role="region" aria-label="Bulk finding actions">
-                <div>{redesignActionsControl}</div>
-                <div>{redesignGenerate}</div>
+                {redesign3 ? (
+                  <Typography className={classes.bulkCount}>{showingLabel}</Typography>
+                ) : (
+                  <div>{redesignActionsControl}</div>
+                )}
+                <div>{redesign3 ? redesignActionsControl : redesignGenerate}</div>
               </div>
             ) : null}
           </div>
@@ -1755,7 +1872,10 @@ export const InlineVisualReview: React.FC<{
         >
           <div className={classes.footerStatus}>
             {currentRedesign ? (
-              autoAcceptCheckbox
+              <>
+                <span className={classes.footerLead}>{selectedLabel}</span>
+                {redesign3 ? null : selectedBreakdown || 'No suggestions to accept'}
+              </>
             ) : workFirst ? (
               <>
                 <span className={classes.footerCount}>{decideCount}</span>
@@ -1772,18 +1892,8 @@ export const InlineVisualReview: React.FC<{
             className={`${classes.footerActions}${
               workFirst || currentRedesign ? ` ${classes.footerClearFab}` : ''
             }`}
-            style={currentRedesign ? { gap: 8 } : undefined}
           >
-            {currentRedesign ? (
-              <Typography
-                className={classes.footerSelected}
-                variant="body2"
-                color="textSecondary"
-                component="span"
-              >
-                {selectedLabel}
-              </Typography>
-            ) : (
+            {currentRedesign ? null : (
               <Button
                 size="small"
                 variant="text"
