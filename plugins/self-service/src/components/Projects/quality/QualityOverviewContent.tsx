@@ -389,7 +389,7 @@ export const QualityOverviewContent = () => {
         <Box style={{ textAlign: 'center', padding: '48px 24px' }}>
           {hasFilter ? (
             <Typography style={{ fontSize: 14, color: theme.palette.text.secondary }}>
-              No violations match the current filters.
+              No findings match the current filters.
             </Typography>
           ) : (
             <>

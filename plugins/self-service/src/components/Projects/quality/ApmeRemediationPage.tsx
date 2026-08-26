@@ -301,6 +301,12 @@ const useStyles = makeStyles(theme => ({
     padding: theme.spacing(1, 0, 1),
     marginBottom: 0,
   },
+  stepperHint: {
+    ...theme.typography.body2,
+    color: theme.palette.text.secondary,
+    marginTop: theme.spacing(1.5),
+    maxWidth: 720,
+  },
   stepper: {
     display: 'flex',
     alignItems: 'center',
@@ -1238,6 +1244,16 @@ export const ApmeRemediationPage = () => {
         sessionDone={sessionDone}
         bare={visual}
       />
+      {visual && step === 'findings' ? (
+        <Typography
+          className={classes.stepperHint}
+          variant="body2"
+          color="textSecondary"
+        >
+          Review findings and accept the remediation suggestions you want to
+          include in the commit.
+        </Typography>
+      ) : null}
     </Box>
   );
   const showReviewCompare =
@@ -1272,7 +1288,7 @@ export const ApmeRemediationPage = () => {
       </ToggleButtonGroup>
       <Typography className={classes.compareHint}>
         {reviewLayout === 'redesign4'
-          ? 'Copy of Redesign 3. Accepted rows show Decline; otherwise Accept.'
+          ? 'Three-state Accept / Decline. Auto-accept auto-fixes. Accept remaining skips declined.'
           : reviewLayout === 'redesign3'
             ? 'Copy of Current redesign. Accepted is a toggle. No Decline.'
             : isRedesignLayout(reviewLayout)
