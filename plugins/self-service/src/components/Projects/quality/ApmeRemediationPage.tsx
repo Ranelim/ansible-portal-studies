@@ -80,14 +80,15 @@ type WizardChrome = 'original' | 'new' | 'inline' | 'visual';
  * Force Inline visual (3-step: Scan → Results & Remediation → Commit)
  * with Continue under the stepper — not mixed with Accept/Decline.
  * Prototype wizard + Continue-placement compares stay parked.
- * Results & Remediation shows Current / Current redesign / Redesign 3 /
- * Redesign 4 (`?review=redesign`, `?review=redesign3`, or `?review=redesign4`).
- * Set FORCED_REMEDIATION_WIZARD / FORCED_CTA_LAYOUT `null` to revive
- * `?wizard=` / `?cta=`.
+ * Results & Remediation layout compare is parked. Redesign 4 is forced.
+ * Current / Current redesign / Redesign 3 stay in code.
+ * Set SHOW_REVIEW_LAYOUT_COMPARE `true` and FORCED_REVIEW_LAYOUT `null`
+ * to revive `?review=`.
  */
 const FORCED_REMEDIATION_WIZARD: WizardChrome | null = 'visual';
 const FORCED_CTA_LAYOUT: CtaLayout | null = 'current';
-const SHOW_REVIEW_LAYOUT_COMPARE = true;
+const FORCED_REVIEW_LAYOUT: ReviewLayout | null = 'redesign4';
+const SHOW_REVIEW_LAYOUT_COMPARE = false;
 
 function parseWizardChrome(value: string | null): WizardChrome {
   if (FORCED_REMEDIATION_WIZARD) return FORCED_REMEDIATION_WIZARD;
@@ -103,6 +104,7 @@ function parseCtaLayout(value: string | null): CtaLayout {
 }
 
 function parseReviewLayout(value: string | null): ReviewLayout {
+  if (FORCED_REVIEW_LAYOUT) return FORCED_REVIEW_LAYOUT;
   if (value === 'redesign4') return 'redesign4';
   if (value === 'redesign3') return 'redesign3';
   if (value === 'redesign') return 'redesign';
@@ -1244,14 +1246,15 @@ export const ApmeRemediationPage = () => {
         sessionDone={sessionDone}
         bare={visual}
       />
-      {visual && step === 'findings' ? (
+      {visual && (step === 'findings' || step === 'commit') ? (
         <Typography
           className={classes.stepperHint}
           variant="body2"
           color="textSecondary"
         >
-          Review findings and accept the remediation suggestions you want to
-          include in the commit.
+          {step === 'findings'
+            ? 'Review findings and accept the remediation suggestions you want to include in the commit.'
+            : 'Create a branch, push the remediations you accepted, and optionally open a pull request.'}
         </Typography>
       ) : null}
     </Box>
@@ -1465,9 +1468,11 @@ export const ApmeRemediationPage = () => {
           <div className={classes.commitHeader}>
             <Box>
               <Typography className={classes.panelTitle}>{commitHeading}</Typography>
-              <Typography className={classes.hint} style={{ marginBottom: 0 }}>
-                Create a branch, push the fixes, and optionally open a pull request.
-              </Typography>
+              {visual ? null : (
+                <Typography className={classes.hint} style={{ marginBottom: 0 }}>
+                  Create a branch, push the fixes, and optionally open a pull request.
+                </Typography>
+              )}
             </Box>
             <Box display="flex" flexDirection="column" alignItems="flex-end" style={{ gap: 8 }}>
               {visual ? (

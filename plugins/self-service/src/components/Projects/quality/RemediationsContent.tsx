@@ -29,7 +29,7 @@ import {
 } from '../detail/qualityDemoData';
 import { CommitSha } from './CommitSha';
 import { SHOW_REMEDIATION_PROGRESS_COLUMN } from './contentQualityIa';
-import { scanSnapshotPath } from './qualitySurfacePaths';
+import { scanSnapshotPath, scansListPath } from './qualitySurfacePaths';
 import { QualityTabIntro } from './QualityTabIntro';
 
 type ActiveStatus = 'in-progress' | 'proposals-ready';
@@ -551,8 +551,14 @@ export const RemediationsContent = ({
           repoName={row.repoName}
           quality={getProjectQuality(row.repoName)}
           showFindingsLink
-          onViewLastScan={() => viewScan(row)}
-          onRemediate={() => resume(row.repoName)}
+          onStartScan={() => navigate(sessionPath(row.repoName, false))}
+          onViewLastScan={() =>
+            navigate(
+              `${scansListPath(experience)}?${new URLSearchParams({
+                repo: row.repoName,
+              }).toString()}`,
+            )
+          }
         />
       ),
     },

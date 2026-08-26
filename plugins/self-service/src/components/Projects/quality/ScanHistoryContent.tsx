@@ -18,6 +18,7 @@ import ChevronRight from '@material-ui/icons/ChevronRight';
 import HelpOutlineIcon from '@material-ui/icons/HelpOutline';
 import { Table, TableColumn } from '@backstage/core-components';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavIaModel } from '../../../hooks/useNavIaModel';
 import {
   APME_CATEGORY_LABEL,
   APME_CATEGORY_ORDER,
@@ -40,7 +41,7 @@ import {
 import { CommitSha, shortSha } from './CommitSha';
 import { snippetForFinding } from './findingCodeContext';
 import { SeverityFilterChips } from './SeverityFilterChips';
-import { parseScanCategoryParam } from './qualitySurfacePaths';
+import { parseScanCategoryParam, scansListPath } from './qualitySurfacePaths';
 import { QualityTabIntro } from './QualityTabIntro';
 
 type GlobalScanRow = ScanResult & {
@@ -950,6 +951,7 @@ function ScanSnapshotDetail({
 export const ScanHistoryContent = () => {
   const classes = useStyles();
   const navigate = useNavigate();
+  const { experience } = useNavIaModel();
   const [searchParams, setSearchParams] = useSearchParams();
   const [repoFilter, setRepoFilter] = useState(
     () => searchParams.get('repo') || 'all',
@@ -1108,8 +1110,14 @@ export const ScanHistoryContent = () => {
           quality={qualityForScan(row.repoName, row, row.isLatest)}
           showFindingsLink
           showCategoryMix={row.isLatest}
-          viewScanLabel="View details"
-          onViewLastScan={() => openScan(row.scanId)}
+          onStartScan={() => navigate(sessionPath(row.repoName))}
+          onViewLastScan={() =>
+            navigate(
+              `${scansListPath(experience)}?${new URLSearchParams({
+                repo: row.repoName,
+              }).toString()}`,
+            )
+          }
         />
       ),
     },

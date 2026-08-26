@@ -429,18 +429,13 @@ function QualityScoreCell({ repoName }: { repoName: string }) {
   const { experience } = useNavIaModel();
   const quality = getProjectQuality(repoName);
 
-  const viewLastScan = () => {
+  const viewScanHistory = () => {
     const qs = new URLSearchParams({ repo: repoName });
-    if (quality?.latestScan.scanId) qs.set('scan', quality.latestScan.scanId);
     navigate(`${scansListPath(experience)}?${qs.toString()}`);
   };
 
-  const remediate = () => {
+  const startScan = () => {
     const qs = new URLSearchParams({ from: 'list' });
-    const live =
-      quality?.remediationStatus === 'in-progress' ||
-      quality?.remediationStatus === 'proposals-ready';
-    if (live) qs.set('resume', '1');
     navigate(
       `/self-service/apme/remediate/${encodeURIComponent(repoName)}?${qs.toString()}`,
     );
@@ -453,14 +448,8 @@ function QualityScoreCell({ repoName }: { repoName: string }) {
       quality={quality}
       scanning={SCANNING_REPOS.has(repoName)}
       showScanMeta
-      onViewLastScan={quality ? viewLastScan : undefined}
-      onRemediate={quality ? remediate : undefined}
-      onViewPullRequest={
-        quality?.remediationPrUrl
-          ? () =>
-              window.open(quality.remediationPrUrl, '_blank', 'noopener,noreferrer')
-          : undefined
-      }
+      onStartScan={quality ? startScan : undefined}
+      onViewLastScan={quality ? viewScanHistory : undefined}
     />
     </Box>
   );

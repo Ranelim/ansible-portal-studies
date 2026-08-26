@@ -11,6 +11,8 @@
  * Redesign 3: compact Accept / Decline toggle (undecided / accepted /
  * declined). Auto-accept all auto-fixes checkbox seeds Accepted. Accept
  * remaining takes only undecided rows. Continue commits accepted remediations.
+ * Redesign 4 groups findings that share a ContentGraph path (`yamlPath`) into
+ * one card with one Accept / Decline. Single-finding cards stay unchanged.
  */
 
 import { useLayoutEffect, useMemo, useRef, useState, type Dispatch, type ReactNode, type SetStateAction } from 'react';
@@ -60,6 +62,7 @@ import { SeverityMixBar } from './SeverityMixBar';
 import {
   findingKey,
   kindLabel,
+  nodeKey,
   type AiRowStatus,
   type WizardDecision,
 } from './SpaRemediationReview';
@@ -141,25 +144,28 @@ function reviewTabCountLabel(
 
 const REDESIGN_TAB_HINT: Record<ReviewTab, string> = {
   All: 'Auto-fix, AI-fix, and manual findings together.',
-  'Auto-fix': 'Replacements the scan already suggested.',
+  'Auto-fix': 'Deterministic replacements from Ansible quality rules.',
   'AI-fix': 'Optional Lightspeed suggestions. Generating uses quota.',
   'Manual-fix': 'No suggestion. Change these in the file, or leave them.',
 };
 
 /** What each fix type is — no product names, no quota talk. */
 const LANE_EXPLAIN: Record<FixLane, string> = {
-  'Auto-fix': 'Exact replacement the scan already computed',
+  'Auto-fix': 'Deterministic replacement from Ansible quality rules',
   'AI-fix': 'Suggested replacement you generate, then review',
   'Manual-fix': 'No replacement. Change this in the file yourself',
 };
 
+const AUTO_FIX_EXPLAIN =
+  'Deterministic replacements from Ansible quality rules.';
+
 const INCLUDE_MENU_EXPLAIN = {
-  auto: 'Exact replacements the scan already computed.',
+  auto: AUTO_FIX_EXPLAIN,
   ai: 'Suggested replacements you generate for a finding, then review.',
 };
 
 const AUTO_ACCEPT_EXPLAIN =
-  'Exact replacements the scan already computed. They start accepted. Decline any you do not want in the PR.';
+  `${AUTO_FIX_EXPLAIN} They start accepted. Decline any you do not want in the PR.`;
 
 type BulkPolicyId =
   | 'accept-auto'
@@ -249,6 +255,60 @@ function mixFromFindings(findings: QualityViolation[]) {
     };
   });
   return { total: findings.length, bySeverity, byLane, categories };
+}
+
+const SEV_RANK: Record<string, number> = {
+  critical: 0,
+  high: 1,
+  medium: 2,
+  low: 3,
+  info: 4,
+};
+
+function sortNodeFindings(items: QualityViolation[]): QualityViolation[] {
+  return [...items].sort((a, b) => {
+    const rank = (SEV_RANK[a.severity] ?? 9) - (SEV_RANK[b.severity] ?? 9);
+    if (rank !== 0) return rank;
+    return a.lineStart - b.lineStart;
+  });
+}
+
+/** Keep list order; bundle findings that share a ContentGraph path. */
+function groupByNodeOrder(items: QualityViolation[]): QualityViolation[][] {
+  const order: string[] = [];
+  const map = new Map<string, QualityViolation[]>();
+  items.forEach(v => {
+    const id = nodeKey(v);
+    if (!map.has(id)) {
+      order.push(id);
+      map.set(id, []);
+    }
+    map.get(id)!.push(v);
+  });
+  return order.map(id => sortNodeFindings(map.get(id)!));
+}
+
+function nodePeers(
+  all: QualityViolation[],
+  v: QualityViolation,
+): QualityViolation[] {
+  const id = nodeKey(v);
+  return all.filter(f => nodeKey(f) === id);
+}
+
+function sharedDecision(
+  items: QualityViolation[],
+  decisions: Record<string, WizardDecision>,
+): WizardDecision | undefined {
+  const suggestion = items.filter(
+    f => f.fixTier === 'deterministic' || f.fixTier === 'ai',
+  );
+  if (suggestion.length === 0) return undefined;
+  const first = decisions[findingKey(suggestion[0])];
+  if (!first) return undefined;
+  return suggestion.every(f => decisions[findingKey(f)] === first)
+    ? first
+    : undefined;
 }
 
 function groupByFile(findings: QualityViolation[]): { file: string; findings: QualityViolation[] }[] {
@@ -899,6 +959,9 @@ const useStyles = makeStyles((theme: Theme) => ({
     ...theme.typography.subtitle2,
     color: theme.palette.text.primary,
   },
+  bundledCopy: {
+    marginTop: theme.spacing(1.5),
+  },
   chips: { display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', marginTop: 8 },
   chip: { height: 22 },
   fileMeta: {
@@ -1214,14 +1277,43 @@ export const InlineVisualReview: React.FC<{
   };
 
   const onDecision = (v: QualityViolation, d: WizardDecision | null) => {
-    const k = findingKey(v);
-    const setter = v.fixTier === 'ai' ? setAiDecisions : setT1Decisions;
-    setter?.(prev => {
-      const next = { ...prev };
-      if (d === null) delete next[k];
-      else next[k] = d;
-      return next;
-    });
+    if (!redesign4) {
+      const k = findingKey(v);
+      const setter = v.fixTier === 'ai' ? setAiDecisions : setT1Decisions;
+      setter?.(prev => {
+        const next = { ...prev };
+        if (d === null) delete next[k];
+        else next[k] = d;
+        return next;
+      });
+      return;
+    }
+    const peers = nodePeers(findings, v);
+    const autoPeers = peers.filter(f => f.fixTier === 'deterministic');
+    const aiPeers = peers.filter(f => f.fixTier === 'ai');
+    if (autoPeers.length > 0) {
+      setT1Decisions?.(prev => {
+        const next = { ...prev };
+        autoPeers.forEach(f => {
+          const k = findingKey(f);
+          if (d === null) delete next[k];
+          else next[k] = d;
+        });
+        return next;
+      });
+    }
+    if (aiPeers.length > 0) {
+      setAiDecisions?.(prev => {
+        const next = { ...prev };
+        aiPeers.forEach(f => {
+          const k = findingKey(f);
+          if (d === 'accept' && (aiStatus[k] ?? 'idle') !== 'ready') return;
+          if (d === null) delete next[k];
+          else next[k] = d;
+        });
+        return next;
+      });
+    }
   };
 
   const generateAll = () => {
@@ -1986,8 +2078,8 @@ export const InlineVisualReview: React.FC<{
                   : `Generating ${loadingAiCount} AI-fixes.`
                 : idleAi.length > 0
                   ? idleAi.length === 1
-                    ? '1 finding has no replacement yet. Generate an AI-fix to review it.'
-                    : `${idleAi.length} findings have no replacement yet. Generate AI-fixes to review them.`
+                    ? '1 finding has no remediation suggestion yet. Generate an AI-fix to review it.'
+                    : `${idleAi.length} findings have no remediation suggestions yet. Generate AI-fixes to review them.`
                   : pendingGeneratedAi === 1
                     ? '1 AI-fix generated. Review it below.'
                     : `${pendingGeneratedAi} AI-fixes generated. Review them below.`}
@@ -2273,21 +2365,28 @@ export const InlineVisualReview: React.FC<{
           </Typography>
         ) : (
           <div className={classes.fileList}>
-            {files.flatMap(group => group.findings).map(f => (
+            {(redesign4
+              ? groupByNodeOrder(files.flatMap(group => group.findings))
+              : files.flatMap(group => group.findings).map(f => [f])
+            ).map(bundle => {
+              const primary = bundle[0];
+              return (
               <FindingRow
-                key={findingKey(f)}
-                finding={f}
-                decision={decisions[findingKey(f)]}
-                aiStatus={aiStatus[findingKey(f)] ?? 'idle'}
-                onDecision={d => onDecision(f, d)}
+                key={redesign4 ? nodeKey(primary) : findingKey(primary)}
+                finding={primary}
+                bundled={redesign4 && bundle.length > 1 ? bundle : undefined}
+                decision={sharedDecision(bundle, decisions)}
+                aiStatus={aiStatus[findingKey(primary)] ?? 'idle'}
+                onDecision={d => onDecision(primary, d)}
                 onGenerateAi={onGenerateAi}
                 quietRowActions={currentRedesign}
                 hideDecline={redesign3}
                 includeInPr={redesign4}
-                highlight={pulseKey === findingKey(f)}
+                highlight={bundle.some(f => pulseKey === findingKey(f))}
                 showLane={currentRedesign && fixType === 'All'}
               />
-            ))}
+              );
+            })}
           </div>
         )}
       </Paper>
@@ -2377,6 +2476,7 @@ export const InlineVisualReview: React.FC<{
 
 const FindingRow: React.FC<{
   finding: QualityViolation;
+  bundled?: QualityViolation[];
   decision?: WizardDecision;
   aiStatus: AiRowStatus;
   onDecision: (d: WizardDecision | null) => void;
@@ -2388,6 +2488,7 @@ const FindingRow: React.FC<{
   showLane?: boolean;
 }> = ({
   finding,
+  bundled,
   decision,
   aiStatus,
   onDecision,
@@ -2399,17 +2500,9 @@ const FindingRow: React.FC<{
   showLane,
 }) => {
   const classes = useStyles();
+  const copies = bundled && bundled.length > 0 ? bundled : [finding];
   const lane = laneOf(finding);
-  const snip = snippetForRule(finding.ruleId);
   const key = findingKey(finding);
-  const waitingForAi = lane === 'AI-fix' && aiStatus !== 'ready';
-  const showProposed = lane === 'Auto-fix' || (lane === 'AI-fix' && aiStatus === 'ready');
-  const issueLines: DiffLine[] = waitingForAi || lane === 'Manual-fix'
-    ? snip.current.map(text => ({ kind: 'context' as const, text }))
-    : [];
-  const lines = showProposed
-    ? unifiedDiff(snip.current, snip.proposed)
-    : issueLines;
   const rowClass =
     decision === 'accept'
       ? `${classes.issueCard} ${classes.rowAccept}`
@@ -2515,51 +2608,79 @@ const FindingRow: React.FC<{
     >
       <div className={classes.cardHead}>
         <div className={classes.cardCopy}>
-          <Typography className={classes.title} variant="subtitle2">
-            {finding.message}
-          </Typography>
-          <Typography className={classes.fileMeta} variant="caption" color="textSecondary">
-            <span className={classes.filePath}>
-              {finding.file || 'Unknown file'}:{finding.lineStart}
-            </span>
-            {' · '}
-            {kindLabel(finding)}
-            {' · '}
-            {finding.ruleId}
-          </Typography>
-          <div className={classes.chips}>
-            <Chip
-              size="small"
-              label={SEV_LABEL[finding.severity] ?? finding.severity}
-              className={classes.chip}
-              style={{
-                backgroundColor: SEVERITY_COLORS[finding.severity],
-                color: '#fff',
-              }}
-            />
-            <Chip
-              size="small"
-              variant="outlined"
-              label={APME_CATEGORY_LABEL[apmeCategoryOf(finding)]}
-              className={classes.chip}
-            />
-            {showLane ? (
-              <Chip
-                size="small"
-                variant="outlined"
-                label={lane === 'Manual-fix' ? 'Manual' : TAB_LABEL[lane]}
-                className={classes.chip}
-              />
-            ) : null}
-          </div>
+          {copies.map((item, index) => {
+            const itemLane = laneOf(item);
+            return (
+              <div
+                key={findingKey(item)}
+                className={index === 0 ? undefined : classes.bundledCopy}
+              >
+                <Typography className={classes.title} variant="subtitle2">
+                  {item.message}
+                </Typography>
+                <Typography
+                  className={classes.fileMeta}
+                  variant="caption"
+                  color="textSecondary"
+                >
+                  <span className={classes.filePath}>
+                    {item.file || 'Unknown file'}:{item.lineStart}
+                  </span>
+                  {' · '}
+                  {kindLabel(item)}
+                  {' · '}
+                  {item.ruleId}
+                </Typography>
+                <div className={classes.chips}>
+                  <Chip
+                    size="small"
+                    label={SEV_LABEL[item.severity] ?? item.severity}
+                    className={classes.chip}
+                    style={{
+                      backgroundColor: SEVERITY_COLORS[item.severity],
+                      color: '#fff',
+                    }}
+                  />
+                  <Chip
+                    size="small"
+                    variant="outlined"
+                    label={APME_CATEGORY_LABEL[apmeCategoryOf(item)]}
+                    className={classes.chip}
+                  />
+                  {showLane ? (
+                    <Chip
+                      size="small"
+                      variant="outlined"
+                      label={itemLane === 'Manual-fix' ? 'Manual' : TAB_LABEL[itemLane]}
+                      className={classes.chip}
+                    />
+                  ) : null}
+                </div>
+              </div>
+            );
+          })}
         </div>
         {actions && <div className={classes.cardActions}>{actions}</div>}
       </div>
-      <div className={classes.diffBlock}>
-        {lines.length === 0 ? (
+      {copies.map(item => {
+        const itemLane = laneOf(item);
+        const itemSnip = snippetForRule(item.ruleId);
+        const itemWaiting = itemLane === 'AI-fix' && aiStatus !== 'ready';
+        const itemProposed =
+          itemLane === 'Auto-fix' || (itemLane === 'AI-fix' && aiStatus === 'ready');
+        const itemIssueLines: DiffLine[] =
+          itemWaiting || itemLane === 'Manual-fix'
+            ? itemSnip.current.map(text => ({ kind: 'context' as const, text }))
+            : [];
+        const itemLines = itemProposed
+          ? unifiedDiff(itemSnip.current, itemSnip.proposed)
+          : itemIssueLines;
+        return (
+      <div className={classes.diffBlock} key={`diff-${findingKey(item)}`}>
+        {itemLines.length === 0 ? (
           <Typography className={classes.diffEmpty}>No snippet for this finding.</Typography>
         ) : (
-          lines.map((line, idx) => (
+          itemLines.map((line, idx) => (
             <div
               key={`${line.kind}-${idx}`}
               className={`${classes.diffLine} ${
@@ -2581,23 +2702,25 @@ const FindingRow: React.FC<{
             </div>
           ))
         )}
-        {lane === 'AI-fix' && aiStatus === 'loading' && (
+        {itemLane === 'AI-fix' && aiStatus === 'loading' && (
           <div className={classes.suggestionEmpty}>
             <CircularProgress size={16} />
             Generating…
           </div>
         )}
-        {lane === 'AI-fix' && aiStatus === 'idle' && (
+        {itemLane === 'AI-fix' && aiStatus === 'idle' && (
             <div className={classes.suggestionEmpty}>
               No suggestion yet. Generate this row, or generate all on this tab.
             </div>
         )}
-        {lane === 'Manual-fix' && (
+        {itemLane === 'Manual-fix' && (
           <Typography className={classes.suggestionEmpty} variant="body2" color="textSecondary">
             No automatic or AI suggestion. Change this in the file, or leave it.
           </Typography>
         )}
       </div>
+        );
+      })}
     </div>
   );
 };

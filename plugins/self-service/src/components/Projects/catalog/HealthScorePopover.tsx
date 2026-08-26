@@ -433,12 +433,12 @@ interface HealthScorePopoverProps {
   showScanMeta?: boolean;
   /** Hide by-category when this cell is a historical scan without finding rows. */
   showCategoryMix?: boolean;
-  /** Footer control next to the score popover. */
+  /** Footer: View scan history (outlined). */
   viewScanLabel?: string;
   scanning?: boolean;
   onViewLastScan?: () => void;
-  onRemediate?: () => void;
-  onViewPullRequest?: () => void;
+  /** Footer: Start new scan (contained). */
+  onStartScan?: () => void;
 }
 
 export const HealthScorePopover = ({
@@ -451,11 +451,10 @@ export const HealthScorePopover = ({
   showFindingsLink = false,
   showScanMeta = false,
   showCategoryMix = true,
-  viewScanLabel = 'View last scan',
+  viewScanLabel = 'View scan history',
   scanning = false,
   onViewLastScan,
-  onRemediate,
-  onViewPullRequest,
+  onStartScan,
 }: HealthScorePopoverProps) => {
   const classes = useStyles();
   const theme = useTheme();
@@ -491,13 +490,9 @@ export const HealthScorePopover = ({
 
   const { healthScore, totalViolations, lastScannedAt, lastScannedCommit, severityBreakdown } =
     quality;
-  const live =
-    quality.remediationStatus === 'in-progress' ||
-    quality.remediationStatus === 'proposals-ready';
   const presentSev = SEVERITY_ORDER.filter(sev => (severityBreakdown[sev] ?? 0) > 0);
   const sha = lastScannedCommit ? shortSha(lastScannedCommit) : null;
   const findings = quality.violations ?? [];
-  const remediateLabel = live ? 'Remediate' : null;
   const showRemediation = remediationHasStarted(quality.remediationStatus);
   const listCell = showScanMeta || showFindingsLink;
   const findingsLabel =
@@ -632,10 +627,26 @@ export const HealthScorePopover = ({
           )}
 
           <Box className={classes.footer}>
+            {onStartScan && (
+              <Button
+                size="small"
+                color="primary"
+                variant="contained"
+                className={classes.pill}
+                onClick={e => {
+                  e.stopPropagation();
+                  handleClose();
+                  onStartScan();
+                }}
+              >
+                Start new scan
+              </Button>
+            )}
             {onViewLastScan && (
               <Button
                 size="small"
                 color="primary"
+                variant="outlined"
                 className={classes.pill}
                 onClick={e => {
                   e.stopPropagation();
@@ -644,36 +655,6 @@ export const HealthScorePopover = ({
                 }}
               >
                 {viewScanLabel}
-              </Button>
-            )}
-            {quality.remediationStatus === 'pr-open' && onViewPullRequest && (
-              <Button
-                size="small"
-                color="primary"
-                variant="contained"
-                className={classes.pill}
-                onClick={e => {
-                  e.stopPropagation();
-                  handleClose();
-                  onViewPullRequest();
-                }}
-              >
-                View pull request
-              </Button>
-            )}
-            {remediateLabel && onRemediate && (
-              <Button
-                size="small"
-                color="primary"
-                variant="contained"
-                className={classes.pill}
-                onClick={e => {
-                  e.stopPropagation();
-                  handleClose();
-                  onRemediate();
-                }}
-              >
-                {remediateLabel}
               </Button>
             )}
           </Box>

@@ -112,14 +112,8 @@ export const QualityOverviewCard = ({
           quality={quality}
           fontSize={36}
           denomSize={18}
+          onStartScan={() => navigate(scanPath())}
           onViewLastScan={() => navigate(historyPath())}
-          viewScanLabel="View scan history"
-          onRemediate={() => navigate(scanPath(live))}
-          onViewPullRequest={
-            prUrl
-              ? () => window.open(prUrl, '_blank', 'noopener,noreferrer')
-              : undefined
-          }
         />
         <Typography color="textSecondary" style={{ fontSize: 13, marginTop: 8 }}>
           {quality.totalViolations === 0
