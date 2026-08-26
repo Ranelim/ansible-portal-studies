@@ -309,6 +309,10 @@ const useStyles = makeStyles(theme => ({
     marginTop: theme.spacing(1.5),
     maxWidth: 720,
   },
+  /** Commit panel is a sibling of chrome; findings get this gap from the review stack. */
+  stepperHintBeforePanel: {
+    marginBottom: theme.spacing(2),
+  },
   stepper: {
     display: 'flex',
     alignItems: 'center',
@@ -1248,7 +1252,9 @@ export const ApmeRemediationPage = () => {
       />
       {visual && (step === 'findings' || step === 'commit') ? (
         <Typography
-          className={classes.stepperHint}
+          className={`${classes.stepperHint}${
+            step === 'commit' ? ` ${classes.stepperHintBeforePanel}` : ''
+          }`}
           variant="body2"
           color="textSecondary"
         >
