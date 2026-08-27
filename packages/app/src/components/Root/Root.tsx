@@ -28,6 +28,7 @@ import {
   CHROME_TOP_BASE,
   MASTHEAD_HEIGHT,
   RAIL_ICON_GUTTER_PX,
+  SETUP_DEMO_BAR_HEIGHT,
   TEMPLATES_RUNS_IA_BAR_HEIGHT,
   chromeTopForPrototypeBars,
   NavIaRouteGuard,
@@ -501,12 +502,17 @@ export const Root = ({ children }: PropsWithChildren<{}>) => {
   const showAutomateHostChrome =
     showAutomateExperienceHostTabs || showExperienceRunPairTabs;
 
-  const chromeTop = chromeTopForPrototypeBars({
-    showAdminSyncBar,
-    showIntegrationsOrientBar,
-    showTemplatesRunsBar,
-  });
-  const magentaBarPx = showTemplatesRunsBar ? TEMPLATES_RUNS_IA_BAR_HEIGHT : 0;
+  const chromeTop = isSetup
+    ? SETUP_DEMO_BAR_HEIGHT
+    : chromeTopForPrototypeBars({
+        showAdminSyncBar,
+        showIntegrationsOrientBar,
+        showTemplatesRunsBar,
+      });
+  const magentaBarPx = isSetup
+    ? SETUP_DEMO_BAR_HEIGHT
+    : SETUP_DEMO_BAR_HEIGHT +
+      (showTemplatesRunsBar ? TEMPLATES_RUNS_IA_BAR_HEIGHT : 0);
 
   useCaptureGlobalShellReturn(
     location.pathname,

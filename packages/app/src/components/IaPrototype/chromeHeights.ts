@@ -1,5 +1,10 @@
 /** Masthead only on Experiences shell branch (no Opt 1–5 purple banner). */
 export const IA_BANNER_HEIGHT = 0;
+/**
+ * Quiet prototype jumper (Setup / Post-setup) above the masthead.
+ * Dual beat lands here later.
+ */
+export const SETUP_DEMO_BAR_HEIGHT = 24;
 export const MASTHEAD_HEIGHT = 64;
 /**
  * Left inset for waffle / Back / magenta TEMP / page Header+Content.
@@ -37,7 +42,10 @@ export const TEMPLATES_RUNS_IA_BAR_HEIGHT = 48;
 
 /** Masthead (+ parked return bar). Admin Sync bar is added only in Administration. */
 export const CHROME_TOP_BASE =
-  IA_BANNER_HEIGHT + MASTHEAD_HEIGHT + RETURN_COMPARE_BAR_HEIGHT;
+  SETUP_DEMO_BAR_HEIGHT +
+  IA_BANNER_HEIGHT +
+  MASTHEAD_HEIGHT +
+  RETURN_COMPARE_BAR_HEIGHT;
 
 /** Default chrome top without Admin Sync bar (Bridge / non-Admin experiences). */
 export const CHROME_TOP = CHROME_TOP_BASE;

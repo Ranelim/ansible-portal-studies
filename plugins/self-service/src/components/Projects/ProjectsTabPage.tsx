@@ -11,6 +11,7 @@ import { CreateFromTemplateDialog } from '../common/CreateFromTemplateDialog';
 import { GitRepositoriesContent } from './catalog/GitRepositoriesContent';
 import { CIActivityContent } from './ci/CIActivityContent';
 import { QualityDashboardTabContent } from './quality/QualityDashboardTabContent';
+import { qualityEmptyPreviewFromSearch } from './quality/QualityPostureOverview';
 import {
   RemediationsContent,
   StartScanDialog,
@@ -98,7 +99,10 @@ export const ProjectsTabs: React.FC = () => {
   const sectionMode = isDevelopExperience(experience);
   const [createOpen, setCreateOpen] = useState(false);
   const [scanOpen, setScanOpen] = useState(false);
-  const liveCount = countLiveRemediations();
+  const qualityEmptyPreview = qualityEmptyPreviewFromSearch(location.search);
+  const qualityNoRepos = qualityEmptyPreview === 'no-repos';
+  const liveCount =
+    qualityEmptyPreview != null ? 0 : countLiveRemediations();
 
   useEffect(() => {
     if (location.pathname.includes('/repositories/create')) {
@@ -148,7 +152,13 @@ export const ProjectsTabs: React.FC = () => {
 
   const content = useMemo(() => {
     if (surface === 'dashboard') {
-      return <QualityDashboardTabContent key="dashboard" />;
+      return (
+        <QualityDashboardTabContent
+          key="dashboard"
+          onStartScan={() => setScanOpen(true)}
+          onAddRepository={() => setCreateOpen(true)}
+        />
+      );
     }
     if (surface === 'remediations') {
       return (
@@ -225,7 +235,28 @@ export const ProjectsTabs: React.FC = () => {
                 )
               )}
             </Box>
-            {qualityPage && (
+            {qualityPage && qualityNoRepos && (
+              <AddActionButton
+                label="Add repository"
+                options={[
+                  {
+                    label: 'Create from template',
+                    description:
+                      'Scaffold a new repository from a curated template with best-practice structure.',
+                    icon: <FileCopyOutlinedIcon fontSize="small" />,
+                    onClick: () => setCreateOpen(true),
+                  },
+                  {
+                    label: 'Import existing repository',
+                    description:
+                      'Connect an existing Git repository to discover and govern its automation content.',
+                    icon: <SearchIcon fontSize="small" />,
+                    onClick: () => navigate('/self-service/catalog-import'),
+                  },
+                ]}
+              />
+            )}
+            {qualityPage && !qualityNoRepos && (
               <Button
                 color="primary"
                 variant="contained"

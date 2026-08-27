@@ -3,10 +3,12 @@ export { ExperienceReturnCompareBar } from './ExperienceReturnCompareBar';
 export { AdminSyncIaCompareBar } from './AdminSyncIaCompareBar';
 export { IntegrationsOrientCompareBar } from './IntegrationsOrientCompareBar';
 export { TemplatesRunsIaCompareBar } from './TemplatesRunsIaCompareBar';
+export { SetupDemoBar } from './SetupDemoBar';
 export { NavIaRouteGuard } from './NavIaRouteGuard';
 export { modelHomePath, curatedLandingPath } from './navIaLandings';
 export {
   IA_BANNER_HEIGHT,
+  SETUP_DEMO_BAR_HEIGHT,
   MASTHEAD_HEIGHT,
   RAIL_ICON_GUTTER_PX,
   PAGE_GUTTER_PX,

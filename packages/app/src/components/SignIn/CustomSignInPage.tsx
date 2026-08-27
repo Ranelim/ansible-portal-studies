@@ -4,6 +4,7 @@ import { SignInPageProps } from '@backstage/core-plugin-api';
 import { Box, Typography, Button, makeStyles, CircularProgress, TextField } from '@material-ui/core';
 import SettingsIcon from '@material-ui/icons/Settings';
 import LockOutlinedIcon from '@material-ui/icons/LockOutlined';
+import { writeSetupDemoMode } from '@ansible/plugin-backstage-self-service';
 
 type CustomSignInPageProps = SignInPageProps & {
   providers: any[];
@@ -226,6 +227,7 @@ export const CustomSignInPage = (props: CustomSignInPageProps) => {
           onClick={() => {
             sessionStorage.setItem('portal-setup-redirect', 'true');
             sessionStorage.setItem('portal-welcome-modal-dismissed-session', 'true');
+            writeSetupDemoMode('setup');
             props.onSignInSuccess({
               getIdToken: async () => ({ token: '' }),
               getId: async () => 'setup-admin',

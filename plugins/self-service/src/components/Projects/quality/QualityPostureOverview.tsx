@@ -1,7 +1,15 @@
 import { useCallback, useMemo, useState, type KeyboardEvent } from 'react';
-import { Box, Chip, Tooltip, Typography, makeStyles } from '@material-ui/core';
+import { EmptyState } from '@backstage/core-components';
+import {
+  Box,
+  Button,
+  Chip,
+  Tooltip,
+  Typography,
+  makeStyles,
+} from '@material-ui/core';
 import HelpOutlineIcon from '@material-ui/icons/HelpOutline';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { GIT_REPOSITORIES } from '../catalog/unifiedDemoData';
 import { QualityScoreMark } from '../catalog/HealthScorePopover';
 import {
@@ -170,16 +178,45 @@ const useStyles = makeStyles(theme => ({
     display: 'flex',
     alignItems: 'center',
   },
+  emptyCta: {
+    textTransform: 'none',
+    fontWeight: 600,
+    borderRadius: 20,
+  },
 }));
+
+/**
+ * Prototype preview: `?empty=no-repos` | `?empty=no-scans`. Not a product flag.
+ * Factory context (not SoT): scratch/empty-state-plugin-factory.md
+ */
+export type QualityEmptyPreview = 'no-repos' | 'no-scans' | null;
+
+export function qualityEmptyPreviewFromSearch(
+  search: string,
+): QualityEmptyPreview {
+  const value = new URLSearchParams(
+    search.startsWith('?') ? search.slice(1) : search,
+  ).get('empty');
+  if (value === 'no-repos' || value === 'no-scans') return value;
+  return null;
+}
 
 /**
  * Shared Content quality / Overview — estate KPIs from each repo’s latest scan.
  * Git Repositories list, Remediations, and Scans own the queues.
  */
-export const QualityPostureOverview = () => {
+export const QualityPostureOverview = ({
+  onStartScan,
+  onAddRepository,
+}: {
+  onStartScan?: () => void;
+  onAddRepository?: () => void;
+}) => {
   const classes = useStyles();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { experience } = useNavIaModel();
+  const emptyPreview = qualityEmptyPreviewFromSearch(searchParams.toString());
 
   const stats = useMemo(() => {
     const totalRepos = GIT_REPOSITORIES.length;
@@ -303,6 +340,57 @@ export const QualityPostureOverview = () => {
       } in progress`,
     },
   ];
+
+  const noRepos =
+    emptyPreview === 'no-repos' || stats.totalRepos === 0;
+  const noScans =
+    !noRepos &&
+    (emptyPreview === 'no-scans' || stats.scannedWithScore === 0);
+
+  if (noRepos) {
+    return (
+      <EmptyState
+        missing="content"
+        title="No Git repositories"
+        description="Quality scans run against Git repositories. Add a repository, then start a scan."
+        action={
+          <Button
+            color="primary"
+            variant="contained"
+            className={classes.emptyCta}
+            onClick={
+              onAddRepository ??
+              (() => navigate('/self-service/repositories/create'))
+            }
+          >
+            Add repository
+          </Button>
+        }
+      />
+    );
+  }
+
+  if (noScans) {
+    return (
+      <EmptyState
+        missing="data"
+        title="No scans yet"
+        description="Start a scan to check your Git repositories for quality issues."
+        action={
+          onStartScan ? (
+            <Button
+              color="primary"
+              variant="contained"
+              className={classes.emptyCta}
+              onClick={onStartScan}
+            >
+              Start scan
+            </Button>
+          ) : undefined
+        }
+      />
+    );
+  }
 
   return (
     <Box>

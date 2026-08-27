@@ -5,7 +5,11 @@ import {
   useTemplatesRunsIa,
   type TemplatesRunsIaVariant,
 } from '@ansible/plugin-backstage-self-service';
-import { TEMPLATES_RUNS_IA_BAR_HEIGHT, RAIL_ICON_GUTTER_PX } from './chromeHeights';
+import {
+  TEMPLATES_RUNS_IA_BAR_HEIGHT,
+  RAIL_ICON_GUTTER_PX,
+  SETUP_DEMO_BAR_HEIGHT,
+} from './chromeHeights';
 import { useMagentaIaBarVisible } from './useMagentaIaBarVisible';
 import { isDay0SetupPath } from '../GlobalHeader/isDay0SetupPath';
 
@@ -26,8 +30,8 @@ const HINTS: Record<TemplatesRunsIaVariant, string> = {
 const useStyles = makeStyles({
   bar: {
     position: 'fixed',
-    // Above the masthead (masthead top = --portal-magenta-bar).
-    top: 0,
+    // Below the Setup/Post-setup demo jumper (masthead top = --portal-magenta-bar).
+    top: SETUP_DEMO_BAR_HEIGHT,
     left: 0,
     right: 0,
     height: TEMPLATES_RUNS_IA_BAR_HEIGHT,

@@ -19,23 +19,39 @@ import CheckCircleOutlineIcon from '@material-ui/icons/CheckCircleOutline';
 import ErrorOutlineIcon from '@material-ui/icons/ErrorOutline';
 import InfoOutlinedIcon from '@material-ui/icons/InfoOutlined';
 import SettingsIcon from '@material-ui/icons/Settings';
+import Alert from '@material-ui/lab/Alert';
 import redHatLogo from '../../assets/redhat-logo.png';
+import { AapDemoLoginPage } from './AapDemoLoginPage';
 
-const useStyles = makeStyles(theme => ({
+const useStyles = makeStyles(theme => {
+  const rhdhGeneral = (theme.palette as any).rhdh?.general ?? {};
+  // Same masthead tokens as Experiences / RHDH AppBar.
+  const appBarBg =
+    rhdhGeneral.appBarBackgroundColor ??
+    (theme.palette.type === 'dark' ? '#151515' : '#f2f2f2');
+  const appBarFg =
+    rhdhGeneral.appBarForegroundColor ?? theme.palette.text.primary;
+
+  return {
   root: {
     position: 'fixed',
-    inset: 0,
+    top: 'var(--portal-setup-demo-bar, 0px)',
+    left: 0,
+    right: 0,
+    bottom: 0,
     zIndex: 10000,
     backgroundColor: theme.palette.background.default,
     overflow: 'auto',
   },
   header: {
     height: 64,
-    backgroundColor: theme.palette.type === 'dark' ? '#1a1a1a' : '#151515',
+    backgroundColor: appBarBg,
+    color: appBarFg,
     display: 'flex',
     alignItems: 'center',
-    padding: '0 24px',
+    padding: '0 24px 0 32px',
     gap: 12,
+    boxSizing: 'border-box',
   },
   headerLogo: {
     width: 36,
@@ -45,20 +61,30 @@ const useStyles = makeStyles(theme => ({
     justifyContent: 'center',
   },
   headerTitle: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: 600,
-    lineHeight: 1.2,
+    color: appBarFg,
+    fontSize: 16,
+    fontWeight: 700,
+    lineHeight: 1.15,
   },
   headerSubtitle: {
-    color: '#ccc',
-    fontSize: 11,
-    lineHeight: 1.2,
+    color: appBarFg,
+    fontSize: 16,
+    fontWeight: 400,
+    lineHeight: 1.15,
   },
   headerUser: {
     marginLeft: 'auto',
-    color: '#ccc',
+    color: theme.palette.text.secondary,
     fontSize: 13,
+  },
+  setupModeChip: {
+    padding: '4px 10px',
+    borderRadius: 4,
+    fontSize: 11,
+    fontWeight: 600,
+    letterSpacing: 0.5,
+    backgroundColor: 'rgba(0, 102, 204, 0.12)',
+    color: theme.palette.type === 'dark' ? '#8BC1F7' : '#0066CC',
   },
   wizardContainer: {
     display: 'flex',
@@ -67,7 +93,7 @@ const useStyles = makeStyles(theme => ({
     borderRadius: 8,
     overflow: 'hidden',
     backgroundColor: theme.palette.background.paper,
-    height: 'calc(100vh - 160px)',
+    height: 'calc(100% - 160px)',
   },
   sidebar: {
     width: 250,
@@ -194,7 +220,7 @@ const useStyles = makeStyles(theme => ({
     alignItems: 'center',
     justifyContent: 'center',
     flex: 1,
-    minHeight: 'calc(100vh - 64px)',
+    minHeight: 'calc(100% - 64px)',
     textAlign: 'center',
     gap: 16,
   },
@@ -254,7 +280,7 @@ const useStyles = makeStyles(theme => ({
     padding: '8px 0',
     minHeight: 32,
   },
-}));
+}});
 
 const STEPS = [
   { label: 'Getting Started', key: 'overview' },
@@ -263,7 +289,7 @@ const STEPS = [
   { label: 'Review', key: 'review' },
 ];
 
-type WizardPhase = 'login' | 'wizard' | 'applying' | 'success';
+type WizardPhase = 'login' | 'wizard' | 'applying' | 'success' | 'aap-login';
 
 type DiscoveryStep = {
   label: string;
@@ -277,7 +303,15 @@ const DISCOVERY_STEPS: DiscoveryStep[] = [
   { label: 'Syncing initial data from AAP', status: 'pending' },
 ];
 
-const ApplyingAndDiscoveryScreen = ({ onDone, isDone }: { onDone: () => void; isDone: boolean }) => {
+const ApplyingAndDiscoveryScreen = ({
+  onDone,
+  isDone,
+  onSignInWithAap,
+}: {
+  onDone: () => void;
+  isDone: boolean;
+  onSignInWithAap: () => void;
+}) => {
   const classes = useStyles();
   const [steps, setSteps] = useState<DiscoveryStep[]>(
     DISCOVERY_STEPS.map(s => ({ ...s })),
@@ -321,7 +355,7 @@ const ApplyingAndDiscoveryScreen = ({ onDone, isDone }: { onDone: () => void; is
         <Box className={classes.headerLogo}><img src={redHatLogo} alt="Red Hat" style={{ width: 36, height: 36, objectFit: 'contain' }} /></Box>
         <Box>
           <Typography className={classes.headerTitle}>Red Hat</Typography>
-          <Typography className={classes.headerSubtitle}>Ansible Automation Portal</Typography>
+          <Typography className={classes.headerSubtitle}>Automation Portal</Typography>
         </Box>
       </Box>
       <Box style={{
@@ -381,17 +415,14 @@ const ApplyingAndDiscoveryScreen = ({ onDone, isDone }: { onDone: () => void; is
               <Button
                 variant="contained"
                 color="primary"
-                onClick={() => {
-                  sessionStorage.setItem('portal-setup-just-completed', 'true');
-                  window.location.href = '/';
-                }}
+                onClick={onSignInWithAap}
                 style={{ textTransform: 'none', fontWeight: 500 }}
               >
                 Sign in with AAP
               </Button>
             </Box>
             <Typography variant="caption" style={{ opacity: 0.5, marginTop: 8 }}>
-              After signing in, a Quick Start guide will walk you through additional setup.
+              Next: sign in with your Ansible Automation Platform account.
             </Typography>
           </>
         )}
@@ -403,7 +434,16 @@ const ApplyingAndDiscoveryScreen = ({ onDone, isDone }: { onDone: () => void; is
 export const SetupWizardPage = () => {
   const classes = useStyles();
   const theme = useTheme();
-  const [phase, setPhase] = useState<WizardPhase>('login');
+  const [phase, setPhase] = useState<WizardPhase>(() => {
+    try {
+      if (new URLSearchParams(window.location.search).get('screen') === 'aap-login') {
+        return 'aap-login';
+      }
+    } catch {
+      /* ignore */
+    }
+    return 'login';
+  });
   const [step, setStep] = useState(0);
   const [password, setPassword] = useState('');
   const [showPasswordHint, setShowPasswordHint] = useState(false);
@@ -453,13 +493,6 @@ export const SetupWizardPage = () => {
   const [orgSearch, setOrgSearch] = useState('');
   const [orgShowCount, setOrgShowCount] = useState(20);
 
-  const handleLogin = useCallback(() => {
-    if (password.trim()) {
-      setPhase('wizard');
-      setStep(0);
-    }
-  }, [password]);
-
   const isStepValid = useCallback(() => {
     switch (step) {
       case 1: {
@@ -488,6 +521,13 @@ export const SetupWizardPage = () => {
     if (step > 0) setStep(s => s - 1);
   }, [step]);
 
+  const handleLogin = useCallback(() => {
+    if (password.trim()) {
+      setPhase('wizard');
+      setStep(0);
+    }
+  }, [password]);
+
   const handleApply = useCallback(() => {
     setPhase('applying');
     setTimeout(() => setPhase('success'), 3000);
@@ -500,7 +540,7 @@ export const SetupWizardPage = () => {
           <Box className={classes.headerLogo}><img src={redHatLogo} alt="Red Hat" style={{ width: 36, height: 36, objectFit: 'contain' }} /></Box>
           <Box>
             <Typography className={classes.headerTitle}>Red Hat</Typography>
-            <Typography className={classes.headerSubtitle}>Ansible Automation Portal</Typography>
+            <Typography className={classes.headerSubtitle}>Automation Portal</Typography>
           </Box>
         </Box>
         <Box className={classes.centeredPage}>
@@ -592,8 +632,18 @@ export const SetupWizardPage = () => {
     );
   }
 
+  if (phase === 'aap-login') {
+    return <AapDemoLoginPage />;
+  }
+
   if (phase === 'applying' || phase === 'success') {
-    return <ApplyingAndDiscoveryScreen onDone={() => setPhase('success')} isDone={phase === 'success'} />;
+    return (
+      <ApplyingAndDiscoveryScreen
+        onDone={() => setPhase('success')}
+        isDone={phase === 'success'}
+        onSignInWithAap={() => setPhase('aap-login')}
+      />
+    );
   }
 
   const renderStepContent = () => {
@@ -617,7 +667,7 @@ export const SetupWizardPage = () => {
   function renderOverview() {
     return (
       <>
-        <Typography className={classes.sectionTitle}>Welcome to Ansible Automation Portal</Typography>
+        <Typography className={classes.sectionTitle}>Welcome to Automation Portal</Typography>
         <Typography className={classes.sectionDescription}>
           This wizard connects your portal to Ansible Automation Platform (AAP). Once connected,
           the portal will discover and serve your automation content — job templates, collections,
@@ -1110,21 +1160,17 @@ export const SetupWizardPage = () => {
         <Box className={classes.headerLogo}><img src={redHatLogo} alt="Red Hat" style={{ width: 36, height: 36, objectFit: 'contain' }} /></Box>
         <Box>
           <Typography className={classes.headerTitle}>Red Hat</Typography>
-          <Typography className={classes.headerSubtitle}>Ansible Automation Portal</Typography>
+          <Typography className={classes.headerSubtitle}>Automation Portal</Typography>
         </Box>
         <Box style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
-          <Box style={{
-            padding: '4px 10px', borderRadius: 4, fontSize: 11, fontWeight: 600,
-            backgroundColor: 'rgba(0,102,204,0.15)', color: '#4DA3FF',
-            letterSpacing: 0.5,
-          }}>
+          <Box className={classes.setupModeChip}>
             SETUP MODE
           </Box>
         </Box>
       </Box>
 
       <Typography variant="h6" style={{ fontWeight: 600, margin: '24px 24px 0' }}>
-        Setup Ansible Automation Portal
+        Setup Automation Portal
       </Typography>
 
       <Box className={classes.wizardContainer}>
@@ -1161,19 +1207,11 @@ export const SetupWizardPage = () => {
           </Box>
           <Box className={classes.footer} style={{ flexDirection: 'column', alignItems: 'stretch', gap: 0 }}>
             {step === STEPS.length - 1 && (
-              <Box style={{
-                display: 'flex', alignItems: 'flex-start', gap: 10,
-                padding: '10px 14px', borderRadius: 6, marginBottom: 12,
-                backgroundColor: 'rgba(0,102,204,0.06)',
-                border: '1px solid rgba(0,102,204,0.15)',
-              }}>
-                <InfoOutlinedIcon style={{ fontSize: 16, color: '#4DA3FF', flexShrink: 0, marginTop: 1 }} />
-                <Typography style={{ fontSize: 12, lineHeight: 1.5, color: 'rgba(255,255,255,0.7)' }}>
-                  Applying will save these settings, restart the portal, and end this session.
-                  You'll sign in with AAP to verify, then a Quick Start guide will help you connect
-                  additional sources.
-                </Typography>
-              </Box>
+              <Alert severity="info" style={{ marginBottom: 12 }}>
+                Applying will save these settings, restart the portal, and end this session.
+                You'll sign in with AAP to verify, then a Quick Start guide will help you connect
+                additional sources.
+              </Alert>
             )}
             <Box style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               {step > 0 && (

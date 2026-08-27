@@ -13,6 +13,7 @@ Build the **Experience Bridge** shell from the Aug 11 stakeholder direction:
 - Enter experience → dedicated rail; return to Bridge via **Experiences** pin
 - SME → Automate only (no Bridge, no switcher)
 - No Opt 1–5 purple banner / model switcher on this branch
+- **Demo jumper (quiet hairline, always on):** **Setup** = from-scratch Day 0 wizard (`/self-service/setup`). **Post-setup** (default) = current Experiences console. Dual / just-after-Apply is the third beat — add later. After wizard **Sign in with AAP** → demo AAP Gateway login (PatternFly username/password; any credentials). Then Administration Dashboard. Shortcut: `/self-service/setup?screen=aap-login`.
 - Masthead globals next: search, notifications (drawer + center), personal settings
 
 **Not** the Opt 1–5 bakeoff (kept on `design/portal-nav-ia` / :3011).
@@ -78,7 +79,8 @@ Not eng SoT until ADRs on `ansible-rhdh-plugins` `main`. Mirror: `.cursor/rules/
 Waffle masthead try = parked (`SHOW_EXPERIENCES_WAFFLE = false`). Multi-seat return = rail back chevron + quiet `ExperienceSwitcher` (`EXPERIENCE_CHROME_HIT = 32`, square chevron). Do **not** unify into one split box.
 Admin Sync compare bar = parked (`FORCED_ADMIN_SYNC_IA = 'opt1'`; set `null` + restore `ADMIN_SYNC_IA_BAR_HEIGHT = 36` to revive).
 Quality remediation session = Inline visual 3-step (`FORCED_REMEDIATION_WIZARD = 'visual'`), Continue under the stepper (`FORCED_CTA_LAYOUT = 'current'`). Auto-fix / AI-fix / Not fixable tabs; AI quota on the AI-fix tab. Prototype wizard, sticky-footer, and layout compare parked. **Redesign 4** forced (`FORCED_REVIEW_LAYOUT`); same-path findings share one Accept / Decline. Rollback loved chrome (pre-nodes): `git reset --hard 239d2106`. Set `SHOW_REVIEW_LAYOUT_COMPARE = true` and `FORCED_REVIEW_LAYOUT = null` to revive Current / Current redesign / Redesign 3 / Redesign 4.
-Content quality **Findings** tab = parked (`SHOW_CONTENT_QUALITY_FINDINGS_TAB = false` in `plugins/self-service/.../quality/contentQualityIa.ts`; set `true` to revive by-rule rollup). Route `/apme/findings` + `QualityDashboardTabContent` kept.
+Content quality **Findings** tab = parked (`SHOW_CONTENT_QUALITY_FINDINGS_TAB = false` in `plugins/self-service/.../quality/contentQualityIa.ts`; set `true` to revive by-rule rollup). Route `/apme/findings` + `QualityDashboardTabContent` kept.  
+**Page empty state (context only, Aug 27):** Backstage `EmptyState` + RHDH theme — not an RHDH custom widget. Preview on Overview: `?empty=no-repos` · `?empty=no-scans`. Note: `scratch/empty-state-plugin-factory.md`. Not a factory lock / not `main` SoT.
 Remediations **progress** column = parked (`SHOW_REMEDIATION_PROGRESS_COLUMN = false` in the same file; set `true` to revive the compact stepper). `CompactSessionStepper` stays in `RemediationsContent`.
 Assistant experience = parked (`SHOW_ASSISTANT_EXPERIENCE = false`). Lightspeed FAB stays.
 

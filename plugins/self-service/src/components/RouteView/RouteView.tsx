@@ -53,6 +53,7 @@ import {
   edgeFleetsIaPage,
 } from '../IaPlaceholder';
 import { SetupWizardPage } from '../Setup/SetupWizardPage';
+import { useSetupDemoMode } from '../../hooks/useSetupDemoMode';
 import { GeneralPage } from '../Admin/GeneralPage';
 import { DevSpacesDetailPage } from '../Admin/DevSpacesDetailPage';
 import { PluginsPage } from '../Admin/PluginsPage';
@@ -73,6 +74,7 @@ import {
 } from '../notifications';
 
 const RouteViewContent = () => {
+  const { epoch: setupDemoEpoch } = useSetupDemoMode();
   const { notifications, removeNotification } = useNotifications();
   const discoveryApi = useApi(discoveryApiRef);
   const fetchApi = useApi(fetchApiRef);
@@ -346,7 +348,10 @@ const RouteViewContent = () => {
         <Route path="admin/sync-activity" element={<SyncActivityPage />} />
         <Route path="admin/sync-activity/:syncId" element={<SyncJobDetailPage />} />
         {/* Pipeline Policies route removed */}
-        <Route path="setup" element={<SetupWizardPage />} />
+        <Route
+          path="setup"
+          element={<SetupWizardPage key={setupDemoEpoch} />}
+        />
         {/* Default redirects */}
         <Route
           path="/catalog/*"

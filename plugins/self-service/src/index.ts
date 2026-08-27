@@ -110,4 +110,12 @@ export {
   writeTemplatesRunsIa,
   isAutomateExperienceEnabled,
 } from './hooks/templatesRunsIa';
+export { useSetupDemoMode } from './hooks/useSetupDemoMode';
+export type { SetupDemoMode } from './hooks/setupDemoMode';
+export {
+  readSetupDemoMode,
+  writeSetupDemoMode,
+  bumpSetupDemoEpoch,
+  readSetupDemoEpoch,
+} from './hooks/setupDemoMode';
 

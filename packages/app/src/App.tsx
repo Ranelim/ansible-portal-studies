@@ -30,6 +30,7 @@ import { GlobalHeader } from './components/GlobalHeader';
 import { AdminSyncIaCompareBar } from './components/IaPrototype';
 import { IntegrationsOrientCompareBar } from './components/IaPrototype';
 import { TemplatesRunsIaCompareBar } from './components/IaPrototype';
+import { SetupDemoBar } from './components/IaPrototype';
 import { PortalNotificationsPage } from './components/Notifications/PortalNotificationsPage';
 import { PortalNotificationSettingsPage } from './components/Notifications/PortalNotificationSettingsPage';
 import { PortalUserSettingsPage } from './components/Settings/PortalUserSettingsPage';
@@ -159,6 +160,7 @@ export default app.createRoot(
         <LightspeedProvider>
           <QuickstartProvider>
             <GlobalHeader />
+            <SetupDemoBar />
             {/* <ExperienceReturnCompareBar /> — B forced; remount to compare A */}
             <AdminSyncIaCompareBar />
             <IntegrationsOrientCompareBar />

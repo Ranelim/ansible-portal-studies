@@ -26,7 +26,7 @@ const HINTS: Record<IntegrationsOrientVariant, string> = {
 const useStyles = makeStyles({
   bar: {
     position: 'fixed',
-    top: 64,
+    top: 'calc(var(--portal-magenta-bar, 0px) + 64px)',
     left: 0,
     right: 0,
     height: INTEGRATIONS_ORIENT_BAR_HEIGHT,
