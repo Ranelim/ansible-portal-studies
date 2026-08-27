@@ -37,6 +37,13 @@ import {
   DEMO_SYNC_SCHEDULES,
   ConnectionProvider,
 } from './syncDemoData';
+import {
+  isSyncConnectionId,
+  useConnectionSetup,
+  withLiveConnectionStatus,
+  writeConnectionSetup,
+} from '../../hooks/connectionSetup';
+import { useDevSpacesSetup } from '../../hooks/devSpacesSetup';
 import { useRestartRequired } from './RestartContext';
 import { statusColors } from '../common/statusColors';
 import SyncIcon from '@material-ui/icons/Sync';
@@ -1179,11 +1186,21 @@ export const ConnectionDetailPage = () => {
   const location = useLocation();
   const { providerId } = useParams<{ providerId: string }>();
   const { setRestartRequired } = useRestartRequired();
-  const handleSave = () => setRestartRequired(true);
+  const connectionMap = useConnectionSetup();
+  const { connected: devSpacesConnected } = useDevSpacesSetup();
+  const handleSave = () => {
+    if (providerId && isSyncConnectionId(providerId)) {
+      writeConnectionSetup(providerId, true);
+    }
+    setRestartRequired(true);
+  };
   const [disconnectOpen, setDisconnectOpen] = useState(false);
   const [kebabAnchor, setKebabAnchor] = useState<null | HTMLElement>(null);
 
   const handleDisconnect = () => {
+    if (providerId && isSyncConnectionId(providerId) && providerId !== 'aap') {
+      writeConnectionSetup(providerId, false);
+    }
     setRestartRequired(true);
     navigate(parentLink);
   };
@@ -1196,7 +1213,10 @@ export const ConnectionDetailPage = () => {
   const parentLabel = isScmRoute ? 'SCM Integration' : 'Integrations';
   const parentLink = isScmRoute ? '/self-service/admin/scm' : '/self-service/admin/integrations';
 
-  const provider = DEMO_CONNECTIONS.find(c => c.id === providerId);
+  const catalog = DEMO_CONNECTIONS.find(c => c.id === providerId);
+  const provider = catalog
+    ? withLiveConnectionStatus(catalog, { connectionMap, devSpacesConnected })
+    : undefined;
 
   if (!provider) {
     return (

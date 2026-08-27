@@ -57,6 +57,7 @@ import {
   experienceSetupPath,
 } from '../../hooks/experienceSetup';
 import { useDevSpacesSetup } from '../../hooks/devSpacesSetup';
+import { anyConnectionNeedsSetup, useConnectionSetup } from '../../hooks/connectionSetup';
 import { useAttentionSeen } from '../../hooks/attentionSeen';
 
 type SortMode = 'recent' | 'az';
@@ -574,13 +575,14 @@ export const ExperiencesHomePage = () => {
   const isAdmin = hasRole('admin');
   const { visibility: bridgeVisibility } = useBridgeExperienceVisibility();
   const { version, isReady } = useExperienceReadiness();
-  const { connected: devSpacesConnected } = useDevSpacesSetup();
+  useDevSpacesSetup();
+  useConnectionSetup();
   const { seen: discoverSeen, exiting: discoverExiting } =
     useAttentionSeen('experiences-discover');
   const { seen: needsSetupSeen, exiting: needsSetupExiting } =
     useAttentionSeen('integrations-needs-setup');
   const experienceAttention = anyExperienceNeedsSetup() && !discoverSeen;
-  const integrationsAttention = !devSpacesConnected && !needsSetupSeen;
+  const integrationsAttention = anyConnectionNeedsSetup() && !needsSetupSeen;
   const showAdminDot = experienceAttention || integrationsAttention;
   const adminExiting =
     showAdminDot &&

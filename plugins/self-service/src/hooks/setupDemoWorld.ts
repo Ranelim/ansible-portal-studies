@@ -7,6 +7,11 @@ import {
 import { writeAllBridgeExperienceVisibility } from './bridgeExperienceVisibility';
 import { writeNavPlugins } from './useNavPlugins';
 import { writeDevSpacesSetup } from './devSpacesSetup';
+import {
+  FIRST_SESSION_CONNECTIONS,
+  POST_SETUP_CONNECTIONS,
+  writeAllConnectionSetup,
+} from './connectionSetup';
 import { seedQuickstartCompleted } from './adminQuickstart';
 import type { SetupDemoMode } from './setupDemoMode';
 
@@ -18,6 +23,7 @@ function emitDemoWorldChanged() {
 
 function seedFirstPortalSession() {
   resetExperienceSetupForSetupLanding();
+  writeAllConnectionSetup(FIRST_SESSION_CONNECTIONS);
   writeDevSpacesSetup({ connected: false, url: '' });
   writeNavPlugins({ apme: true, compliance: true, rhem: false });
   writeAllBridgeExperienceVisibility({
@@ -43,10 +49,9 @@ function seedFullyConfiguredPortal() {
     orchestrator: true,
   });
   writeNavPlugins({ apme: true, compliance: true, rhem: true });
-  writeDevSpacesSetup({
-    connected: true,
-    url: 'https://devspaces.apps.example.com',
-  });
+  writeAllConnectionSetup(POST_SETUP_CONNECTIONS);
+  // Optional leftover so Needs setup still has a showcase row.
+  writeDevSpacesSetup({ connected: false, url: '' });
   seedQuickstartCompleted();
   emitDemoWorldChanged();
 }

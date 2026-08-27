@@ -86,7 +86,13 @@ export const DEMO_CONNECTIONS: ConnectionProvider[] = [
     name: 'Private Automation Hub (PAH)',
     type: 'pah',
     status: 'Not configured',
-    syncJobs: [],
+    lastSync: '1 hour ago',
+    host: 'hub.example.com',
+    auth: 'OAuth (inherited from AAP)',
+    syncJobs: [
+      { name: 'Collections', interval: 'Every 1 hour', enabled: true },
+      { name: 'EE Definitions', interval: 'Every 6 hours', enabled: true },
+    ],
   },
   {
     id: 'github',

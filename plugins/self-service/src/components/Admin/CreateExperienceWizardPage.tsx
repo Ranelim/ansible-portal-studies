@@ -30,6 +30,7 @@ import {
 } from '../../hooks/experienceSetup';
 import { writeBridgeExperienceVisibility } from '../../hooks/bridgeExperienceVisibility';
 import { readNavPlugins, writeNavPlugins } from '../../hooks/useNavPlugins';
+import { writeConnectionSetup } from '../../hooks/connectionSetup';
 import { ExperienceThumbnail } from '../IaPlaceholder/experienceVisuals';
 import { EXPERIENCE_LABELS } from '../../hooks/useNavIaModel';
 
@@ -383,6 +384,10 @@ const ExperienceSetupWizard = ({
     if (config.kind === 'develop' && !gitOk) return;
     writeExperienceSetup(experienceId, true);
     writeBridgeExperienceVisibility(experienceId, true);
+    if (config.kind === 'develop') {
+      writeConnectionSetup(gitProvider, true);
+      if (!hubSkipped) writeConnectionSetup('pah', true);
+    }
     if (experienceId === 'edge') {
       const current = readNavPlugins();
       writeNavPlugins({ ...current, rhem: true });

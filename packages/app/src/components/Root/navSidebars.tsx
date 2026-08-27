@@ -14,6 +14,8 @@ import {
   anyExperienceNeedsSetup,
   useExperienceReadiness,
   useDevSpacesSetup,
+  anyConnectionNeedsSetup,
+  useConnectionSetup,
   useAttentionSeen,
   AttentionDot,
   SHOW_ADMIN_PLUGINS,
@@ -557,14 +559,15 @@ const LearnItems = () => (
 const AdminItems = () => {
   const { variant } = useAdminSyncIa();
   const showSyncRail = variant === 'opt2';
-  const { connected: devSpacesConnected } = useDevSpacesSetup();
+  useDevSpacesSetup();
+  useConnectionSetup();
   useExperienceReadiness();
   const { seen: discoverSeen, exiting: discoverExiting } =
     useAttentionSeen('experiences-discover');
   const { seen: needsSetupSeen, exiting: integrationsExiting } =
     useAttentionSeen('integrations-needs-setup');
   const showExperienceDot = anyExperienceNeedsSetup() && !discoverSeen;
-  const showIntegrationsDot = !devSpacesConnected && !needsSetupSeen;
+  const showIntegrationsDot = anyConnectionNeedsSetup() && !needsSetupSeen;
 
   return (
     <>

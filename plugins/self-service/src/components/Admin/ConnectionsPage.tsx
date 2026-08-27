@@ -33,6 +33,10 @@ import { ReadCountBadge } from '../common/ReadCountBadge';
 import { DEMO_CONNECTIONS, ConnectionProvider } from './syncDemoData';
 import { statusColors } from '../common/statusColors';
 import { useDevSpacesSetup } from '../../hooks/devSpacesSetup';
+import {
+  useConnectionSetup,
+  withLiveConnectionStatus,
+} from '../../hooks/connectionSetup';
 import { useAttentionClearOnActive } from '../../hooks/attentionSeen';
 
 const AnsibleIcon = (props: any) => (
@@ -518,6 +522,7 @@ export const ConnectionsPage = () => {
   const { variant } = useAdminSyncIa();
   const { variant: orientVariant } = useIntegrationsOrientIa();
   const { connected: devSpacesConnected } = useDevSpacesSetup();
+  const connectionMap = useConnectionSetup();
   const location = useLocation();
   const navigate = useNavigate();
   const [syncing, setSyncing] = useState(false);
@@ -540,14 +545,7 @@ export const ConnectionsPage = () => {
   }, [filterFromUrl]);
 
   const providers = DEMO_CONNECTIONS.map(c =>
-    c.id === 'devspaces'
-      ? {
-          ...c,
-          status: (devSpacesConnected
-            ? 'Active'
-            : 'Not configured') as ConnectionProvider['status'],
-        }
-      : c,
+    withLiveConnectionStatus(c, { connectionMap, devSpacesConnected }),
   );
   const visibleProviders = providers.filter(p => {
     if (filter === 'connected') return !needsSetup(p);
@@ -790,8 +788,15 @@ export const ConnectionsPage = () => {
 
 export const SCMIntegrationPage = () => {
   const classes = useStyles();
-
-  const sourceControlProviders = DEMO_CONNECTIONS.filter(c => c.type === 'git');
+  const { connected: scmDevSpacesConnected } = useDevSpacesSetup();
+  const scmConnectionMap = useConnectionSetup();
+  const sourceControlProviders = DEMO_CONNECTIONS.filter(c => c.type === 'git').map(
+    c =>
+      withLiveConnectionStatus(c, {
+        connectionMap: scmConnectionMap,
+        devSpacesConnected: scmDevSpacesConnected,
+      }),
+  );
 
   return (
     <Page themeId="app">

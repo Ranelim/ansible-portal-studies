@@ -92,6 +92,14 @@ export {
 } from './hooks/experienceSetup';
 export { useDevSpacesSetup } from './hooks/devSpacesSetup';
 export {
+  useConnectionSetup,
+  anyConnectionNeedsSetup,
+  isConnectionConnected,
+  writeConnectionSetup,
+  writeAllConnectionSetup,
+  type SyncConnectionId,
+} from './hooks/connectionSetup';
+export {
   useAttentionSeen,
   useAttentionClearOnActive,
   isAttentionSeen,
