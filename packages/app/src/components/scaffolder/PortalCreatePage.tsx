@@ -81,6 +81,36 @@ const DEMO_TEMPLATES = [
       'Apply the latest security and OS patches to target RHEL servers. Select the environment, patch window, and reboot policy.',
     tags: ['rhel', 'patching', 'security'],
   },
+  {
+    name: 'orch-restart-service-on-alert',
+    title: 'Restart service on alert',
+    type: 'Orchestrator workflow',
+    owner: 'sre',
+    description:
+      'When a critical alert fires, Orchestrator restarts the affected service and updates the incident. Event-driven — not a job you launch by hand.',
+    tags: ['orchestrator', 'alert', 'remediation'],
+    demoOnly: true,
+  },
+  {
+    name: 'orch-emergency-change',
+    title: 'Apply emergency change',
+    type: 'Orchestrator workflow',
+    owner: 'sre',
+    description:
+      'A ServiceNow emergency change approval triggers Orchestrator to run the change window playbook and close the ticket.',
+    tags: ['orchestrator', 'servicenow', 'change'],
+    demoOnly: true,
+  },
+  {
+    name: 'orch-scale-on-demand',
+    title: 'Scale application on demand',
+    type: 'Orchestrator workflow',
+    owner: 'cloud-operations',
+    description:
+      'A webhook or metric threshold triggers Orchestrator to scale the application tier and notify the on-call channel.',
+    tags: ['orchestrator', 'scale', 'webhook'],
+    demoOnly: true,
+  },
 ];
 
 const useStyles = makeStyles(theme => ({
@@ -98,7 +128,7 @@ const useStyles = makeStyles(theme => ({
     maxWidth: 360,
   },
   typeFilter: {
-    minWidth: 180,
+    minWidth: 220,
   },
   ownerFilter: {
     minWidth: 200,
@@ -151,6 +181,13 @@ const useStyles = makeStyles(theme => ({
     '&:hover': {
       color: theme.palette.primary.main,
       textDecoration: 'underline',
+    },
+  },
+  titleStatic: {
+    cursor: 'default',
+    '&:hover': {
+      color: 'inherit',
+      textDecoration: 'none',
     },
   },
   description: {
@@ -386,9 +423,14 @@ export const PortalCreatePage = () => {
                 </Box>
                 <CardContent className={classes.cardContent}>
                   <Typography
-                    className={classes.title}
-                    onClick={() =>
-                      navigate(`/self-service/catalog/default/${t.name}`)
+                    className={`${classes.title}${
+                      t.demoOnly ? ` ${classes.titleStatic}` : ''
+                    }`}
+                    onClick={
+                      t.demoOnly
+                        ? undefined
+                        : () =>
+                            navigate(`/self-service/catalog/default/${t.name}`)
                     }
                   >
                     {t.title}
@@ -436,10 +478,14 @@ export const PortalCreatePage = () => {
                     color="primary"
                     size="small"
                     className={classes.useButton}
-                    onClick={() =>
-                      navigate(
-                        `/self-service/create/templates/default/${t.name}`,
-                      )
+                    disabled={Boolean(t.demoOnly)}
+                    onClick={
+                      t.demoOnly
+                        ? undefined
+                        : () =>
+                            navigate(
+                              `/self-service/create/templates/default/${t.name}`,
+                            )
                     }
                   >
                     Use template
