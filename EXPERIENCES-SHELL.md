@@ -84,6 +84,8 @@ Content quality **Findings** tab = parked (`SHOW_CONTENT_QUALITY_FINDINGS_TAB = 
 **Page empty state (context only, Aug 27):** Backstage `EmptyState` + RHDH theme — not an RHDH custom widget. Preview on Overview: `?empty=no-repos` · `?empty=no-scans`. Note: `scratch/empty-state-plugin-factory.md`. Not a factory lock / not `main` SoT.
 Remediations **progress** column = parked (`SHOW_REMEDIATION_PROGRESS_COLUMN = false` in the same file; set `true` to revive the compact stepper). `CompactSessionStepper` stays in `RemediationsContent`.
 Assistant experience = parked (`SHOW_ASSISTANT_EXPERIENCE = false`). Lightspeed FAB stays.
+**SETUP MODE** badge = CLI temp-password login + wizard / applying only — not the AAP Gateway login screen.
+Integrations **Needs setup** unread = blue **count** on the filter (no extra pip beside the badge). Setup jumper calls `resetSetupAttentionUnread()`; Post-setup calls `markSetupAttentionSeen()`. Administration Bridge pip may pulse; rail pips stay static. Reduced-motion: no pulse.
 
 
 ## Git
