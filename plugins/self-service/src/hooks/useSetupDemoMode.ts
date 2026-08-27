@@ -25,7 +25,7 @@ export function useSetupDemoMode() {
 
   const setMode = useCallback((next: SetupDemoMode) => {
     writeSetupDemoMode(next);
-    if (next === 'setup') {
+    if (next === 'landing') {
       bumpSetupDemoEpoch();
     }
     setModeState(next);

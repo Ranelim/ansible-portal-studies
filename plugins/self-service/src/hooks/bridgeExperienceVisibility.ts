@@ -59,7 +59,15 @@ export function writeBridgeExperienceVisibility(
   id: BridgeExperienceId,
   visible: boolean,
 ) {
-  const next = { ...readBridgeExperienceVisibility(), [id]: visible };
+  writeAllBridgeExperienceVisibility({
+    ...readBridgeExperienceVisibility(),
+    [id]: visible,
+  });
+}
+
+export function writeAllBridgeExperienceVisibility(
+  next: Record<BridgeExperienceId, boolean>,
+) {
   try {
     localStorage.setItem(KEY, JSON.stringify(next));
   } catch {

@@ -51,7 +51,11 @@ import {
   ExperienceThumbnail,
 } from './experienceVisuals';
 import { AttentionDot } from '../common/AttentionDot';
-import { useExperienceSetup } from '../../hooks/experienceSetup';
+import {
+  useExperienceReadiness,
+  anyExperienceNeedsSetup,
+  experienceSetupPath,
+} from '../../hooks/experienceSetup';
 import { useDevSpacesSetup } from '../../hooks/devSpacesSetup';
 import { useAttentionSeen } from '../../hooks/attentionSeen';
 
@@ -438,6 +442,14 @@ const useStyles = makeStyles(theme => ({
     padding: theme.spacing(1.5, 2, 2),
     marginTop: 'auto',
   },
+  /** Primary setup — filled pill on Hub cards. */
+  hubSetup: {
+    borderRadius: 20,
+    textTransform: 'none',
+    fontWeight: 600,
+    paddingLeft: theme.spacing(2),
+    paddingRight: theme.spacing(2),
+  },
   /** Secondary launch — outlined blue on white (not primary filled). */
   hubLaunch: {
     borderRadius: 20,
@@ -561,13 +573,13 @@ export const ExperiencesHomePage = () => {
   const { setExperience } = useNavIaModel();
   const isAdmin = hasRole('admin');
   const { visibility: bridgeVisibility } = useBridgeExperienceVisibility();
-  const { setup: orchestratorSetup } = useExperienceSetup('orchestrator');
+  const { version, isReady } = useExperienceReadiness();
   const { connected: devSpacesConnected } = useDevSpacesSetup();
   const { seen: discoverSeen, exiting: discoverExiting } =
     useAttentionSeen('experiences-discover');
   const { seen: needsSetupSeen, exiting: needsSetupExiting } =
     useAttentionSeen('integrations-needs-setup');
-  const experienceAttention = !orchestratorSetup && !discoverSeen;
+  const experienceAttention = anyExperienceNeedsSetup() && !discoverSeen;
   const integrationsAttention = !devSpacesConnected && !needsSetupSeen;
   const showAdminDot = experienceAttention || integrationsAttention;
   const adminExiting =
@@ -590,10 +602,18 @@ export const ExperiencesHomePage = () => {
         compliance: plugins.compliance,
         rhem: plugins.rhem,
         bridgeVisibility,
+        includeUnreadyForAdmin: isAdmin,
       }).filter((id): id is JobExperienceId =>
         (JOB_EXPERIENCE_IDS as readonly string[]).includes(id),
       ),
-    [role, isAdmin, plugins.compliance, plugins.rhem, bridgeVisibility],
+    [
+      role,
+      isAdmin,
+      plugins.compliance,
+      plugins.rhem,
+      bridgeVisibility,
+      version,
+    ],
   );
 
   // Old /experiences/dashboard bookmark → catalog
@@ -656,6 +676,24 @@ export const ExperiencesHomePage = () => {
     [navigate, setExperience],
   );
 
+  const openSetup = useCallback(
+    (id: JobExperienceId) => {
+      if (id === 'automate') {
+        openExperience(id);
+        return;
+      }
+      navigate(experienceSetupPath(id as 'develop' | 'compliance' | 'edge' | 'orchestrator'), {
+        state: { from: 'bridge' },
+      });
+    },
+    [navigate, openExperience],
+  );
+
+  const needsSetup = useCallback(
+    (id: JobExperienceId) => isAdmin && !isReady(id),
+    [isAdmin, isReady],
+  );
+
   const openAdministration = useCallback(() => {
     setExperience('admin');
     writeNavExperience('admin');
@@ -689,12 +727,19 @@ export const ExperiencesHomePage = () => {
           className={classes.tile}
           role="button"
           tabIndex={0}
-          aria-label={`Open ${EXPERIENCE_LABELS[id]}`}
-          onClick={() => openExperience(id)}
+          aria-label={
+            needsSetup(id)
+              ? `Set up ${EXPERIENCE_LABELS[id]}`
+              : `Open ${EXPERIENCE_LABELS[id]}`
+          }
+          onClick={() =>
+            needsSetup(id) ? openSetup(id) : openExperience(id)
+          }
           onKeyDown={e => {
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault();
-              openExperience(id);
+              if (needsSetup(id)) openSetup(id);
+              else openExperience(id);
             }
           }}
         >
@@ -768,12 +813,19 @@ export const ExperiencesHomePage = () => {
           className={classes.hubCard}
           role="button"
           tabIndex={0}
-          aria-label={`Open ${EXPERIENCE_LABELS[id]}`}
-          onClick={() => openExperience(id)}
+          aria-label={
+            needsSetup(id)
+              ? `Set up ${EXPERIENCE_LABELS[id]}`
+              : `Open ${EXPERIENCE_LABELS[id]}`
+          }
+          onClick={() =>
+            needsSetup(id) ? openSetup(id) : openExperience(id)
+          }
           onKeyDown={e => {
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault();
-              openExperience(id);
+              if (needsSetup(id)) openSetup(id);
+              else openExperience(id);
             }
           }}
         >
@@ -802,18 +854,33 @@ export const ExperiencesHomePage = () => {
             {EXPERIENCE_BLURB[id]}
           </Typography>
           <Box className={classes.hubActions}>
-            <Button
-              className={classes.hubLaunch}
-              variant="outlined"
-              color="primary"
-              size="small"
-              onClick={e => {
-                e.stopPropagation();
-                openExperience(id);
-              }}
-            >
-              Launch
-            </Button>
+            {needsSetup(id) ? (
+              <Button
+                className={classes.hubSetup}
+                variant="contained"
+                color="primary"
+                size="small"
+                onClick={e => {
+                  e.stopPropagation();
+                  openSetup(id);
+                }}
+              >
+                Setup
+              </Button>
+            ) : (
+              <Button
+                className={classes.hubLaunch}
+                variant="outlined"
+                color="primary"
+                size="small"
+                onClick={e => {
+                  e.stopPropagation();
+                  openExperience(id);
+                }}
+              >
+                Launch
+              </Button>
+            )}
           </Box>
         </Box>
       ))}

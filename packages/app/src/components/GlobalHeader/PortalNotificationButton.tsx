@@ -7,7 +7,7 @@ import NotificationIcon from '@mui/icons-material/NotificationsOutlined';
 import type { CSSProperties } from 'react';
 import {
   useUserRoleContext,
-  useExperienceSetup,
+  useExperienceReadiness,
   useDevSpacesSetup,
 } from '@ansible/plugin-backstage-self-service';
 import {
@@ -37,12 +37,12 @@ export const PortalNotificationButton = ({
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const { hasRole } = useUserRoleContext();
-  const { setup: orchestratorSetup } = useExperienceSetup('orchestrator');
+  const { isReady } = useExperienceReadiness();
   const { connected: devSpacesConnected } = useDevSpacesSetup();
   const setupUnread = hasRole('admin')
     ? getAdminSetupNotifications({
         devSpacesConnected,
-        orchestratorSetup,
+        isExperienceReady: isReady,
       }).length
     : 0;
   const badgeCount = unreadCount ?? DEMO_UNREAD_COUNT + setupUnread;

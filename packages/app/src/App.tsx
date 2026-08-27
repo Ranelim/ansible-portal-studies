@@ -36,7 +36,7 @@ import { PortalNotificationSettingsPage } from './components/Notifications/Porta
 import { PortalUserSettingsPage } from './components/Settings/PortalUserSettingsPage';
 import { PortalMyProfilePage } from './components/catalog/PortalMyProfilePage';
 import { LightspeedProvider, LightspeedPanel } from './components/Lightspeed';
-import { QuickstartProvider, QuickstartPanel, WelcomeModal } from './components/Quickstart';
+import { QuickstartProvider, QuickstartPanel } from './components/Quickstart';
 import { getThemes } from '@red-hat-developer-hub/backstage-plugin-theme';
 
 import { CustomSignInPage } from './components/SignIn/CustomSignInPage';
@@ -168,7 +168,6 @@ export default app.createRoot(
             <Root>{routes}</Root>
             <LightspeedPanel />
             <QuickstartPanel />
-            <WelcomeModal />
           </QuickstartProvider>
         </LightspeedProvider>
       </RoleProvider>

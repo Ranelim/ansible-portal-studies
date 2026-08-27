@@ -227,7 +227,7 @@ export const CustomSignInPage = (props: CustomSignInPageProps) => {
           onClick={() => {
             sessionStorage.setItem('portal-setup-redirect', 'true');
             sessionStorage.setItem('portal-welcome-modal-dismissed-session', 'true');
-            writeSetupDemoMode('setup');
+            writeSetupDemoMode('landing');
             props.onSignInSuccess({
               getIdToken: async () => ({ token: '' }),
               getId: async () => 'setup-admin',

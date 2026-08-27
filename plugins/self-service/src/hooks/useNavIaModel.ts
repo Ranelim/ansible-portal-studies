@@ -4,7 +4,7 @@ import {
   type BridgeExperienceId,
 } from './bridgeExperienceVisibility';
 import { SHOW_ASSISTANT_EXPERIENCE } from '../components/IaPlaceholder/assistantIaTrial';
-import { isExperienceSetup } from './experienceSetup';
+import { isExperienceReady } from './experienceSetup';
 
 /** Prototype IA models — switch to compare side by side. */
 export type NavIaModel =
@@ -123,6 +123,21 @@ export function isDevelopReposRailMode(experience: NavExperience): boolean {
   return experience === 'develop';
 }
 
+function seatAllowsExperience(
+  id: BridgeExperienceId,
+  role: string,
+  isAdmin: boolean,
+): boolean {
+  if (id === 'automate') return true;
+  if (id === 'develop' || id === 'orchestrator') {
+    return role === 'developer' || isAdmin;
+  }
+  if (id === 'compliance' || id === 'edge') {
+    return role === 'operator' || isAdmin;
+  }
+  return false;
+}
+
 export function availableExperiences(args: {
   role: string;
   isAdmin: boolean;
@@ -134,6 +149,11 @@ export function availableExperiences(args: {
   includeAutomate?: boolean;
   /** Admin “On Bridge” toggles. Omit to read the persisted prototype store. */
   bridgeVisibility?: Record<BridgeExperienceId, boolean>;
+  /**
+   * Admin Bridge catalog: include experiences that still need Setup even if
+   * they are hidden from Launch / the switcher.
+   */
+  includeUnreadyForAdmin?: boolean;
 }): NavExperience[] {
   // SME locked to Automate (no Bridge).
   if (args.role === 'sme') {
@@ -141,29 +161,29 @@ export function availableExperiences(args: {
   }
   const vis = args.bridgeVisibility ?? readBridgeExperienceVisibility();
   const list: NavExperience[] = ['all'];
-  if (vis.automate) {
-    list.push('automate');
-  }
-  if ((args.role === 'developer' || args.isAdmin) && vis.develop) {
-    list.push('develop');
-  }
-  if (
-    (args.role === 'operator' || args.isAdmin) &&
-    args.compliance &&
-    vis.compliance
-  ) {
-    list.push('compliance');
-  }
-  if ((args.role === 'operator' || args.isAdmin) && args.rhem && vis.edge) {
-    list.push('edge');
-  }
-  if (
-    isExperienceSetup('orchestrator') &&
-    vis.orchestrator &&
-    (args.role === 'developer' || args.isAdmin)
-  ) {
-    list.push('orchestrator');
-  }
+  const jobIds: BridgeExperienceId[] = [
+    'automate',
+    'develop',
+    'compliance',
+    'edge',
+    'orchestrator',
+  ];
+  jobIds.forEach(id => {
+    if (!seatAllowsExperience(id, args.role, args.isAdmin)) return;
+    if (id === 'compliance' && !args.compliance) return;
+    const ready = isExperienceReady(id);
+    const unreadyOnAdminBridge =
+      Boolean(args.includeUnreadyForAdmin) && args.isAdmin && !ready;
+    if (unreadyOnAdminBridge) {
+      // Edge can still need Setup before the RHEM plugin flag is on.
+      list.push(id);
+      return;
+    }
+    if (!ready) return;
+    if (id === 'edge' && !args.rhem) return;
+    if (!vis[id]) return;
+    list.push(id);
+  });
   if (SHOW_ASSISTANT_EXPERIENCE) {
     list.push('assistant');
   }

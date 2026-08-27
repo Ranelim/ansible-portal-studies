@@ -4,8 +4,15 @@ import {
   useState,
   useCallback,
   useMemo,
+  useEffect,
   PropsWithChildren,
 } from 'react';
+import {
+  POST_SETUP_RESET_EVENT,
+  OPEN_QUICKSTART_EVENT,
+  readQuickstartCompleted,
+  writeQuickstartCompleted,
+} from '@ansible/plugin-backstage-self-service';
 
 export type QuickstartItemCta = {
   text: string;
@@ -16,7 +23,19 @@ export type QuickstartItem = {
   id: string;
   title: string;
   description: string;
-  icon: 'aap' | 'auth' | 'registry' | 'scm' | 'rbac' | 'sync';
+  icon:
+    | 'aap'
+    | 'auth'
+    | 'registry'
+    | 'scm'
+    | 'rbac'
+    | 'sync'
+    | 'play'
+    | 'develop'
+    | 'compliance'
+    | 'edge'
+    | 'orchestrator'
+    | 'experiences';
   roles: ('admin' | 'developer')[];
   cta?: QuickstartItemCta;
 };
@@ -35,86 +54,84 @@ type QuickstartContextType = {
 
 const QuickstartCtx = createContext<QuickstartContextType | null>(null);
 
-const STORAGE_KEY = 'portal-quickstart-progress';
-
-const loadCompleted = (): Set<string> => {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    return stored ? new Set(JSON.parse(stored)) : new Set();
-  } catch {
-    return new Set();
-  }
-};
-
-const saveCompleted = (ids: Set<string>) => {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify([...ids]));
-};
-
 const ADMIN_QUICKSTART_ITEMS: QuickstartItem[] = [
   {
-    id: 'connect-registries',
-    title: 'Connect content registries',
+    id: 'connect-integrations',
+    title: 'Connect integrations',
     description:
-      'Add Private Automation Hub, Red Hat Certified Content, or Ansible Galaxy as content ' +
-      'sources to discover collections and execution environments.',
+      'Connect Git, Private Automation Hub, registries, and Dev Spaces. Ansible Automation Platform is already connected from Day 0.',
     icon: 'registry',
     roles: ['admin'],
     cta: {
-      text: 'Open registries',
-      link: '/self-service/admin/connections/registries',
+      text: 'Open Integrations',
+      link: '/self-service/admin/integrations',
     },
   },
   {
-    id: 'connect-scm',
-    title: 'Connect source control',
-    description:
-      'Connect GitHub or GitLab to enable project creation, content discovery from Git repositories, ' +
-      'and developer workspaces.',
-    icon: 'scm',
-    roles: ['admin'],
-    cta: {
-      text: 'Open GitHub',
-      link: '/self-service/admin/connections/github',
-    },
-  },
-  {
-    id: 'configure-discovery',
-    title: 'Configure content discovery',
-    description:
-      'Open each connection to define which organizations, repositories, and collections the portal ' +
-      'discovers. Content discovery and sync schedules are configured per integration.',
-    icon: 'sync',
-    roles: ['admin'],
-    cta: {
-      text: 'Open connections',
-      link: '/self-service/admin/connections',
-    },
-  },
-  {
-    id: 'configure-rbac',
+    id: 'configure-access',
     title: 'Configure access control',
     description:
-      'Define roles and permissions to control who can view, create, or manage content ' +
-      'across the portal.',
+      'Define who can view, create, and manage content, and who can enter each experience.',
     icon: 'rbac',
     roles: ['admin'],
     cta: {
-      text: 'Manage RBAC',
+      text: 'Manage access',
       link: '/rbac',
+    },
+  },
+  {
+    id: 'setup-experiences',
+    title: 'Discover and set up experiences',
+    description:
+      'Enable Develop, Compliance, Edge, and Orchestrator so they appear with Launch on the Bridge. Hide and edit stay here — not on the cards.',
+    icon: 'experiences',
+    roles: ['admin'],
+    cta: {
+      text: 'Open Experiences',
+      link: '/self-service/admin/experiences?tab=discover',
+    },
+  },
+  {
+    id: 'review-sync',
+    title: 'Review sync schedules',
+    description:
+      'Set how often the Portal syncs templates and content from your connections.',
+    icon: 'sync',
+    roles: ['admin'],
+    cta: {
+      text: 'Open Integrations',
+      link: '/self-service/admin/integrations',
     },
   },
 ];
 
 export const QuickstartProvider = ({ children }: PropsWithChildren<{}>) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [completedIds, setCompletedIds] = useState<Set<string>>(loadCompleted);
+  const [completedIds, setCompletedIds] = useState<Set<string>>(
+    readQuickstartCompleted,
+  );
+
+  useEffect(() => {
+    const onWorldChange = () => {
+      setCompletedIds(readQuickstartCompleted());
+      setIsOpen(false);
+    };
+    const onOpen = () => setIsOpen(true);
+    window.addEventListener(POST_SETUP_RESET_EVENT, onWorldChange);
+    window.addEventListener(OPEN_QUICKSTART_EVENT, onOpen);
+    return () => {
+      window.removeEventListener(POST_SETUP_RESET_EVENT, onWorldChange);
+      window.removeEventListener(OPEN_QUICKSTART_EVENT, onOpen);
+    };
+  }, []);
 
   const items = ADMIN_QUICKSTART_ITEMS;
 
   const progress = useMemo(() => {
     if (items.length === 0) return 0;
-    return Math.round((completedIds.size / items.length) * 100);
-  }, [items.length, completedIds.size]);
+    const done = items.filter(item => completedIds.has(item.id)).length;
+    return Math.round((done / items.length) * 100);
+  }, [items, completedIds]);
 
   const open = useCallback(() => setIsOpen(true), []);
   const close = useCallback(() => setIsOpen(false), []);
@@ -128,7 +145,7 @@ export const QuickstartProvider = ({ children }: PropsWithChildren<{}>) => {
       } else {
         next.add(id);
       }
-      saveCompleted(next);
+      writeQuickstartCompleted(next);
       return next;
     });
   }, []);

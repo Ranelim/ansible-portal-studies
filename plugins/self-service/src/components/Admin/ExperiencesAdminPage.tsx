@@ -18,7 +18,7 @@ import {
   useBridgeExperienceVisibility,
   type BridgeExperienceId,
 } from '../../hooks/bridgeExperienceVisibility';
-import { useExperienceSetup } from '../../hooks/experienceSetup';
+import { useExperienceReadiness, isExperienceReady } from '../../hooks/experienceSetup';
 import { useAttentionClearOnActive } from '../../hooks/attentionSeen';
 import { SHOW_ADMIN_PLUGINS } from './adminPluginsTrial';
 import { ExperienceThumbnail } from '../IaPlaceholder/experienceVisuals';
@@ -138,6 +138,7 @@ const ADMIN_EXPERIENCES: AdminExperience[] = [
     pluginsFilter: 'Develop',
     seatsSummary: 'Developer, Admin',
     pluginsSummary: 'Self-service, APME Quality Scanning',
+    needsSetup: true,
   },
   {
     id: 'compliance',
@@ -146,6 +147,7 @@ const ADMIN_EXPERIENCES: AdminExperience[] = [
     pluginsFilter: 'Compliance',
     seatsSummary: 'Operator, Admin',
     pluginsSummary: 'Compliance',
+    needsSetup: true,
   },
   {
     id: 'edge',
@@ -154,6 +156,7 @@ const ADMIN_EXPERIENCES: AdminExperience[] = [
     pluginsFilter: 'Edge',
     seatsSummary: 'Operator, Admin',
     pluginsSummary: 'RHEM (when installed)',
+    needsSetup: true,
   },
   {
     id: 'orchestrator',
@@ -173,10 +176,8 @@ const tabFromSearch = (search: string): ExperienceFilterTab => {
   return 'all';
 };
 
-const isAwaitingSetup = (
-  exp: AdminExperience,
-  orchestratorSetup: boolean,
-) => Boolean(exp.needsSetup) && !orchestratorSetup;
+const isAwaitingSetup = (exp: AdminExperience) =>
+  Boolean(exp.needsSetup) && !isExperienceReady(exp.id);
 
 /**
  * Administration → Experiences
@@ -187,12 +188,11 @@ export const ExperiencesAdminPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { visibility, setVisible } = useBridgeExperienceVisibility();
-  const { setup: orchestratorSetup } = useExperienceSetup('orchestrator');
+  const { version } = useExperienceReadiness();
   const tabFromUrl = tabFromSearch(location.search);
   const [tab, setTab] = useState<ExperienceFilterTab>(tabFromUrl);
-  const discoverCount = ADMIN_EXPERIENCES.filter(exp =>
-    isAwaitingSetup(exp, orchestratorSetup),
-  ).length;
+  const discoverCount = ADMIN_EXPERIENCES.filter(exp => isAwaitingSetup(exp))
+    .length;
   const { seen: discoverSeen, exiting: discoverExiting } =
     useAttentionClearOnActive(
       'experiences-discover',
@@ -206,12 +206,12 @@ export const ExperiencesAdminPage = () => {
   const visible = useMemo(
     () =>
       ADMIN_EXPERIENCES.filter(exp => {
-        const awaiting = isAwaitingSetup(exp, orchestratorSetup);
+        const awaiting = isAwaitingSetup(exp);
         if (tab === 'discover') return awaiting;
         if (tab === 'ready') return !awaiting;
         return true;
       }),
-    [orchestratorSetup, tab],
+    [tab, version],
   );
 
   const setFilterTab = (next: ExperienceFilterTab) => {
@@ -278,7 +278,7 @@ export const ExperiencesAdminPage = () => {
         ) : (
           <Box className={classes.list}>
             {visible.map(exp => {
-              const awaitingSetup = isAwaitingSetup(exp, orchestratorSetup);
+              const awaitingSetup = isAwaitingSetup(exp);
               return (
                 <Box key={exp.id} className={classes.row}>
                   <Box className={classes.identity}>
@@ -321,6 +321,7 @@ export const ExperiencesAdminPage = () => {
                         onClick={() =>
                           navigate(
                             `/self-service/admin/experiences/${exp.id}/setup`,
+                            { state: { from: 'admin' } },
                           )
                         }
                       >

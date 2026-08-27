@@ -27,7 +27,7 @@ import {
   writeNavExperience,
   SHOW_ASSISTANT_EXPERIENCE,
   useUserRoleContext,
-  useExperienceSetup,
+  useExperienceReadiness,
   useDevSpacesSetup,
   markAttentionSeen,
   type NavExperience,
@@ -448,7 +448,7 @@ export const PortalNotificationsPage = () => {
   const navigate = useNavigate();
   const { hasRole } = useUserRoleContext();
   const isAdmin = hasRole('admin');
-  const { setup: orchestratorSetup } = useExperienceSetup('orchestrator');
+  const { isReady } = useExperienceReadiness();
   const { connected: devSpacesConnected } = useDevSpacesSetup();
   const [items, setItems] = useState<DemoItem[]>(INITIAL_ITEMS);
   const [readIds, setReadIds] = useState<Set<string>>(() => new Set());
@@ -479,7 +479,7 @@ export const PortalNotificationsPage = () => {
     if (!isAdmin) return [];
     return getAdminSetupNotifications({
       devSpacesConnected,
-      orchestratorSetup,
+      isExperienceReady: isReady,
     }).map(item => ({
       ...item,
       experience: 'admin' as const,
@@ -487,7 +487,7 @@ export const PortalNotificationsPage = () => {
       severity: 'Normal' as const,
       unread: !readIds.has(item.id),
     }));
-  }, [isAdmin, devSpacesConnected, orchestratorSetup, readIds]);
+  }, [isAdmin, devSpacesConnected, isReady, readIds]);
 
   const subscribedItems = useMemo(
     () => [

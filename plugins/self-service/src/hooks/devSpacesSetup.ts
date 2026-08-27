@@ -45,6 +45,10 @@ export function getDevSpacesSetup(): DevSpacesSetupState {
   return readStore();
 }
 
+export function writeDevSpacesSetup(next: DevSpacesSetupState) {
+  writeStore(next);
+}
+
 export function subscribeDevSpacesSetup(fn: () => void) {
   listeners.add(fn);
   return () => {

@@ -1,8 +1,7 @@
 /** Masthead only on Experiences shell branch (no Opt 1–5 purple banner). */
 export const IA_BANNER_HEIGHT = 0;
 /**
- * Quiet prototype jumper (Setup / Post-setup) above the masthead.
- * Dual beat lands here later.
+ * Quiet prototype jumper (Landing / Setup / Post-setup) above the masthead.
  */
 export const SETUP_DEMO_BAR_HEIGHT = 24;
 export const MASTHEAD_HEIGHT = 64;

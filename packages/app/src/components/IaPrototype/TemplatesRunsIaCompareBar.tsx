@@ -30,7 +30,7 @@ const HINTS: Record<TemplatesRunsIaVariant, string> = {
 const useStyles = makeStyles({
   bar: {
     position: 'fixed',
-    // Below the Setup/Post-setup demo jumper (masthead top = --portal-magenta-bar).
+    // Below the Landing/Setup/Post-setup demo jumper (masthead top = --portal-magenta-bar).
     top: SETUP_DEMO_BAR_HEIGHT,
     left: 0,
     right: 0,

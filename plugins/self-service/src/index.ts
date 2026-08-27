@@ -79,7 +79,16 @@ export { useAdminSyncIa } from './components/Admin/useAdminSyncIa';
 export type { AdminSyncIaVariant } from './components/Admin/adminSyncIa';
 export {
   useExperienceSetup,
+  useExperienceReadiness,
   isExperienceSetup,
+  isExperienceReady,
+  anyExperienceNeedsSetup,
+  resetExperienceSetupForSetupLanding,
+  resetExperienceSetupForPostSetupLanding,
+  experienceSetupPath,
+  POST_SETUP_RESET_EVENT,
+  SETUP_EXPERIENCE_IDS,
+  type SetupExperienceId,
 } from './hooks/experienceSetup';
 export { useDevSpacesSetup } from './hooks/devSpacesSetup';
 export {
@@ -118,4 +127,14 @@ export {
   bumpSetupDemoEpoch,
   readSetupDemoEpoch,
 } from './hooks/setupDemoMode';
+export { applySetupDemoWorld } from './hooks/setupDemoWorld';
+export {
+  ADMIN_QUICKSTART_ITEM_IDS,
+  OPEN_QUICKSTART_EVENT,
+  openQuickstartPanel,
+  quickstartRemainingCount,
+  subscribeQuickstartProgress,
+  readQuickstartCompleted,
+  writeQuickstartCompleted,
+} from './hooks/adminQuickstart';
 

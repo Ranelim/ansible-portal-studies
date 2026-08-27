@@ -20,9 +20,14 @@ import ExpandLessIcon from '@material-ui/icons/ExpandLess';
 import SettingsIcon from '@material-ui/icons/Settings';
 import LockIcon from '@material-ui/icons/Lock';
 import StorageIcon from '@material-ui/icons/Storage';
-import CodeIcon from '@material-ui/icons/Code';
 import SecurityIcon from '@material-ui/icons/Security';
 import SyncIcon from '@material-ui/icons/Sync';
+import PlayArrowIcon from '@material-ui/icons/PlayArrow';
+import CodeIcon from '@material-ui/icons/Code';
+import VerifiedUserIcon from '@material-ui/icons/VerifiedUser';
+import DevicesOtherIcon from '@material-ui/icons/DevicesOther';
+import AccountTreeIcon from '@material-ui/icons/AccountTree';
+import ViewModuleIcon from '@material-ui/icons/ViewModule';
 import { useNavigate } from 'react-router-dom';
 import { useQuickstart, QuickstartItem } from './QuickstartContext';
 import { CHROME_TOP } from '../IaPrototype';
@@ -196,6 +201,12 @@ const iconMap: Record<string, typeof SettingsIcon> = {
   scm: CodeIcon,
   rbac: SecurityIcon,
   sync: SyncIcon,
+  play: PlayArrowIcon,
+  develop: CodeIcon,
+  compliance: VerifiedUserIcon,
+  edge: DevicesOtherIcon,
+  orchestrator: AccountTreeIcon,
+  experiences: ViewModuleIcon,
 };
 
 const iconColorMap: Record<string, string> = {
@@ -205,12 +216,18 @@ const iconColorMap: Record<string, string> = {
   scm: '#24292e',
   rbac: '#C9190B',
   sync: '#009596',
+  play: '#0066CC',
+  develop: '#3D1C7C',
+  compliance: '#C9190B',
+  edge: '#009596',
+  orchestrator: '#6753AC',
+  experiences: '#151515',
 };
 
 const QuickstartItemRow = ({ item }: { item: QuickstartItem }) => {
   const classes = useStyles();
   const navigate = useNavigate();
-  const { toggleItem, isCompleted } = useQuickstart();
+  const { toggleItem, isCompleted, close } = useQuickstart();
   const [expanded, setExpanded] = useState(false);
   const completed = isCompleted(item.id);
 
@@ -258,7 +275,10 @@ const QuickstartItemRow = ({ item }: { item: QuickstartItem }) => {
                 color="primary"
                 size="small"
                 className={classes.ctaButton}
-                onClick={() => navigate(item.cta!.link)}
+                onClick={() => {
+                  close();
+                  navigate(item.cta!.link);
+                }}
               >
                 {item.cta.text}
               </Button>
@@ -301,10 +321,12 @@ export const QuickstartPanel = () => {
           </Box>
           <Box flex={1}>
             <Typography className={classes.headerTitle}>
-              Set up your portal
+              Quick start
             </Typography>
             <Typography className={classes.headerSubtitle}>
-              Complete these steps to get the most out of Automation Portal
+              Platform steps after connecting Ansible Automation Platform.
+              Experience setup is on the Bridge and in Administration →
+              Experiences.
             </Typography>
           </Box>
           <Tooltip title="Close" arrow>

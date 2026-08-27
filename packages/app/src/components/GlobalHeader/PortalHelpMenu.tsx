@@ -6,7 +6,9 @@ import MenuItem from '@mui/material/MenuItem';
 import ListItemText from '@mui/material/ListItemText';
 import { HeaderDropdownComponent } from '@red-hat-developer-hub/backstage-plugin-global-header/dist/components/HeaderDropdownComponent/HeaderDropdownComponent.esm.js';
 import { useDropdownManager } from '@red-hat-developer-hub/backstage-plugin-global-header/dist/hooks/useDropdownManager.esm.js';
+import { useUserRoleContext } from '@ansible/plugin-backstage-self-service';
 import { mastheadIconButtonSx, mastheadIconSlotSx } from './mastheadIconSx';
+import { useQuickstart } from '../Quickstart';
 
 /**
  * Dark body text like Profile menu — never Backstage Link primary blue.
@@ -46,8 +48,11 @@ const menuItemSx = {
  */
 export const PortalHelpMenu = () => {
   const navigate = useNavigate();
+  const { hasRole } = useUserRoleContext();
+  const { open: openQuickstart } = useQuickstart();
   const { anchorEl, handleOpen, handleClose } = useDropdownManager();
   const open = Boolean(anchorEl);
+  const isAdmin = hasRole('admin');
 
   const goDocs = () => {
     handleClose();
@@ -61,6 +66,11 @@ export const PortalHelpMenu = () => {
       '_blank',
       'noopener,noreferrer',
     );
+  };
+
+  const goQuickstart = () => {
+    handleClose();
+    openQuickstart();
   };
 
   return (
@@ -82,6 +92,14 @@ export const PortalHelpMenu = () => {
         onClose={handleClose}
         anchorEl={anchorEl}
       >
+        {isAdmin && (
+          <MenuItem onClick={goQuickstart} sx={menuItemSx}>
+            <ListItemText
+              primary="Quick start"
+              secondary="What to set up next"
+            />
+          </MenuItem>
+        )}
         <MenuItem onClick={goDocs} sx={menuItemSx}>
           <ListItemText
             primary="Documentation"

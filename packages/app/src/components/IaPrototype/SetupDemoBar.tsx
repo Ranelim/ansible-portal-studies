@@ -1,11 +1,17 @@
 import { useEffect } from 'react';
 import { Box, Typography, makeStyles } from '@material-ui/core';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useSetupDemoMode, type SetupDemoMode } from '@ansible/plugin-backstage-self-service';
+import {
+  applySetupDemoWorld,
+  useSetupDemoMode,
+  writeNavExperience,
+  type SetupDemoMode,
+} from '@ansible/plugin-backstage-self-service';
 import { RAIL_ICON_GUTTER_PX, SETUP_DEMO_BAR_HEIGHT } from './chromeHeights';
 import { isDay0SetupPath } from '../GlobalHeader/isDay0SetupPath';
 
 const OPTIONS: Array<{ id: SetupDemoMode; label: string }> = [
+  { id: 'landing', label: 'Landing' },
   { id: 'setup', label: 'Setup' },
   { id: 'post-setup', label: 'Post-setup' },
 ];
@@ -75,14 +81,13 @@ const useStyles = makeStyles(theme => ({
 
 /**
  * Quiet prototype jumper above the masthead (and the Day 0 wizard).
- * Setup = from-scratch wizard. Post-setup = current Experiences console.
- * Dual / just-after-Apply is the third beat — add later.
+ * Landing = Day 0 wizard. Setup = first Portal session. Post-setup = fully configured.
  */
 export const SetupDemoBar = () => {
   const classes = useStyles();
   const navigate = useNavigate();
   const location = useLocation();
-  const { setMode } = useSetupDemoMode();
+  const { mode, setMode } = useSetupDemoMode();
 
   useEffect(() => {
     document.documentElement.style.setProperty(
@@ -91,22 +96,27 @@ export const SetupDemoBar = () => {
     );
   }, []);
 
-  const pathMode: SetupDemoMode = isDay0SetupPath(location.pathname)
-    ? 'setup'
-    : 'post-setup';
+  const selected: SetupDemoMode = isDay0SetupPath(location.pathname)
+    ? 'landing'
+    : mode === 'landing'
+      ? 'setup'
+      : mode;
 
   const onSelect = (next: SetupDemoMode) => {
     setMode(next);
+    applySetupDemoWorld(next);
     try {
       sessionStorage.setItem('portal-welcome-modal-dismissed-session', 'true');
+      localStorage.setItem('portal-user-role', 'admin');
     } catch {
       /* ignore */
     }
-    if (next === 'setup') {
+    if (next === 'landing') {
       navigate('/self-service/setup');
       return;
     }
-    navigate('/');
+    writeNavExperience('all');
+    navigate('/self-service/experiences');
   };
 
   return (
@@ -125,9 +135,9 @@ export const SetupDemoBar = () => {
             key={opt.id}
             type="button"
             role="tab"
-            aria-selected={pathMode === opt.id}
+            aria-selected={selected === opt.id}
             className={`${classes.tab} ${
-              pathMode === opt.id ? classes.tabActive : ''
+              selected === opt.id ? classes.tabActive : ''
             }`}
             onClick={() => onSelect(opt.id)}
           >

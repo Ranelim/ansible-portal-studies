@@ -11,7 +11,8 @@ import {
   isSmeRole,
   useAdminSyncIa,
   useTemplatesRunsIa,
-  useExperienceSetup,
+  anyExperienceNeedsSetup,
+  useExperienceReadiness,
   useDevSpacesSetup,
   useAttentionSeen,
   AttentionDot,
@@ -556,13 +557,13 @@ const LearnItems = () => (
 const AdminItems = () => {
   const { variant } = useAdminSyncIa();
   const showSyncRail = variant === 'opt2';
-  const { setup: orchestratorSetup } = useExperienceSetup('orchestrator');
   const { connected: devSpacesConnected } = useDevSpacesSetup();
+  useExperienceReadiness();
   const { seen: discoverSeen, exiting: discoverExiting } =
     useAttentionSeen('experiences-discover');
   const { seen: needsSetupSeen, exiting: integrationsExiting } =
     useAttentionSeen('integrations-needs-setup');
-  const showExperienceDot = !orchestratorSetup && !discoverSeen;
+  const showExperienceDot = anyExperienceNeedsSetup() && !discoverSeen;
   const showIntegrationsDot = !devSpacesConnected && !needsSetupSeen;
 
   return (

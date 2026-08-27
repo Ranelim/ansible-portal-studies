@@ -12,6 +12,12 @@ const DEFAULT_PLUGINS: NavPluginsState = {
   rhem: false,
 };
 
+const listeners = new Set<() => void>();
+
+function notify() {
+  listeners.forEach(fn => fn());
+}
+
 /** Drop legacy anti-pattern flags from stored JSON. */
 function sanitize(raw: Partial<NavPluginsState> & Record<string, unknown>): NavPluginsState {
   return {
@@ -31,6 +37,10 @@ function readPlugins(): NavPluginsState {
   }
 }
 
+export function readNavPlugins(): NavPluginsState {
+  return readPlugins();
+}
+
 /** Prototype-only: which optional plugins appear in nav (seat sim). */
 export function useNavPlugins() {
   const [plugins, setPluginsState] = useState<NavPluginsState>(readPlugins);
@@ -42,10 +52,19 @@ export function useNavPlugins() {
     setPluginsState(next);
   }, []);
 
+  useEffect(() => {
+    const sync = () => setPluginsState(readPlugins());
+    listeners.add(sync);
+    return () => {
+      listeners.delete(sync);
+    };
+  }, []);
+
   const setPlugins = useCallback((next: Partial<NavPluginsState>) => {
     setPluginsState(prev => {
       const merged = sanitize({ ...prev, ...next });
       localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+      notify();
       return merged;
     });
   }, []);
@@ -54,6 +73,7 @@ export function useNavPlugins() {
     const clean = sanitize(next);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(clean));
     setPluginsState(clean);
+    notify();
   }, []);
 
   return useMemo(
@@ -64,4 +84,5 @@ export function useNavPlugins() {
 
 export function writeNavPlugins(next: NavPluginsState) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(sanitize(next)));
+  notify();
 }

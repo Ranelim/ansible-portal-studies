@@ -13,7 +13,7 @@ Build the **Experience Bridge** shell from the Aug 11 stakeholder direction:
 - Enter experience → dedicated rail; return to Bridge via **Experiences** pin
 - SME → Automate only (no Bridge, no switcher)
 - No Opt 1–5 purple banner / model switcher on this branch
-- **Demo jumper (quiet hairline, always on):** **Setup** = from-scratch Day 0 wizard (`/self-service/setup`). **Post-setup** (default) = current Experiences console. Dual / just-after-Apply is the third beat — add later. After wizard **Sign in with AAP** → demo AAP Gateway login (PatternFly username/password; any credentials). Then Administration Dashboard. Shortcut: `/self-service/setup?screen=aap-login`.
+- **Demo jumper (quiet hairline, always on):** **Landing** = Day 0 wizard after CLI (`/self-service/setup`). **Setup** = first admin session on the Portal (`/self-service/experiences`) — Automate **Launch**; Develop / Compliance / Edge / Orchestrator **Setup** until each wizard finishes. **Post-setup** = integrations connected and every experience enabled (all **Launch**). After wizard **Sign in with AAP** → demo AAP Gateway login → **Setup** beat on the Bridge. Admin Quick start is **platform** jobs (Integrations, access, Experiences discover, sync schedules) — not per-experience wizards. Discover it from Administration Dashboard **Finish Portal setup**; return from **Help → Quick start**. No Welcome modal. Shortcut: `/self-service/setup?screen=aap-login`.
 - Masthead globals next: search, notifications (drawer + center), personal settings
 
 **Not** the Opt 1–5 bakeoff (kept on `design/portal-nav-ia` / :3011).

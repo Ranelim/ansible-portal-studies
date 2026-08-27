@@ -2,6 +2,8 @@ import { useState, type FormEvent } from 'react';
 import { Box, Button, TextField, Typography, makeStyles } from '@material-ui/core';
 import { useNavigate } from 'react-router-dom';
 import { writeNavExperience } from '../../hooks/useNavIaModel';
+import { applySetupDemoWorld } from '../../hooks/setupDemoWorld';
+import { writeSetupDemoMode } from '../../hooks/setupDemoMode';
 import redHatLogo from '../../assets/redhat-logo.png';
 
 /**
@@ -121,14 +123,17 @@ export const AapDemoLoginPage = () => {
     if (!canSubmit) return;
     setSubmitting(true);
     try {
+      localStorage.setItem('portal-user-role', 'admin');
       sessionStorage.setItem('portal-welcome-modal-dismissed-session', 'true');
-      sessionStorage.setItem('portal-setup-just-completed', 'true');
+      sessionStorage.removeItem('portal-setup-just-completed');
     } catch {
       /* ignore */
     }
-    writeNavExperience('admin');
+    applySetupDemoWorld('setup');
+    writeSetupDemoMode('setup');
+    writeNavExperience('all');
     window.setTimeout(() => {
-      navigate('/self-service/admin/overview');
+      navigate('/self-service/experiences');
     }, 400);
   };
 
