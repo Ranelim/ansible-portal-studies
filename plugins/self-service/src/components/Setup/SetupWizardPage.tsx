@@ -20,19 +20,10 @@ import ErrorOutlineIcon from '@material-ui/icons/ErrorOutline';
 import InfoOutlinedIcon from '@material-ui/icons/InfoOutlined';
 import SettingsIcon from '@material-ui/icons/Settings';
 import Alert from '@material-ui/lab/Alert';
-import redHatLogo from '../../assets/redhat-logo.png';
 import { AapDemoLoginPage } from './AapDemoLoginPage';
+import { SetupModeHeader } from './SetupModeHeader';
 
-const useStyles = makeStyles(theme => {
-  const rhdhGeneral = (theme.palette as any).rhdh?.general ?? {};
-  // Same masthead tokens as Experiences / RHDH AppBar.
-  const appBarBg =
-    rhdhGeneral.appBarBackgroundColor ??
-    (theme.palette.type === 'dark' ? '#151515' : '#f2f2f2');
-  const appBarFg =
-    rhdhGeneral.appBarForegroundColor ?? theme.palette.text.primary;
-
-  return {
+const useStyles = makeStyles(theme => ({
   root: {
     position: 'fixed',
     top: 'var(--portal-setup-demo-bar, 0px)',
@@ -42,49 +33,6 @@ const useStyles = makeStyles(theme => {
     zIndex: 10000,
     backgroundColor: theme.palette.background.default,
     overflow: 'auto',
-  },
-  header: {
-    height: 64,
-    backgroundColor: appBarBg,
-    color: appBarFg,
-    display: 'flex',
-    alignItems: 'center',
-    padding: '0 24px 0 32px',
-    gap: 12,
-    boxSizing: 'border-box',
-  },
-  headerLogo: {
-    width: 36,
-    height: 36,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerTitle: {
-    color: appBarFg,
-    fontSize: 16,
-    fontWeight: 700,
-    lineHeight: 1.15,
-  },
-  headerSubtitle: {
-    color: appBarFg,
-    fontSize: 16,
-    fontWeight: 400,
-    lineHeight: 1.15,
-  },
-  headerUser: {
-    marginLeft: 'auto',
-    color: theme.palette.text.secondary,
-    fontSize: 13,
-  },
-  setupModeChip: {
-    padding: '4px 10px',
-    borderRadius: 4,
-    fontSize: 11,
-    fontWeight: 600,
-    letterSpacing: 0.5,
-    backgroundColor: 'rgba(0, 102, 204, 0.12)',
-    color: theme.palette.type === 'dark' ? '#8BC1F7' : '#0066CC',
   },
   wizardContainer: {
     display: 'flex',
@@ -280,7 +228,7 @@ const useStyles = makeStyles(theme => {
     padding: '8px 0',
     minHeight: 32,
   },
-}});
+}));
 
 const STEPS = [
   { label: 'Getting Started', key: 'overview' },
@@ -351,13 +299,7 @@ const ApplyingAndDiscoveryScreen = ({
 
   return (
     <Box className={classes.root}>
-      <Box className={classes.header}>
-        <Box className={classes.headerLogo}><img src={redHatLogo} alt="Red Hat" style={{ width: 36, height: 36, objectFit: 'contain' }} /></Box>
-        <Box>
-          <Typography className={classes.headerTitle}>Red Hat</Typography>
-          <Typography className={classes.headerSubtitle}>Automation Portal</Typography>
-        </Box>
-      </Box>
+      <SetupModeHeader />
       <Box style={{
         display: 'flex',
         flexDirection: 'column',
@@ -536,13 +478,7 @@ export const SetupWizardPage = () => {
   if (phase === 'login') {
     return (
       <Box className={classes.root}>
-        <Box className={classes.header}>
-          <Box className={classes.headerLogo}><img src={redHatLogo} alt="Red Hat" style={{ width: 36, height: 36, objectFit: 'contain' }} /></Box>
-          <Box>
-            <Typography className={classes.headerTitle}>Red Hat</Typography>
-            <Typography className={classes.headerSubtitle}>Automation Portal</Typography>
-          </Box>
-        </Box>
+        <SetupModeHeader />
         <Box className={classes.centeredPage}>
           <Card className={classes.loginCard} variant="outlined">
             <CardContent>
@@ -1156,18 +1092,7 @@ export const SetupWizardPage = () => {
 
   return (
     <Box className={classes.root}>
-      <Box className={classes.header}>
-        <Box className={classes.headerLogo}><img src={redHatLogo} alt="Red Hat" style={{ width: 36, height: 36, objectFit: 'contain' }} /></Box>
-        <Box>
-          <Typography className={classes.headerTitle}>Red Hat</Typography>
-          <Typography className={classes.headerSubtitle}>Automation Portal</Typography>
-        </Box>
-        <Box style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
-          <Box className={classes.setupModeChip}>
-            SETUP MODE
-          </Box>
-        </Box>
-      </Box>
+      <SetupModeHeader />
 
       <Typography variant="h6" style={{ fontWeight: 600, margin: '24px 24px 0' }}>
         Setup Automation Portal

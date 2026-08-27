@@ -13,6 +13,10 @@ import {
   writeAllConnectionSetup,
 } from './connectionSetup';
 import { seedQuickstartCompleted } from './adminQuickstart';
+import {
+  markSetupAttentionSeen,
+  resetSetupAttentionUnread,
+} from './attentionSeen';
 import type { SetupDemoMode } from './setupDemoMode';
 
 function emitDemoWorldChanged() {
@@ -33,6 +37,7 @@ function seedFirstPortalSession() {
     edge: true,
     orchestrator: false,
   });
+  resetSetupAttentionUnread();
 }
 
 function seedFullyConfiguredPortal() {
@@ -53,6 +58,7 @@ function seedFullyConfiguredPortal() {
   // Optional leftover so Needs setup still has a showcase row.
   writeDevSpacesSetup({ connected: false, url: '' });
   seedQuickstartCompleted();
+  markSetupAttentionSeen();
   emitDemoWorldChanged();
 }
 

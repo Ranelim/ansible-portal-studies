@@ -44,6 +44,33 @@ export function markAttentionSeen(id: AttentionKey) {
   notify();
 }
 
+const SETUP_ATTENTION_KEYS: AttentionKey[] = [
+  'integrations-needs-setup',
+  'experiences-discover',
+];
+
+/** First Portal session — restore unread pips and blue counters. */
+export function resetSetupAttentionUnread() {
+  SETUP_ATTENTION_KEYS.forEach(id => {
+    const timer = exitTimers.get(id);
+    if (timer !== undefined) {
+      window.clearTimeout(timer);
+      exitTimers.delete(id);
+    }
+  });
+  const next = { ...store };
+  SETUP_ATTENTION_KEYS.forEach(id => {
+    delete next[id];
+  });
+  store = next;
+  notify();
+}
+
+/** Post-setup leftover connections are not unread work. */
+export function markSetupAttentionSeen() {
+  SETUP_ATTENTION_KEYS.forEach(id => markAttentionSeen(id));
+}
+
 /** Shrink / drain, then mark seen. Safe to call more than once. */
 export function beginAttentionExit(id: AttentionKey) {
   const phase = getAttentionPhase(id);

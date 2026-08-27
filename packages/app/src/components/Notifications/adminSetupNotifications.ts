@@ -1,4 +1,5 @@
 import type { AttentionKey, SetupExperienceId } from '@ansible/plugin-backstage-self-service';
+import { SHOW_ORCHESTRATOR_EXPERIENCE } from '@ansible/plugin-backstage-self-service';
 
 export type AdminSetupNotification = {
   id: string;
@@ -75,6 +76,7 @@ export function getAdminSetupNotifications(opts: {
   }
 
   (Object.keys(EXPERIENCE_SETUP_COPY) as SetupExperienceId[]).forEach(id => {
+    if (!SHOW_ORCHESTRATOR_EXPERIENCE && id === 'orchestrator') return;
     if (opts.isExperienceReady(id)) return;
     const copy = EXPERIENCE_SETUP_COPY[id];
     items.push({

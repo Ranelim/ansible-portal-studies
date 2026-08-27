@@ -4,6 +4,7 @@ import {
   type BridgeExperienceId,
 } from './bridgeExperienceVisibility';
 import { SHOW_ASSISTANT_EXPERIENCE } from '../components/IaPlaceholder/assistantIaTrial';
+import { SHOW_ORCHESTRATOR_EXPERIENCE } from '../components/IaPlaceholder/orchestratorExperience';
 import { isExperienceReady } from './experienceSetup';
 
 /** Prototype IA models — switch to compare side by side. */
@@ -64,13 +65,13 @@ function normalizeExperience(raw: string | null): NavExperience | null {
     raw === 'develop' ||
     raw === 'compliance' ||
     raw === 'edge' ||
-    raw === 'orchestrator' ||
     (SHOW_ASSISTANT_EXPERIENCE && raw === 'assistant') ||
+    (SHOW_ORCHESTRATOR_EXPERIENCE && raw === 'orchestrator') ||
     raw === 'admin'
   ) {
     return raw;
   }
-  if (raw === 'assistant') {
+  if (raw === 'assistant' || raw === 'orchestrator') {
     try {
       localStorage.setItem(EXPERIENCE_KEY, 'all');
     } catch {
@@ -169,6 +170,7 @@ export function availableExperiences(args: {
     'orchestrator',
   ];
   jobIds.forEach(id => {
+    if (!SHOW_ORCHESTRATOR_EXPERIENCE && id === 'orchestrator') return;
     if (!seatAllowsExperience(id, args.role, args.isAdmin)) return;
     if (id === 'compliance' && !args.compliance) return;
     const ready = isExperienceReady(id);
@@ -205,8 +207,9 @@ export const EXPERIENCE_LABELS: Record<NavExperience, string> = {
 /** Path owns Admin + Assistant so the switcher label matches the rail. */
 export function experienceFromPath(pathname: string): NavExperience | null {
   if (
-    pathname === '/self-service/orchestrator' ||
-    pathname.startsWith('/self-service/orchestrator/')
+    SHOW_ORCHESTRATOR_EXPERIENCE &&
+    (pathname === '/self-service/orchestrator' ||
+      pathname.startsWith('/self-service/orchestrator/'))
   ) {
     return 'orchestrator';
   }

@@ -72,6 +72,7 @@ export {
   isAssistantPath,
   assistantUsesSideNav,
 } from './components/IaPlaceholder/assistantIaTrial';
+export { SHOW_ORCHESTRATOR_EXPERIENCE } from './components/IaPlaceholder/orchestratorExperience';
 export { useAssistantChatTrial } from './components/IaPlaceholder/assistantChatTrialStore';
 export type { UserRole, UseUserRoleResult } from './hooks/useUserRole';
 export { SHOW_ADMIN_PLUGINS } from './components/Admin/adminPluginsTrial';
@@ -104,6 +105,7 @@ export {
   useAttentionClearOnActive,
   isAttentionSeen,
   markAttentionSeen,
+  resetSetupAttentionUnread,
   type AttentionKey,
 } from './hooks/attentionSeen';
 export { AttentionDot } from './components/common/AttentionDot';

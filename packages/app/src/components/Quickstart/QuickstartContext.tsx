@@ -83,7 +83,7 @@ const ADMIN_QUICKSTART_ITEMS: QuickstartItem[] = [
     id: 'setup-experiences',
     title: 'Discover and set up experiences',
     description:
-      'Enable Develop, Compliance, Edge, and Orchestrator so they appear with Launch on the Bridge. Hide and edit stay here — not on the cards.',
+      'Enable Develop, Compliance, and Edge so they appear with Launch on the Bridge. Hide and edit stay here — not on the cards.',
     icon: 'experiences',
     roles: ['admin'],
     cta: {

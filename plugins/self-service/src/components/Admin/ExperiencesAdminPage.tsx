@@ -23,6 +23,7 @@ import { useAttentionClearOnActive } from '../../hooks/attentionSeen';
 import { SHOW_ADMIN_PLUGINS } from './adminPluginsTrial';
 import { ExperienceThumbnail } from '../IaPlaceholder/experienceVisuals';
 import type { JobExperienceId } from '../../hooks/experienceRecent';
+import { SHOW_ORCHESTRATOR_EXPERIENCE } from '../IaPlaceholder/orchestratorExperience';
 
 const useStyles = makeStyles(theme => ({
   pageTabs: {
@@ -170,6 +171,10 @@ const ADMIN_EXPERIENCES: AdminExperience[] = [
   },
 ];
 
+const VISIBLE_ADMIN_EXPERIENCES = ADMIN_EXPERIENCES.filter(
+  exp => SHOW_ORCHESTRATOR_EXPERIENCE || exp.id !== 'orchestrator',
+);
+
 const tabFromSearch = (search: string): ExperienceFilterTab => {
   const raw = new URLSearchParams(search).get('tab');
   if (raw === 'ready' || raw === 'discover') return raw;
@@ -191,7 +196,7 @@ export const ExperiencesAdminPage = () => {
   const { version } = useExperienceReadiness();
   const tabFromUrl = tabFromSearch(location.search);
   const [tab, setTab] = useState<ExperienceFilterTab>(tabFromUrl);
-  const discoverCount = ADMIN_EXPERIENCES.filter(exp => isAwaitingSetup(exp))
+  const discoverCount = VISIBLE_ADMIN_EXPERIENCES.filter(exp => isAwaitingSetup(exp))
     .length;
   const { seen: discoverSeen, exiting: discoverExiting } =
     useAttentionClearOnActive(
@@ -205,7 +210,7 @@ export const ExperiencesAdminPage = () => {
 
   const visible = useMemo(
     () =>
-      ADMIN_EXPERIENCES.filter(exp => {
+      VISIBLE_ADMIN_EXPERIENCES.filter(exp => {
         const awaiting = isAwaitingSetup(exp);
         if (tab === 'discover') return awaiting;
         if (tab === 'ready') return !awaiting;

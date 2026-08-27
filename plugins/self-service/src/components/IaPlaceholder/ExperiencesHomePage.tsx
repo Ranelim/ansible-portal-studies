@@ -992,6 +992,7 @@ export const ExperiencesHomePage = () => {
                   <AttentionDot
                     label="Setup needed in Administration"
                     exiting={adminExiting}
+                    pulse
                   />
                 ) : null}
               </span>

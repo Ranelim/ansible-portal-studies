@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { JobExperienceId } from './experienceRecent';
 import { clearQuickstartCompleted } from './adminQuickstart';
+import { SHOW_ORCHESTRATOR_EXPERIENCE } from '../components/IaPlaceholder/orchestratorExperience';
 
 /** Experiences that need a one-time admin setup wizard after Day 0. */
 export type SetupExperienceId = 'develop' | 'compliance' | 'edge' | 'orchestrator';
@@ -93,7 +94,10 @@ export const resetExperienceSetupForPostSetupLanding =
   resetExperienceSetupForSetupLanding;
 
 export function anyExperienceNeedsSetup(): boolean {
-  return SETUP_EXPERIENCE_IDS.some(id => !isExperienceSetup(id));
+  return SETUP_EXPERIENCE_IDS.some(id => {
+    if (!SHOW_ORCHESTRATOR_EXPERIENCE && id === 'orchestrator') return false;
+    return !isExperienceSetup(id);
+  });
 }
 
 export function experienceSetupPath(id: SetupExperienceId): string {

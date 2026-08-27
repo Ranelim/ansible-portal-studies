@@ -1,5 +1,6 @@
 import type { NavExperience } from './useNavIaModel';
 import { SHOW_ASSISTANT_EXPERIENCE } from '../components/IaPlaceholder/assistantIaTrial';
+import { SHOW_ORCHESTRATOR_EXPERIENCE } from '../components/IaPlaceholder/orchestratorExperience';
 
 /** Switcher destinations — not Bridge (`all`). */
 export type ExperienceId = Exclude<NavExperience, 'all'>;
@@ -62,6 +63,7 @@ export function readRecentExperiences(): ExperienceId[] {
       const id = asExperienceId(item);
       if (!id || seen.has(id)) continue;
       if (!SHOW_ASSISTANT_EXPERIENCE && id === 'assistant') continue;
+      if (!SHOW_ORCHESTRATOR_EXPERIENCE && id === 'orchestrator') continue;
       seen.add(id);
       out.push(id);
     }

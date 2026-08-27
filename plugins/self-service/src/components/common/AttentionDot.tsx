@@ -4,6 +4,15 @@ import { statusColors } from './statusColors';
 const EXIT_EASING = 'cubic-bezier(.4, 0, .7, .2)';
 
 const useStyles = makeStyles({
+  /**
+   * One pump per cycle: fill (big / opaque) → empty (small / faint) → rest.
+   */
+  '@keyframes attentionHeartbeat': {
+    '0%': { transform: 'scale(1)', opacity: 0.36 },
+    '10%': { transform: 'scale(1.32)', opacity: 1 },
+    '22%': { transform: 'scale(1)', opacity: 0.36 },
+    '100%': { transform: 'scale(1)', opacity: 0.36 },
+  },
   dot: {
     display: 'inline-block',
     width: 8,
@@ -19,7 +28,16 @@ const useStyles = makeStyles({
       transition: 'none',
     },
   },
+  pulse: {
+    transition: 'none',
+    animation: '$attentionHeartbeat 1.85s infinite',
+    animationTimingFunction: 'ease-in-out',
+    '@media (prefers-reduced-motion: reduce)': {
+      animation: 'none',
+    },
+  },
   exiting: {
+    animation: 'none',
     transform: 'scale(0)',
     opacity: 0,
     width: 0,
@@ -31,14 +49,19 @@ const useStyles = makeStyles({
 export const AttentionDot = ({
   label,
   exiting = false,
+  pulse = false,
 }: {
   label: string;
   exiting?: boolean;
+  /** Heartbeat on Bridge Administration only — not rail pips. */
+  pulse?: boolean;
 }) => {
   const classes = useStyles();
   return (
     <span
-      className={`${classes.dot}${exiting ? ` ${classes.exiting}` : ''}`}
+      className={`${classes.dot}${pulse && !exiting ? ` ${classes.pulse}` : ''}${
+        exiting ? ` ${classes.exiting}` : ''
+      }`}
       aria-label={exiting ? undefined : label}
       aria-hidden={exiting || undefined}
     />
