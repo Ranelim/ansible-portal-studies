@@ -261,7 +261,7 @@
       "path": "node_modules/@red-hat-developer-hub/cli/node_modules/@backstage/cli/package.json"
     },
     {
-      "path": "plugins/self-service/config.d.ts",
+      "path": "plugins/backstage-rhaap/config.d.ts",
       "value": {
         "type": "object",
         "properties": {
@@ -269,8 +269,8 @@
             "description": "Configurations for the Ansible plugin",
             "type": "object",
             "properties": {
-              "rhaap": {
-                "description": "AAP base URL",
+              "devSpaces": {
+                "description": "The devspaces baseUrl for Openshift Dev Spaces Dashboard.",
                 "deepVisibility": "frontend",
                 "type": "object",
                 "properties": {
@@ -278,7 +278,36 @@
                     "visibility": "frontend",
                     "type": "string"
                   }
-                }
+                },
+                "required": [
+                  "baseUrl"
+                ]
+              },
+              "automationHub": {
+                "deepVisibility": "frontend",
+                "type": "object",
+                "properties": {
+                  "baseUrl": {
+                    "visibility": "frontend",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "baseUrl"
+                ]
+              },
+              "rhaap": {
+                "deepVisibility": "frontend",
+                "type": "object",
+                "properties": {
+                  "baseUrl": {
+                    "visibility": "frontend",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "baseUrl"
+                ]
               },
               "feedback": {
                 "description": "Feedback form configuration",
@@ -297,7 +326,7 @@
         },
         "$schema": "http://json-schema.org/draft-07/schema#"
       },
-      "packageName": "@ansible/plugin-backstage-self-service"
+      "packageName": "@ansible/plugin-backstage-rhaap"
     },
     {
       "path": "plugins/backstage-rhaap-common/config.d.ts",
@@ -440,7 +469,7 @@
       "packageName": "@ansible/backstage-rhaap-common"
     },
     {
-      "path": "plugins/backstage-rhaap/config.d.ts",
+      "path": "plugins/self-service/config.d.ts",
       "value": {
         "type": "object",
         "properties": {
@@ -448,34 +477,8 @@
             "description": "Configurations for the Ansible plugin",
             "type": "object",
             "properties": {
-              "devSpaces": {
-                "description": "The devspaces baseUrl for Openshift Dev Spaces Dashboard.",
-                "deepVisibility": "frontend",
-                "type": "object",
-                "properties": {
-                  "baseUrl": {
-                    "visibility": "frontend",
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "baseUrl"
-                ]
-              },
-              "automationHub": {
-                "deepVisibility": "frontend",
-                "type": "object",
-                "properties": {
-                  "baseUrl": {
-                    "visibility": "frontend",
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "baseUrl"
-                ]
-              },
               "rhaap": {
+                "description": "AAP base URL",
                 "deepVisibility": "frontend",
                 "type": "object",
                 "properties": {
@@ -483,10 +486,7 @@
                     "visibility": "frontend",
                     "type": "string"
                   }
-                },
-                "required": [
-                  "baseUrl"
-                ]
+                }
               },
               "feedback": {
                 "description": "Feedback form configuration",
@@ -505,7 +505,142 @@
         },
         "$schema": "http://json-schema.org/draft-07/schema#"
       },
-      "packageName": "@ansible/plugin-backstage-rhaap"
+      "packageName": "@ansible/plugin-backstage-self-service"
+    },
+    {
+      "path": "node_modules/@backstage/core-components/config.d.ts",
+      "value": {
+        "type": "object",
+        "properties": {
+          "auth": {
+            "type": "object",
+            "properties": {
+              "autologout": {
+                "description": "Autologout feature configuration",
+                "type": "object",
+                "properties": {
+                  "enabled": {
+                    "description": "Enable or disable the autologout feature",
+                    "visibility": "frontend",
+                    "type": "boolean"
+                  },
+                  "idleTimeoutMinutes": {
+                    "description": "Number of minutes after which the inactive user is logged out automatically.\nDefault is 60 minutes (1 hour)",
+                    "visibility": "frontend",
+                    "type": "number"
+                  },
+                  "promptBeforeIdleSeconds": {
+                    "description": "Number of seconds before the idle timeout where the user will be asked if it's still active.\nA dialog will be shown.\nDefault is 10 seconds.\nSet to 0 seconds to disable the prompt.",
+                    "visibility": "frontend",
+                    "type": "number"
+                  },
+                  "useWorkerTimers": {
+                    "description": "Enable/disable the usage of worker thread timers instead of main thread timers.\nDefault is true.\nIf you experience some browser incompatibility, you may try to set this to false.",
+                    "visibility": "frontend",
+                    "type": "boolean"
+                  },
+                  "logoutIfDisconnected": {
+                    "description": "Enable/disable the automatic logout also on users that are logged in but with no Backstage tabs open.\nDefault is true.",
+                    "visibility": "frontend",
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "packageName": "@backstage/core-components"
+    },
+    {
+      "path": "node_modules/@backstage/plugin-home/config.d.ts",
+      "value": {
+        "type": "object",
+        "properties": {
+          "home": {
+            "type": "object",
+            "properties": {
+              "topVisits": {
+                "description": "Top visited plugin",
+                "visibility": "frontend",
+                "type": "object",
+                "properties": {
+                  "filterBy": {
+                    "description": "Filter By config",
+                    "visibility": "frontend",
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "field": {
+                          "visibility": "frontend",
+                          "type": "string"
+                        },
+                        "operator": {
+                          "visibility": "frontend",
+                          "type": "string"
+                        },
+                        "value": {
+                          "visibility": "frontend",
+                          "type": [
+                            "string",
+                            "number"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "field",
+                        "operator",
+                        "value"
+                      ]
+                    }
+                  }
+                }
+              },
+              "recentVisits": {
+                "description": "Recent visited plugin",
+                "visibility": "frontend",
+                "type": "object",
+                "properties": {
+                  "filterBy": {
+                    "description": "Filter By config",
+                    "visibility": "frontend",
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "field": {
+                          "visibility": "frontend",
+                          "type": "string"
+                        },
+                        "operator": {
+                          "visibility": "frontend",
+                          "type": "string"
+                        },
+                        "value": {
+                          "visibility": "frontend",
+                          "type": [
+                            "string",
+                            "number"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "field",
+                        "operator",
+                        "value"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "packageName": "@backstage/plugin-home"
     },
     {
       "path": "node_modules/@backstage/core-app-api/config.d.ts",
@@ -735,309 +870,23 @@
       "packageName": "@backstage/core-app-api"
     },
     {
-      "path": "node_modules/@backstage/core-components/config.d.ts",
+      "path": "node_modules/@backstage/backend-plugin-api/config.d.ts",
       "value": {
         "type": "object",
         "properties": {
-          "auth": {
+          "backend": {
             "type": "object",
             "properties": {
-              "autologout": {
-                "description": "Autologout feature configuration",
-                "type": "object",
-                "properties": {
-                  "enabled": {
-                    "description": "Enable or disable the autologout feature",
-                    "visibility": "frontend",
-                    "type": "boolean"
-                  },
-                  "idleTimeoutMinutes": {
-                    "description": "Number of minutes after which the inactive user is logged out automatically.\nDefault is 60 minutes (1 hour)",
-                    "visibility": "frontend",
-                    "type": "number"
-                  },
-                  "promptBeforeIdleSeconds": {
-                    "description": "Number of seconds before the idle timeout where the user will be asked if it's still active.\nA dialog will be shown.\nDefault is 10 seconds.\nSet to 0 seconds to disable the prompt.",
-                    "visibility": "frontend",
-                    "type": "number"
-                  },
-                  "useWorkerTimers": {
-                    "description": "Enable/disable the usage of worker thread timers instead of main thread timers.\nDefault is true.\nIf you experience some browser incompatibility, you may try to set this to false.",
-                    "visibility": "frontend",
-                    "type": "boolean"
-                  },
-                  "logoutIfDisconnected": {
-                    "description": "Enable/disable the automatic logout also on users that are logged in but with no Backstage tabs open.\nDefault is true.",
-                    "visibility": "frontend",
-                    "type": "boolean"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "$schema": "http://json-schema.org/draft-07/schema#"
-      },
-      "packageName": "@backstage/core-components"
-    },
-    {
-      "path": "node_modules/@backstage/plugin-catalog-import/config.d.ts",
-      "value": {
-        "type": "object",
-        "properties": {
-          "catalog": {
-            "description": "Configuration options for the catalog plugin.",
-            "type": "object",
-            "properties": {
-              "import": {
-                "description": "List of import flow specific options and attributes",
-                "type": "object",
-                "properties": {
-                  "entityFilename": {
-                    "description": "Catalog entity descriptor filename, defaults to \"catalog-info.yaml\"",
-                    "visibility": "frontend",
-                    "type": "string"
-                  },
-                  "pullRequestBranchName": {
-                    "description": "A branch name used in pull request when registering existing component via UI\nValid git refname required, see: https://git-scm.com/docs/git-check-ref-format\nDefaults to \"backstage-integration\"",
-                    "visibility": "frontend",
-                    "type": "string"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "$schema": "http://json-schema.org/draft-07/schema#"
-      },
-      "packageName": "@backstage/plugin-catalog-import"
-    },
-    {
-      "path": "node_modules/@backstage/plugin-catalog/config.d.ts",
-      "value": {
-        "type": "object",
-        "properties": {
-          "catalog": {
-            "type": "object",
-            "properties": {
-              "experimentalPagination": {
-                "deepVisibility": "frontend",
-                "anyOf": [
-                  {
-                    "type": "object",
-                    "properties": {
-                      "limit": {
-                        "type": "number"
-                      }
-                    }
-                  },
-                  {
-                    "type": "boolean"
-                  }
-                ]
-              }
-            }
-          }
-        },
-        "$schema": "http://json-schema.org/draft-07/schema#"
-      },
-      "packageName": "@backstage/plugin-catalog"
-    },
-    {
-      "path": "node_modules/@backstage/plugin-techdocs/config.d.ts",
-      "value": {
-        "type": "object",
-        "properties": {
-          "techdocs": {
-            "description": "Configuration options for the techdocs plugin",
-            "type": "object",
-            "properties": {
-              "builder": {
-                "description": "Documentation building process depends on the builder attr",
-                "visibility": "frontend",
-                "enum": [
-                  "external",
-                  "local"
-                ],
-                "type": "string"
-              },
-              "legacyUseCaseSensitiveTripletPaths": {
-                "description": "Allows fallback to case-sensitive triplets in case of migration issues.",
-                "visibility": "frontend",
-                "type": "boolean"
-              },
-              "sanitizer": {
-                "type": "object",
-                "properties": {
-                  "allowedIframeHosts": {
-                    "description": "Allows iframe tag only for listed hosts\nExample:\n allowedIframeHosts: [\"example.com\"]\n this will allow all iframes with the host `example.com` in the src attribute",
-                    "visibility": "frontend",
-                    "type": "array",
-                    "items": {
-                      "type": "string"
-                    }
-                  },
-                  "allowedCustomElementTagNameRegExp": {
-                    "description": "Allows listed custom element tag name regex\nExample:\n allowedCustomElementTagNameRegExp: '^backstage-'\n this will allow all custom elements with tag name matching `^backstage-` like <backstage-custom-element /> etc.",
-                    "visibility": "frontend",
-                    "type": "string"
-                  },
-                  "allowedCustomElementAttributeNameRegExp": {
-                    "description": "Allows listed custom element attribute name regex\nExample:\n allowedCustomElementAttributeNameRegExp: 'attribute1|attribute2'\n this will allow all custom element attributes matching `attribute1` or `attribute2` like <backstage-custom-element attribute1=\"yes\" attribute2/>",
-                    "visibility": "frontend",
-                    "type": "string"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "required": [
-          "techdocs"
-        ],
-        "$schema": "http://json-schema.org/draft-07/schema#"
-      },
-      "packageName": "@backstage/plugin-techdocs"
-    },
-    {
-      "path": "node_modules/@backstage/plugin-search/config.d.ts",
-      "value": {
-        "type": "object",
-        "properties": {
-          "search": {
-            "description": "Configuration options for the search plugin",
-            "type": "object",
-            "properties": {
-              "query": {
-                "description": "An object representing the default search query configuration.\nBy configuring and modifying the values of this object,\nyou can customize the default values of the search queries\nand define how it behaves by default.",
-                "type": "object",
-                "properties": {
-                  "pageLimit": {
-                    "description": "A number indicating the maximum number of results to be returned\nper page during pagination.",
-                    "visibility": "frontend",
-                    "enum": [
-                      10,
-                      100,
-                      25,
-                      50
-                    ],
-                    "type": "number"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "$schema": "http://json-schema.org/draft-07/schema#"
-      },
-      "packageName": "@backstage/plugin-search"
-    },
-    {
-      "path": "node_modules/@red-hat-developer-hub/backstage-plugin-global-header/config.d.ts",
-      "value": {
-        "type": "object",
-        "properties": {
-          "app": {
-            "type": "object",
-            "properties": {
-              "branding": {
-                "type": "object",
-                "properties": {
-                  "fullLogo": {
-                    "description": "Base64 URI for the full logo. If the value is a string, it is used as the logo for both themes.",
-                    "visibility": "frontend",
-                    "anyOf": [
-                      {
-                        "type": "object",
-                        "properties": {
-                          "light": {
-                            "description": "Base64 URI for the logo in light theme",
-                            "visibility": "frontend",
-                            "type": "string"
-                          },
-                          "dark": {
-                            "description": "Base64 URI for the logo in dark theme",
-                            "visibility": "frontend",
-                            "type": "string"
-                          }
-                        },
-                        "required": [
-                          "dark",
-                          "light"
-                        ]
-                      },
-                      {
-                        "type": "string"
-                      }
-                    ]
-                  },
-                  "fullLogoWidth": {
-                    "description": "Fallback width for the full logo in the global header.\nAccepts any valid CSS length (e.g. `'200px'`, `'12rem'`).\nUsed only when a `width` prop isn’t supplied through the extension configuration.",
-                    "visibility": "frontend",
-                    "type": [
-                      "string",
-                      "number"
-                    ]
-                  }
-                }
-              }
-            }
-          }
-        },
-        "$schema": "http://json-schema.org/draft-07/schema#"
-      },
-      "packageName": "@red-hat-developer-hub/backstage-plugin-global-header"
-    },
-    {
-      "path": "node_modules/@red-hat-developer-hub/backstage-plugin-theme/config.d.ts",
-      "value": {
-        "type": "object",
-        "properties": {
-          "app": {
-            "type": "object",
-            "properties": {
-              "branding": {
-                "type": "object",
-                "properties": {
-                  "theme": {
-                    "description": "Theme configuration.",
-                    "deepVisibility": "frontend",
-                    "type": "object",
-                    "additionalProperties": {}
-                  }
-                }
-              }
-            }
-          }
-        },
-        "required": [
-          "app"
-        ],
-        "$schema": "http://json-schema.org/draft-07/schema#"
-      },
-      "packageName": "@red-hat-developer-hub/backstage-plugin-theme"
-    },
-    {
-      "path": "node_modules/@backstage/backend-dynamic-feature-service/config.d.ts",
-      "value": {
-        "type": "object",
-        "properties": {
-          "dynamicPlugins": {
-            "type": "object",
-            "properties": {
-              "rootDirectory": {
-                "description": "The local path, relative to the backstage root, that contains dynamic plugins.",
+              "workingDirectory": {
+                "description": "An absolute path to a directory that can be used as a working dir, for\nexample as scratch space for large operations.",
                 "type": "string"
               }
-            },
-            "required": [
-              "rootDirectory"
-            ]
+            }
           }
         },
         "$schema": "http://json-schema.org/draft-07/schema#"
       },
-      "packageName": "@backstage/backend-dynamic-feature-service"
+      "packageName": "@backstage/backend-plugin-api"
     },
     {
       "path": "node_modules/@backstage/integration/config.d.ts",
@@ -1534,25 +1383,6 @@
       "packageName": "@backstage/integration"
     },
     {
-      "path": "node_modules/@backstage/backend-plugin-api/config.d.ts",
-      "value": {
-        "type": "object",
-        "properties": {
-          "backend": {
-            "type": "object",
-            "properties": {
-              "workingDirectory": {
-                "description": "An absolute path to a directory that can be used as a working dir, for\nexample as scratch space for large operations.",
-                "type": "string"
-              }
-            }
-          }
-        },
-        "$schema": "http://json-schema.org/draft-07/schema#"
-      },
-      "packageName": "@backstage/backend-plugin-api"
-    },
-    {
       "path": "plugins/backstage-rhaap-common/node_modules/@backstage/plugin-permission-common/config.d.ts",
       "value": {
         "type": "object",
@@ -1578,130 +1408,225 @@
       "packageName": "@backstage/plugin-permission-common"
     },
     {
-      "path": "node_modules/@backstage/plugin-home/config.d.ts",
+      "path": "node_modules/@backstage/backend-dynamic-feature-service/config.d.ts",
       "value": {
         "type": "object",
         "properties": {
-          "home": {
+          "dynamicPlugins": {
             "type": "object",
             "properties": {
-              "topVisits": {
-                "description": "Top visited plugin",
-                "visibility": "frontend",
+              "rootDirectory": {
+                "description": "The local path, relative to the backstage root, that contains dynamic plugins.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "rootDirectory"
+            ]
+          }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "packageName": "@backstage/backend-dynamic-feature-service"
+    },
+    {
+      "path": "node_modules/@backstage/plugin-catalog-import/config.d.ts",
+      "value": {
+        "type": "object",
+        "properties": {
+          "catalog": {
+            "description": "Configuration options for the catalog plugin.",
+            "type": "object",
+            "properties": {
+              "import": {
+                "description": "List of import flow specific options and attributes",
                 "type": "object",
                 "properties": {
-                  "filterBy": {
-                    "description": "Filter By config",
+                  "entityFilename": {
+                    "description": "Catalog entity descriptor filename, defaults to \"catalog-info.yaml\"",
                     "visibility": "frontend",
-                    "type": "array",
-                    "items": {
-                      "type": "object",
-                      "properties": {
-                        "field": {
-                          "visibility": "frontend",
-                          "type": "string"
-                        },
-                        "operator": {
-                          "visibility": "frontend",
-                          "type": "string"
-                        },
-                        "value": {
-                          "visibility": "frontend",
-                          "type": [
-                            "string",
-                            "number"
-                          ]
-                        }
-                      },
-                      "required": [
-                        "field",
-                        "operator",
-                        "value"
-                      ]
-                    }
+                    "type": "string"
+                  },
+                  "pullRequestBranchName": {
+                    "description": "A branch name used in pull request when registering existing component via UI\nValid git refname required, see: https://git-scm.com/docs/git-check-ref-format\nDefaults to \"backstage-integration\"",
+                    "visibility": "frontend",
+                    "type": "string"
                   }
                 }
+              }
+            }
+          }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "packageName": "@backstage/plugin-catalog-import"
+    },
+    {
+      "path": "node_modules/@backstage/plugin-catalog/config.d.ts",
+      "value": {
+        "type": "object",
+        "properties": {
+          "catalog": {
+            "type": "object",
+            "properties": {
+              "experimentalPagination": {
+                "deepVisibility": "frontend",
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "limit": {
+                        "type": "number"
+                      }
+                    }
+                  },
+                  {
+                    "type": "boolean"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "packageName": "@backstage/plugin-catalog"
+    },
+    {
+      "path": "node_modules/@backstage/plugin-search/config.d.ts",
+      "value": {
+        "type": "object",
+        "properties": {
+          "search": {
+            "description": "Configuration options for the search plugin",
+            "type": "object",
+            "properties": {
+              "query": {
+                "description": "An object representing the default search query configuration.\nBy configuring and modifying the values of this object,\nyou can customize the default values of the search queries\nand define how it behaves by default.",
+                "type": "object",
+                "properties": {
+                  "pageLimit": {
+                    "description": "A number indicating the maximum number of results to be returned\nper page during pagination.",
+                    "visibility": "frontend",
+                    "enum": [
+                      10,
+                      100,
+                      25,
+                      50
+                    ],
+                    "type": "number"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "packageName": "@backstage/plugin-search"
+    },
+    {
+      "path": "node_modules/@backstage/plugin-techdocs/config.d.ts",
+      "value": {
+        "type": "object",
+        "properties": {
+          "techdocs": {
+            "description": "Configuration options for the techdocs plugin",
+            "type": "object",
+            "properties": {
+              "builder": {
+                "description": "Documentation building process depends on the builder attr",
+                "visibility": "frontend",
+                "enum": [
+                  "external",
+                  "local"
+                ],
+                "type": "string"
               },
-              "recentVisits": {
-                "description": "Recent visited plugin",
+              "legacyUseCaseSensitiveTripletPaths": {
+                "description": "Allows fallback to case-sensitive triplets in case of migration issues.",
                 "visibility": "frontend",
+                "type": "boolean"
+              },
+              "sanitizer": {
                 "type": "object",
                 "properties": {
-                  "filterBy": {
-                    "description": "Filter By config",
+                  "allowedIframeHosts": {
+                    "description": "Allows iframe tag only for listed hosts\nExample:\n allowedIframeHosts: [\"example.com\"]\n this will allow all iframes with the host `example.com` in the src attribute",
                     "visibility": "frontend",
                     "type": "array",
                     "items": {
-                      "type": "object",
-                      "properties": {
-                        "field": {
-                          "visibility": "frontend",
-                          "type": "string"
-                        },
-                        "operator": {
-                          "visibility": "frontend",
-                          "type": "string"
-                        },
-                        "value": {
-                          "visibility": "frontend",
-                          "type": [
-                            "string",
-                            "number"
-                          ]
-                        }
-                      },
-                      "required": [
-                        "field",
-                        "operator",
-                        "value"
-                      ]
+                      "type": "string"
                     }
+                  },
+                  "allowedCustomElementTagNameRegExp": {
+                    "description": "Allows listed custom element tag name regex\nExample:\n allowedCustomElementTagNameRegExp: '^backstage-'\n this will allow all custom elements with tag name matching `^backstage-` like <backstage-custom-element /> etc.",
+                    "visibility": "frontend",
+                    "type": "string"
+                  },
+                  "allowedCustomElementAttributeNameRegExp": {
+                    "description": "Allows listed custom element attribute name regex\nExample:\n allowedCustomElementAttributeNameRegExp: 'attribute1|attribute2'\n this will allow all custom element attributes matching `attribute1` or `attribute2` like <backstage-custom-element attribute1=\"yes\" attribute2/>",
+                    "visibility": "frontend",
+                    "type": "string"
                   }
                 }
               }
             }
           }
         },
+        "required": [
+          "techdocs"
+        ],
         "$schema": "http://json-schema.org/draft-07/schema#"
       },
-      "packageName": "@backstage/plugin-home"
+      "packageName": "@backstage/plugin-techdocs"
     },
     {
-      "path": "node_modules/@backstage-community/plugin-rbac/node_modules/@backstage/core-components/config.d.ts",
+      "path": "node_modules/@red-hat-developer-hub/backstage-plugin-global-header/config.d.ts",
       "value": {
         "type": "object",
         "properties": {
-          "auth": {
+          "app": {
             "type": "object",
             "properties": {
-              "autologout": {
-                "description": "Autologout feature configuration",
+              "branding": {
                 "type": "object",
                 "properties": {
-                  "enabled": {
-                    "description": "Enable or disable the autologout feature",
+                  "fullLogo": {
+                    "description": "Base64 URI for the full logo. If the value is a string, it is used as the logo for both themes.",
                     "visibility": "frontend",
-                    "type": "boolean"
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "light": {
+                            "description": "Base64 URI for the logo in light theme",
+                            "visibility": "frontend",
+                            "type": "string"
+                          },
+                          "dark": {
+                            "description": "Base64 URI for the logo in dark theme",
+                            "visibility": "frontend",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "dark",
+                          "light"
+                        ]
+                      },
+                      {
+                        "type": "string"
+                      }
+                    ]
                   },
-                  "idleTimeoutMinutes": {
-                    "description": "Number of minutes after which the inactive user is logged out automatically.\nDefault is 60 minutes (1 hour)",
+                  "fullLogoWidth": {
+                    "description": "Fallback width for the full logo in the global header.\nAccepts any valid CSS length (e.g. `'200px'`, `'12rem'`).\nUsed only when a `width` prop isn’t supplied through the extension configuration.",
                     "visibility": "frontend",
-                    "type": "number"
-                  },
-                  "promptBeforeIdleSeconds": {
-                    "description": "Number of seconds before the idle timeout where the user will be asked if it's still active.\nA dialog will be shown.\nDefault is 10 seconds.\nSet to 0 seconds to disable the prompt.",
-                    "visibility": "frontend",
-                    "type": "number"
-                  },
-                  "useWorkerTimers": {
-                    "description": "Enable/disable the usage of worker thread timers instead of main thread timers.\nDefault is true.\nIf you experience some browser incompatibility, you may try to set this to false.",
-                    "visibility": "frontend",
-                    "type": "boolean"
-                  },
-                  "logoutIfDisconnected": {
-                    "description": "Enable/disable the automatic logout also on users that are logged in but with no Backstage tabs open.\nDefault is true.",
-                    "visibility": "frontend",
-                    "type": "boolean"
+                    "type": [
+                      "string",
+                      "number"
+                    ]
                   }
                 }
               }
@@ -1710,10 +1635,39 @@
         },
         "$schema": "http://json-schema.org/draft-07/schema#"
       },
-      "packageName": "@backstage/core-components"
+      "packageName": "@red-hat-developer-hub/backstage-plugin-global-header"
     },
     {
-      "path": "node_modules/@backstage-community/plugin-rbac/node_modules/@backstage/plugin-permission-common/config.d.ts",
+      "path": "node_modules/@red-hat-developer-hub/backstage-plugin-theme/config.d.ts",
+      "value": {
+        "type": "object",
+        "properties": {
+          "app": {
+            "type": "object",
+            "properties": {
+              "branding": {
+                "type": "object",
+                "properties": {
+                  "theme": {
+                    "description": "Theme configuration.",
+                    "deepVisibility": "frontend",
+                    "type": "object",
+                    "additionalProperties": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "required": [
+          "app"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "packageName": "@red-hat-developer-hub/backstage-plugin-theme"
+    },
+    {
+      "path": "node_modules/@backstage/plugin-permission-common/config.d.ts",
       "value": {
         "type": "object",
         "properties": {
@@ -1725,6 +1679,10 @@
                 "description": "Whether authorization is enabled in Backstage. Defaults to false, which means authorization\nrequests will be automatically allowed without invoking the authorization policy.",
                 "visibility": "frontend",
                 "type": "boolean"
+              },
+              "EXPERIMENTAL_enableBatchedRequests": {
+                "visibility": "frontend",
+                "type": "boolean"
               }
             }
           }
@@ -1732,6 +1690,182 @@
         "$schema": "http://json-schema.org/draft-07/schema#"
       },
       "packageName": "@backstage/plugin-permission-common"
+    },
+    {
+      "path": "node_modules/@backstage/frontend-app-api/config.d.ts",
+      "value": {
+        "type": "object",
+        "properties": {
+          "app": {
+            "type": "object",
+            "properties": {
+              "experimental": {
+                "type": "object",
+                "properties": {
+                  "packages": {
+                    "visibility": "frontend",
+                    "deepVisibility": "frontend",
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "include": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "exclude": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      {
+                        "const": "all",
+                        "type": "string"
+                      }
+                    ]
+                  }
+                }
+              },
+              "routes": {
+                "type": "object",
+                "properties": {
+                  "bindings": {
+                    "description": "Maps external route references to regular route references. Both the\nkey and the value is expected to be on the form `<pluginId>.<routeId>`.\nIf the value is `false`, the route will be disabled even if it has a\ndefault mapping.",
+                    "deepVisibility": "frontend",
+                    "type": "object",
+                    "additionalProperties": {
+                      "anyOf": [
+                        {
+                          "const": false,
+                          "type": "boolean"
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    }
+                  }
+                }
+              },
+              "extensions": {
+                "deepVisibility": "frontend",
+                "type": "array",
+                "items": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "additionalProperties": {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "attachTo": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "input": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "input"
+                                ]
+                              },
+                              "disabled": {
+                                "type": "boolean"
+                              },
+                              "config": {}
+                            }
+                          },
+                          {
+                            "type": "boolean"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "pluginOverrides": {
+                "description": "This section enables you to override certain properties of specific or\ngroups of plugins.",
+                "deepVisibility": "frontend",
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "match": {
+                      "description": "The criteria for matching plugins to override.",
+                      "type": "object",
+                      "properties": {
+                        "pluginId": {
+                          "description": "A pattern that is matched against the plugin ID.",
+                          "type": "string"
+                        },
+                        "packageName": {
+                          "description": "A pattern that is matched against the package name.",
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "info": {
+                      "description": "Overrides individual top-level fields of the plugin info.",
+                      "type": "object",
+                      "properties": {
+                        "description": {
+                          "description": "Override the description of the plugin.",
+                          "type": "string"
+                        },
+                        "ownerEntityRefs": {
+                          "description": "Override the owner entity references of the plugin.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "links": {
+                          "description": "Override the links of the plugin.",
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "title": {
+                                "type": "string"
+                              },
+                              "url": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "title",
+                              "url"
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "info"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "packageName": "@backstage/frontend-app-api"
     },
     {
       "path": "node_modules/@backstage/plugin-auth-backend/config.d.ts",
@@ -1913,481 +2047,6 @@
         "$schema": "http://json-schema.org/draft-07/schema#"
       },
       "packageName": "@backstage/plugin-auth-backend-module-guest-provider"
-    },
-    {
-      "path": "node_modules/@backstage/plugin-permission-common/config.d.ts",
-      "value": {
-        "type": "object",
-        "properties": {
-          "permission": {
-            "description": "Configuration options for Backstage permissions and authorization",
-            "type": "object",
-            "properties": {
-              "enabled": {
-                "description": "Whether authorization is enabled in Backstage. Defaults to false, which means authorization\nrequests will be automatically allowed without invoking the authorization policy.",
-                "visibility": "frontend",
-                "type": "boolean"
-              },
-              "EXPERIMENTAL_enableBatchedRequests": {
-                "visibility": "frontend",
-                "type": "boolean"
-              }
-            }
-          }
-        },
-        "$schema": "http://json-schema.org/draft-07/schema#"
-      },
-      "packageName": "@backstage/plugin-permission-common"
-    },
-    {
-      "path": "node_modules/@backstage/plugin-kubernetes-react/config.d.ts",
-      "value": {
-        "type": "object",
-        "properties": {
-          "kubernetes": {
-            "type": "object",
-            "properties": {
-              "podExecTerminal": {
-                "description": "Pod Exec Terminal config",
-                "type": "object",
-                "properties": {
-                  "enabled": {
-                    "description": "Enable `PodExecTerminal` UI feature",
-                    "visibility": "frontend",
-                    "type": "boolean"
-                  }
-                }
-              },
-              "frontend": {
-                "description": "Frontend config",
-                "type": "object",
-                "properties": {
-                  "podDelete": {
-                    "description": "Pod Delete config",
-                    "type": "object",
-                    "properties": {
-                      "enabled": {
-                        "description": "Enable `podDelete` UI feature",
-                        "visibility": "frontend",
-                        "type": "boolean"
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "$schema": "http://json-schema.org/draft-07/schema#"
-      },
-      "packageName": "@backstage/plugin-kubernetes-react"
-    },
-    {
-      "path": "node_modules/@backstage/frontend-app-api/config.d.ts",
-      "value": {
-        "type": "object",
-        "properties": {
-          "app": {
-            "type": "object",
-            "properties": {
-              "experimental": {
-                "type": "object",
-                "properties": {
-                  "packages": {
-                    "visibility": "frontend",
-                    "deepVisibility": "frontend",
-                    "anyOf": [
-                      {
-                        "type": "object",
-                        "properties": {
-                          "include": {
-                            "type": "array",
-                            "items": {
-                              "type": "string"
-                            }
-                          },
-                          "exclude": {
-                            "type": "array",
-                            "items": {
-                              "type": "string"
-                            }
-                          }
-                        }
-                      },
-                      {
-                        "const": "all",
-                        "type": "string"
-                      }
-                    ]
-                  }
-                }
-              },
-              "routes": {
-                "type": "object",
-                "properties": {
-                  "bindings": {
-                    "description": "Maps external route references to regular route references. Both the\nkey and the value is expected to be on the form `<pluginId>.<routeId>`.\nIf the value is `false`, the route will be disabled even if it has a\ndefault mapping.",
-                    "deepVisibility": "frontend",
-                    "type": "object",
-                    "additionalProperties": {
-                      "anyOf": [
-                        {
-                          "const": false,
-                          "type": "boolean"
-                        },
-                        {
-                          "type": "string"
-                        }
-                      ]
-                    }
-                  }
-                }
-              },
-              "extensions": {
-                "deepVisibility": "frontend",
-                "type": "array",
-                "items": {
-                  "anyOf": [
-                    {
-                      "type": "object",
-                      "additionalProperties": {
-                        "anyOf": [
-                          {
-                            "type": "object",
-                            "properties": {
-                              "attachTo": {
-                                "type": "object",
-                                "properties": {
-                                  "id": {
-                                    "type": "string"
-                                  },
-                                  "input": {
-                                    "type": "string"
-                                  }
-                                },
-                                "required": [
-                                  "id",
-                                  "input"
-                                ]
-                              },
-                              "disabled": {
-                                "type": "boolean"
-                              },
-                              "config": {}
-                            }
-                          },
-                          {
-                            "type": "boolean"
-                          }
-                        ]
-                      }
-                    },
-                    {
-                      "type": "string"
-                    }
-                  ]
-                }
-              },
-              "pluginOverrides": {
-                "description": "This section enables you to override certain properties of specific or\ngroups of plugins.",
-                "deepVisibility": "frontend",
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "properties": {
-                    "match": {
-                      "description": "The criteria for matching plugins to override.",
-                      "type": "object",
-                      "properties": {
-                        "pluginId": {
-                          "description": "A pattern that is matched against the plugin ID.",
-                          "type": "string"
-                        },
-                        "packageName": {
-                          "description": "A pattern that is matched against the package name.",
-                          "type": "string"
-                        }
-                      }
-                    },
-                    "info": {
-                      "description": "Overrides individual top-level fields of the plugin info.",
-                      "type": "object",
-                      "properties": {
-                        "description": {
-                          "description": "Override the description of the plugin.",
-                          "type": "string"
-                        },
-                        "ownerEntityRefs": {
-                          "description": "Override the owner entity references of the plugin.",
-                          "type": "array",
-                          "items": {
-                            "type": "string"
-                          }
-                        },
-                        "links": {
-                          "description": "Override the links of the plugin.",
-                          "type": "array",
-                          "items": {
-                            "type": "object",
-                            "properties": {
-                              "title": {
-                                "type": "string"
-                              },
-                              "url": {
-                                "type": "string"
-                              }
-                            },
-                            "required": [
-                              "title",
-                              "url"
-                            ]
-                          }
-                        }
-                      }
-                    }
-                  },
-                  "required": [
-                    "info"
-                  ]
-                }
-              }
-            }
-          }
-        },
-        "$schema": "http://json-schema.org/draft-07/schema#"
-      },
-      "packageName": "@backstage/frontend-app-api"
-    },
-    {
-      "path": "node_modules/@red-hat-developer-hub/backstage-plugin-global-header/node_modules/@backstage/plugin-search/config.d.ts",
-      "value": {
-        "type": "object",
-        "properties": {
-          "search": {
-            "description": "Configuration options for the search plugin",
-            "type": "object",
-            "properties": {
-              "query": {
-                "description": "An object representing the default search query configuration.\nBy configuring and modifying the values of this object,\nyou can customize the default values of the search queries\nand define how it behaves by default.",
-                "type": "object",
-                "properties": {
-                  "pageLimit": {
-                    "description": "A number indicating the maximum number of results to be returned\nper page during pagination.",
-                    "visibility": "frontend",
-                    "enum": [
-                      10,
-                      100,
-                      25,
-                      50
-                    ],
-                    "type": "number"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "$schema": "http://json-schema.org/draft-07/schema#"
-      },
-      "packageName": "@backstage/plugin-search"
-    },
-    {
-      "path": "node_modules/@red-hat-developer-hub/backstage-plugin-global-header/node_modules/@backstage/plugin-search-backend/config.d.ts",
-      "value": {
-        "type": "object",
-        "properties": {
-          "search": {
-            "description": "Configuration options for the search plugin",
-            "type": "object",
-            "properties": {
-              "maxPageLimit": {
-                "description": "Sets the maximum max page limit size. Defaults to 100.",
-                "type": "number"
-              },
-              "maxTermLength": {
-                "description": "Sets the maximum term length for the search string. Defaults to 100.",
-                "type": "number"
-              },
-              "permissions": {
-                "description": "Options related to the search integration with the Backstage permissions system",
-                "type": "object",
-                "properties": {
-                  "queryLatencyBudgetMs": {
-                    "description": "Limits the amount of time the search backend will spend retrieving and\nauthorizing results from the search engine when permissions are\nenabled. When the latency of the query endpoint reaches this threshold,\nthe results obtained up until that point will be returned, even if the\npage is incomplete.\n\nThis limit is only expected to be hit for broad queries from users with\nextremely restrictive visibility, or for very high page offsets.",
-                    "default": 1000,
-                    "type": "number"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "$schema": "http://json-schema.org/draft-07/schema#"
-      },
-      "packageName": "@backstage/plugin-search-backend"
-    },
-    {
-      "path": "node_modules/@red-hat-developer-hub/backstage-plugin-global-header/node_modules/@backstage/plugin-search-backend-module-catalog/config.d.ts",
-      "value": {
-        "type": "object",
-        "properties": {
-          "search": {
-            "type": "object",
-            "properties": {
-              "collators": {
-                "type": "object",
-                "properties": {
-                  "catalog": {
-                    "description": "Configuration options for `@backstage/plugin-search-backend-module-catalog`",
-                    "type": "object",
-                    "properties": {
-                      "locationTemplate": {
-                        "description": "A templating string with placeholders, to form the final location of\nthe entity.\n\nDefaults to '/catalog/:namespace/:kind/:name'",
-                        "type": "string"
-                      },
-                      "filter": {
-                        "description": "A filter expression passed to the catalog client, to select what\nentities to collate.\n\nDefaults to no filter, ie indexing all entities.",
-                        "anyOf": [
-                          {
-                            "type": "object",
-                            "properties": {},
-                            "additionalProperties": true
-                          },
-                          {
-                            "type": "array",
-                            "items": {
-                              "type": "object",
-                              "properties": {},
-                              "additionalProperties": true
-                            }
-                          }
-                        ]
-                      },
-                      "batchSize": {
-                        "description": "The number of entities to process at a time. Keep this at a\nreasonable number to avoid overloading either the catalog or the\nsearch backend.\n\nDefaults to 500",
-                        "type": "number"
-                      },
-                      "schedule": {
-                        "description": "The schedule for how often to run the collation job."
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "$schema": "http://json-schema.org/draft-07/schema#"
-      },
-      "packageName": "@backstage/plugin-search-backend-module-catalog"
-    },
-    {
-      "path": "node_modules/@red-hat-developer-hub/backstage-plugin-global-header/node_modules/@backstage/plugin-search-backend-module-pg/config.d.ts",
-      "value": {
-        "type": "object",
-        "properties": {
-          "search": {
-            "description": "Configuration options for the search plugin",
-            "type": "object",
-            "properties": {
-              "pg": {
-                "description": "Options for PG",
-                "type": "object",
-                "properties": {
-                  "highlightOptions": {
-                    "description": "Options for configuring highlight settings\nSee https://www.postgresql.org/docs/current/textsearch-controls.html#TEXTSEARCH-HEADLINE",
-                    "type": "object",
-                    "properties": {
-                      "useHighlight": {
-                        "description": "Used to enable to disable the highlight feature. The default value is true",
-                        "type": "boolean"
-                      },
-                      "maxWords": {
-                        "description": "Used to set the longest headlines to output. The default value is 35.",
-                        "type": "number"
-                      },
-                      "minWords": {
-                        "description": "Used to set the shortest headlines to output. The default value is 15.",
-                        "type": "number"
-                      },
-                      "shortWord": {
-                        "description": "Words of this length or less will be dropped at the start and end of a headline, unless they are query terms.\nThe default value of three (3) eliminates common English articles.",
-                        "type": "number"
-                      },
-                      "highlightAll": {
-                        "description": "If true the whole document will be used as the headline, ignoring the preceding three parameters. The default is false.",
-                        "type": "boolean"
-                      },
-                      "maxFragments": {
-                        "description": "Maximum number of text fragments to display. The default value of zero selects a non-fragment-based headline generation method.\nA value greater than zero selects fragment-based headline generation (see the linked documentation above for more details).",
-                        "type": "number"
-                      },
-                      "fragmentDelimiter": {
-                        "description": "Delimiter string used to concatenate fragments. Defaults to \" ... \".",
-                        "type": "string"
-                      }
-                    }
-                  },
-                  "normalization": {
-                    "description": "Ranking functions use an integer bit mask to control document length impact on rank. The default value is 0",
-                    "type": [
-                      "string",
-                      "number"
-                    ]
-                  },
-                  "indexerBatchSize": {
-                    "description": "Batch size to use when indexing",
-                    "type": "number"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "$schema": "http://json-schema.org/draft-07/schema#"
-      },
-      "packageName": "@backstage/plugin-search-backend-module-pg"
-    },
-    {
-      "path": "node_modules/@backstage/plugin-search-backend-module-techdocs/config.d.ts",
-      "value": {
-        "type": "object",
-        "properties": {
-          "search": {
-            "type": "object",
-            "properties": {
-              "collators": {
-                "type": "object",
-                "properties": {
-                  "techdocs": {
-                    "description": "Configuration options for `@backstage/plugin-search-backend-module-techdocs`",
-                    "type": "object",
-                    "properties": {
-                      "schedule": {
-                        "description": "The schedule for how often to run the collation job."
-                      },
-                      "locationTemplate": {
-                        "description": "A templating string with placeholders, to form the final location of\nthe entity.\n\nDefaults to `'/docs/:namespace/:kind/:name/:path'`.",
-                        "type": "string"
-                      },
-                      "parallelismLimit": {
-                        "description": "An abstract value that controls the concurrency level of the\ncollation process. Increasing this value will both increase the\nnumber of entities fetched at a time from the catalog, as well as how\nmany things are being processed concurrently.\n\nDefaults to `10`.",
-                        "type": "number"
-                      },
-                      "legacyPathCasing": {
-                        "description": "Defaults to `false`.",
-                        "type": "boolean"
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "$schema": "http://json-schema.org/draft-07/schema#"
-      },
-      "packageName": "@backstage/plugin-search-backend-module-techdocs"
     },
     {
       "path": "node_modules/@backstage/backend-defaults/config.d.ts",
@@ -3818,6 +3477,30 @@
       "packageName": "@backstage/plugin-catalog-backend"
     },
     {
+      "path": "node_modules/@backstage/plugin-events-node/config.d.ts",
+      "value": {
+        "type": "object",
+        "properties": {
+          "events": {
+            "type": "object",
+            "properties": {
+              "useEventBus": {
+                "description": "Whether to use the event bus API in the events plugin backend to\ndistribute events across multiple instances when publishing and\nsubscribing to events.\n\nThe default is 'auto', which means means that the event bus API will be\nused if it's available, but will be disabled if the events backend\nreturns a 404.\n\nIf set to 'never', the events service will only ever publish events\nlocally to the same instance, while if set to 'always', the event bus API\nwill never be disabled, even if the events backend returns a 404.",
+                "enum": [
+                  "always",
+                  "auto",
+                  "never"
+                ],
+                "type": "string"
+              }
+            }
+          }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "packageName": "@backstage/plugin-events-node"
+    },
+    {
       "path": "node_modules/@backstage/plugin-events-backend/config.d.ts",
       "value": {
         "type": "object",
@@ -3847,30 +3530,6 @@
         "$schema": "http://json-schema.org/draft-07/schema#"
       },
       "packageName": "@backstage/plugin-events-backend"
-    },
-    {
-      "path": "node_modules/@backstage/plugin-events-node/config.d.ts",
-      "value": {
-        "type": "object",
-        "properties": {
-          "events": {
-            "type": "object",
-            "properties": {
-              "useEventBus": {
-                "description": "Whether to use the event bus API in the events plugin backend to\ndistribute events across multiple instances when publishing and\nsubscribing to events.\n\nThe default is 'auto', which means means that the event bus API will be\nused if it's available, but will be disabled if the events backend\nreturns a 404.\n\nIf set to 'never', the events service will only ever publish events\nlocally to the same instance, while if set to 'always', the event bus API\nwill never be disabled, even if the events backend returns a 404.",
-                "enum": [
-                  "always",
-                  "auto",
-                  "never"
-                ],
-                "type": "string"
-              }
-            }
-          }
-        },
-        "$schema": "http://json-schema.org/draft-07/schema#"
-      },
-      "packageName": "@backstage/plugin-events-node"
     },
     {
       "path": "node_modules/@backstage/backend-app-api/config.d.ts",
@@ -3997,6 +3656,457 @@
         "$schema": "http://json-schema.org/draft-07/schema#"
       },
       "packageName": "@backstage/plugin-app-backend"
+    },
+    {
+      "path": "node_modules/@backstage-community/plugin-rbac/node_modules/@backstage/core-components/config.d.ts",
+      "value": {
+        "type": "object",
+        "properties": {
+          "auth": {
+            "type": "object",
+            "properties": {
+              "autologout": {
+                "description": "Autologout feature configuration",
+                "type": "object",
+                "properties": {
+                  "enabled": {
+                    "description": "Enable or disable the autologout feature",
+                    "visibility": "frontend",
+                    "type": "boolean"
+                  },
+                  "idleTimeoutMinutes": {
+                    "description": "Number of minutes after which the inactive user is logged out automatically.\nDefault is 60 minutes (1 hour)",
+                    "visibility": "frontend",
+                    "type": "number"
+                  },
+                  "promptBeforeIdleSeconds": {
+                    "description": "Number of seconds before the idle timeout where the user will be asked if it's still active.\nA dialog will be shown.\nDefault is 10 seconds.\nSet to 0 seconds to disable the prompt.",
+                    "visibility": "frontend",
+                    "type": "number"
+                  },
+                  "useWorkerTimers": {
+                    "description": "Enable/disable the usage of worker thread timers instead of main thread timers.\nDefault is true.\nIf you experience some browser incompatibility, you may try to set this to false.",
+                    "visibility": "frontend",
+                    "type": "boolean"
+                  },
+                  "logoutIfDisconnected": {
+                    "description": "Enable/disable the automatic logout also on users that are logged in but with no Backstage tabs open.\nDefault is true.",
+                    "visibility": "frontend",
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "packageName": "@backstage/core-components"
+    },
+    {
+      "path": "node_modules/@backstage-community/plugin-rbac/node_modules/@backstage/plugin-permission-common/config.d.ts",
+      "value": {
+        "type": "object",
+        "properties": {
+          "permission": {
+            "description": "Configuration options for Backstage permissions and authorization",
+            "type": "object",
+            "properties": {
+              "enabled": {
+                "description": "Whether authorization is enabled in Backstage. Defaults to false, which means authorization\nrequests will be automatically allowed without invoking the authorization policy.",
+                "visibility": "frontend",
+                "type": "boolean"
+              }
+            }
+          }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "packageName": "@backstage/plugin-permission-common"
+    },
+    {
+      "path": "node_modules/@backstage/plugin-kubernetes-react/config.d.ts",
+      "value": {
+        "type": "object",
+        "properties": {
+          "kubernetes": {
+            "type": "object",
+            "properties": {
+              "podExecTerminal": {
+                "description": "Pod Exec Terminal config",
+                "type": "object",
+                "properties": {
+                  "enabled": {
+                    "description": "Enable `PodExecTerminal` UI feature",
+                    "visibility": "frontend",
+                    "type": "boolean"
+                  }
+                }
+              },
+              "frontend": {
+                "description": "Frontend config",
+                "type": "object",
+                "properties": {
+                  "podDelete": {
+                    "description": "Pod Delete config",
+                    "type": "object",
+                    "properties": {
+                      "enabled": {
+                        "description": "Enable `podDelete` UI feature",
+                        "visibility": "frontend",
+                        "type": "boolean"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "packageName": "@backstage/plugin-kubernetes-react"
+    },
+    {
+      "path": "node_modules/@red-hat-developer-hub/backstage-plugin-global-header/node_modules/@backstage/plugin-search-backend/config.d.ts",
+      "value": {
+        "type": "object",
+        "properties": {
+          "search": {
+            "description": "Configuration options for the search plugin",
+            "type": "object",
+            "properties": {
+              "maxPageLimit": {
+                "description": "Sets the maximum max page limit size. Defaults to 100.",
+                "type": "number"
+              },
+              "maxTermLength": {
+                "description": "Sets the maximum term length for the search string. Defaults to 100.",
+                "type": "number"
+              },
+              "permissions": {
+                "description": "Options related to the search integration with the Backstage permissions system",
+                "type": "object",
+                "properties": {
+                  "queryLatencyBudgetMs": {
+                    "description": "Limits the amount of time the search backend will spend retrieving and\nauthorizing results from the search engine when permissions are\nenabled. When the latency of the query endpoint reaches this threshold,\nthe results obtained up until that point will be returned, even if the\npage is incomplete.\n\nThis limit is only expected to be hit for broad queries from users with\nextremely restrictive visibility, or for very high page offsets.",
+                    "default": 1000,
+                    "type": "number"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "packageName": "@backstage/plugin-search-backend"
+    },
+    {
+      "path": "node_modules/@red-hat-developer-hub/backstage-plugin-global-header/node_modules/@backstage/plugin-search/config.d.ts",
+      "value": {
+        "type": "object",
+        "properties": {
+          "search": {
+            "description": "Configuration options for the search plugin",
+            "type": "object",
+            "properties": {
+              "query": {
+                "description": "An object representing the default search query configuration.\nBy configuring and modifying the values of this object,\nyou can customize the default values of the search queries\nand define how it behaves by default.",
+                "type": "object",
+                "properties": {
+                  "pageLimit": {
+                    "description": "A number indicating the maximum number of results to be returned\nper page during pagination.",
+                    "visibility": "frontend",
+                    "enum": [
+                      10,
+                      100,
+                      25,
+                      50
+                    ],
+                    "type": "number"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "packageName": "@backstage/plugin-search"
+    },
+    {
+      "path": "node_modules/@red-hat-developer-hub/backstage-plugin-global-header/node_modules/@backstage/plugin-search-backend-module-catalog/config.d.ts",
+      "value": {
+        "type": "object",
+        "properties": {
+          "search": {
+            "type": "object",
+            "properties": {
+              "collators": {
+                "type": "object",
+                "properties": {
+                  "catalog": {
+                    "description": "Configuration options for `@backstage/plugin-search-backend-module-catalog`",
+                    "type": "object",
+                    "properties": {
+                      "locationTemplate": {
+                        "description": "A templating string with placeholders, to form the final location of\nthe entity.\n\nDefaults to '/catalog/:namespace/:kind/:name'",
+                        "type": "string"
+                      },
+                      "filter": {
+                        "description": "A filter expression passed to the catalog client, to select what\nentities to collate.\n\nDefaults to no filter, ie indexing all entities.",
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "properties": {},
+                            "additionalProperties": true
+                          },
+                          {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {},
+                              "additionalProperties": true
+                            }
+                          }
+                        ]
+                      },
+                      "batchSize": {
+                        "description": "The number of entities to process at a time. Keep this at a\nreasonable number to avoid overloading either the catalog or the\nsearch backend.\n\nDefaults to 500",
+                        "type": "number"
+                      },
+                      "schedule": {
+                        "description": "The schedule for how often to run the collation job."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "packageName": "@backstage/plugin-search-backend-module-catalog"
+    },
+    {
+      "path": "node_modules/@red-hat-developer-hub/backstage-plugin-global-header/node_modules/@backstage/plugin-search-backend-module-pg/config.d.ts",
+      "value": {
+        "type": "object",
+        "properties": {
+          "search": {
+            "description": "Configuration options for the search plugin",
+            "type": "object",
+            "properties": {
+              "pg": {
+                "description": "Options for PG",
+                "type": "object",
+                "properties": {
+                  "highlightOptions": {
+                    "description": "Options for configuring highlight settings\nSee https://www.postgresql.org/docs/current/textsearch-controls.html#TEXTSEARCH-HEADLINE",
+                    "type": "object",
+                    "properties": {
+                      "useHighlight": {
+                        "description": "Used to enable to disable the highlight feature. The default value is true",
+                        "type": "boolean"
+                      },
+                      "maxWords": {
+                        "description": "Used to set the longest headlines to output. The default value is 35.",
+                        "type": "number"
+                      },
+                      "minWords": {
+                        "description": "Used to set the shortest headlines to output. The default value is 15.",
+                        "type": "number"
+                      },
+                      "shortWord": {
+                        "description": "Words of this length or less will be dropped at the start and end of a headline, unless they are query terms.\nThe default value of three (3) eliminates common English articles.",
+                        "type": "number"
+                      },
+                      "highlightAll": {
+                        "description": "If true the whole document will be used as the headline, ignoring the preceding three parameters. The default is false.",
+                        "type": "boolean"
+                      },
+                      "maxFragments": {
+                        "description": "Maximum number of text fragments to display. The default value of zero selects a non-fragment-based headline generation method.\nA value greater than zero selects fragment-based headline generation (see the linked documentation above for more details).",
+                        "type": "number"
+                      },
+                      "fragmentDelimiter": {
+                        "description": "Delimiter string used to concatenate fragments. Defaults to \" ... \".",
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "normalization": {
+                    "description": "Ranking functions use an integer bit mask to control document length impact on rank. The default value is 0",
+                    "type": [
+                      "string",
+                      "number"
+                    ]
+                  },
+                  "indexerBatchSize": {
+                    "description": "Batch size to use when indexing",
+                    "type": "number"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "packageName": "@backstage/plugin-search-backend-module-pg"
+    },
+    {
+      "path": "node_modules/@backstage/plugin-search-backend-module-techdocs/config.d.ts",
+      "value": {
+        "type": "object",
+        "properties": {
+          "search": {
+            "type": "object",
+            "properties": {
+              "collators": {
+                "type": "object",
+                "properties": {
+                  "techdocs": {
+                    "description": "Configuration options for `@backstage/plugin-search-backend-module-techdocs`",
+                    "type": "object",
+                    "properties": {
+                      "schedule": {
+                        "description": "The schedule for how often to run the collation job."
+                      },
+                      "locationTemplate": {
+                        "description": "A templating string with placeholders, to form the final location of\nthe entity.\n\nDefaults to `'/docs/:namespace/:kind/:name/:path'`.",
+                        "type": "string"
+                      },
+                      "parallelismLimit": {
+                        "description": "An abstract value that controls the concurrency level of the\ncollation process. Increasing this value will both increase the\nnumber of entities fetched at a time from the catalog, as well as how\nmany things are being processed concurrently.\n\nDefaults to `10`.",
+                        "type": "number"
+                      },
+                      "legacyPathCasing": {
+                        "description": "Defaults to `false`.",
+                        "type": "boolean"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "packageName": "@backstage/plugin-search-backend-module-techdocs"
+    },
+    {
+      "path": "node_modules/@backstage/integration-aws-node/config.d.ts",
+      "value": {
+        "type": "object",
+        "properties": {
+          "aws": {
+            "description": "Configuration for access to AWS accounts",
+            "type": "object",
+            "properties": {
+              "accountDefaults": {
+                "description": "Defaults for retrieving AWS account credentials",
+                "type": "object",
+                "properties": {
+                  "roleName": {
+                    "description": "The IAM role to assume to retrieve temporary AWS credentials",
+                    "type": "string"
+                  },
+                  "partition": {
+                    "description": "The AWS partition of the IAM role, e.g. \"aws\", \"aws-cn\"",
+                    "type": "string"
+                  },
+                  "region": {
+                    "description": "The STS regional endpoint to use when retrieving temporary AWS credentials, e.g. \"ap-northeast-1\"",
+                    "type": "string"
+                  },
+                  "externalId": {
+                    "description": "The unique identifier needed to assume the role to retrieve temporary AWS credentials",
+                    "visibility": "secret",
+                    "type": "string"
+                  }
+                }
+              },
+              "mainAccount": {
+                "description": "Main account to use for retrieving AWS account credentials",
+                "type": "object",
+                "properties": {
+                  "accessKeyId": {
+                    "description": "The access key ID for a set of static AWS credentials",
+                    "visibility": "secret",
+                    "type": "string"
+                  },
+                  "secretAccessKey": {
+                    "description": "The secret access key for a set of static AWS credentials",
+                    "visibility": "secret",
+                    "type": "string"
+                  },
+                  "profile": {
+                    "description": "The configuration profile from a credentials file at ~/.aws/credentials and\na configuration file at ~/.aws/config.",
+                    "type": "string"
+                  },
+                  "region": {
+                    "description": "The STS regional endpoint to use for the main account, e.g. \"ap-northeast-1\"",
+                    "type": "string"
+                  }
+                }
+              },
+              "accounts": {
+                "description": "Configuration for retrieving AWS accounts credentials",
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "accountId": {
+                      "description": "The account ID of the target account that this matches on, e.g. \"123456789012\"",
+                      "type": "string"
+                    },
+                    "accessKeyId": {
+                      "description": "The access key ID for a set of static AWS credentials",
+                      "visibility": "secret",
+                      "type": "string"
+                    },
+                    "secretAccessKey": {
+                      "description": "The secret access key for a set of static AWS credentials",
+                      "visibility": "secret",
+                      "type": "string"
+                    },
+                    "profile": {
+                      "description": "The configuration profile from a credentials file at ~/.aws/credentials and\na configuration file at ~/.aws/config.",
+                      "type": "string"
+                    },
+                    "roleName": {
+                      "description": "The IAM role to assume to retrieve temporary AWS credentials",
+                      "type": "string"
+                    },
+                    "partition": {
+                      "description": "The AWS partition of the IAM role, e.g. \"aws\", \"aws-cn\"",
+                      "type": "string"
+                    },
+                    "region": {
+                      "description": "The STS regional endpoint to use when retrieving temporary AWS credentials, e.g. \"ap-northeast-1\"",
+                      "type": "string"
+                    },
+                    "externalId": {
+                      "description": "The unique identifier needed to assume the role to retrieve temporary AWS credentials",
+                      "visibility": "secret",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "accountId"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "packageName": "@backstage/integration-aws-node"
     },
     {
       "path": "node_modules/@backstage/plugin-notifications/node_modules/@backstage/core-components/config.d.ts",
@@ -5768,116 +5878,6 @@
         "$schema": "http://json-schema.org/draft-07/schema#"
       },
       "packageName": "@backstage/frontend-app-api"
-    },
-    {
-      "path": "node_modules/@backstage/integration-aws-node/config.d.ts",
-      "value": {
-        "type": "object",
-        "properties": {
-          "aws": {
-            "description": "Configuration for access to AWS accounts",
-            "type": "object",
-            "properties": {
-              "accountDefaults": {
-                "description": "Defaults for retrieving AWS account credentials",
-                "type": "object",
-                "properties": {
-                  "roleName": {
-                    "description": "The IAM role to assume to retrieve temporary AWS credentials",
-                    "type": "string"
-                  },
-                  "partition": {
-                    "description": "The AWS partition of the IAM role, e.g. \"aws\", \"aws-cn\"",
-                    "type": "string"
-                  },
-                  "region": {
-                    "description": "The STS regional endpoint to use when retrieving temporary AWS credentials, e.g. \"ap-northeast-1\"",
-                    "type": "string"
-                  },
-                  "externalId": {
-                    "description": "The unique identifier needed to assume the role to retrieve temporary AWS credentials",
-                    "visibility": "secret",
-                    "type": "string"
-                  }
-                }
-              },
-              "mainAccount": {
-                "description": "Main account to use for retrieving AWS account credentials",
-                "type": "object",
-                "properties": {
-                  "accessKeyId": {
-                    "description": "The access key ID for a set of static AWS credentials",
-                    "visibility": "secret",
-                    "type": "string"
-                  },
-                  "secretAccessKey": {
-                    "description": "The secret access key for a set of static AWS credentials",
-                    "visibility": "secret",
-                    "type": "string"
-                  },
-                  "profile": {
-                    "description": "The configuration profile from a credentials file at ~/.aws/credentials and\na configuration file at ~/.aws/config.",
-                    "type": "string"
-                  },
-                  "region": {
-                    "description": "The STS regional endpoint to use for the main account, e.g. \"ap-northeast-1\"",
-                    "type": "string"
-                  }
-                }
-              },
-              "accounts": {
-                "description": "Configuration for retrieving AWS accounts credentials",
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "properties": {
-                    "accountId": {
-                      "description": "The account ID of the target account that this matches on, e.g. \"123456789012\"",
-                      "type": "string"
-                    },
-                    "accessKeyId": {
-                      "description": "The access key ID for a set of static AWS credentials",
-                      "visibility": "secret",
-                      "type": "string"
-                    },
-                    "secretAccessKey": {
-                      "description": "The secret access key for a set of static AWS credentials",
-                      "visibility": "secret",
-                      "type": "string"
-                    },
-                    "profile": {
-                      "description": "The configuration profile from a credentials file at ~/.aws/credentials and\na configuration file at ~/.aws/config.",
-                      "type": "string"
-                    },
-                    "roleName": {
-                      "description": "The IAM role to assume to retrieve temporary AWS credentials",
-                      "type": "string"
-                    },
-                    "partition": {
-                      "description": "The AWS partition of the IAM role, e.g. \"aws\", \"aws-cn\"",
-                      "type": "string"
-                    },
-                    "region": {
-                      "description": "The STS regional endpoint to use when retrieving temporary AWS credentials, e.g. \"ap-northeast-1\"",
-                      "type": "string"
-                    },
-                    "externalId": {
-                      "description": "The unique identifier needed to assume the role to retrieve temporary AWS credentials",
-                      "visibility": "secret",
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "accountId"
-                  ]
-                }
-              }
-            }
-          }
-        },
-        "$schema": "http://json-schema.org/draft-07/schema#"
-      },
-      "packageName": "@backstage/integration-aws-node"
     },
     {
       "path": "node_modules/@red-hat-developer-hub/backstage-plugin-global-header/node_modules/@backstage/backend-app-api/config.d.ts",
