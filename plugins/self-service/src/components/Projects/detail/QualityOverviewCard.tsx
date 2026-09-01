@@ -10,7 +10,7 @@ import {
   remediationHasStarted,
 } from '../catalog/HealthScorePopover';
 import { useNavIaModel } from '../../../hooks/useNavIaModel';
-import { scansListPath, scanSnapshotPath } from '../quality/qualitySurfacePaths';
+import { scansListPath } from '../quality/qualitySurfacePaths';
 import { useProjectDetailStyles } from './styles';
 import type { ProjectQualityData } from './qualityDemoData';
 
@@ -48,7 +48,7 @@ function HealthScoreHeading({ className }: { className: string }) {
 
 /**
  * Repo Overview metric card (right column, above About).
- * Score + View details opens the findings popover. Findings count opens that scan.
+ * Score + View details opens the findings popover. Findings count is metadata.
  * Start health scan is on this card and in the page Actions menu.
  * Last scan time + scanned commit are APME scan metadata.
  * Do not claim default-branch HEAD has moved unless has_new_commits is consumed.
@@ -67,12 +67,6 @@ export const QualityOverviewCard = ({
   const historyPath = () => {
     const qs = new URLSearchParams({ repo: repoName });
     return `${scansListPath(experience)}?${qs.toString()}`;
-  };
-
-  const snapshotPath = () => {
-    const scanId = quality?.latestScan.scanId;
-    if (!scanId) return historyPath();
-    return scanSnapshotPath(experience, scanId, { repo: repoName });
   };
 
   const scanPath = (resume?: boolean) => {
@@ -125,46 +119,19 @@ export const QualityOverviewCard = ({
           onStartScan={() => navigate(scanPath())}
           onViewLastScan={() => navigate(historyPath())}
         />
-        <Box
-          display="flex"
-          alignItems="baseline"
-          style={{ gap: 0, marginTop: 8, flexWrap: 'wrap' }}
-        >
-          <Button
-            variant="text"
-            color="primary"
-            size="small"
-            onClick={() => navigate(snapshotPath())}
-            aria-label={
-              quality.totalViolations === 0
-                ? 'View latest scan. No findings'
-                : `View latest scan. ${quality.totalViolations} findings`
-            }
-            style={{
-              textTransform: 'none',
-              fontWeight: 600,
-              fontSize: 13,
-              padding: 0,
-              minWidth: 0,
-              minHeight: 0,
-              lineHeight: 1.4,
-            }}
-          >
-            {quality.totalViolations === 0
-              ? 'No findings'
-              : `${quality.totalViolations} findings`}
-          </Button>
-          <Typography color="textSecondary" style={{ fontSize: 13, lineHeight: 1.4 }}>
-            {' · '}
-            {quality.lastScannedAt}
-            {scannedSha && (
-              <>
-                {' · '}
-                <span style={{ fontFamily: 'monospace' }}>{scannedSha}</span>
-              </>
-            )}
-          </Typography>
-        </Box>
+        <Typography color="textSecondary" style={{ fontSize: 13, marginTop: 8 }}>
+          {quality.totalViolations === 0
+            ? 'No findings'
+            : `${quality.totalViolations} findings`}
+          {' · '}
+          {quality.lastScannedAt}
+          {scannedSha && (
+            <>
+              {' · '}
+              <span style={{ fontFamily: 'monospace' }}>{scannedSha}</span>
+            </>
+          )}
+        </Typography>
         {showRemediation && (
           <Typography color="textSecondary" style={{ fontSize: 13, marginTop: 4 }}>
             Remediation: {REMEDIATION_STATUS_LABEL[quality.remediationStatus]}

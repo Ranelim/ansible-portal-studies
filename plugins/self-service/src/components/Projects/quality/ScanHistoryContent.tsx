@@ -17,7 +17,7 @@ import ArrowBack from '@material-ui/icons/ArrowBack';
 import ChevronRight from '@material-ui/icons/ChevronRight';
 import HelpOutlineIcon from '@material-ui/icons/HelpOutline';
 import { Table, TableColumn } from '@backstage/core-components';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link as RouterLink, useNavigate, useSearchParams } from 'react-router-dom';
 import { useNavIaModel } from '../../../hooks/useNavIaModel';
 import {
   APME_CATEGORY_LABEL,
@@ -264,10 +264,6 @@ const useStyles = makeStyles(theme => ({
     fontWeight: 600,
     fontSize: 20,
     lineHeight: 1.3,
-    cursor: 'pointer',
-    '&:hover': {
-      color: theme.palette.primary.main,
-    },
   },
   meta: {
     fontSize: 13,
@@ -695,7 +691,6 @@ function ScanSnapshotDetail({
   currentScanId,
   initialCategory = 'all',
   onBack,
-  onOpenRepo,
   onViewCurrent,
   onRemediate,
   onResume,
@@ -705,7 +700,6 @@ function ScanSnapshotDetail({
   currentScanId?: string;
   initialCategory?: ApmeRuleCategory | 'all';
   onBack: () => void;
-  onOpenRepo: (name: string) => void;
   onViewCurrent: () => void;
   onRemediate: () => void;
   onResume: () => void;
@@ -810,12 +804,15 @@ function ScanSnapshotDetail({
       </Button>
       <Box className={classes.headerRow}>
         <Box minWidth={0}>
-          <Typography
+          <Link
+            component={RouterLink}
+            to={`/self-service/repositories/${encodeURIComponent(row.repoName)}`}
+            color="primary"
+            underline="hover"
             className={classes.detailTitle}
-            onClick={() => onOpenRepo(row.repoName)}
           >
             {row.org}/{row.repoName}
-          </Typography>
+          </Link>
           <Box className={classes.meta} mt={0.5}>
             {scanQuality != null && (
               <>
@@ -1170,7 +1167,6 @@ export const ScanHistoryContent = () => {
         currentScanId={currentForRepo?.scanId}
         initialCategory={parseScanCategoryParam(searchParams.get('category'))}
         onBack={() => setScanParam(null)}
-        onOpenRepo={openRepo}
         onViewCurrent={() => {
           if (currentForRepo) setScanParam(currentForRepo.scanId);
         }}

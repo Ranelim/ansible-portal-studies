@@ -930,7 +930,7 @@ const SimpleReadmeRenderer = ({ content }: { content: string }) => {
 };
 
 // ---------------------------------------------------------------------------
-// Actions — single primary header control (scan + source + AAP + delete)
+// Actions — single header control (scan + source + AAP + delete)
 // ---------------------------------------------------------------------------
 const ActionsMenu = ({
   project,
