@@ -45,10 +45,11 @@ import Breadcrumbs from '@material-ui/core/Breadcrumbs';
 import NavigateNextIcon from '@material-ui/icons/NavigateNext';
 import StarIcon from '@material-ui/icons/Star';
 import StarBorderIcon from '@material-ui/icons/StarBorder';
-import MoreVertIcon from '@material-ui/icons/MoreVert';
 import CodeIcon from '@material-ui/icons/Code';
 import OpenInNewIcon from '@material-ui/icons/OpenInNew';
+import ArrowDropDownIcon from '@material-ui/icons/ArrowDropDown';
 import CloudUploadIcon from '@material-ui/icons/CloudUpload';
+import PlayArrowIcon from '@material-ui/icons/PlayArrow';
 import DeleteOutlineIcon from '@material-ui/icons/DeleteOutline';
 import CheckCircleIcon from '@material-ui/icons/CheckCircle';
 import ErrorIcon from '@material-ui/icons/Error';
@@ -215,12 +216,6 @@ const OverviewTab = ({
   return (
     <Box className={classes.tabContent}>
       <Box className={classes.mainColumn}>
-        {qualitySummary && (
-          <QualityOverviewCard
-            repoName={project.name}
-            quality={quality}
-          />
-        )}
         <Card className={classes.card} variant="outlined">
           <CardContent className={classes.cardContent}>
             <Typography className={classes.cardTitle}>README.md</Typography>
@@ -231,8 +226,14 @@ const OverviewTab = ({
         </Card>
       </Box>
 
-      {/* Sidebar */}
+      {/* Sidebar: Health first (landing signal), then About, then Links */}
       <Box className={classes.sidebarColumn}>
+        {qualitySummary && (
+          <QualityOverviewCard
+            repoName={project.name}
+            quality={quality}
+          />
+        )}
         <AboutCard project={project} />
         <LinksCard project={project} isPushedToAap={isPushedToAap} />
       </Box>
@@ -929,26 +930,46 @@ const SimpleReadmeRenderer = ({ content }: { content: string }) => {
 };
 
 // ---------------------------------------------------------------------------
-// Actions Menu
+// Actions — single primary header control (scan + source + AAP + delete)
 // ---------------------------------------------------------------------------
 const ActionsMenu = ({
   project,
   isPushedToAap,
+  showScan,
+  onStartScan,
   onPushToAap,
+  onOpenDevSpaces,
 }: {
   project: DemoProject;
   isPushedToAap: boolean;
+  showScan: boolean;
+  onStartScan: () => void;
   onPushToAap: () => void;
+  onOpenDevSpaces: () => void;
 }) => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const { hasRole } = useUserRoleContext();
-  const isPushed = isPushedToAap;
+  const connected = isDevSpacesConnected();
+  const showDevSpaces = hasRole('developer');
 
   return (
     <>
-      <IconButton size="small" onClick={e => setAnchorEl(e.currentTarget)}>
-        <MoreVertIcon />
-      </IconButton>
+      <Button
+        variant="contained"
+        color="primary"
+        size="small"
+        endIcon={<ArrowDropDownIcon />}
+        onClick={e => setAnchorEl(e.currentTarget)}
+        aria-haspopup="menu"
+        aria-expanded={Boolean(anchorEl)}
+        style={{
+          textTransform: 'none',
+          fontWeight: 600,
+          borderRadius: 20,
+        }}
+      >
+        Actions
+      </Button>
       <Menu
         anchorEl={anchorEl}
         open={Boolean(anchorEl)}
@@ -956,20 +977,96 @@ const ActionsMenu = ({
         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
         transformOrigin={{ vertical: 'top', horizontal: 'right' }}
         getContentAnchorEl={null}
+        PaperProps={{ style: { minWidth: 280 } }}
       >
-        {isPushed ? (
+        {showScan && (
+          <MenuItem
+            onClick={() => {
+              setAnchorEl(null);
+              onStartScan();
+            }}
+          >
+            <ListItemIcon>
+              <PlayArrowIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText
+              primary="Start health scan"
+              secondary="Scan this repository for findings"
+            />
+          </MenuItem>
+        )}
+        <MenuItem
+          onClick={() => {
+            window.open(project.repo.url, '_blank');
+            setAnchorEl(null);
+          }}
+        >
+          <ListItemIcon>
+            <OpenInNewIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText
+            primary="View source"
+            secondary="Open the Git repository"
+          />
+        </MenuItem>
+        {showDevSpaces &&
+          (connected ? (
+            <MenuItem
+              onClick={() => {
+                onOpenDevSpaces();
+                setAnchorEl(null);
+              }}
+            >
+              <ListItemIcon>
+                <CodeIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText
+                primary="Edit in Dev Spaces"
+                secondary="Open in a workspace"
+              />
+            </MenuItem>
+          ) : (
+            <Tooltip
+              title="Edit in Dev Spaces is available when your administrator connects a Dev Spaces instance."
+              arrow
+            >
+              <span>
+                <MenuItem disabled>
+                  <ListItemIcon>
+                    <CodeIcon fontSize="small" />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary="Edit in Dev Spaces"
+                    secondary="Requires a connected Dev Spaces instance"
+                  />
+                </MenuItem>
+              </span>
+            </Tooltip>
+          ))}
+        {isPushedToAap ? (
           <MenuItem onClick={() => setAnchorEl(null)}>
             <ListItemIcon>
               <OpenInNewIcon fontSize="small" />
             </ListItemIcon>
-            <ListItemText primary="View in AAP" />
+            <ListItemText
+              primary="View in AAP"
+              secondary="Open in Ansible Automation Platform"
+            />
           </MenuItem>
         ) : (
-          <MenuItem onClick={() => { setAnchorEl(null); onPushToAap(); }}>
+          <MenuItem
+            onClick={() => {
+              setAnchorEl(null);
+              onPushToAap();
+            }}
+          >
             <ListItemIcon>
               <CloudUploadIcon fontSize="small" />
             </ListItemIcon>
-            <ListItemText primary="Push to AAP" />
+            <ListItemText
+              primary="Push to AAP"
+              secondary="Create a project in AAP"
+            />
           </MenuItem>
         )}
         <Divider />
@@ -982,6 +1079,7 @@ const ActionsMenu = ({
           </ListItemIcon>
           <ListItemText
             primary="Delete"
+            secondary="Permanently delete this repository from Automation Portal"
             primaryTypographyProps={{ style: { color: statusColors.error } }}
           />
         </MenuItem>
@@ -1000,7 +1098,6 @@ export const ProjectDetailsPage = () => {
   const classes = useProjectDetailStyles();
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
-  const { hasRole: pageHasRole } = useUserRoleContext();
   const { experience } = useNavIaModel();
   const repoQualitySummary = qualitySummaryOnRepo(experience);
   const pageTabs = repoQualitySummary ? OBJECT_HOME_TABS : HOST_TABS;
@@ -1124,41 +1221,23 @@ export const ProjectDetailsPage = () => {
             </IconButton>
           </Box>
           <Box className={classes.actionsRow}>
-            <Button
-              variant="outlined" size="small"
-              startIcon={<OpenInNewIcon style={{ fontSize: 16 }} />}
-              onClick={() => window.open(project.repo.url, '_blank')}
-              style={{ textTransform: 'none', fontWeight: 500 }}
-            >
-              View source
-            </Button>
-            {isDevSpacesConnected() && pageHasRole('developer') && (
-              <Button
-                variant="outlined" size="small"
-                startIcon={<CodeIcon style={{ fontSize: 16 }} />}
-                onClick={() => openInDevSpaces(`${DEVSPACES_BASE_URL}/#${project.repo.url}/tree/${project.repo.branch}`)}
-                style={{ textTransform: 'none', fontWeight: 500 }}
-              >
-                Edit in Dev Spaces
-              </Button>
-            )}
-            {!isDevSpacesConnected() && pageHasRole('developer') && (
-              <Tooltip title="Edit in Dev Spaces is available when your administrator connects a Dev Spaces instance." arrow>
-                <span>
-                  <Button
-                    variant="outlined" size="small" disabled
-                    startIcon={<CodeIcon style={{ fontSize: 16 }} />}
-                    style={{ textTransform: 'none', fontWeight: 500 }}
-                  >
-                    Edit in Dev Spaces
-                  </Button>
-                </span>
-              </Tooltip>
-            )}
             <ActionsMenu
               project={project}
               isPushedToAap={isPushedToAap}
+              showScan={repoQualitySummary}
+              onStartScan={() =>
+                navigate(
+                  `/self-service/apme/remediate/${encodeURIComponent(
+                    project.name,
+                  )}?from=repo`,
+                )
+              }
               onPushToAap={openPushModal}
+              onOpenDevSpaces={() =>
+                openInDevSpaces(
+                  `${DEVSPACES_BASE_URL}/#${project.repo.url}/tree/${project.repo.branch}`,
+                )
+              }
             />
           </Box>
         </Box>

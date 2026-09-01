@@ -10,7 +10,7 @@ import {
   remediationHasStarted,
 } from '../catalog/HealthScorePopover';
 import { useNavIaModel } from '../../../hooks/useNavIaModel';
-import { scansListPath } from '../quality/qualitySurfacePaths';
+import { scansListPath, scanSnapshotPath } from '../quality/qualitySurfacePaths';
 import { useProjectDetailStyles } from './styles';
 import type { ProjectQualityData } from './qualityDemoData';
 
@@ -23,6 +23,7 @@ const pill: CSSProperties = {
   textTransform: 'none',
   fontWeight: 600,
   borderRadius: 20,
+  width: '100%',
 };
 
 function HealthScoreHeading({ className }: { className: string }) {
@@ -46,7 +47,9 @@ function HealthScoreHeading({ className }: { className: string }) {
 }
 
 /**
- * Object-home summary when Remediations / Scans live on a fleet surface.
+ * Repo Overview metric card (right column, above About).
+ * Score + View details opens the findings popover. Findings count opens that scan.
+ * Start health scan is on this card and in the page Actions menu.
  * Last scan time + scanned commit are APME scan metadata.
  * Do not claim default-branch HEAD has moved unless has_new_commits is consumed.
  */
@@ -66,6 +69,12 @@ export const QualityOverviewCard = ({
     return `${scansListPath(experience)}?${qs.toString()}`;
   };
 
+  const snapshotPath = () => {
+    const scanId = quality?.latestScan.scanId;
+    if (!scanId) return historyPath();
+    return scanSnapshotPath(experience, scanId, { repo: repoName });
+  };
+
   const scanPath = (resume?: boolean) => {
     const qs = new URLSearchParams({ from: 'repo' });
     if (resume) qs.set('resume', '1');
@@ -83,13 +92,13 @@ export const QualityOverviewCard = ({
             This repository has not been scanned yet.
           </Typography>
           <Button
-            variant="contained"
+            variant="outlined"
             color="primary"
             size="small"
             style={pill}
             onClick={() => navigate(scanPath())}
           >
-            Start scan
+            Start health scan
           </Button>
         </CardContent>
       </Card>
@@ -110,24 +119,52 @@ export const QualityOverviewCard = ({
         <HealthScorePopover
           repoName={repoName}
           quality={quality}
-          fontSize={36}
-          denomSize={18}
+          fontSize={28}
+          denomSize={16}
+          openHint="View details"
           onStartScan={() => navigate(scanPath())}
           onViewLastScan={() => navigate(historyPath())}
         />
-        <Typography color="textSecondary" style={{ fontSize: 13, marginTop: 8 }}>
-          {quality.totalViolations === 0
-            ? 'No findings'
-            : `${quality.totalViolations} findings`}
-          {' · '}
-          {quality.lastScannedAt}
-          {scannedSha && (
-            <>
-              {' · '}
-              <span style={{ fontFamily: 'monospace' }}>{scannedSha}</span>
-            </>
-          )}
-        </Typography>
+        <Box
+          display="flex"
+          alignItems="baseline"
+          style={{ gap: 0, marginTop: 8, flexWrap: 'wrap' }}
+        >
+          <Button
+            variant="text"
+            color="primary"
+            size="small"
+            onClick={() => navigate(snapshotPath())}
+            aria-label={
+              quality.totalViolations === 0
+                ? 'View latest scan. No findings'
+                : `View latest scan. ${quality.totalViolations} findings`
+            }
+            style={{
+              textTransform: 'none',
+              fontWeight: 600,
+              fontSize: 13,
+              padding: 0,
+              minWidth: 0,
+              minHeight: 0,
+              lineHeight: 1.4,
+            }}
+          >
+            {quality.totalViolations === 0
+              ? 'No findings'
+              : `${quality.totalViolations} findings`}
+          </Button>
+          <Typography color="textSecondary" style={{ fontSize: 13, lineHeight: 1.4 }}>
+            {' · '}
+            {quality.lastScannedAt}
+            {scannedSha && (
+              <>
+                {' · '}
+                <span style={{ fontFamily: 'monospace' }}>{scannedSha}</span>
+              </>
+            )}
+          </Typography>
+        </Box>
         {showRemediation && (
           <Typography color="textSecondary" style={{ fontSize: 13, marginTop: 4 }}>
             Remediation: {REMEDIATION_STATUS_LABEL[quality.remediationStatus]}
@@ -136,10 +173,11 @@ export const QualityOverviewCard = ({
         <CategoryMixMini repoName={repoName} divided={false} />
         <Box
           display="flex"
-          alignItems="center"
-          style={{ gap: 8, marginTop: 16, flexWrap: 'wrap' }}
+          flexDirection="column"
+          alignItems="stretch"
+          style={{ gap: 8, marginTop: 16 }}
         >
-          {live ? (
+          {live && (
             <Button
               variant="contained"
               color="primary"
@@ -149,7 +187,8 @@ export const QualityOverviewCard = ({
             >
               Remediate
             </Button>
-          ) : quality.remediationStatus === 'pr-open' && prUrl ? (
+          )}
+          {quality.remediationStatus === 'pr-open' && prUrl && (
             <Button
               variant="contained"
               color="primary"
@@ -159,37 +198,31 @@ export const QualityOverviewCard = ({
             >
               View pull request
             </Button>
-          ) : (
-            <Button
-              variant="contained"
-              color="primary"
-              size="small"
-              style={pill}
-              onClick={() => navigate(scanPath())}
-            >
-              Start new scan
-            </Button>
           )}
           <Button
             variant="outlined"
             color="primary"
             size="small"
             style={pill}
+            onClick={() => navigate(scanPath())}
+          >
+            Start health scan
+          </Button>
+          <Button
+            variant="text"
+            color="primary"
+            size="small"
             onClick={() => navigate(historyPath())}
+            style={{
+              textTransform: 'none',
+              fontWeight: 600,
+              alignSelf: 'flex-start',
+              paddingLeft: 0,
+              minWidth: 0,
+            }}
           >
             View scan history
           </Button>
-          {(live || quality.remediationStatus === 'pr-open') && (
-            <Button
-              variant="outlined"
-              color="primary"
-              size="small"
-              style={pill}
-              onClick={() => navigate(scanPath())}
-            >
-              Start new scan
-            </Button>
-          )}
         </Box>
       </CardContent>
     </Card>
