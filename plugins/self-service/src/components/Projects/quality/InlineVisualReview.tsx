@@ -136,7 +136,7 @@ function laneFilterLabel(lane: FixLane, phase: ReviewPhase): string {
 }
 
 function laneBadgeLabel(lane: FixLane, phase: ReviewPhase): string {
-  if (showsResultsMix(phase)) return RESULTS_LANE_BADGE[lane];
+  if (phase === 'results') return RESULTS_LANE_BADGE[lane];
   return laneFilterLabel(lane, phase);
 }
 
@@ -186,30 +186,6 @@ const LANE_EXPLAIN: Record<FixLane, string> = {
   'AI-fix': 'Eligible for an AI-generated suggestion you review before it goes in the PR.',
   'Manual-fix': 'No automatic or AI suggestion. Change this in the file, or leave it.',
 };
-
-function reviewTabTooltip(tab: ReviewTab): string {
-  if (tab === 'All') return 'Every finding from this scan.';
-  return LANE_EXPLAIN[tab];
-}
-
-function reviewTabHint(tab: ReviewTab, phase: ReviewPhase): string {
-  if (tab === 'All') {
-    return phase === 'work'
-      ? 'Auto and manual remediations from this scan. AI remediation is next.'
-      : 'Every finding from this scan, grouped by how you can address it.';
-  }
-  if (tab === 'Auto-fix') {
-    return phase === 'results'
-      ? 'Ready-made replacements from Ansible quality rules. Accept or decline them on the Auto remediation step.'
-      : 'Ready-made replacements from Ansible quality rules. Accept or decline each one.';
-  }
-  if (tab === 'AI-fix') {
-    return phase === 'results'
-      ? 'Eligible for an AI-generated suggestion. Generate and review them on the AI remediation step.'
-      : 'Generate an AI suggestion for the findings you want, then accept or decline each one.';
-  }
-  return 'No automatic or AI suggestion. Change these in the file, or leave them.';
-}
 
 const AUTO_FIX_EXPLAIN =
   'Ready-made replacements from Ansible quality rules.';
@@ -472,6 +448,13 @@ const useStyles = makeStyles((theme: Theme) => ({
     alignItems: 'center',
     marginLeft: 'auto',
   },
+  footerAccepted: {
+    ...theme.typography.body2,
+    color: theme.palette.text.primary,
+    fontWeight: 600,
+    whiteSpace: 'nowrap',
+    marginRight: theme.spacing(2),
+  },
   footerCancel: {
     ...PILL,
     marginRight: theme.spacing(6),
@@ -607,6 +590,11 @@ const useStyles = makeStyles((theme: Theme) => ({
     minWidth: 0,
     flexWrap: 'wrap',
   },
+  scanCountSep: {
+    ...theme.typography.body2,
+    color: theme.palette.text.secondary,
+    padding: theme.spacing(0, 0.5),
+  },
   scanAside: {
     fontSize: 13,
     color: theme.palette.text.secondary,
@@ -650,7 +638,7 @@ const useStyles = makeStyles((theme: Theme) => ({
     alignItems: 'center',
     gap: theme.spacing(1.5),
     flexWrap: 'wrap',
-    margin: theme.spacing(0, 2, 1.5),
+    margin: theme.spacing(2, 2, 1.5),
     padding: theme.spacing(1.25, 1.5),
     backgroundColor:
       theme.palette.type === 'light' ? '#e7f1fa' : 'rgba(38, 117, 195, 0.12)',
@@ -832,16 +820,18 @@ const useStyles = makeStyles((theme: Theme) => ({
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    flexWrap: 'wrap',
+    flexWrap: 'nowrap',
     gap: 8,
     width: '100%',
   },
-  showingRow: {
+  showingInline: {
     display: 'flex',
     alignItems: 'center',
     flexWrap: 'wrap',
     gap: theme.spacing(1),
-    width: '100%',
+    flex: '0 1 auto',
+    width: 'auto',
+    minWidth: 0,
   },
   clearFilters: {
     textTransform: 'none',
@@ -1181,7 +1171,6 @@ export const InlineVisualReview: React.FC<{
 }) => {
   const classes = useStyles();
   const decisions = { ...t1Decisions, ...aiDecisions };
-  const laterAiCount = findings.filter(v => v.fixTier === 'ai').length;
   const reviewFindings =
     phase === 'work' ? findings.filter(v => v.fixTier !== 'ai') : findings;
   const auto = reviewFindings.filter(v => v.fixTier === 'deterministic');
@@ -1383,12 +1372,12 @@ export const InlineVisualReview: React.FC<{
   const aiAccepted = ai.filter(v => aiDecisions[findingKey(v)] === 'accept').length;
   const selectedSuggestions = autoAccepted + aiAccepted;
   const nextLocked =
-    phase === 'results'
+    phase === 'results' || phase === 'work'
       ? false
-      : phase === 'autofix' || phase === 'work'
+      : phase === 'autofix'
         ? pendingT1 > 0
         : phase === 'ai'
-          ? pendingGeneratedAi > 0 || aiLoading
+          ? aiLoading
           : currentRedesign
             ? selectedSuggestions < 1
             : pendingT1 > 0 || pendingGeneratedAi > 0 || aiLoading;
@@ -1681,6 +1670,28 @@ export const InlineVisualReview: React.FC<{
     setSeverityFilter(new Set());
     setFilterGeneratedAi(false);
   };
+  const showingCountControl = (
+    <div className={classes.showingInline}>
+      <Typography
+        className={classes.bulkCount}
+        variant="body2"
+        color="textSecondary"
+      >
+        {showingCount} showing out of {tabFindings.length}
+      </Typography>
+      {filtersActive ? (
+        <Button
+          variant="text"
+          color="primary"
+          size="small"
+          className={classes.clearFilters}
+          onClick={clearFilters}
+        >
+          Clear filters
+        </Button>
+      ) : null}
+    </div>
+  );
   const generateAiLabel = `Generate remediations with AI (${idleAi.length})`;
   const phaseTabs: ReviewTab[] =
     phase === 'ai' || phase === 'autofix'
@@ -1694,6 +1705,46 @@ export const InlineVisualReview: React.FC<{
             : LANE_TABS;
   const autoAcceptChecked = auto.length > 0 && autoUndecidedCount === 0 && autoAccepted > 0;
   const autoAcceptIndeterminate = autoAccepted > 0 && autoUndecidedCount > 0;
+  const autoAcceptControl =
+    auto.length > 0 ? (
+      <label className={classes.autoAcceptControl}>
+        <Checkbox
+          color="primary"
+          size="small"
+          checked={autoAcceptChecked}
+          indeterminate={autoAcceptIndeterminate}
+          onChange={(_event, checked) =>
+            checked ? acceptUndeclinedAutoFixes() : clearAcceptedAutoFixes()
+          }
+        />
+        <Typography
+          variant="body2"
+          color="textSecondary"
+          component="span"
+          className={classes.autoAcceptLabel}
+        >
+          Auto-accept all {usesRemediationVocab(phase) ? 'auto remediations' : 'auto-fixes'}
+          <Tooltip title={AUTO_ACCEPT_EXPLAIN} arrow>
+            <span
+              className={classes.catHelpHit}
+              tabIndex={0}
+              aria-label={AUTO_ACCEPT_EXPLAIN}
+              onClick={event => {
+                event.preventDefault();
+                event.stopPropagation();
+              }}
+              onMouseDown={event => event.preventDefault()}
+            >
+              <HelpOutlineIcon
+                fontSize="inherit"
+                color="disabled"
+                aria-hidden
+              />
+            </span>
+          </Tooltip>
+        </Typography>
+      </label>
+    ) : null;
   const bulkAcceptDecline = (
     <>
       <Button
@@ -1736,7 +1787,7 @@ export const InlineVisualReview: React.FC<{
                 ? 'Accept or decline each auto remediation to continue'
                 : 'Accept or decline each auto-fix to continue'
               : phase === 'ai'
-                ? 'Accept or decline generated AI suggestions to continue'
+                ? 'Wait for AI generation to finish'
                 : currentRedesign
                   ? redesign4
                     ? 'Accept at least one remediation to continue'
@@ -1745,11 +1796,7 @@ export const InlineVisualReview: React.FC<{
             : undefined
         }
       >
-        {phase === 'results'
-          ? 'Continue'
-          : (phase === 'autofix' || phase === 'work') && laterAiCount > 0
-            ? 'Continue'
-            : 'Continue to commit'}
+        Continue
       </Button>
     </span>
   );
@@ -2285,7 +2332,7 @@ export const InlineVisualReview: React.FC<{
       )}
 
       <Paper className={classes.box} elevation={0}>
-        {currentRedesign ? (
+        {currentRedesign && phase !== 'autofix' && phase !== 'ai' ? (
           <div className={classes.scanCountHead}>
             <div
               className={`${classes.scanCountRow}${
@@ -2293,6 +2340,50 @@ export const InlineVisualReview: React.FC<{
               }`}
             >
               <div className={classes.scanCountCopy}>
+                {phase === 'work' ? (
+                  <>
+                    {auto.length > 0 ? (
+                      <>
+                        <Typography className={classes.mixTotal} component="span">
+                          {auto.length}
+                        </Typography>
+                        <Typography
+                          className={classes.mixMeta}
+                          variant="body2"
+                          color="textSecondary"
+                          component="span"
+                        >
+                          {auto.length === 1
+                            ? 'auto remediation'
+                            : 'auto remediations'}
+                        </Typography>
+                      </>
+                    ) : null}
+                    {auto.length > 0 && manual.length > 0 ? (
+                      <Typography className={classes.scanCountSep} component="span">
+                        ·
+                      </Typography>
+                    ) : null}
+                    {manual.length > 0 ? (
+                      <>
+                        <Typography className={classes.mixTotal} component="span">
+                          {manual.length}
+                        </Typography>
+                        <Typography
+                          className={classes.mixMeta}
+                          variant="body2"
+                          color="textSecondary"
+                          component="span"
+                        >
+                          {manual.length === 1
+                            ? 'manual remediation'
+                            : 'manual remediations'}
+                        </Typography>
+                      </>
+                    ) : null}
+                  </>
+                ) : (
+                  <>
                 <Typography className={classes.mixTotal} component="span">
                   {mix.total}
                 </Typography>
@@ -2314,6 +2405,8 @@ export const InlineVisualReview: React.FC<{
                     </>
                   ) : null}
                 </Typography>
+                  </>
+                )}
                 {redesign3Plus && !redesign4 ? (
                   <Typography className={classes.scanAside} component="span">
                     <strong>{remediationCount}</strong>
@@ -2499,14 +2592,6 @@ export const InlineVisualReview: React.FC<{
         )}
         {showsResultsMix(phase) || phase === 'autofix' || phase === 'ai' ? (
         <>
-        {showsResultsMix(phase) ? null : (
-        <Typography className={classes.tabPageHint}>
-          {reviewTabHint(
-            phase === 'ai' ? 'AI-fix' : 'Auto-fix',
-            phase,
-          )}
-        </Typography>
-        )}
         {filterToolbar}
         {showsResultsMix(phase) ? (
         <div
@@ -2634,74 +2719,9 @@ export const InlineVisualReview: React.FC<{
             {currentRedesign &&
             (redesign3Plus || redesignActionsControl || redesignGenerate) ? (
               <>
-                {redesign4 ? (
-                  <div className={classes.showingRow}>
-                    <Typography
-                      className={classes.bulkCount}
-                      variant="body2"
-                      color="textSecondary"
-                    >
-                      {showingCount} showing out of {tabFindings.length}
-                    </Typography>
-                    {filtersActive ? (
-                      <Button
-                        variant="text"
-                        color="primary"
-                        size="small"
-                        className={classes.clearFilters}
-                        onClick={clearFilters}
-                      >
-                        Clear filters
-                      </Button>
-                    ) : null}
-                  </div>
-                ) : null}
-                {phase === 'results' ? null : (
                 <div className={classes.bulkListActions} role="region" aria-label="Bulk finding actions">
                   {redesign4 ? (
-                    phase !== 'ai' && phase !== 'results' && auto.length > 0 ? (
-                      <label className={classes.autoAcceptControl}>
-                        <Checkbox
-                          color="primary"
-                          size="small"
-                          checked={autoAcceptChecked}
-                          indeterminate={autoAcceptIndeterminate}
-                          onChange={(_event, checked) =>
-                            checked
-                              ? acceptUndeclinedAutoFixes()
-                              : clearAcceptedAutoFixes()
-                          }
-                        />
-                        <Typography
-                          variant="body2"
-                          color="textSecondary"
-                          component="span"
-                          className={classes.autoAcceptLabel}
-                        >
-                          Auto-accept all {usesRemediationVocab(phase) ? 'auto remediations' : 'auto-fixes'}
-                          <Tooltip title={AUTO_ACCEPT_EXPLAIN} arrow>
-                            <span
-                              className={classes.catHelpHit}
-                              tabIndex={0}
-                              aria-label={AUTO_ACCEPT_EXPLAIN}
-                              onClick={event => {
-                                event.preventDefault();
-                                event.stopPropagation();
-                              }}
-                              onMouseDown={event => event.preventDefault()}
-                            >
-                              <HelpOutlineIcon
-                                fontSize="inherit"
-                                color="disabled"
-                                aria-hidden
-                              />
-                            </span>
-                          </Tooltip>
-                        </Typography>
-                      </label>
-                    ) : (
-                      <span />
-                    )
+                    showingCountControl
                   ) : redesign3Plus ? (
                     <Typography
                       className={classes.bulkCount}
@@ -2713,9 +2733,12 @@ export const InlineVisualReview: React.FC<{
                   ) : (
                     <div>{redesignActionsControl}</div>
                   )}
-                  <div>{redesign3Plus ? redesignActionsControl : redesignGenerate}</div>
+                  {phase === 'results' ? (
+                    <span />
+                  ) : (
+                    <div>{redesign3Plus ? redesignActionsControl : redesignGenerate}</div>
+                  )}
                 </div>
-                )}
               </>
             ) : null}
           </div>
@@ -2808,16 +2831,9 @@ export const InlineVisualReview: React.FC<{
           aria-label="Remediation step actions"
         >
           <div className={classes.footerStatus}>
-            {currentRedesign ? (
-              <>
-                <Typography variant="body2" color="textPrimary" className={classes.footerLead}>
-                  {phase === 'results'
-                    ? `${mix.total} ${findingWord}`
-                    : selectedLabel}
-                </Typography>
-                {redesign3Plus ? null : selectedBreakdown || 'No suggestions to accept'}
-              </>
-            ) : (
+            {phase === 'work' || phase === 'autofix' ? (
+              autoAcceptControl
+            ) : currentRedesign ? null : (
               <>
                 {jobTitle}
                 <span className={classes.footerCount}>{decideCount}</span>
@@ -2840,6 +2856,11 @@ export const InlineVisualReview: React.FC<{
                 Cancel
               </Button>
             )}
+            {phase === 'work' || phase === 'ai' || phase === 'autofix' ? (
+              <Typography className={classes.footerAccepted} component="span">
+                {selectedLabel}
+              </Typography>
+            ) : null}
             {continueButton}
           </div>
         </div>
@@ -2961,7 +2982,7 @@ const FindingRow: React.FC<{
       onGenerateAi ? (
         <Button
           size="small"
-          variant="contained"
+          variant="outlined"
           color="primary"
           style={PILL_COMPACT}
           onClick={() => onGenerateAi(key)}

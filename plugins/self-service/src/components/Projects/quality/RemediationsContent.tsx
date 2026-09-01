@@ -50,11 +50,11 @@ const SESSION_STEPS: { label: string; meaning: string }[] = [
   { label: 'Scan', meaning: 'Scan this repository' },
   { label: 'Results', meaning: 'Review all findings from this scan' },
   {
-    label: 'Auto-fix',
-    meaning: 'Accept or decline auto-fixes',
+    label: 'Auto remediation',
+    meaning: 'Accept or decline auto remediations',
   },
-  { label: 'AI-fix', meaning: 'Generate and review AI suggestions' },
-  { label: 'Commit', meaning: 'Push accepted fixes or open a pull request' },
+  { label: 'AI remediation', meaning: 'Generate and review AI suggestions' },
+  { label: 'Commit', meaning: 'Push accepted remediations or open a pull request' },
 ];
 
 function sessionStepIndex(_status: ActiveStatus): 0 | 1 | 2 | 3 | 4 {

@@ -441,7 +441,7 @@ function workflowSteps(
     if (stepsModel === 'work') {
       const steps: StepDef[] = [{ id: 'scan', label: 'Scan' }];
       if (includeAuto || includeManual) {
-        steps.push({ id: 'tier1_proposals', label: 'Auto and manual remediations' });
+        steps.push({ id: 'tier1_proposals', label: 'Auto and manual remediation' });
       }
       if (includeAi) {
         steps.push({ id: 'ai_proposals', label: 'AI remediation' });
@@ -1394,7 +1394,7 @@ export const ApmeRemediationPage = () => {
             aria-label="Remediation steps model"
           >
             <ToggleButton value="with-results">With Results</ToggleButton>
-            <ToggleButton value="work">Auto and manual remediations</ToggleButton>
+            <ToggleButton value="work">Auto and manual remediation</ToggleButton>
           </ToggleButtonGroup>
         </Box>
       ) : null}
@@ -1431,15 +1431,9 @@ export const ApmeRemediationPage = () => {
           color="textSecondary"
         >
           {step === 'tier1_proposals'
-              ? stepsModel === 'work'
-                ? includeAi
-                  ? 'Accept or decline each auto remediation. Manual remediations stay in the file. AI remediation is next.'
-                  : 'Accept or decline each auto remediation. Manual remediations stay in the file.'
-                : includeAi
-                ? 'Accept or decline each auto remediation. AI remediation is next.'
-                : 'Accept or decline each auto remediation you want to include in the commit.'
+              ? 'Accept or decline auto remediations to include in the commit.'
               : step === 'ai_proposals'
-                ? 'Generate AI suggestions for the findings you want, then accept or decline each one.'
+                ? 'Generate AI suggestions for the findings you want.'
                 : 'Create a branch, push the remediations you accepted, and optionally open a pull request.'}
         </Typography>
       ) : null}
