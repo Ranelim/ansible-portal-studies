@@ -441,10 +441,10 @@ function workflowSteps(
     if (stepsModel === 'work') {
       const steps: StepDef[] = [{ id: 'scan', label: 'Scan' }];
       if (includeAuto || includeManual) {
-        steps.push({ id: 'tier1_proposals', label: 'Auto & manual' });
+        steps.push({ id: 'tier1_proposals', label: 'Auto and manual remediations' });
       }
       if (includeAi) {
-        steps.push({ id: 'ai_proposals', label: 'AI remediations' });
+        steps.push({ id: 'ai_proposals', label: 'AI remediation' });
       }
       steps.push({ id: 'commit', label: 'Commit' });
       return steps;
@@ -454,10 +454,10 @@ function workflowSteps(
       { id: 'findings', label: 'Results' },
     ];
     if (includeAuto) {
-      steps.push({ id: 'tier1_proposals', label: 'Auto remediations' });
+      steps.push({ id: 'tier1_proposals', label: 'Auto remediation' });
     }
     if (includeAi) {
-      steps.push({ id: 'ai_proposals', label: 'AI remediations' });
+      steps.push({ id: 'ai_proposals', label: 'AI remediation' });
     }
     steps.push({ id: 'commit', label: 'Commit' });
     return steps;
@@ -1394,7 +1394,7 @@ export const ApmeRemediationPage = () => {
             aria-label="Remediation steps model"
           >
             <ToggleButton value="with-results">With Results</ToggleButton>
-            <ToggleButton value="work">Auto & manual</ToggleButton>
+            <ToggleButton value="work">Auto and manual remediations</ToggleButton>
           </ToggleButtonGroup>
         </Box>
       ) : null}
@@ -1420,8 +1420,7 @@ export const ApmeRemediationPage = () => {
         bare={visual}
       />
       {visual &&
-      (step === 'findings' ||
-        step === 'tier1_proposals' ||
+      (step === 'tier1_proposals' ||
         step === 'ai_proposals' ||
         step === 'commit') ? (
         <Typography
@@ -1431,20 +1430,14 @@ export const ApmeRemediationPage = () => {
           variant="body2"
           color="textSecondary"
         >
-          {step === 'findings'
-            ? includeAuto
-              ? 'All findings from this scan. Remediate auto-fixes next.'
-              : includeAi
-                ? 'All findings from this scan. AI remediations are next.'
-                : 'All findings from this scan.'
-            : step === 'tier1_proposals'
+          {step === 'tier1_proposals'
               ? stepsModel === 'work'
                 ? includeAi
-                  ? 'Accept or decline each auto-fix. Manual fixes stay in the file. AI remediations are next.'
-                  : 'Accept or decline each auto-fix. Manual fixes stay in the file.'
+                  ? 'Accept or decline each auto remediation. Manual remediations stay in the file. AI remediation is next.'
+                  : 'Accept or decline each auto remediation. Manual remediations stay in the file.'
                 : includeAi
-                ? 'Accept or decline each auto-fix. AI remediations are next.'
-                : 'Accept or decline each auto-fix you want to include in the commit.'
+                ? 'Accept or decline each auto remediation. AI remediation is next.'
+                : 'Accept or decline each auto remediation you want to include in the commit.'
               : step === 'ai_proposals'
                 ? 'Generate AI suggestions for the findings you want, then accept or decline each one.'
                 : 'Create a branch, push the remediations you accepted, and optionally open a pull request.'}
@@ -1899,7 +1892,7 @@ export const ApmeRemediationPage = () => {
           </ToggleButtonGroup>
           <Typography className={classes.compareHint}>
             {wizard === 'visual'
-              ? 'Scan → Results → Auto remediations → AI remediations → Commit. Results is all findings. Generate AI only on the AI step.'
+              ? 'Scan → Results → Auto remediation → AI remediation → Commit. Results is all findings. Generate AI only on the AI remediation step.'
               : wizard === 'inline'
               ? 'Scan. One Results & Remediation step: auto-fixes plus Generate AI per row. Then commit.'
               : wizard === 'new'

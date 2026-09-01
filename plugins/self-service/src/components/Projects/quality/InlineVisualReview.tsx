@@ -89,6 +89,11 @@ function showsResultsMix(phase: ReviewPhase): boolean {
   return phase === 'results' || phase === 'work';
 }
 
+/** Visual session: Auto / AI / Manual use “remediation”, not “fix”. */
+function usesRemediationVocab(phase: ReviewPhase): boolean {
+  return phase === 'results' || phase === 'autofix' || phase === 'ai' || phase === 'work';
+}
+
 export function isRedesignLayout(layout: ReviewLayout): boolean {
   return layout === 'redesign' || layout === 'redesign3' || layout === 'redesign4';
 }
@@ -111,8 +116,29 @@ const WORK_TABS: ReviewTab[] = ['All', 'Auto-fix', 'Manual-fix'];
 const TAB_LABEL: Record<FixLane, string> = {
   'Auto-fix': 'Auto-fix',
   'AI-fix': 'AI-fix',
-  'Manual-fix': 'Manual fix',
+  'Manual-fix': 'Manual-fix',
 };
+
+const REMEDIATION_LANE_LABEL: Record<FixLane, string> = {
+  'Auto-fix': 'Auto remediation',
+  'AI-fix': 'AI remediation',
+  'Manual-fix': 'Manual remediation',
+};
+
+const RESULTS_LANE_BADGE: Record<FixLane, string> = {
+  'Auto-fix': 'Auto remediation available',
+  'AI-fix': 'Requires AI suggestion',
+  'Manual-fix': 'Manual remediation only',
+};
+
+function laneFilterLabel(lane: FixLane, phase: ReviewPhase): string {
+  return usesRemediationVocab(phase) ? REMEDIATION_LANE_LABEL[lane] : TAB_LABEL[lane];
+}
+
+function laneBadgeLabel(lane: FixLane, phase: ReviewPhase): string {
+  if (showsResultsMix(phase)) return RESULTS_LANE_BADGE[lane];
+  return laneFilterLabel(lane, phase);
+}
 
 const TAB_COUNT_LABEL: Record<FixLane, (n: number) => string> = {
   'Auto-fix': n => `${n} auto-fixes`,
@@ -148,30 +174,48 @@ function reviewTabCountLabel(
 }
 
 const REDESIGN_TAB_HINT: Record<ReviewTab, string> = {
-  All: 'Auto-fix, AI-fix, and manual findings together.',
-  'Auto-fix': 'Deterministic replacements from Ansible quality rules.',
+  All: 'Auto-fix, AI-fix, and Manual-fix findings together.',
+  'Auto-fix': 'Ready-made replacements from Ansible quality rules.',
   'AI-fix': 'Optional Lightspeed suggestions. Generating uses quota.',
   'Manual-fix': 'No suggestion. Change these in the file, or leave them.',
 };
 
-/** What each fix type is — no product names, no quota talk. */
+/** Short definition for tab and chip tooltips. */
 const LANE_EXPLAIN: Record<FixLane, string> = {
-  'Auto-fix': 'Deterministic replacement from Ansible quality rules',
-  'AI-fix': 'Suggested replacement you generate, then review',
-  'Manual-fix': 'No replacement. Change this in the file yourself',
+  'Auto-fix': 'Ready-made replacements from Ansible quality rules.',
+  'AI-fix': 'Eligible for an AI-generated suggestion you review before it goes in the PR.',
+  'Manual-fix': 'No automatic or AI suggestion. Change this in the file, or leave it.',
 };
+
+function reviewTabTooltip(tab: ReviewTab): string {
+  if (tab === 'All') return 'Every finding from this scan.';
+  return LANE_EXPLAIN[tab];
+}
+
+function reviewTabHint(tab: ReviewTab, phase: ReviewPhase): string {
+  if (tab === 'All') {
+    return phase === 'work'
+      ? 'Auto and manual remediations from this scan. AI remediation is next.'
+      : 'Every finding from this scan, grouped by how you can address it.';
+  }
+  if (tab === 'Auto-fix') {
+    return phase === 'results'
+      ? 'Ready-made replacements from Ansible quality rules. Accept or decline them on the Auto remediation step.'
+      : 'Ready-made replacements from Ansible quality rules. Accept or decline each one.';
+  }
+  if (tab === 'AI-fix') {
+    return phase === 'results'
+      ? 'Eligible for an AI-generated suggestion. Generate and review them on the AI remediation step.'
+      : 'Generate an AI suggestion for the findings you want, then accept or decline each one.';
+  }
+  return 'No automatic or AI suggestion. Change these in the file, or leave them.';
+}
 
 const AUTO_FIX_EXPLAIN =
-  'Deterministic replacements from Ansible quality rules.';
+  'Ready-made replacements from Ansible quality rules.';
 
-/** Results inventory: same card body slot as Auto / AI, no Accept / Decline. */
-const RESULTS_LANE_BODY: Record<FixLane, string> = {
-  'Auto-fix': AUTO_FIX_EXPLAIN,
-  'AI-fix':
-    'Eligible for an AI-generated suggestion. Review it on the AI remediations step.',
-  'Manual-fix':
-    'Not auto-fixable or eligible for AI. Change this in the file, or leave it.',
-};
+const RESULTS_MANUAL_BODY =
+  'Not auto-fixable or eligible for AI. Change this in the file, or leave it.';
 
 const INCLUDE_MENU_EXPLAIN = {
   auto: AUTO_FIX_EXPLAIN,
@@ -940,6 +984,7 @@ const useStyles = makeStyles((theme: Theme) => ({
     },
   },
   select: { minWidth: 168, flexShrink: 0 },
+  selectRemediation: { minWidth: 220, flexShrink: 0 },
   bulkBar: {
     display: 'flex',
     flexDirection: 'column',
@@ -1016,7 +1061,7 @@ const useStyles = makeStyles((theme: Theme) => ({
     marginTop: theme.spacing(1.5),
   },
   chips: { display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', marginTop: 8 },
-  chip: { height: 22 },
+  chip: { height: 22, maxWidth: '100%' },
   fileMeta: {
     ...theme.typography.caption,
     marginTop: 4,
@@ -1265,8 +1310,16 @@ export const InlineVisualReview: React.FC<{
     [visibleCategories],
   );
 
+  const mixFindings = useMemo(
+    () =>
+      contentType === 'all'
+        ? tabFindings
+        : tabFindings.filter(f => kindLabel(f) === contentType),
+    [tabFindings, contentType],
+  );
+
   const resultsCatRows = useMemo(() => {
-    const source = mixFromFindings(tabFindings).categories;
+    const source = mixFromFindings(mixFindings).categories;
     const any = severityFilter.size > 0;
     return source
       .map(cat => {
@@ -1280,7 +1333,7 @@ export const InlineVisualReview: React.FC<{
         return { ...cat, breakdown, count };
       })
       .filter(cat => cat.count > 0);
-  }, [tabFindings, severityFilter]);
+  }, [mixFindings, severityFilter]);
 
   const resultsCatTotal = useMemo(
     () => resultsCatRows.reduce((sum, cat) => sum + cat.count, 0),
@@ -1499,7 +1552,9 @@ export const InlineVisualReview: React.FC<{
       ? ''
       : phase === 'autofix' || phase === 'work'
       ? pendingT1 > 0
-        ? 'Accept or decline each auto-fix to continue.'
+        ? usesRemediationVocab(phase)
+          ? 'Accept or decline each auto remediation to continue.'
+          : 'Accept or decline each auto-fix to continue.'
         : ''
       : phase === 'ai'
         ? pendingGeneratedAi > 0
@@ -1542,10 +1597,14 @@ export const InlineVisualReview: React.FC<{
       : `${phaseAccepted} suggestions accepted`;
   const selectedBreakdown = [
     phase !== 'ai' && auto.length > 0
-      ? `${autoAccepted} out of ${auto.length} auto-fix${auto.length === 1 ? '' : 'es'}`
+      ? usesRemediationVocab(phase)
+        ? `${autoAccepted} out of ${auto.length} auto remediation${auto.length === 1 ? '' : 's'}`
+        : `${autoAccepted} out of ${auto.length} auto-fix${auto.length === 1 ? '' : 'es'}`
       : null,
     phase !== 'autofix' && phase !== 'work' && ai.length > 0
-      ? `${aiAccepted} out of ${ai.length} AI-fix${ai.length === 1 ? '' : 'es'}`
+      ? usesRemediationVocab(phase)
+        ? `${aiAccepted} out of ${ai.length} AI remediation${ai.length === 1 ? '' : 's'}`
+        : `${aiAccepted} out of ${ai.length} AI-fix${ai.length === 1 ? '' : 'es'}`
       : null,
   ]
     .filter(Boolean)
@@ -1553,8 +1612,12 @@ export const InlineVisualReview: React.FC<{
 
   const decideCount =
     auto.length === 0
-      ? 'No auto-fixes to decide'
-      : `${autoDecided} of ${auto.length} auto-fixes decided`;
+      ? usesRemediationVocab(phase)
+        ? 'No auto remediations to decide'
+        : 'No auto-fixes to decide'
+      : usesRemediationVocab(phase)
+        ? `${autoDecided} of ${auto.length} auto remediations decided`
+        : `${autoDecided} of ${auto.length} auto-fixes decided`;
 
   const findingWord = mix.total === 1 ? 'finding' : 'findings';
   const useFooter = ctaLayout === 'footer' || currentRedesign;
@@ -1565,10 +1628,16 @@ export const InlineVisualReview: React.FC<{
       : fixType === 'All'
       ? 'Search findings'
       : fixType === 'Auto-fix'
-      ? 'Search auto-fixes'
+      ? usesRemediationVocab(phase)
+        ? 'Search auto remediations'
+        : 'Search auto-fixes'
       : fixType === 'AI-fix'
-        ? 'Search AI-fixes'
-        : 'Search manual fixes';
+        ? usesRemediationVocab(phase)
+          ? 'Search AI remediations'
+          : 'Search AI-fixes'
+        : usesRemediationVocab(phase)
+          ? 'Search manual remediations'
+          : 'Search manual fixes';
 
   const severitySelect =
     severityFilter.size === 1 ? Array.from(severityFilter)[0] : 'all';
@@ -1663,7 +1732,9 @@ export const InlineVisualReview: React.FC<{
         title={
           nextLocked
             ? phase === 'autofix' || phase === 'work'
-              ? 'Accept or decline each auto-fix to continue'
+              ? usesRemediationVocab(phase)
+                ? 'Accept or decline each auto remediation to continue'
+                : 'Accept or decline each auto-fix to continue'
               : phase === 'ai'
                 ? 'Accept or decline generated AI suggestions to continue'
                 : currentRedesign
@@ -1675,7 +1746,7 @@ export const InlineVisualReview: React.FC<{
         }
       >
         {phase === 'results'
-          ? 'Remediate'
+          ? 'Continue'
           : (phase === 'autofix' || phase === 'work') && laterAiCount > 0
             ? 'Continue'
             : 'Continue to commit'}
@@ -1743,15 +1814,23 @@ export const InlineVisualReview: React.FC<{
         : auto.length > 0 || ai.length > 0;
   const acceptAllLabel =
     fixType === 'Auto-fix'
-      ? 'Accept all auto-fixes'
+      ? usesRemediationVocab(phase)
+        ? 'Accept all auto remediations'
+        : 'Accept all auto-fixes'
       : fixType === 'AI-fix'
-        ? 'Accept all AI-fixes'
+        ? usesRemediationVocab(phase)
+          ? 'Accept all AI remediations'
+          : 'Accept all AI-fixes'
         : 'Accept all';
   const declineAllLabel =
     fixType === 'Auto-fix'
-      ? 'Decline all auto-fixes'
+      ? usesRemediationVocab(phase)
+        ? 'Decline all auto remediations'
+        : 'Decline all auto-fixes'
       : fixType === 'AI-fix'
-        ? 'Decline all AI-fixes'
+        ? usesRemediationVocab(phase)
+          ? 'Decline all AI remediations'
+          : 'Decline all AI-fixes'
         : 'Decline all';
 
   const includeMenuItems = (
@@ -1767,7 +1846,11 @@ export const InlineVisualReview: React.FC<{
           }}
         >
           <ListItemText
-            primary="Accept all auto-fixes"
+            primary={
+              usesRemediationVocab(phase)
+                ? 'Accept all auto remediations'
+                : 'Accept all auto-fixes'
+            }
             secondary={INCLUDE_MENU_EXPLAIN.auto}
           />
         </MenuItem>
@@ -1783,7 +1866,9 @@ export const InlineVisualReview: React.FC<{
           }}
         >
           <ListItemText
-            primary="Accept AI-fixes"
+            primary={
+              usesRemediationVocab(phase) ? 'Accept AI remediations' : 'Accept AI-fixes'
+            }
             secondary={INCLUDE_MENU_EXPLAIN.ai}
           />
         </MenuItem>
@@ -1812,7 +1897,7 @@ export const InlineVisualReview: React.FC<{
             closeActions();
           }}
         >
-          Decline auto-fixes
+          {usesRemediationVocab(phase) ? 'Decline auto remediations' : 'Decline auto-fixes'}
         </MenuItem>
       )}
       {phase === 'autofix' || phase === 'work' ? null : (
@@ -1826,7 +1911,7 @@ export const InlineVisualReview: React.FC<{
             closeActions();
           }}
         >
-          Decline AI-fixes
+          {usesRemediationVocab(phase) ? 'Decline AI remediations' : 'Decline AI-fixes'}
         </MenuItem>
       )}
     </>
@@ -1984,7 +2069,7 @@ export const InlineVisualReview: React.FC<{
       ? generateButton
       : null;
 
-  const showSeverityDropdown = !showsResultsMix(phase) && !redesign4;
+  const showSeverityDropdown = phase === 'autofix' || phase === 'ai';
   const filterToolbar = showListChrome ? (
         <div className={classes.toolbar}>
           <TextField
@@ -1996,6 +2081,30 @@ export const InlineVisualReview: React.FC<{
             onChange={e => setQuery(e.target.value)}
             inputProps={{ 'aria-label': searchPlaceholder }}
           />
+          {showsResultsMix(phase) ? (
+          <FormControl variant="outlined" size="small" className={classes.selectRemediation}>
+            <InputLabel id="visual-remediation-type-label">Remediation type</InputLabel>
+            <Select
+              labelId="visual-remediation-type-label"
+              label="Remediation type"
+              value={fixType}
+              onChange={e => {
+                setFixType(e.target.value as ReviewTab);
+                setCategory('all');
+                setContentType('all');
+              }}
+            >
+              <MenuItem value="All">All remediation types</MenuItem>
+              {phaseTabs
+                .filter((tab): tab is FixLane => tab !== 'All')
+                .map(lane => (
+                  <MenuItem key={lane} value={lane}>
+                    {laneFilterLabel(lane, phase)} ({laneCount[lane]})
+                  </MenuItem>
+                ))}
+            </Select>
+          </FormControl>
+          ) : null}
           <FormControl variant="outlined" size="small" className={classes.select}>
             <InputLabel id="visual-content-type-label">Content type</InputLabel>
             <Select
@@ -2238,7 +2347,7 @@ export const InlineVisualReview: React.FC<{
               )}
             </div>
             {redesign4 ? (
-              phase === 'results' || phase === 'work' ? null : (
+              showsResultsMix(phase) || phase === 'autofix' || phase === 'ai' ? null : (
               <>
                 <div className={classes.scanMixBar}>
                   <SeverityMixBar
@@ -2300,15 +2409,15 @@ export const InlineVisualReview: React.FC<{
             <Typography className={classes.aiBannerCopy} variant="body2">
               {aiLoading
                 ? loadingAiCount === 1
-                  ? 'Generating 1 AI-fix.'
-                  : `Generating ${loadingAiCount} AI-fixes.`
+                  ? 'Generating 1 AI remediation.'
+                  : `Generating ${loadingAiCount} AI remediations.`
                 : idleAi.length > 0
                   ? idleAi.length === 1
-                    ? '1 finding has no remediation suggestion yet. Generate an AI-fix to review it.'
-                    : `${idleAi.length} findings have no remediation suggestions yet. Generate AI-fixes to review them.`
+                    ? '1 finding has no remediation suggestion yet. Generate an AI remediation to review it.'
+                    : `${idleAi.length} findings have no remediation suggestions yet. Generate AI remediations to review them.`
                   : pendingGeneratedAi === 1
-                    ? '1 AI-fix generated. Review it below.'
-                    : `${pendingGeneratedAi} AI-fixes generated. Review them below.`}
+                    ? '1 AI remediation generated. Review it below.'
+                    : `${pendingGeneratedAi} AI remediations generated. Review them below.`}
             </Typography>
             {idleAi.length > 0 || aiLoading ? (
               <Button
@@ -2350,19 +2459,20 @@ export const InlineVisualReview: React.FC<{
             ) : null}
           </div>
         ) : null}
-        {showsResultsMix(phase) ? (
-        <>
+        {showsResultsMix(phase) ||
+        (redesign3Plus && phase === 'bundled') ||
+        phaseTabs.length === 0 ? null : (
         <Tabs
           className={classes.tabs}
-          value={phaseTabs.includes(fixType) ? fixType : phaseTabs[0] ?? 'All'}
+          value={phaseTabs.includes(fixType) ? fixType : phaseTabs[0]}
           onChange={(_event, next: ReviewTab) => {
             setFixType(next);
-            setCategory('all');
             setContentType('all');
+            setCategory('all');
           }}
           indicatorColor="primary"
           textColor="primary"
-          aria-label="Findings by remediations type"
+          aria-label="Findings"
         >
           {phaseTabs.map(lane => (
             <Tab
@@ -2371,10 +2481,14 @@ export const InlineVisualReview: React.FC<{
               value={lane}
               label={
                 <span className={classes.tabLabel}>
-                  <span>{reviewTabLabel(lane, false)}</span>
+                  <span>{reviewTabLabel(lane, phase === 'bundled' && currentRedesign)}</span>
                   <ReadCountBadge
                     count={laneCount[lane]}
-                    label={reviewTabCountLabel(lane, laneCount[lane], false)}
+                    label={reviewTabCountLabel(
+                      lane,
+                      laneCount[lane],
+                      phase === 'bundled' && currentRedesign,
+                    )}
                     tone="read"
                   />
                 </span>
@@ -2382,14 +2496,26 @@ export const InlineVisualReview: React.FC<{
             />
           ))}
         </Tabs>
+        )}
+        {showsResultsMix(phase) || phase === 'autofix' || phase === 'ai' ? (
+        <>
+        {showsResultsMix(phase) ? null : (
+        <Typography className={classes.tabPageHint}>
+          {reviewTabHint(
+            phase === 'ai' ? 'AI-fix' : 'Auto-fix',
+            phase,
+          )}
+        </Typography>
+        )}
         {filterToolbar}
+        {showsResultsMix(phase) ? (
         <div
           className={classes.resultsMix}
           role="group"
-          aria-label="Severity and category mix for this tab"
+          aria-label="Severity and category mix for filtered findings"
         >
           <SeverityFilterChips
-            breakdown={mixFromFindings(tabFindings).bySeverity}
+            breakdown={mixFromFindings(mixFindings).bySeverity}
             active={severityFilter}
             onToggle={toggleSeverity}
           />
@@ -2448,50 +2574,16 @@ export const InlineVisualReview: React.FC<{
           </div>
         ) : null}
         </div>
+        ) : null}
         </>
-        ) : (redesign3Plus && phase === 'bundled') || phaseTabs.length === 0 ? null : (
-        <Tabs
-          className={classes.tabs}
-          value={phaseTabs.includes(fixType) ? fixType : phaseTabs[0]}
-          onChange={(_event, next: ReviewTab) => {
-            setFixType(next);
-            setContentType('all');
-            setCategory('all');
-          }}
-          indicatorColor="primary"
-          textColor="primary"
-          aria-label="Findings"
-        >
-          {phaseTabs.map(lane => (
-            <Tab
-              key={lane}
-              className={classes.tab}
-              value={lane}
-              label={
-                <span className={classes.tabLabel}>
-                  <span>{reviewTabLabel(lane, phase === 'bundled' && currentRedesign)}</span>
-                  <ReadCountBadge
-                    count={laneCount[lane]}
-                    label={reviewTabCountLabel(
-                      lane,
-                      laneCount[lane],
-                      phase === 'bundled' && currentRedesign,
-                    )}
-                    tone="read"
-                  />
-                </span>
-              }
-            />
-          ))}
-        </Tabs>
-        )}
+        ) : null}
         {showsResultsMix(phase) || !currentRedesign || redesign3Plus ? null : (
           <Typography className={classes.tabPageHint}>
             {REDESIGN_TAB_HINT[fixType]}
           </Typography>
         )}
 
-        {showsResultsMix(phase) ? null : filterToolbar}
+        {showsResultsMix(phase) || phase === 'autofix' || phase === 'ai' ? null : filterToolbar}
 
         {(currentRedesign ||
           (fixType !== 'Manual-fix' &&
@@ -2586,7 +2678,7 @@ export const InlineVisualReview: React.FC<{
                           component="span"
                           className={classes.autoAcceptLabel}
                         >
-                          Auto-accept all auto-fixes
+                          Auto-accept all {usesRemediationVocab(phase) ? 'auto remediations' : 'auto-fixes'}
                           <Tooltip title={AUTO_ACCEPT_EXPLAIN} arrow>
                             <span
                               className={classes.catHelpHit}
@@ -2659,6 +2751,7 @@ export const InlineVisualReview: React.FC<{
                   (currentRedesign && fixType === 'All') ||
                   (showsResultsMix(phase) && fixType === 'All')
                 }
+                phase={phase}
                 readOnly={
                   phase === 'results' ||
                   (phase === 'work' && laneOf(primary) === 'Manual-fix')
@@ -2767,6 +2860,7 @@ const FindingRow: React.FC<{
   includeInPr?: boolean;
   highlight?: boolean;
   showLane?: boolean;
+  phase?: ReviewPhase;
   readOnly?: boolean;
 }> = ({
   finding,
@@ -2780,6 +2874,7 @@ const FindingRow: React.FC<{
   includeInPr,
   highlight,
   showLane,
+  phase,
   readOnly,
 }) => {
   const classes = useStyles();
@@ -2934,12 +3029,16 @@ const FindingRow: React.FC<{
                     className={classes.chip}
                   />
                   {showLane ? (
-                    <Chip
-                      size="small"
-                      variant="outlined"
-                      label={TAB_LABEL[itemLane]}
-                      className={classes.chip}
-                    />
+                    <Tooltip title={LANE_EXPLAIN[itemLane]} arrow>
+                      <Chip
+                        size="small"
+                        variant="outlined"
+                        label={
+                          phase ? laneBadgeLabel(itemLane, phase) : TAB_LABEL[itemLane]
+                        }
+                        className={classes.chip}
+                      />
+                    </Tooltip>
                   ) : null}
                 </div>
               </div>
@@ -2951,22 +3050,18 @@ const FindingRow: React.FC<{
       {copies.map(item => {
         const itemLane = laneOf(item);
         const itemSnip = snippetForRule(item.ruleId);
-        const itemProposed =
-          itemLane === 'Auto-fix' ||
-          (!readOnly && itemLane === 'AI-fix' && aiStatus === 'ready');
-        const itemIssueContext =
-          itemLane === 'Manual-fix' ||
-          (itemLane === 'AI-fix' && (readOnly || aiStatus !== 'ready'));
-        const itemLines: DiffLine[] = itemProposed
+        const showRemediation =
+          !readOnly &&
+          (itemLane === 'Auto-fix' ||
+            (itemLane === 'AI-fix' && aiStatus === 'ready'));
+        const itemLines: DiffLine[] = showRemediation
           ? unifiedDiff(itemSnip.current, itemSnip.proposed)
-          : itemIssueContext
-            ? itemSnip.current.map(text => ({ kind: 'context' as const, text }))
-            : [];
+          : itemSnip.current.map(text => ({ kind: 'context' as const, text }));
         return (
       <div className={classes.diffBlock} key={`diff-${findingKey(item)}`}>
         {readOnly && itemLane === 'Manual-fix' ? (
           <div className={`${classes.suggestionEmpty} ${classes.suggestionLeadRow}`}>
-            <span>{RESULTS_LANE_BODY[itemLane]}</span>
+            <span>{RESULTS_MANUAL_BODY}</span>
             <Button
               size="small"
               variant="text"
@@ -2978,10 +3073,6 @@ const FindingRow: React.FC<{
               Open in Dev Spaces
             </Button>
           </div>
-        ) : readOnly ? (
-          <Typography className={classes.suggestionLead} variant="body2">
-            {RESULTS_LANE_BODY[itemLane]}
-          </Typography>
         ) : null}
         {itemLines.length === 0 ? (
           <Typography className={classes.diffEmpty}>No snippet for this finding.</Typography>
