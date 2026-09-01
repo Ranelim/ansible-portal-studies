@@ -38,25 +38,27 @@ type ActiveRow = {
   repoName: string;
   org: string;
   status: ActiveStatus;
-  currentStep: 0 | 1 | 2;
+  currentStep: 0 | 1 | 2 | 3 | 4;
   scanId: string;
   when: string;
   commitHash: string;
   sortAt: number;
 };
 
-/** Same 3 steps as the inline visual session. Compact on the list; labeled in the session. */
+/** Same steps as the inline visual session. Compact on the list; labeled in the session. */
 const SESSION_STEPS: { label: string; meaning: string }[] = [
   { label: 'Scan', meaning: 'Scan this repository' },
+  { label: 'Results', meaning: 'Review all findings from this scan' },
   {
-    label: 'Results & Remediation',
-    meaning: 'Review findings and accept or decline fixes',
+    label: 'Auto remediations',
+    meaning: 'Accept or decline auto-fixes',
   },
+  { label: 'AI remediations', meaning: 'Generate and review AI suggestions' },
   { label: 'Commit', meaning: 'Push accepted fixes or open a pull request' },
 ];
 
-function sessionStepIndex(_status: ActiveStatus): 0 | 1 | 2 {
-  // Live remediations sit on Results & Remediation. Scan already ran.
+function sessionStepIndex(_status: ActiveStatus): 0 | 1 | 2 | 3 | 4 {
+  // Live remediations sit on Results. Scan already ran.
   return 1;
 }
 
@@ -193,7 +195,7 @@ const useStyles = makeStyles(theme => ({
   },
 }));
 
-function CompactSessionStepper({ currentStep }: { currentStep: 0 | 1 | 2 }) {
+function CompactSessionStepper({ currentStep }: { currentStep: 0 | 1 | 2 | 3 | 4 }) {
   const classes = useStyles();
   const summary = `On ${SESSION_STEPS[currentStep].label}. ${SESSION_STEPS.map(
     (step, index) => {

@@ -10,7 +10,7 @@
 export const SHOW_CONTENT_QUALITY_FINDINGS_TAB = false;
 
 /**
- * Remediations list stepper (Scan → Results & Remediation → Commit).
+ * Remediations list stepper (Scan → Results → Auto remediations → AI remediations → Commit).
  * Hidden Aug 24: almost every live row sits on step 2, so the column
  * does not discriminate. CompactSessionStepper stays in RemediationsContent.
  *

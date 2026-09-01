@@ -52,7 +52,9 @@ import { RemediationReceipt } from './RemediationReceipt';
  * Original = SPA 9-step. AI assessment = pick which findings get an AI suggestion.
  * Redesign = Scan → Review auto-fixes → Choose AI findings → Review AI-fixes → Commit.
  * Inline AI = Scan → Results & Remediation → Commit.
- * Inline visual = clone of Inline AI (`?wizard=visual`) for layout redesign.
+ * Inline visual = Scan → Results → Auto remediations → AI remediations → Commit.
+ * Bundled one-page review (no Results step; Generate AI on Results & Remediation):
+ * git tag `remediation-bundled-results-and-ai` (`b82fca95`).
  * CTA compare (`?cta=current|footer`): Current puts Continue + Cancel under
  * the stepper (with auto-fix decided count). Wizard footer pins them to a
  * sticky step footer. Findings bulk actions stay with the open tab.
@@ -77,10 +79,11 @@ type StepDef = { id: StepId; label: string };
 type WizardChrome = 'original' | 'new' | 'inline' | 'visual';
 
 /**
- * Force Inline visual (3-step: Scan → Results & Remediation → Commit)
- * with Continue under the stepper — not mixed with Accept/Decline.
+ * Force Inline visual:
+ * Scan → Results → Auto remediations → AI remediations (if any) → Commit.
+ * Continue under the stepper — not mixed with Accept/Decline.
  * Prototype wizard + Continue-placement compares stay parked.
- * Results & Remediation layout compare is parked. Redesign 4 is forced.
+ * Results layout compare is parked. Redesign 4 is forced.
  * Current / Current redesign / Redesign 3 stay in code.
  * Set SHOW_REVIEW_LAYOUT_COMPARE `true` and FORCED_REVIEW_LAYOUT `null`
  * to revive `?review=`.
@@ -130,6 +133,26 @@ function isResultsFixChrome(chrome: WizardChrome): boolean {
 /** Map engine/progress stations onto the visible stepper. */
 function displayStepId(step: StepId, chrome: WizardChrome): StepId {
   if (chrome === 'original') return step;
+  if (chrome === 'visual') {
+    switch (step) {
+      case 'scan':
+        return 'scan';
+      case 'findings':
+        return 'findings';
+      case 'tier1_proposals':
+      case 'tier1_applied':
+        return 'tier1_proposals';
+      case 'ai_assessment':
+      case 'ai_proposals':
+      case 'ai_applied':
+        return 'ai_proposals';
+      case 'commit':
+      case 'complete':
+        return 'commit';
+      default:
+        return 'findings';
+    }
+  }
   if (chrome === 'new') {
     switch (step) {
       case 'scan':
@@ -380,8 +403,26 @@ const useStyles = makeStyles(theme => ({
   },
 }));
 
-function workflowSteps(includeAi: boolean, chrome: WizardChrome): StepDef[] {
-  if (chrome === 'inline' || chrome === 'visual') {
+function workflowSteps(
+  includeAi: boolean,
+  chrome: WizardChrome,
+  includeAuto = true,
+): StepDef[] {
+  if (chrome === 'visual') {
+    const steps: StepDef[] = [
+      { id: 'scan', label: 'Scan' },
+      { id: 'findings', label: 'Results' },
+    ];
+    if (includeAuto) {
+      steps.push({ id: 'tier1_proposals', label: 'Auto remediations' });
+    }
+    if (includeAi) {
+      steps.push({ id: 'ai_proposals', label: 'AI remediations' });
+    }
+    steps.push({ id: 'commit', label: 'Commit' });
+    return steps;
+  }
+  if (chrome === 'inline') {
     return [
       { id: 'scan', label: 'Scan' },
       { id: 'findings', label: 'Results & Remediation' },
@@ -422,6 +463,7 @@ function workflowSteps(includeAi: boolean, chrome: WizardChrome): StepDef[] {
 const SPINNING = new Set<StepId>([
   'scan',
   'findings',
+  'tier1_proposals',
   'tier1_applied',
   'ai_assessment',
   'ai_proposals',
@@ -1053,8 +1095,15 @@ export const ApmeRemediationPage = () => {
       (quality.latestScan.aiCandidates ?? 0) > 0
     );
   }, [quality]);
+  const includeAuto = useMemo(() => {
+    if (!quality) return false;
+    return quality.violations.some(v => v.fixTier === 'deterministic');
+  }, [quality]);
 
-  const steps = useMemo(() => workflowSteps(includeAi, wizard), [includeAi, wizard]);
+  const steps = useMemo(
+    () => workflowSteps(includeAi, wizard, includeAuto),
+    [includeAi, includeAuto, wizard],
+  );
 
   const [step, setStep] = useState<StepId>(() =>
     initialStep(resume, quality?.remediationStatus),
@@ -1118,11 +1167,12 @@ export const ApmeRemediationPage = () => {
     if (craig && step === 'tier1_proposals') setStep('findings');
     if (
       inline &&
+      !visual &&
       (step === 'tier1_proposals' || step === 'ai_assessment' || step === 'ai_proposals')
     ) {
       setStep('findings');
     }
-  }, [craig, inline, step]);
+  }, [craig, inline, visual, step]);
 
   useEffect(() => {
     if (step !== 'scan') return;
@@ -1150,7 +1200,13 @@ export const ApmeRemediationPage = () => {
     }, APPLY_MS / 4);
     const t = window.setTimeout(() => {
       if (step === 'tier1_applied') {
-        setStep(inline ? 'commit' : includeAi ? 'ai_assessment' : 'commit');
+        if (visual) {
+          setStep(includeAi ? 'ai_proposals' : 'commit');
+        } else if (inline) {
+          setStep('commit');
+        } else {
+          setStep(includeAi ? 'ai_assessment' : 'commit');
+        }
       } else if (step === 'ai_assessment') {
         setAiGenerating(false);
         setStep('ai_proposals');
@@ -1162,14 +1218,17 @@ export const ApmeRemediationPage = () => {
       window.clearInterval(tick);
       window.clearTimeout(t);
     };
-  }, [step, includeAi, inline, aiGenerating]);
+  }, [step, includeAi, inline, visual, aiGenerating]);
 
   const fillWell =
     Boolean(quality && repo) &&
     visual &&
-    step === 'findings' &&
+    (step === 'findings' || step === 'tier1_proposals' || step === 'ai_proposals') &&
     (ctaLayout === 'footer' || isRedesignLayout(reviewLayout));
-  const hidePageChrome = fillWell && isRedesignLayout(reviewLayout) && step === 'findings';
+  const hidePageChrome =
+    fillWell &&
+    isRedesignLayout(reviewLayout) &&
+    (step === 'findings' || step === 'tier1_proposals' || step === 'ai_proposals');
 
   useEffect(() => {
     if (!fillWell) return undefined;
@@ -1250,7 +1309,11 @@ export const ApmeRemediationPage = () => {
         sessionDone={sessionDone}
         bare={visual}
       />
-      {visual && (step === 'findings' || step === 'commit') ? (
+      {visual &&
+      (step === 'findings' ||
+        step === 'tier1_proposals' ||
+        step === 'ai_proposals' ||
+        step === 'commit') ? (
         <Typography
           className={`${classes.stepperHint}${
             step === 'commit' ? ` ${classes.stepperHintBeforePanel}` : ''
@@ -1259,14 +1322,26 @@ export const ApmeRemediationPage = () => {
           color="textSecondary"
         >
           {step === 'findings'
-            ? 'Review findings and accept the remediation suggestions you want to include in the commit.'
-            : 'Create a branch, push the remediations you accepted, and optionally open a pull request.'}
+            ? includeAuto
+              ? 'All findings from this scan. Remediate auto-fixes next.'
+              : includeAi
+                ? 'All findings from this scan. AI remediations are next.'
+                : 'All findings from this scan.'
+            : step === 'tier1_proposals'
+              ? includeAi
+                ? 'Accept or decline each auto-fix. AI remediations are next.'
+                : 'Accept or decline each auto-fix you want to include in the commit.'
+              : step === 'ai_proposals'
+                ? 'Generate AI suggestions for the findings you want, then accept or decline each one.'
+                : 'Create a branch, push the remediations you accepted, and optionally open a pull request.'}
         </Typography>
       ) : null}
     </Box>
   );
   const showReviewCompare =
-    visual && SHOW_REVIEW_LAYOUT_COMPARE && step === 'findings';
+    visual &&
+    SHOW_REVIEW_LAYOUT_COMPARE &&
+    (step === 'findings' || step === 'tier1_proposals' || step === 'ai_proposals');
   const layoutCompare = showReviewCompare ? (
     <Box
       className={classes.compareStrip}
@@ -1340,12 +1415,15 @@ export const ApmeRemediationPage = () => {
             aiDecisions={aiDecisions}
             setAiDecisions={setAiDecisions}
             aiStatus={aiStatus}
-            onGenerateAi={generateInlineAi}
-            onGenerateAllAi={generateAllInlineAi}
-            onNext={() => setStep('tier1_applied')}
+            onNext={() => {
+              if (includeAuto) setStep('tier1_proposals');
+              else if (includeAi) setStep('ai_proposals');
+              else setStep('commit');
+            }}
             onCancel={goBack}
             ctaLayout={ctaLayout}
             reviewLayout={reviewLayout}
+            phase="results"
             header={
               isRedesignLayout(reviewLayout) ? (
                 <>
@@ -1389,6 +1467,31 @@ export const ApmeRemediationPage = () => {
     }
 
     if (step === 'tier1_proposals') {
+      if (visual) {
+        return (
+          <InlineVisualReview
+            findings={quality.violations}
+            t1Decisions={t1Decisions}
+            setT1Decisions={setT1Decisions}
+            aiDecisions={aiDecisions}
+            setAiDecisions={setAiDecisions}
+            aiStatus={aiStatus}
+            onNext={() => setStep('tier1_applied')}
+            onCancel={goBack}
+            ctaLayout={ctaLayout}
+            reviewLayout={reviewLayout}
+            phase="autofix"
+            header={
+              isRedesignLayout(reviewLayout) ? (
+                <>
+                  {layoutCompare}
+                  {pageChrome}
+                </>
+              ) : undefined
+            }
+          />
+        );
+      }
       return (
         <GatePanel
           findings={quickFix}
@@ -1449,6 +1552,33 @@ export const ApmeRemediationPage = () => {
     }
 
     if (step === 'ai_proposals') {
+      if (visual) {
+        return (
+          <InlineVisualReview
+            findings={quality.violations}
+            t1Decisions={t1Decisions}
+            setT1Decisions={setT1Decisions}
+            aiDecisions={aiDecisions}
+            setAiDecisions={setAiDecisions}
+            aiStatus={aiStatus}
+            onGenerateAi={generateInlineAi}
+            onGenerateAllAi={generateAllInlineAi}
+            onNext={() => setStep('commit')}
+            onCancel={goBack}
+            ctaLayout={ctaLayout}
+            reviewLayout={reviewLayout}
+            phase="ai"
+            header={
+              isRedesignLayout(reviewLayout) ? (
+                <>
+                  {layoutCompare}
+                  {pageChrome}
+                </>
+              ) : undefined
+            }
+          />
+        );
+      }
       return (
         <GatePanel
           findings={sessionAiFix}
@@ -1655,7 +1785,7 @@ export const ApmeRemediationPage = () => {
           </ToggleButtonGroup>
           <Typography className={classes.compareHint}>
             {wizard === 'visual'
-              ? 'Inline AI restyle: Results summary with expandable category mix, then Remediation findings. Same 3-step flow.'
+              ? 'Scan → Results → Auto remediations → AI remediations → Commit. Results is all findings. Generate AI only on the AI step.'
               : wizard === 'inline'
               ? 'Scan. One Results & Remediation step: auto-fixes plus Generate AI per row. Then commit.'
               : wizard === 'new'

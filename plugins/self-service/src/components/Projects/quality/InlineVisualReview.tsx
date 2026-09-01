@@ -82,6 +82,8 @@ const LightspeedSpark = ({ size = 14 }: { size?: number }) => (
 export type CtaLayout = 'current' | 'footer';
 /** Current = Continue under the stepper. Redesign / 3 / 4 = forks of Current. */
 export type ReviewLayout = 'current' | 'redesign' | 'redesign3' | 'redesign4';
+/** Discrete visual session: results (read-only) then auto then AI. Bundled keeps all lanes on one step. */
+export type ReviewPhase = 'bundled' | 'results' | 'autofix' | 'ai';
 
 export function isRedesignLayout(layout: ReviewLayout): boolean {
   return layout === 'redesign' || layout === 'redesign3' || layout === 'redesign4';
@@ -1052,6 +1054,7 @@ export const InlineVisualReview: React.FC<{
   onCancel: () => void;
   ctaLayout?: CtaLayout;
   reviewLayout?: ReviewLayout;
+  phase?: ReviewPhase;
   header?: ReactNode;
 }> = ({
   findings,
@@ -1066,6 +1069,7 @@ export const InlineVisualReview: React.FC<{
   onCancel,
   ctaLayout = 'current',
   reviewLayout = 'current',
+  phase = 'bundled',
   header,
 }) => {
   const classes = useStyles();
@@ -1087,7 +1091,7 @@ export const InlineVisualReview: React.FC<{
   const [category, setCategory] = useState<'all' | ApmeRuleCategory>('all');
   const [severityFilter, setSeverityFilter] = useState<Set<SeverityClass>>(() => new Set());
   const [fixType, setFixType] = useState<ReviewTab>(() =>
-    isRedesignLayout(reviewLayout) ? 'All' : 'Auto-fix',
+    phase === 'ai' ? 'AI-fix' : phase === 'results' ? 'All' : 'Auto-fix',
   );
   const [actionsAnchor, setActionsAnchor] = useState<null | HTMLElement>(null);
   const [breakdownOpen, setBreakdownOpen] = useState(false);
@@ -1102,6 +1106,10 @@ export const InlineVisualReview: React.FC<{
   const seededAutoAccept = useRef(false);
 
   useLayoutEffect(() => {
+    if (phase === 'ai' || phase === 'results') {
+      seededAutoAccept.current = false;
+      return;
+    }
     if (!currentRedesign) {
       seededAutoAccept.current = false;
       return;
@@ -1115,14 +1123,29 @@ export const InlineVisualReview: React.FC<{
       });
       return next;
     });
-  }, [currentRedesign, autoKeys, auto, setT1Decisions]);
+  }, [phase, currentRedesign, autoKeys, auto, setT1Decisions]);
 
   useLayoutEffect(() => {
+    if (phase === 'ai') {
+      setFixType('AI-fix');
+      return;
+    }
+    if (phase === 'results') {
+      setFixType('All');
+      return;
+    }
+    if (phase === 'autofix') {
+      setFixType('Auto-fix');
+      return;
+    }
     setFixType(currentRedesign ? 'All' : 'Auto-fix');
-  }, [currentRedesign]);
+  }, [currentRedesign, phase]);
 
-  const inActiveTab = (f: QualityViolation) =>
-    fixType === 'All' || laneOf(f) === fixType;
+  const inActiveTab = (f: QualityViolation) => {
+    if (phase === 'autofix' && laneOf(f) !== 'Auto-fix') return false;
+    if (phase === 'ai' && laneOf(f) !== 'AI-fix') return false;
+    return fixType === 'All' || laneOf(f) === fixType;
+  };
   const tabFindings = findings.filter(inActiveTab);
   const contentTypes = useMemo(
     () =>
@@ -1184,7 +1207,12 @@ export const InlineVisualReview: React.FC<{
       }
       const count = SEV_ORDER.reduce((sum, sev) => sum + (breakdown[sev] ?? 0), 0);
       return { lane, breakdown, count };
-    }).filter(row => row.count > 0);
+    }).filter(row => {
+      if (row.count === 0) return false;
+      if (phase === 'autofix' && row.lane !== 'Auto-fix') return false;
+      if (phase === 'ai' && row.lane !== 'AI-fix') return false;
+      return true;
+    });
   }, [mix.byLane, severityFilter]);
 
   const visibleLaneTotal = useMemo(
@@ -1203,9 +1231,16 @@ export const InlineVisualReview: React.FC<{
   const autoAccepted = auto.filter(v => t1Decisions[findingKey(v)] === 'accept').length;
   const aiAccepted = ai.filter(v => aiDecisions[findingKey(v)] === 'accept').length;
   const selectedSuggestions = autoAccepted + aiAccepted;
-  const nextLocked = currentRedesign
-    ? selectedSuggestions < 1
-    : pendingT1 > 0 || pendingGeneratedAi > 0 || aiLoading;
+  const nextLocked =
+    phase === 'results'
+      ? false
+      : phase === 'autofix'
+        ? pendingT1 > 0
+        : phase === 'ai'
+          ? pendingGeneratedAi > 0 || aiLoading
+          : currentRedesign
+            ? selectedSuggestions < 1
+            : pendingT1 > 0 || pendingGeneratedAi > 0 || aiLoading;
 
   const filtered = tabFindings.filter(f => {
     if (filterGeneratedAi) {
@@ -1289,8 +1324,10 @@ export const InlineVisualReview: React.FC<{
       return;
     }
     const peers = nodePeers(findings, v);
-    const autoPeers = peers.filter(f => f.fixTier === 'deterministic');
-    const aiPeers = peers.filter(f => f.fixTier === 'ai');
+    const autoPeers =
+      phase === 'ai' ? [] : peers.filter(f => f.fixTier === 'deterministic');
+    const aiPeers =
+      phase === 'autofix' ? [] : peers.filter(f => f.fixTier === 'ai');
     if (autoPeers.length > 0) {
       setT1Decisions?.(prev => {
         const next = { ...prev };
@@ -1358,34 +1395,57 @@ export const InlineVisualReview: React.FC<{
 
   const bulkPolicy = deriveBulkPolicy(auto, ai, readyAi, t1Decisions, aiDecisions);
 
-  const jobTitle = currentRedesign
-    ? pendingGeneratedAi > 0
-      ? 'Accept or decline generated AI suggestions to continue.'
-      : aiLoading
-        ? 'Wait for AI generation to finish.'
-        : pendingT1 > 0
-          ? 'Accept the auto-fixes you want, then continue.'
-          : ''
-    : pendingT1 > 0
-      ? 'Decide auto-fixes to continue. AI is optional.'
-      : aiLoading
-        ? 'Wait for AI generation to finish.'
-        : pendingGeneratedAi > 0
+  const jobTitle =
+    phase === 'results'
+      ? ''
+      : phase === 'autofix'
+      ? pendingT1 > 0
+        ? 'Accept or decline each auto-fix to continue.'
+        : ''
+      : phase === 'ai'
+        ? pendingGeneratedAi > 0
           ? 'Accept or decline generated AI suggestions to continue.'
-          : 'Auto-fixes decided. Ungenerated AI stays in the file.';
+          : aiLoading
+            ? 'Wait for AI generation to finish.'
+            : idleAi.length > 0
+              ? 'Generate suggestions for the findings you want, or continue without them.'
+              : ''
+        : currentRedesign
+          ? pendingGeneratedAi > 0
+            ? 'Accept or decline generated AI suggestions to continue.'
+            : aiLoading
+              ? 'Wait for AI generation to finish.'
+              : pendingT1 > 0
+                ? 'Accept the auto-fixes you want, then continue.'
+                : ''
+          : pendingT1 > 0
+            ? 'Decide auto-fixes to continue. AI is optional.'
+            : aiLoading
+              ? 'Wait for AI generation to finish.'
+              : pendingGeneratedAi > 0
+                ? 'Accept or decline generated AI suggestions to continue.'
+                : 'Auto-fixes decided. Ungenerated AI stays in the file.';
 
+  const phaseAccepted =
+    phase === 'results'
+      ? 0
+      : phase === 'autofix'
+        ? autoAccepted
+        : phase === 'ai'
+          ? aiAccepted
+          : selectedSuggestions;
   const selectedLabel = redesign4
-    ? selectedSuggestions === 1
+    ? phaseAccepted === 1
       ? '1 accepted'
-      : `${selectedSuggestions} accepted`
-    : selectedSuggestions === 1
+      : `${phaseAccepted} accepted`
+    : phaseAccepted === 1
       ? '1 suggestion accepted'
-      : `${selectedSuggestions} suggestions accepted`;
+      : `${phaseAccepted} suggestions accepted`;
   const selectedBreakdown = [
-    auto.length > 0
+    phase !== 'ai' && auto.length > 0
       ? `${autoAccepted} out of ${auto.length} auto-fix${auto.length === 1 ? '' : 'es'}`
       : null,
-    ai.length > 0
+    phase !== 'autofix' && ai.length > 0
       ? `${aiAccepted} out of ${ai.length} AI-fix${ai.length === 1 ? '' : 'es'}`
       : null,
   ]
@@ -1452,6 +1512,12 @@ export const InlineVisualReview: React.FC<{
     setFilterGeneratedAi(false);
   };
   const generateAiLabel = `Generate remediations with AI (${idleAi.length})`;
+  const phaseTabs: ReviewTab[] =
+    phase === 'ai' || phase === 'autofix'
+      ? []
+      : phase === 'results' || currentRedesign
+        ? REDESIGN_TABS
+        : LANE_TABS;
   const autoAcceptChecked = auto.length > 0 && autoUndecidedCount === 0 && autoAccepted > 0;
   const autoAcceptIndeterminate = autoAccepted > 0 && autoUndecidedCount > 0;
   const bulkAcceptDecline = (
@@ -1491,15 +1557,23 @@ export const InlineVisualReview: React.FC<{
         style={PILL}
         title={
           nextLocked
-            ? currentRedesign
-              ? redesign4
-                ? 'Accept at least one remediation to continue'
-                : 'Accept at least one suggestion to continue'
-              : `${jobTitle} ${decideCount}`
+            ? phase === 'autofix'
+              ? 'Accept or decline each auto-fix to continue'
+              : phase === 'ai'
+                ? 'Accept or decline generated AI suggestions to continue'
+                : currentRedesign
+                  ? redesign4
+                    ? 'Accept at least one remediation to continue'
+                    : 'Accept at least one suggestion to continue'
+                  : `${jobTitle} ${decideCount}`
             : undefined
         }
       >
-        Continue to commit
+        {phase === 'results'
+          ? 'Remediate'
+          : phase === 'autofix' && ai.length > 0
+            ? 'Continue'
+            : 'Continue to commit'}
       </Button>
     </span>
   );
@@ -1577,34 +1651,38 @@ export const InlineVisualReview: React.FC<{
 
   const includeMenuItems = (
     <>
-      <MenuItem
-        className={classes.menuItemDescribed}
-        disabled={auto.length === 0}
-        selected={bulkPolicy === 'accept-auto'}
-        onClick={() => {
-          stampAutoFixes('accept');
-          closeActions();
-        }}
-      >
-        <ListItemText
-          primary="Accept all auto-fixes"
-          secondary={INCLUDE_MENU_EXPLAIN.auto}
-        />
-      </MenuItem>
-      <MenuItem
-        className={classes.menuItemDescribed}
-        disabled={readyAi.length === 0}
-        selected={bulkPolicy === 'accept-ai'}
-        onClick={() => {
-          stampAiFixes('accept');
-          closeActions();
-        }}
-      >
-        <ListItemText
-          primary="Accept AI-fixes"
-          secondary={INCLUDE_MENU_EXPLAIN.ai}
-        />
-      </MenuItem>
+      {phase === 'ai' ? null : (
+        <MenuItem
+          className={classes.menuItemDescribed}
+          disabled={auto.length === 0}
+          selected={bulkPolicy === 'accept-auto'}
+          onClick={() => {
+            stampAutoFixes('accept');
+            closeActions();
+          }}
+        >
+          <ListItemText
+            primary="Accept all auto-fixes"
+            secondary={INCLUDE_MENU_EXPLAIN.auto}
+          />
+        </MenuItem>
+      )}
+      {phase === 'autofix' ? null : (
+        <MenuItem
+          className={classes.menuItemDescribed}
+          disabled={readyAi.length === 0}
+          selected={bulkPolicy === 'accept-ai'}
+          onClick={() => {
+            stampAiFixes('accept');
+            closeActions();
+          }}
+        >
+          <ListItemText
+            primary="Accept AI-fixes"
+            secondary={INCLUDE_MENU_EXPLAIN.ai}
+          />
+        </MenuItem>
+      )}
       <Divider />
       <MenuItem
         disabled={remainingSuggestions.length === 0}
@@ -1618,30 +1696,34 @@ export const InlineVisualReview: React.FC<{
           ? ` (${remainingSuggestions.length})`
           : ''}
       </MenuItem>
-      <MenuItem
-        disabled={
-          auto.length === 0 ||
-          auto.every(v => t1Decisions[findingKey(v)] === 'decline')
-        }
-        onClick={() => {
-          stampAutoFixes('decline');
-          closeActions();
-        }}
-      >
-        Decline auto-fixes
-      </MenuItem>
-      <MenuItem
-        disabled={
-          readyAi.length === 0 ||
-          readyAi.every(v => aiDecisions[findingKey(v)] === 'decline')
-        }
-        onClick={() => {
-          stampAiFixes('decline');
-          closeActions();
-        }}
-      >
-        Decline AI-fixes
-      </MenuItem>
+      {phase === 'ai' ? null : (
+        <MenuItem
+          disabled={
+            auto.length === 0 ||
+            auto.every(v => t1Decisions[findingKey(v)] === 'decline')
+          }
+          onClick={() => {
+            stampAutoFixes('decline');
+            closeActions();
+          }}
+        >
+          Decline auto-fixes
+        </MenuItem>
+      )}
+      {phase === 'autofix' ? null : (
+        <MenuItem
+          disabled={
+            readyAi.length === 0 ||
+            readyAi.every(v => aiDecisions[findingKey(v)] === 'decline')
+          }
+          onClick={() => {
+            stampAiFixes('decline');
+            closeActions();
+          }}
+        >
+          Decline AI-fixes
+        </MenuItem>
+      )}
     </>
   );
 
@@ -1726,7 +1808,10 @@ export const InlineVisualReview: React.FC<{
   );
 
   const redesignActionsControl =
-    currentRedesign && fixType !== 'Manual-fix' && (auto.length > 0 || ai.length > 0) ? (
+    phase !== 'results' &&
+    currentRedesign &&
+    fixType !== 'Manual-fix' &&
+    (auto.length > 0 || ai.length > 0) ? (
       redesign4 ? (
         <div className={classes.bulkTwinActions}>
           <Button
@@ -1991,7 +2076,23 @@ export const InlineVisualReview: React.FC<{
                   component="span"
                 >
                   {findingWord} on this scan
-                  {redesign4 ? (
+                  {phase === 'results' ? (
+                    <>
+                      {auto.length > 0
+                        ? ` · ${auto.length} auto-fix${auto.length === 1 ? '' : 'es'}`
+                        : ''}
+                      {ai.length > 0
+                        ? ` · ${ai.length} AI ${ai.length === 1 ? 'fix' : 'fixes'}`
+                        : ''}
+                      {manual.length > 0
+                        ? ` · ${manual.length} not fixable`
+                        : ''}
+                    </>
+                  ) : phase === 'autofix' ? (
+                    <>{` · ${auto.length} auto-fix${auto.length === 1 ? '' : 'es'}`}</>
+                  ) : phase === 'ai' ? (
+                    <>{` · ${ai.length} AI ${ai.length === 1 ? 'fix' : 'fixes'}`}</>
+                  ) : redesign4 ? (
                     <>
                       {`, ${remediationCount} ${
                         remediationCount === 1 ? 'remediation' : 'remediations'
@@ -2067,7 +2168,8 @@ export const InlineVisualReview: React.FC<{
             )}
           </div>
         ) : null}
-        {redesign3Plus &&
+        {phase === 'ai' &&
+        redesign3Plus &&
         (idleAi.length > 0 || aiLoading || pendingGeneratedAi > 0) ? (
           <div className={classes.aiBanner} role="status">
             <InfoOutlinedIcon className={classes.aiBannerIcon} aria-hidden />
@@ -2124,10 +2226,10 @@ export const InlineVisualReview: React.FC<{
             ) : null}
           </div>
         ) : null}
-        {redesign3Plus ? null : (
+        {(redesign3Plus && phase === 'bundled') || phaseTabs.length === 0 ? null : (
         <Tabs
           className={classes.tabs}
-          value={fixType}
+          value={phaseTabs.includes(fixType) ? fixType : phaseTabs[0]}
           onChange={(_event, next: ReviewTab) => {
             setFixType(next);
             setContentType('all');
@@ -2137,17 +2239,21 @@ export const InlineVisualReview: React.FC<{
           textColor="primary"
           aria-label="Findings"
         >
-          {(currentRedesign ? REDESIGN_TABS : LANE_TABS).map(lane => (
+          {phaseTabs.map(lane => (
             <Tab
               key={lane}
               className={classes.tab}
               value={lane}
               label={
                 <span className={classes.tabLabel}>
-                  <span>{reviewTabLabel(lane, currentRedesign)}</span>
+                  <span>{reviewTabLabel(lane, phase === 'bundled' && currentRedesign)}</span>
                   <ReadCountBadge
                     count={laneCount[lane]}
-                    label={reviewTabCountLabel(lane, laneCount[lane], currentRedesign)}
+                    label={reviewTabCountLabel(
+                      lane,
+                      laneCount[lane],
+                      phase === 'bundled' && currentRedesign,
+                    )}
                     tone="read"
                   />
                 </span>
@@ -2237,7 +2343,11 @@ export const InlineVisualReview: React.FC<{
               currentRedesign ? ` ${classes.bulkBarSpaced}` : ''
             }`}
           >
-            {!currentRedesign && fixType === 'AI-fix' && idleAi.length > 0 && !aiLoading ? (
+            {!currentRedesign &&
+            phase === 'ai' &&
+            fixType === 'AI-fix' &&
+            idleAi.length > 0 &&
+            !aiLoading ? (
               <Typography className={classes.bulkNote}>
                 Optional. Generating suggestions uses Lightspeed quota.
               </Typography>
@@ -2247,13 +2357,13 @@ export const InlineVisualReview: React.FC<{
               <Typography className={classes.bulkCount} variant="body2" color="textSecondary">
                 {showingLabel}
               </Typography>
-              {currentRedesign ? null : fixType === 'AI-fix' && aiLoading ? (
+              {currentRedesign ? null : phase === 'ai' && fixType === 'AI-fix' && aiLoading ? (
                 <div className={classes.bulkActions}>
                   <Button size="small" variant="contained" color="primary" disabled style={PILL}>
                     Generating…
                   </Button>
                 </div>
-              ) : fixType === 'AI-fix' && idleAi.length > 0 ? (
+              ) : phase !== 'results' && phase !== 'autofix' && fixType === 'AI-fix' && idleAi.length > 0 ? (
                 <div className={classes.bulkActions}>
                   <Button
                     size="small"
@@ -2296,9 +2406,10 @@ export const InlineVisualReview: React.FC<{
                     ) : null}
                   </div>
                 ) : null}
+                {phase === 'results' ? null : (
                 <div className={classes.bulkListActions} role="region" aria-label="Bulk finding actions">
                   {redesign4 ? (
-                    auto.length > 0 ? (
+                    phase !== 'ai' && phase !== 'results' && auto.length > 0 ? (
                       <label className={classes.autoAcceptControl}>
                         <Checkbox
                           color="primary"
@@ -2354,6 +2465,7 @@ export const InlineVisualReview: React.FC<{
                   )}
                   <div>{redesign3Plus ? redesignActionsControl : redesignGenerate}</div>
                 </div>
+                )}
               </>
             ) : null}
           </div>
@@ -2378,12 +2490,16 @@ export const InlineVisualReview: React.FC<{
                 decision={sharedDecision(bundle, decisions)}
                 aiStatus={aiStatus[findingKey(primary)] ?? 'idle'}
                 onDecision={d => onDecision(primary, d)}
-                onGenerateAi={onGenerateAi}
+                onGenerateAi={phase === 'autofix' || phase === 'results' ? undefined : onGenerateAi}
                 quietRowActions={currentRedesign}
                 hideDecline={redesign3}
                 includeInPr={redesign4}
                 highlight={bundle.some(f => pulseKey === findingKey(f))}
-                showLane={currentRedesign && fixType === 'All'}
+                showLane={
+                  (currentRedesign && fixType === 'All') ||
+                  (phase === 'results' && fixType === 'All')
+                }
+                readOnly={phase === 'results'}
               />
               );
             })}
@@ -2439,7 +2555,9 @@ export const InlineVisualReview: React.FC<{
             {currentRedesign ? (
               <>
                 <Typography variant="body2" color="textPrimary" className={classes.footerLead}>
-                  {selectedLabel}
+                  {phase === 'results'
+                    ? `${mix.total} ${findingWord}`
+                    : selectedLabel}
                 </Typography>
                 {redesign3Plus ? null : selectedBreakdown || 'No suggestions to accept'}
               </>
@@ -2486,6 +2604,7 @@ const FindingRow: React.FC<{
   includeInPr?: boolean;
   highlight?: boolean;
   showLane?: boolean;
+  readOnly?: boolean;
 }> = ({
   finding,
   bundled,
@@ -2498,13 +2617,15 @@ const FindingRow: React.FC<{
   includeInPr,
   highlight,
   showLane,
+  readOnly,
 }) => {
   const classes = useStyles();
   const copies = bundled && bundled.length > 0 ? bundled : [finding];
   const lane = laneOf(finding);
   const key = findingKey(finding);
-  const rowClass =
-    decision === 'accept'
+  const rowClass = readOnly
+    ? classes.issueCard
+    : decision === 'accept'
       ? `${classes.issueCard} ${classes.rowAccept}`
       : decision === 'decline'
         ? `${classes.issueCard} ${classes.rowDecline}`
@@ -2566,8 +2687,27 @@ const FindingRow: React.FC<{
     </>
   );
 
-  const actions =
-    lane === 'Auto-fix' || (lane === 'AI-fix' && aiStatus === 'ready') ? (
+  const actions = readOnly
+    ? copies.some(item => laneOf(item) === 'Manual-fix') ? (
+      <Button
+        size="small"
+        variant="outlined"
+        color="primary"
+        startIcon={<CodeIcon style={{ fontSize: 16 }} />}
+        style={PILL_COMPACT}
+        onClick={() =>
+          window.open(
+            `/devspaces-mockup.html?file=${encodeURIComponent(
+              finding.file || '',
+            )}&line=${finding.lineStart}&tier=${finding.fixTier}&status=open`,
+            '_blank',
+          )
+        }
+      >
+        Open in Dev Spaces
+      </Button>
+    ) : null
+    : lane === 'Auto-fix' || (lane === 'AI-fix' && aiStatus === 'ready') ? (
       suggestionActions
     ) : lane === 'AI-fix' && aiStatus === 'loading' ? null : lane === 'AI-fix' ? (
       onGenerateAi ? (
@@ -2665,9 +2805,10 @@ const FindingRow: React.FC<{
       {copies.map(item => {
         const itemLane = laneOf(item);
         const itemSnip = snippetForRule(item.ruleId);
-        const itemWaiting = itemLane === 'AI-fix' && aiStatus !== 'ready';
+        const itemWaiting = readOnly || (itemLane === 'AI-fix' && aiStatus !== 'ready');
         const itemProposed =
-          itemLane === 'Auto-fix' || (itemLane === 'AI-fix' && aiStatus === 'ready');
+          !readOnly &&
+          (itemLane === 'Auto-fix' || (itemLane === 'AI-fix' && aiStatus === 'ready'));
         const itemIssueLines: DiffLine[] =
           itemWaiting || itemLane === 'Manual-fix'
             ? itemSnip.current.map(text => ({ kind: 'context' as const, text }))
@@ -2708,7 +2849,7 @@ const FindingRow: React.FC<{
             Generating…
           </div>
         )}
-        {itemLane === 'AI-fix' && aiStatus === 'idle' && (
+        {!readOnly && itemLane === 'AI-fix' && aiStatus === 'idle' && (
             <div className={classes.suggestionEmpty}>
               No suggestion yet. Generate this row, or generate all on this tab.
             </div>
