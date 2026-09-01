@@ -441,7 +441,7 @@ function workflowSteps(
     if (stepsModel === 'work') {
       const steps: StepDef[] = [{ id: 'scan', label: 'Scan' }];
       if (includeAuto || includeManual) {
-        steps.push({ id: 'tier1_proposals', label: 'Auto and manual remediation' });
+        steps.push({ id: 'tier1_proposals', label: 'Results and auto remediations' });
       }
       if (includeAi) {
         steps.push({ id: 'ai_proposals', label: 'AI remediation' });
@@ -1394,7 +1394,7 @@ export const ApmeRemediationPage = () => {
             aria-label="Remediation steps model"
           >
             <ToggleButton value="with-results">With Results</ToggleButton>
-            <ToggleButton value="work">Auto and manual remediation</ToggleButton>
+            <ToggleButton value="work">Results and auto remediations</ToggleButton>
           </ToggleButtonGroup>
         </Box>
       ) : null}

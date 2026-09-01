@@ -15,7 +15,7 @@
  * one card with one Accept / Decline. Single-finding cards stay unchanged.
  */
 
-import { useLayoutEffect, useMemo, useRef, useState, type Dispatch, type ReactNode, type SetStateAction } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState, Fragment, type Dispatch, type ReactNode, type SetStateAction } from 'react';
 import {
   Button,
   Checkbox,
@@ -38,7 +38,6 @@ import {
   makeStyles,
 } from '@material-ui/core';
 import { fade, type Theme } from '@material-ui/core/styles';
-import { ToggleButton, ToggleButtonGroup } from '@mui/material';
 import ArrowDropDownIcon from '@material-ui/icons/ArrowDropDown';
 import CheckIcon from '@material-ui/icons/Check';
 import CloseIcon from '@material-ui/icons/Close';
@@ -112,7 +111,7 @@ const SEV_ORDER: SeverityClass[] = ['critical', 'high', 'medium', 'low', 'info']
 const FINDINGS_BAR_HEIGHT = 6;
 const LANE_TABS: FixLane[] = ['Auto-fix', 'AI-fix', 'Manual-fix'];
 const REDESIGN_TABS: ReviewTab[] = ['All', 'Auto-fix', 'AI-fix', 'Manual-fix'];
-const WORK_TABS: ReviewTab[] = ['All', 'Auto-fix', 'Manual-fix'];
+const WORK_TABS: ReviewTab[] = ['All', 'Auto-fix', 'AI-fix', 'Manual-fix'];
 const TAB_LABEL: Record<FixLane, string> = {
   'Auto-fix': 'Auto-fix',
   'AI-fix': 'AI-fix',
@@ -137,6 +136,7 @@ function laneFilterLabel(lane: FixLane, phase: ReviewPhase): string {
 
 function laneBadgeLabel(lane: FixLane, phase: ReviewPhase): string {
   if (phase === 'results') return RESULTS_LANE_BADGE[lane];
+  if (phase === 'work' && lane === 'AI-fix') return RESULTS_LANE_BADGE[lane];
   return laneFilterLabel(lane, phase);
 }
 
@@ -192,6 +192,9 @@ const AUTO_FIX_EXPLAIN =
 
 const RESULTS_MANUAL_BODY =
   'Not auto-fixable or eligible for AI. Change this in the file, or leave it.';
+
+const RESULTS_AI_BODY =
+  'Requires an AI suggestion. Generate it on the next step.';
 
 const INCLUDE_MENU_EXPLAIN = {
   auto: AUTO_FIX_EXPLAIN,
@@ -595,6 +598,22 @@ const useStyles = makeStyles((theme: Theme) => ({
     color: theme.palette.text.secondary,
     padding: theme.spacing(0, 0.5),
   },
+  countInfo: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 4,
+  },
+  workBreakdown: {
+    display: 'flex',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: theme.spacing(1),
+  },
+  workCount: {
+    ...theme.typography.body2,
+    fontWeight: 600,
+    color: theme.palette.text.primary,
+  },
   scanAside: {
     fontSize: 13,
     color: theme.palette.text.secondary,
@@ -838,12 +857,6 @@ const useStyles = makeStyles((theme: Theme) => ({
     minWidth: 0,
     padding: theme.spacing(0.25, 0.75),
   },
-  decisionGroup: {
-    '& .MuiToggleButton-root': {
-      textTransform: 'none',
-      padding: theme.spacing(0.25, 1.25),
-    },
-  },
   bulkTwinActions: {
     display: 'flex',
     alignItems: 'center',
@@ -1070,10 +1083,30 @@ const useStyles = makeStyles((theme: Theme) => ({
     paddingTop: 2,
   },
   rowBtnAccepted: {
-    backgroundColor: fade(theme.palette.primary.main, 0.08),
+    backgroundColor: theme.palette.success.main,
+    color: '#fff',
+    borderColor: theme.palette.success.main,
+    '& .MuiButton-label, & .MuiSvgIcon-root': {
+      color: '#fff',
+    },
+    '&:hover': {
+      backgroundColor: theme.palette.success.dark,
+      borderColor: theme.palette.success.dark,
+      color: '#fff',
+    },
   },
   rowBtnDeclined: {
-    backgroundColor: fade(theme.palette.text.primary, 0.06),
+    backgroundColor: theme.palette.error.main,
+    color: '#fff',
+    borderColor: theme.palette.error.main,
+    '& .MuiButton-label, & .MuiSvgIcon-root': {
+      color: '#fff',
+    },
+    '&:hover': {
+      backgroundColor: theme.palette.error.dark,
+      borderColor: theme.palette.error.dark,
+      color: '#fff',
+    },
   },
   rowAccept: { backgroundColor: fade(theme.palette.success.main, 0.06) },
   rowDecline: { backgroundColor: fade(theme.palette.error.main, 0.06) },
@@ -1138,6 +1171,27 @@ const useStyles = makeStyles((theme: Theme) => ({
   addMark: { color: theme.palette.success.main },
 }));
 
+const CountInfo: React.FC<{ label: string; hint: string }> = ({ label, hint }) => {
+  const classes = useStyles();
+  return (
+    <span className={classes.countInfo}>
+      <Typography
+        className={classes.mixMeta}
+        variant="body2"
+        color="textSecondary"
+        component="span"
+      >
+        {label}
+      </Typography>
+      <Tooltip title={hint} arrow>
+        <span className={classes.catHelpHit} tabIndex={0} aria-label={hint}>
+          <HelpOutlineIcon className={classes.catHelp} aria-hidden />
+        </span>
+      </Tooltip>
+    </span>
+  );
+};
+
 export const InlineVisualReview: React.FC<{
   findings: QualityViolation[];
   t1Decisions: Record<string, WizardDecision>;
@@ -1171,13 +1225,32 @@ export const InlineVisualReview: React.FC<{
 }) => {
   const classes = useStyles();
   const decisions = { ...t1Decisions, ...aiDecisions };
-  const reviewFindings =
-    phase === 'work' ? findings.filter(v => v.fixTier !== 'ai') : findings;
+  const reviewFindings = findings;
   const auto = reviewFindings.filter(v => v.fixTier === 'deterministic');
   const ai = reviewFindings.filter(v => v.fixTier === 'ai');
   const manual = reviewFindings.filter(
     v => v.fixTier !== 'deterministic' && v.fixTier !== 'ai',
   );
+  const workCountItems = [
+    auto.length > 0 && {
+      id: 'auto',
+      count: auto.length,
+      label: auto.length === 1 ? 'auto remediation' : 'auto remediations',
+      hint: LANE_EXPLAIN['Auto-fix'],
+    },
+    ai.length > 0 && {
+      id: 'ai',
+      count: ai.length,
+      label: ai.length === 1 ? 'AI remediation' : 'AI remediations',
+      hint: LANE_EXPLAIN['AI-fix'],
+    },
+    manual.length > 0 && {
+      id: 'manual',
+      count: manual.length,
+      label: manual.length === 1 ? 'manual remediation' : 'manual remediations',
+      hint: LANE_EXPLAIN['Manual-fix'],
+    },
+  ].filter(Boolean) as { id: string; count: number; label: string; hint: string }[];
   const laneCount: Record<ReviewTab, number> = {
     All: reviewFindings.length,
     'Auto-fix': auto.length,
@@ -1246,7 +1319,6 @@ export const InlineVisualReview: React.FC<{
   }, [currentRedesign, phase]);
 
   const inActiveTab = (f: QualityViolation) => {
-    if (phase === 'work' && laneOf(f) === 'AI-fix') return false;
     if (phase === 'autofix' && laneOf(f) !== 'Auto-fix') return false;
     if (phase === 'ai' && laneOf(f) !== 'AI-fix') return false;
     return fixType === 'All' || laneOf(f) === fixType;
@@ -1349,7 +1421,6 @@ export const InlineVisualReview: React.FC<{
     }).filter(row => {
       if (row.count === 0) return false;
       if (phase === 'autofix' && row.lane !== 'Auto-fix') return false;
-      if (phase === 'work' && row.lane === 'AI-fix') return false;
       if (phase === 'ai' && row.lane !== 'AI-fix') return false;
       return true;
     });
@@ -2340,50 +2411,6 @@ export const InlineVisualReview: React.FC<{
               }`}
             >
               <div className={classes.scanCountCopy}>
-                {phase === 'work' ? (
-                  <>
-                    {auto.length > 0 ? (
-                      <>
-                        <Typography className={classes.mixTotal} component="span">
-                          {auto.length}
-                        </Typography>
-                        <Typography
-                          className={classes.mixMeta}
-                          variant="body2"
-                          color="textSecondary"
-                          component="span"
-                        >
-                          {auto.length === 1
-                            ? 'auto remediation'
-                            : 'auto remediations'}
-                        </Typography>
-                      </>
-                    ) : null}
-                    {auto.length > 0 && manual.length > 0 ? (
-                      <Typography className={classes.scanCountSep} component="span">
-                        ·
-                      </Typography>
-                    ) : null}
-                    {manual.length > 0 ? (
-                      <>
-                        <Typography className={classes.mixTotal} component="span">
-                          {manual.length}
-                        </Typography>
-                        <Typography
-                          className={classes.mixMeta}
-                          variant="body2"
-                          color="textSecondary"
-                          component="span"
-                        >
-                          {manual.length === 1
-                            ? 'manual remediation'
-                            : 'manual remediations'}
-                        </Typography>
-                      </>
-                    ) : null}
-                  </>
-                ) : (
-                  <>
                 <Typography className={classes.mixTotal} component="span">
                   {mix.total}
                 </Typography>
@@ -2405,8 +2432,6 @@ export const InlineVisualReview: React.FC<{
                     </>
                   ) : null}
                 </Typography>
-                  </>
-                )}
                 {redesign3Plus && !redesign4 ? (
                   <Typography className={classes.scanAside} component="span">
                     <strong>{remediationCount}</strong>
@@ -2439,6 +2464,23 @@ export const InlineVisualReview: React.FC<{
                 </div>
               )}
             </div>
+            {phase === 'work' && workCountItems.length > 0 ? (
+              <div className={classes.workBreakdown}>
+                {workCountItems.map((item, index) => (
+                  <Fragment key={item.id}>
+                    {index > 0 ? (
+                      <Typography className={classes.scanCountSep} component="span">
+                        ·
+                      </Typography>
+                    ) : null}
+                    <Typography className={classes.workCount} component="span">
+                      {item.count}
+                    </Typography>
+                    <CountInfo label={item.label} hint={item.hint} />
+                  </Fragment>
+                ))}
+              </div>
+            ) : null}
             {redesign4 ? (
               showsResultsMix(phase) || phase === 'autofix' || phase === 'ai' ? null : (
               <>
@@ -2777,7 +2819,7 @@ export const InlineVisualReview: React.FC<{
                 phase={phase}
                 readOnly={
                   phase === 'results' ||
-                  (phase === 'work' && laneOf(primary) === 'Manual-fix')
+                  (phase === 'work' && laneOf(primary) !== 'Auto-fix')
                 }
               />
               );
@@ -2890,7 +2932,6 @@ const FindingRow: React.FC<{
   aiStatus,
   onDecision,
   onGenerateAi,
-  quietRowActions,
   hideDecline,
   includeInPr,
   highlight,
@@ -2911,56 +2952,35 @@ const FindingRow: React.FC<{
         : includeInPr
           ? `${classes.issueCard} ${classes.rowNeutral}`
           : classes.issueCard;
-  const acceptFilled = quietRowActions
-    ? false
-    : decision === 'accept';
-  const declineFilled = quietRowActions ? false : decision === 'decline';
+  const acceptFilled = decision === 'accept';
+  const declineFilled = decision === 'decline';
 
-  const suggestionActions = includeInPr ? (
-    <ToggleButtonGroup
-      exclusive
-      size="small"
-      className={classes.decisionGroup}
-      value={decision ?? null}
-      onChange={(_event, next: WizardDecision | null) => onDecision(next)}
-      aria-label="Accept or decline this remediation"
-    >
-      <ToggleButton value="accept">Accept</ToggleButton>
-      <ToggleButton value="decline">Decline</ToggleButton>
-    </ToggleButtonGroup>
-  ) : (
+  const suggestionActions = (
     <>
       <Button
         size="small"
         variant={acceptFilled ? 'contained' : 'outlined'}
-        color="primary"
-        className={
-          quietRowActions && decision === 'accept' ? classes.rowBtnAccepted : undefined
-        }
+        color={acceptFilled ? 'inherit' : 'primary'}
+        className={acceptFilled ? classes.rowBtnAccepted : undefined}
         startIcon={<CheckIcon />}
         style={PILL_COMPACT}
-        aria-pressed={hideDecline ? decision === 'accept' : undefined}
-        onClick={() =>
-          hideDecline && decision === 'accept'
-            ? onDecision(null)
-            : onDecision('accept')
-        }
+        aria-pressed={acceptFilled}
+        onClick={() => onDecision(acceptFilled ? null : 'accept')}
       >
-        {decision === 'accept' ? 'Accepted' : 'Accept'}
+        {acceptFilled ? 'Accepted' : 'Accept'}
       </Button>
       {hideDecline ? null : (
         <Button
           size="small"
           variant={declineFilled ? 'contained' : 'outlined'}
-          color="primary"
-          className={
-            quietRowActions && decision === 'decline' ? classes.rowBtnDeclined : undefined
-          }
+          color={declineFilled ? 'inherit' : 'primary'}
+          className={declineFilled ? classes.rowBtnDeclined : undefined}
           startIcon={<CloseIcon />}
           style={PILL_COMPACT}
-          onClick={() => onDecision('decline')}
+          aria-pressed={declineFilled}
+          onClick={() => onDecision(declineFilled ? null : 'decline')}
         >
-          {decision === 'decline' ? 'Declined' : 'Decline'}
+          {declineFilled ? 'Declined' : 'Decline'}
         </Button>
       )}
     </>
@@ -3071,13 +3091,16 @@ const FindingRow: React.FC<{
       {copies.map(item => {
         const itemLane = laneOf(item);
         const itemSnip = snippetForRule(item.ruleId);
+        const fullDiff = unifiedDiff(itemSnip.current, itemSnip.proposed);
         const showRemediation =
           !readOnly &&
           (itemLane === 'Auto-fix' ||
             (itemLane === 'AI-fix' && aiStatus === 'ready'));
         const itemLines: DiffLine[] = showRemediation
-          ? unifiedDiff(itemSnip.current, itemSnip.proposed)
-          : itemSnip.current.map(text => ({ kind: 'context' as const, text }));
+          ? fullDiff
+          : phase === 'results' || (phase === 'work' && itemLane === 'AI-fix')
+            ? fullDiff.filter(line => line.kind !== 'add')
+            : itemSnip.current.map(text => ({ kind: 'context' as const, text }));
         return (
       <div className={classes.diffBlock} key={`diff-${findingKey(item)}`}>
         {readOnly && itemLane === 'Manual-fix' ? (
@@ -3093,6 +3116,11 @@ const FindingRow: React.FC<{
             >
               Open in Dev Spaces
             </Button>
+          </div>
+        ) : null}
+        {readOnly && itemLane === 'AI-fix' && phase === 'work' ? (
+          <div className={`${classes.suggestionEmpty} ${classes.suggestionLeadRow}`}>
+            <span>{RESULTS_AI_BODY}</span>
           </div>
         ) : null}
         {itemLines.length === 0 ? (
