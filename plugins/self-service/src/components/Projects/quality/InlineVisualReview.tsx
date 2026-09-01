@@ -2403,7 +2403,7 @@ export const InlineVisualReview: React.FC<{
       )}
 
       <Paper className={classes.box} elevation={0}>
-        {currentRedesign && phase !== 'autofix' && phase !== 'ai' ? (
+        {currentRedesign && phase !== 'autofix' ? (
           <div className={classes.scanCountHead}>
             <div
               className={`${classes.scanCountRow}${
@@ -2412,7 +2412,7 @@ export const InlineVisualReview: React.FC<{
             >
               <div className={classes.scanCountCopy}>
                 <Typography className={classes.mixTotal} component="span">
-                  {mix.total}
+                  {phase === 'ai' ? ai.length : mix.total}
                 </Typography>
                 <Typography
                   className={classes.mixMeta}
@@ -2420,10 +2420,14 @@ export const InlineVisualReview: React.FC<{
                   color="textSecondary"
                   component="span"
                 >
-                  {findingWord} on this scan
-                  {!showsResultsMix(phase) &&
+                  {phase === 'ai'
+                    ? ai.length === 1
+                      ? 'finding that needs an AI suggestion'
+                      : 'findings that need an AI suggestion'
+                    : `${findingWord} on this scan`}
+                  {phase !== 'ai' &&
+                  !showsResultsMix(phase) &&
                   phase !== 'autofix' &&
-                  phase !== 'ai' &&
                   redesign4 ? (
                     <>
                       {`, ${remediationCount} ${
