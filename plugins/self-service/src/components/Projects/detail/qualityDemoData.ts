@@ -1,6 +1,20 @@
 export type SeverityClass = 'critical' | 'high' | 'medium' | 'low' | 'info';
 
-export type ViolationCategory = 'lint' | 'aap-compatibility' | 'security' | 'best-practice';
+/**
+ * ADR-008 / `apme_engine.rule_catalog._PREFIX_TO_CATEGORY`.
+ * Same startswith order as the engine: A, L, M, R, P, SEC, INFRA.
+ */
+export type ApmeRuleCategory =
+  | 'lint'
+  | 'modernize'
+  | 'risk'
+  | 'policy'
+  | 'aap'
+  | 'secrets'
+  | 'infrastructure';
+
+/** ADR-008 catalog ids. Alias kept for older Quality tab imports. */
+export type ViolationCategory = ApmeRuleCategory;
 
 export type QualityViolation = {
   ruleId: string;
@@ -212,23 +226,23 @@ const QUALITY_DATA: Record<string, ProjectQualityData> = {
       },
     ],
     violations: [
-      { ruleId: 'fqcn[action-core]', message: 'Use FQCN for builtin module actions', ruleDescription: 'Module actions should use fully qualified collection name (FQCN) format', file: 'tasks/main.yml', lineStart: 12, severity: 'medium', fixTier: 'deterministic', category: 'lint', scope: 'task', validatorSource: 'native', yamlPath: 'tasks/main.yml/plays[0]/tasks[1]' },
-      { ruleId: 'yaml[truthy]', message: 'Truthy value should be one of [false, true]', ruleDescription: 'Truthy and falsy values should use consistent YAML boolean format', file: 'defaults/main.yml', lineStart: 8, severity: 'low', fixTier: 'deterministic', category: 'lint', scope: 'play', validatorSource: 'native', yamlPath: 'defaults/main.yml' },
-      { ruleId: 'risky-file-permissions', message: 'File permissions unset or incorrect', ruleDescription: 'File tasks should specify explicit permissions to prevent security issues', file: 'tasks/patch-apply.yml', lineStart: 34, severity: 'high', fixTier: 'ai', category: 'security', scope: 'task', validatorSource: 'native', yamlPath: 'tasks/patch-apply.yml/plays[0]/tasks[3]' },
-      { ruleId: 'no-changed-when', message: 'Commands should not change things if nothing needs doing', ruleDescription: 'Tasks that run shell or command modules should use changed_when to indicate when changes occur', file: 'tasks/pre-check.yml', lineStart: 8, severity: 'medium', fixTier: 'ai', category: 'lint', scope: 'task', validatorSource: 'native', yamlPath: 'tasks/pre-check.yml/plays[0]/tasks[0]' },
-      { ruleId: 'name[missing]', message: 'All tasks should be named', ruleDescription: 'All tasks should have a descriptive name for readability and troubleshooting', file: 'tasks/main.yml', lineStart: 12, severity: 'medium', fixTier: 'deterministic', category: 'best-practice', scope: 'task', validatorSource: 'native', yamlPath: 'tasks/main.yml/plays[0]/tasks[1]' },
-      { ruleId: 'deprecated-module', message: 'Module is deprecated, use the replacement', ruleDescription: 'Deprecated modules will be removed in a future ansible-core version', file: 'tasks/report.yml', lineStart: 18, severity: 'low', fixTier: 'manual', category: 'lint', scope: 'task', validatorSource: 'ansible', yamlPath: 'tasks/report.yml/plays[0]/tasks[1]', aiReason: 'Complex parameter usage requires manual verification of replacement module compatibility', aiSuggestion: 'Replace ansible.builtin.yum with ansible.builtin.dnf. Verify parameter compatibility before applying.' },
-      { ruleId: 'meta-no-info', message: 'Role metadata should contain relevant info', ruleDescription: 'Role meta/main.yml should include author, description, license, and supported platforms', file: 'meta/main.yml', lineStart: 3, severity: 'info', fixTier: 'manual', category: 'best-practice', scope: 'role', validatorSource: 'native', yamlPath: 'meta/main.yml' },
-      { ruleId: 'aap-deprecated-module', message: 'ansible.builtin.yum is deprecated in AAP 2.5+ — use ansible.builtin.dnf', ruleDescription: 'The yum module is deprecated for ansible-core 2.17+. Use ansible.builtin.dnf as the drop-in replacement.', file: 'tasks/patch-apply.yml', lineStart: 14, severity: 'high', fixTier: 'deterministic', category: 'aap-compatibility', scope: 'task', validatorSource: 'native', yamlPath: 'tasks/patch-apply.yml/plays[0]/tasks[1]' },
-      { ruleId: 'aap-removed-param', message: 'warn parameter removed in ansible-core 2.17 (AAP 2.7)', ruleDescription: 'The warn parameter was removed from command/shell modules in ansible-core 2.17', file: 'tasks/pre-check.yml', lineStart: 8, severity: 'medium', fixTier: 'deterministic', category: 'aap-compatibility', scope: 'task', validatorSource: 'native', yamlPath: 'tasks/pre-check.yml/plays[0]/tasks[0]' },
-      { ruleId: 'aap-deprecated-syntax', message: 'with_items is deprecated — use loop for AAP 2.5+ compatibility', ruleDescription: 'The with_* loop syntax is deprecated in favor of the loop keyword with appropriate filters', file: 'tasks/main.yml', lineStart: 22, severity: 'high', fixTier: 'deterministic', category: 'aap-compatibility', scope: 'task', validatorSource: 'native', yamlPath: 'tasks/main.yml/plays[0]/tasks[3]' },
-      { ruleId: 'aap-collection-update', message: 'community.general 7.5.0 unsupported in AAP 2.7 — update to >= 8.0.0', ruleDescription: 'Collection version is incompatible with the target ansible-core version', file: 'collections/requirements.yml', lineStart: 6, severity: 'medium', fixTier: 'deterministic', category: 'aap-compatibility', scope: 'collection', validatorSource: 'collection_health', yamlPath: 'collections/requirements.yml' },
-      { ruleId: 'aap-removed-config', message: 'callback_whitelist renamed to callbacks_enabled (removed in ansible-core 2.17)', ruleDescription: 'Configuration key was renamed in ansible-core 2.17. The old name is no longer recognized.', file: 'ansible.cfg', lineStart: 3, severity: 'critical', fixTier: 'deterministic', category: 'aap-compatibility', scope: 'playbook', validatorSource: 'native', yamlPath: 'ansible.cfg' },
+      { ruleId: 'L026', message: 'Use FQCN for builtin module actions', ruleDescription: 'Module actions should use fully qualified collection name (FQCN) format', file: 'tasks/main.yml', lineStart: 12, severity: 'medium', fixTier: 'deterministic', category: 'lint', scope: 'task', validatorSource: 'native', yamlPath: 'tasks/main.yml/plays[0]/tasks[1]' },
+      { ruleId: 'L061', message: 'Truthy value should be one of [false, true]', ruleDescription: 'Truthy and falsy values should use consistent YAML boolean format', file: 'defaults/main.yml', lineStart: 8, severity: 'low', fixTier: 'deterministic', category: 'lint', scope: 'play', validatorSource: 'native', yamlPath: 'defaults/main.yml' },
+      { ruleId: 'L021', message: 'File permissions unset or incorrect', ruleDescription: 'File tasks should specify explicit permissions to prevent security issues', file: 'tasks/patch-apply.yml', lineStart: 34, severity: 'high', fixTier: 'ai', category: 'lint', scope: 'task', validatorSource: 'native', yamlPath: 'tasks/patch-apply.yml/plays[0]/tasks[3]' },
+      { ruleId: 'L013', message: 'Commands should not change things if nothing needs doing', ruleDescription: 'Tasks that run shell or command modules should use changed_when to indicate when changes occur', file: 'tasks/pre-check.yml', lineStart: 8, severity: 'medium', fixTier: 'ai', category: 'lint', scope: 'task', validatorSource: 'native', yamlPath: 'tasks/pre-check.yml/plays[0]/tasks[0]' },
+      { ruleId: 'L024', message: 'All tasks should be named', ruleDescription: 'All tasks should have a descriptive name for readability and troubleshooting', file: 'tasks/main.yml', lineStart: 12, severity: 'medium', fixTier: 'deterministic', category: 'lint', scope: 'task', validatorSource: 'native', yamlPath: 'tasks/main.yml/plays[0]/tasks[1]' },
+      { ruleId: 'M002', message: 'Module is deprecated, use the replacement', ruleDescription: 'Deprecated modules will be removed in a future ansible-core version', file: 'tasks/report.yml', lineStart: 18, severity: 'low', fixTier: 'manual', category: 'modernize', scope: 'task', validatorSource: 'ansible', yamlPath: 'tasks/report.yml/plays[0]/tasks[1]', aiReason: 'Complex parameter usage requires manual verification of replacement module compatibility', aiSuggestion: 'Replace ansible.builtin.yum with ansible.builtin.dnf. Verify parameter compatibility before applying.' },
+      { ruleId: 'L027', message: 'Role metadata should contain relevant info', ruleDescription: 'Role meta/main.yml should include author, description, license, and supported platforms', file: 'meta/main.yml', lineStart: 3, severity: 'info', fixTier: 'manual', category: 'lint', scope: 'role', validatorSource: 'native', yamlPath: 'meta/main.yml' },
+      { ruleId: 'M002', message: 'ansible.builtin.yum is deprecated in AAP 2.5+ — use ansible.builtin.dnf', ruleDescription: 'The yum module is deprecated for ansible-core 2.17+. Use ansible.builtin.dnf as the drop-in replacement.', file: 'tasks/patch-apply.yml', lineStart: 14, severity: 'high', fixTier: 'deterministic', category: 'modernize', scope: 'task', validatorSource: 'native', yamlPath: 'tasks/patch-apply.yml/plays[0]/tasks[1]' },
+      { ruleId: 'L059', message: 'warn parameter removed in ansible-core 2.17 (AAP 2.7)', ruleDescription: 'The warn parameter was removed from command/shell modules in ansible-core 2.17', file: 'tasks/pre-check.yml', lineStart: 8, severity: 'medium', fixTier: 'deterministic', category: 'lint', scope: 'task', validatorSource: 'native', yamlPath: 'tasks/pre-check.yml/plays[0]/tasks[0]' },
+      { ruleId: 'M009', message: 'with_items is deprecated — use loop for AAP 2.5+ compatibility', ruleDescription: 'The with_* loop syntax is deprecated in favor of the loop keyword with appropriate filters', file: 'tasks/main.yml', lineStart: 22, severity: 'high', fixTier: 'deterministic', category: 'modernize', scope: 'task', validatorSource: 'native', yamlPath: 'tasks/main.yml/plays[0]/tasks[3]' },
+      { ruleId: 'M011', message: 'community.general 7.5.0 unsupported in AAP 2.7 — update to >= 8.0.0', ruleDescription: 'Collection version is incompatible with the target ansible-core version', file: 'collections/requirements.yml', lineStart: 6, severity: 'medium', fixTier: 'deterministic', category: 'modernize', scope: 'collection', validatorSource: 'collection_health', yamlPath: 'collections/requirements.yml' },
+      { ruleId: 'M022', message: 'callback_whitelist renamed to callbacks_enabled (removed in ansible-core 2.17)', ruleDescription: 'Configuration key was renamed in ansible-core 2.17. The old name is no longer recognized.', file: 'ansible.cfg', lineStart: 3, severity: 'critical', fixTier: 'deterministic', category: 'modernize', scope: 'playbook', validatorSource: 'native', yamlPath: 'ansible.cfg' },
     ],
     proposals: [
       {
         id: 'prop-1',
-        ruleId: 'risky-file-permissions',
+        ruleId: 'L021',
         file: 'tasks/patch-apply.yml',
         lineStart: 34,
         lineEnd: 40,
@@ -240,7 +254,7 @@ const QUALITY_DATA: Record<string, ProjectQualityData> = {
       },
       {
         id: 'prop-2',
-        ruleId: 'no-changed-when',
+        ruleId: 'L013',
         file: 'tasks/pre-check.yml',
         lineStart: 8,
         lineEnd: 14,
@@ -252,7 +266,7 @@ const QUALITY_DATA: Record<string, ProjectQualityData> = {
       },
       {
         id: 'prop-3',
-        ruleId: 'deprecated-module',
+        ruleId: 'M002',
         file: 'tasks/report.yml',
         lineStart: 18,
         lineEnd: 24,
@@ -338,20 +352,20 @@ const QUALITY_DATA: Record<string, ProjectQualityData> = {
       },
     ],
     violations: [
-      { ruleId: 'fqcn[action-core]', message: 'Use FQCN for builtin module actions', ruleDescription: 'Module actions should use fully qualified collection name (FQCN) format', file: 'tasks/apply-rules.yml', lineStart: 8, severity: 'medium', fixTier: 'deterministic', category: 'lint', scope: 'task', validatorSource: 'native', yamlPath: 'tasks/apply-rules.yml/plays[0]/tasks[0]' },
-      { ruleId: 'fqcn[action-core]', message: 'Use FQCN for builtin module actions', ruleDescription: 'Module actions should use fully qualified collection name (FQCN) format', file: 'tasks/validate-rules.yml', lineStart: 15, severity: 'medium', fixTier: 'deterministic', category: 'lint', scope: 'task', validatorSource: 'native', yamlPath: 'tasks/validate-rules.yml/plays[0]/tasks[1]' },
-      { ruleId: 'risky-file-permissions', message: 'File permissions unset or incorrect', ruleDescription: 'File tasks should specify explicit permissions to prevent security issues', file: 'tasks/apply-rules.yml', lineStart: 22, severity: 'high', fixTier: 'ai', category: 'security', scope: 'task', validatorSource: 'native', yamlPath: 'tasks/apply-rules.yml/plays[0]/tasks[2]' },
-      { ruleId: 'no-changed-when', message: 'Commands should not change things if nothing needs doing', ruleDescription: '', file: 'tasks/validate-rules.yml', lineStart: 31, severity: 'medium', fixTier: 'ai', category: 'lint', scope: 'task', validatorSource: 'native', yamlPath: 'tasks/validate-rules.yml/plays[0]/tasks[3]' },
-      { ruleId: 'name[missing]', message: 'All tasks should be named', ruleDescription: '', file: 'tasks/rollback.yml', lineStart: 3, severity: 'medium', fixTier: 'deterministic', category: 'best-practice', scope: 'task', validatorSource: 'native', yamlPath: 'tasks/rollback.yml/plays[0]/tasks[0]' },
-      { ruleId: 'name[missing]', message: 'All tasks should be named', ruleDescription: '', file: 'tasks/rollback.yml', lineStart: 12, severity: 'medium', fixTier: 'deterministic', category: 'best-practice', scope: 'task', validatorSource: 'native', yamlPath: 'tasks/rollback.yml/plays[0]/tasks[1]' },
-      { ruleId: 'yaml[truthy]', message: 'Truthy value should be one of [false, true]', ruleDescription: '', file: 'defaults/main.yml', lineStart: 5, severity: 'low', fixTier: 'deterministic', category: 'lint', scope: 'play', validatorSource: 'native', yamlPath: 'defaults/main.yml' },
-      { ruleId: 'yaml[truthy]', message: 'Truthy value should be one of [false, true]', ruleDescription: '', file: 'defaults/main.yml', lineStart: 12, severity: 'low', fixTier: 'deterministic', category: 'lint', scope: 'play', validatorSource: 'native', yamlPath: 'defaults/main.yml#line12' },
-      { ruleId: 'aap-deprecated-module', message: 'paloalto.panos.panos_security_rule deprecated in collection 3.0 — use paloalto.panos.panos_security_policy', ruleDescription: '', file: 'tasks/apply-rules.yml', lineStart: 35, severity: 'high', fixTier: 'deterministic', category: 'aap-compatibility', scope: 'task', validatorSource: 'native', yamlPath: 'tasks/apply-rules.yml/plays[0]/tasks[4]' },
-      { ruleId: 'aap-collection-update', message: 'paloalto.panos 2.19.0 has known issues — update to >= 3.0.0', ruleDescription: '', file: 'collections/requirements.yml', lineStart: 2, severity: 'high', fixTier: 'deterministic', category: 'aap-compatibility', scope: 'collection', validatorSource: 'collection_health', yamlPath: 'collections/requirements.yml' },
-      { ruleId: 'aap-removed-config', message: 'callback_whitelist renamed to callbacks_enabled (removed in ansible-core 2.17)', ruleDescription: '', file: 'ansible.cfg', lineStart: 4, severity: 'critical', fixTier: 'deterministic', category: 'aap-compatibility', scope: 'playbook', validatorSource: 'native', yamlPath: 'ansible.cfg' },
-      { ruleId: 'deprecated-module', message: 'Module ansible.netcommon.net_ping is deprecated — use vendor-specific ping module', ruleDescription: '', file: 'tasks/validate-rules.yml', lineStart: 44, severity: 'low', fixTier: 'manual', category: 'lint', scope: 'task', validatorSource: 'ansible', yamlPath: 'tasks/validate-rules.yml/plays[0]/tasks[5]' },
-      { ruleId: 'no-jinja-when', message: 'Jinja2 templates should not be used in when conditions', ruleDescription: '', file: 'tasks/apply-rules.yml', lineStart: 48, severity: 'low', fixTier: 'deterministic', category: 'lint', scope: 'task', validatorSource: 'native', yamlPath: 'tasks/apply-rules.yml/plays[0]/tasks[5]' },
-      { ruleId: 'meta-no-info', message: 'Role metadata should contain relevant info', ruleDescription: '', file: 'meta/main.yml', lineStart: 3, severity: 'info', fixTier: 'manual', category: 'best-practice', scope: 'role', validatorSource: 'native', yamlPath: 'meta/main.yml' },
+      { ruleId: 'L026', message: 'Use FQCN for builtin module actions', ruleDescription: 'Module actions should use fully qualified collection name (FQCN) format', file: 'tasks/apply-rules.yml', lineStart: 8, severity: 'medium', fixTier: 'deterministic', category: 'lint', scope: 'task', validatorSource: 'native', yamlPath: 'tasks/apply-rules.yml/plays[0]/tasks[0]' },
+      { ruleId: 'L026', message: 'Use FQCN for builtin module actions', ruleDescription: 'Module actions should use fully qualified collection name (FQCN) format', file: 'tasks/validate-rules.yml', lineStart: 15, severity: 'medium', fixTier: 'deterministic', category: 'lint', scope: 'task', validatorSource: 'native', yamlPath: 'tasks/validate-rules.yml/plays[0]/tasks[1]' },
+      { ruleId: 'L021', message: 'File permissions unset or incorrect', ruleDescription: 'File tasks should specify explicit permissions to prevent security issues', file: 'tasks/apply-rules.yml', lineStart: 22, severity: 'high', fixTier: 'ai', category: 'lint', scope: 'task', validatorSource: 'native', yamlPath: 'tasks/apply-rules.yml/plays[0]/tasks[2]' },
+      { ruleId: 'L013', message: 'Commands should not change things if nothing needs doing', ruleDescription: '', file: 'tasks/validate-rules.yml', lineStart: 31, severity: 'medium', fixTier: 'ai', category: 'lint', scope: 'task', validatorSource: 'native', yamlPath: 'tasks/validate-rules.yml/plays[0]/tasks[3]' },
+      { ruleId: 'L024', message: 'All tasks should be named', ruleDescription: '', file: 'tasks/rollback.yml', lineStart: 3, severity: 'medium', fixTier: 'deterministic', category: 'lint', scope: 'task', validatorSource: 'native', yamlPath: 'tasks/rollback.yml/plays[0]/tasks[0]' },
+      { ruleId: 'L024', message: 'All tasks should be named', ruleDescription: '', file: 'tasks/rollback.yml', lineStart: 12, severity: 'medium', fixTier: 'deterministic', category: 'lint', scope: 'task', validatorSource: 'native', yamlPath: 'tasks/rollback.yml/plays[0]/tasks[1]' },
+      { ruleId: 'L061', message: 'Truthy value should be one of [false, true]', ruleDescription: '', file: 'defaults/main.yml', lineStart: 5, severity: 'low', fixTier: 'deterministic', category: 'lint', scope: 'play', validatorSource: 'native', yamlPath: 'defaults/main.yml' },
+      { ruleId: 'L061', message: 'Truthy value should be one of [false, true]', ruleDescription: '', file: 'defaults/main.yml', lineStart: 12, severity: 'low', fixTier: 'deterministic', category: 'lint', scope: 'play', validatorSource: 'native', yamlPath: 'defaults/main.yml#line12' },
+      { ruleId: 'M002', message: 'paloalto.panos.panos_security_rule deprecated in collection 3.0 — use paloalto.panos.panos_security_policy', ruleDescription: '', file: 'tasks/apply-rules.yml', lineStart: 35, severity: 'high', fixTier: 'deterministic', category: 'modernize', scope: 'task', validatorSource: 'native', yamlPath: 'tasks/apply-rules.yml/plays[0]/tasks[4]' },
+      { ruleId: 'M011', message: 'paloalto.panos 2.19.0 has known issues — update to >= 3.0.0', ruleDescription: '', file: 'collections/requirements.yml', lineStart: 2, severity: 'high', fixTier: 'deterministic', category: 'modernize', scope: 'collection', validatorSource: 'collection_health', yamlPath: 'collections/requirements.yml' },
+      { ruleId: 'M022', message: 'callback_whitelist renamed to callbacks_enabled (removed in ansible-core 2.17)', ruleDescription: '', file: 'ansible.cfg', lineStart: 4, severity: 'critical', fixTier: 'deterministic', category: 'modernize', scope: 'playbook', validatorSource: 'native', yamlPath: 'ansible.cfg' },
+      { ruleId: 'M002', message: 'Module ansible.netcommon.net_ping is deprecated — use vendor-specific ping module', ruleDescription: '', file: 'tasks/validate-rules.yml', lineStart: 44, severity: 'low', fixTier: 'manual', category: 'modernize', scope: 'task', validatorSource: 'ansible', yamlPath: 'tasks/validate-rules.yml/plays[0]/tasks[5]' },
+      { ruleId: 'L015', message: 'Jinja2 templates should not be used in when conditions', ruleDescription: '', file: 'tasks/apply-rules.yml', lineStart: 48, severity: 'low', fixTier: 'deterministic', category: 'lint', scope: 'task', validatorSource: 'native', yamlPath: 'tasks/apply-rules.yml/plays[0]/tasks[5]' },
+      { ruleId: 'L027', message: 'Role metadata should contain relevant info', ruleDescription: '', file: 'meta/main.yml', lineStart: 3, severity: 'info', fixTier: 'manual', category: 'lint', scope: 'role', validatorSource: 'native', yamlPath: 'meta/main.yml' },
     ],
     proposals: [],
     ansibleCoreVersion: '2.15.8',
@@ -409,9 +423,9 @@ const QUALITY_DATA: Record<string, ProjectQualityData> = {
       },
     ],
     violations: [
-      { ruleId: 'yaml[truthy]', message: 'Truthy value should be one of [false, true]', ruleDescription: 'Truthy and falsy values should use consistent YAML boolean format', file: 'defaults/main.yml', lineStart: 3, severity: 'low', fixTier: 'deterministic', category: 'lint', scope: 'play', validatorSource: 'native', yamlPath: 'defaults/main.yml' },
-      { ruleId: 'no-changed-when', message: 'Commands should not change things if nothing needs doing', ruleDescription: 'Tasks that run shell or command modules should use changed_when to indicate when changes occur', file: 'tasks/provision-ec2.yml', lineStart: 18, severity: 'medium', fixTier: 'deterministic', category: 'lint', scope: 'task', validatorSource: 'native', yamlPath: 'tasks/provision-ec2.yml/plays[0]/tasks[2]' },
-      { ruleId: 'meta-no-info', message: 'Role metadata should contain relevant info', ruleDescription: 'Role meta/main.yml should include author, description, license, and supported platforms', file: 'meta/main.yml', lineStart: 3, severity: 'info', fixTier: 'manual', category: 'best-practice', scope: 'role', validatorSource: 'native', yamlPath: 'meta/main.yml' },
+      { ruleId: 'L061', message: 'Truthy value should be one of [false, true]', ruleDescription: 'Truthy and falsy values should use consistent YAML boolean format', file: 'defaults/main.yml', lineStart: 3, severity: 'low', fixTier: 'deterministic', category: 'lint', scope: 'play', validatorSource: 'native', yamlPath: 'defaults/main.yml' },
+      { ruleId: 'L013', message: 'Commands should not change things if nothing needs doing', ruleDescription: 'Tasks that run shell or command modules should use changed_when to indicate when changes occur', file: 'tasks/provision-ec2.yml', lineStart: 18, severity: 'medium', fixTier: 'deterministic', category: 'lint', scope: 'task', validatorSource: 'native', yamlPath: 'tasks/provision-ec2.yml/plays[0]/tasks[2]' },
+      { ruleId: 'L027', message: 'Role metadata should contain relevant info', ruleDescription: 'Role meta/main.yml should include author, description, license, and supported platforms', file: 'meta/main.yml', lineStart: 3, severity: 'info', fixTier: 'manual', category: 'lint', scope: 'role', validatorSource: 'native', yamlPath: 'meta/main.yml' },
     ],
     proposals: [],
     ansibleCoreVersion: '2.16.3',
@@ -466,27 +480,27 @@ const QUALITY_DATA: Record<string, ProjectQualityData> = {
       },
     ],
     violations: [
-      { ruleId: 'aap-removed-config', message: 'callback_whitelist renamed to callbacks_enabled (removed in ansible-core 2.17)', ruleDescription: '', file: 'ansible.cfg', lineStart: 4, severity: 'critical', fixTier: 'deterministic', category: 'aap-compatibility', scope: 'playbook', validatorSource: 'native', yamlPath: 'ansible.cfg' },
-      { ruleId: 'SEC-001', message: 'Hardcoded backup encryption key in vault-adjacent vars', ruleDescription: '', file: 'vars/secrets.yml', lineStart: 8, severity: 'critical', fixTier: 'manual', category: 'security', scope: 'play', validatorSource: 'gitleaks', yamlPath: 'vars/secrets.yml' },
-      { ruleId: 'risky-file-permissions', message: 'File permissions unset or incorrect', ruleDescription: '', file: 'tasks/backup.yml', lineStart: 22, severity: 'high', fixTier: 'ai', category: 'security', scope: 'task', validatorSource: 'native', yamlPath: 'tasks/backup.yml/plays[0]/tasks[2]' },
-      { ruleId: 'aap-deprecated-module', message: 'ansible.builtin.yum is deprecated — use ansible.builtin.dnf', ruleDescription: '', file: 'tasks/backup.yml', lineStart: 40, severity: 'high', fixTier: 'deterministic', category: 'aap-compatibility', scope: 'task', validatorSource: 'native', yamlPath: 'tasks/backup.yml/plays[0]/tasks[4]' },
-      { ruleId: 'risky-file-permissions', message: 'File permissions unset or incorrect', ruleDescription: '', file: 'tasks/restore.yml', lineStart: 18, severity: 'high', fixTier: 'ai', category: 'security', scope: 'task', validatorSource: 'native', yamlPath: 'tasks/restore.yml/plays[0]/tasks[1]' },
-      { ruleId: 'aap-collection-update', message: 'community.general 7.5.0 unsupported in AAP 2.7', ruleDescription: '', file: 'collections/requirements.yml', lineStart: 3, severity: 'high', fixTier: 'deterministic', category: 'aap-compatibility', scope: 'collection', validatorSource: 'collection_health', yamlPath: 'collections/requirements.yml' },
-      { ruleId: 'command-instead-of-shell', message: 'Use shell only when piping is required', ruleDescription: '', file: 'tasks/verify.yml', lineStart: 9, severity: 'high', fixTier: 'deterministic', category: 'lint', scope: 'task', validatorSource: 'native', yamlPath: 'tasks/verify.yml/plays[0]/tasks[0]' },
-      { ruleId: 'no-changed-when', message: 'Commands should not change things if nothing needs doing', ruleDescription: '', file: 'tasks/verify.yml', lineStart: 21, severity: 'medium', fixTier: 'ai', category: 'lint', scope: 'task', validatorSource: 'native', yamlPath: 'tasks/verify.yml/plays[0]/tasks[1]' },
-      { ruleId: 'fqcn[action-core]', message: 'Use FQCN for builtin module actions', ruleDescription: '', file: 'tasks/backup.yml', lineStart: 8, severity: 'medium', fixTier: 'deterministic', category: 'lint', scope: 'task', validatorSource: 'native', yamlPath: 'tasks/backup.yml/plays[0]/tasks[0]' },
-      { ruleId: 'name[missing]', message: 'All tasks should be named', ruleDescription: '', file: 'tasks/restore.yml', lineStart: 4, severity: 'medium', fixTier: 'deterministic', category: 'best-practice', scope: 'task', validatorSource: 'native', yamlPath: 'tasks/restore.yml/plays[0]/tasks[0]' },
-      { ruleId: 'name[missing]', message: 'All tasks should be named', ruleDescription: '', file: 'handlers/main.yml', lineStart: 6, severity: 'medium', fixTier: 'deterministic', category: 'best-practice', scope: 'block', validatorSource: 'native', yamlPath: 'handlers/main.yml/handlers[0]' },
-      { ruleId: 'aap-removed-param', message: 'warn parameter removed in ansible-core 2.17', ruleDescription: '', file: 'tasks/pre-check.yml', lineStart: 11, severity: 'medium', fixTier: 'deterministic', category: 'aap-compatibility', scope: 'task', validatorSource: 'native', yamlPath: 'tasks/pre-check.yml/plays[0]/tasks[0]' },
-      { ruleId: 'fqcn[action-core]', message: 'Use FQCN for builtin module actions', ruleDescription: '', file: 'tasks/restore.yml', lineStart: 28, severity: 'medium', fixTier: 'deterministic', category: 'lint', scope: 'task', validatorSource: 'native', yamlPath: 'tasks/restore.yml/plays[0]/tasks[3]' },
-      { ruleId: 'no-changed-when', message: 'Commands should not change things if nothing needs doing', ruleDescription: '', file: 'tasks/backup.yml', lineStart: 55, severity: 'medium', fixTier: 'ai', category: 'lint', scope: 'task', validatorSource: 'native', yamlPath: 'tasks/backup.yml/plays[0]/tasks[6]' },
-      { ruleId: 'aap-deprecated-syntax', message: 'with_items is deprecated — use loop', ruleDescription: '', file: 'tasks/verify.yml', lineStart: 33, severity: 'medium', fixTier: 'deterministic', category: 'aap-compatibility', scope: 'task', validatorSource: 'native', yamlPath: 'tasks/verify.yml/plays[0]/tasks[3]' },
-      { ruleId: 'yaml[truthy]', message: 'Truthy value should be one of [false, true]', ruleDescription: '', file: 'defaults/main.yml', lineStart: 4, severity: 'low', fixTier: 'deterministic', category: 'lint', scope: 'play', validatorSource: 'native', yamlPath: 'defaults/main.yml' },
-      { ruleId: 'deprecated-module', message: 'Module is deprecated, use the replacement', ruleDescription: '', file: 'tasks/report.yml', lineStart: 14, severity: 'low', fixTier: 'manual', category: 'lint', scope: 'task', validatorSource: 'ansible', yamlPath: 'tasks/report.yml/plays[0]/tasks[1]' },
-      { ruleId: 'yaml[truthy]', message: 'Truthy value should be one of [false, true]', ruleDescription: '', file: 'vars/main.yml', lineStart: 9, severity: 'low', fixTier: 'deterministic', category: 'lint', scope: 'play', validatorSource: 'native', yamlPath: 'vars/main.yml' },
-      { ruleId: 'line-length', message: 'Line too long', ruleDescription: '', file: 'tasks/backup.yml', lineStart: 61, severity: 'low', fixTier: 'deterministic', category: 'lint', scope: 'task', validatorSource: 'native', yamlPath: 'tasks/backup.yml/plays[0]/tasks[7]' },
-      { ruleId: 'meta-no-info', message: 'Role metadata should contain relevant info', ruleDescription: '', file: 'meta/main.yml', lineStart: 3, severity: 'info', fixTier: 'manual', category: 'best-practice', scope: 'role', validatorSource: 'native', yamlPath: 'meta/main.yml' },
-      { ruleId: 'var-naming', message: 'Variables should use a valid name', ruleDescription: '', file: 'defaults/main.yml', lineStart: 18, severity: 'info', fixTier: 'manual', category: 'best-practice', scope: 'play', validatorSource: 'native', yamlPath: 'defaults/main.yml#line18' },
+      { ruleId: 'M022', message: 'callback_whitelist renamed to callbacks_enabled (removed in ansible-core 2.17)', ruleDescription: '', file: 'ansible.cfg', lineStart: 4, severity: 'critical', fixTier: 'deterministic', category: 'modernize', scope: 'playbook', validatorSource: 'native', yamlPath: 'ansible.cfg' },
+      { ruleId: 'SEC:generic-api-key', message: 'Hardcoded backup encryption key in vault-adjacent vars', ruleDescription: '', file: 'vars/secrets.yml', lineStart: 8, severity: 'critical', fixTier: 'manual', category: 'secrets', scope: 'play', validatorSource: 'gitleaks', yamlPath: 'vars/secrets.yml' },
+      { ruleId: 'L021', message: 'File permissions unset or incorrect', ruleDescription: '', file: 'tasks/backup.yml', lineStart: 22, severity: 'high', fixTier: 'ai', category: 'lint', scope: 'task', validatorSource: 'native', yamlPath: 'tasks/backup.yml/plays[0]/tasks[2]' },
+      { ruleId: 'M002', message: 'ansible.builtin.yum is deprecated — use ansible.builtin.dnf', ruleDescription: '', file: 'tasks/backup.yml', lineStart: 40, severity: 'high', fixTier: 'deterministic', category: 'modernize', scope: 'task', validatorSource: 'native', yamlPath: 'tasks/backup.yml/plays[0]/tasks[4]' },
+      { ruleId: 'L021', message: 'File permissions unset or incorrect', ruleDescription: '', file: 'tasks/restore.yml', lineStart: 18, severity: 'high', fixTier: 'ai', category: 'lint', scope: 'task', validatorSource: 'native', yamlPath: 'tasks/restore.yml/plays[0]/tasks[1]' },
+      { ruleId: 'M011', message: 'community.general 7.5.0 unsupported in AAP 2.7', ruleDescription: '', file: 'collections/requirements.yml', lineStart: 3, severity: 'high', fixTier: 'deterministic', category: 'modernize', scope: 'collection', validatorSource: 'collection_health', yamlPath: 'collections/requirements.yml' },
+      { ruleId: 'L007', message: 'Use shell only when piping is required', ruleDescription: '', file: 'tasks/verify.yml', lineStart: 9, severity: 'high', fixTier: 'deterministic', category: 'lint', scope: 'task', validatorSource: 'native', yamlPath: 'tasks/verify.yml/plays[0]/tasks[0]' },
+      { ruleId: 'L013', message: 'Commands should not change things if nothing needs doing', ruleDescription: '', file: 'tasks/verify.yml', lineStart: 21, severity: 'medium', fixTier: 'ai', category: 'lint', scope: 'task', validatorSource: 'native', yamlPath: 'tasks/verify.yml/plays[0]/tasks[1]' },
+      { ruleId: 'L026', message: 'Use FQCN for builtin module actions', ruleDescription: '', file: 'tasks/backup.yml', lineStart: 8, severity: 'medium', fixTier: 'deterministic', category: 'lint', scope: 'task', validatorSource: 'native', yamlPath: 'tasks/backup.yml/plays[0]/tasks[0]' },
+      { ruleId: 'L024', message: 'All tasks should be named', ruleDescription: '', file: 'tasks/restore.yml', lineStart: 4, severity: 'medium', fixTier: 'deterministic', category: 'lint', scope: 'task', validatorSource: 'native', yamlPath: 'tasks/restore.yml/plays[0]/tasks[0]' },
+      { ruleId: 'L024', message: 'All tasks should be named', ruleDescription: '', file: 'handlers/main.yml', lineStart: 6, severity: 'medium', fixTier: 'deterministic', category: 'lint', scope: 'block', validatorSource: 'native', yamlPath: 'handlers/main.yml/handlers[0]' },
+      { ruleId: 'L059', message: 'warn parameter removed in ansible-core 2.17', ruleDescription: '', file: 'tasks/pre-check.yml', lineStart: 11, severity: 'medium', fixTier: 'deterministic', category: 'lint', scope: 'task', validatorSource: 'native', yamlPath: 'tasks/pre-check.yml/plays[0]/tasks[0]' },
+      { ruleId: 'L026', message: 'Use FQCN for builtin module actions', ruleDescription: '', file: 'tasks/restore.yml', lineStart: 28, severity: 'medium', fixTier: 'deterministic', category: 'lint', scope: 'task', validatorSource: 'native', yamlPath: 'tasks/restore.yml/plays[0]/tasks[3]' },
+      { ruleId: 'L013', message: 'Commands should not change things if nothing needs doing', ruleDescription: '', file: 'tasks/backup.yml', lineStart: 55, severity: 'medium', fixTier: 'ai', category: 'lint', scope: 'task', validatorSource: 'native', yamlPath: 'tasks/backup.yml/plays[0]/tasks[6]' },
+      { ruleId: 'M009', message: 'with_items is deprecated — use loop', ruleDescription: '', file: 'tasks/verify.yml', lineStart: 33, severity: 'medium', fixTier: 'deterministic', category: 'modernize', scope: 'task', validatorSource: 'native', yamlPath: 'tasks/verify.yml/plays[0]/tasks[3]' },
+      { ruleId: 'L061', message: 'Truthy value should be one of [false, true]', ruleDescription: '', file: 'defaults/main.yml', lineStart: 4, severity: 'low', fixTier: 'deterministic', category: 'lint', scope: 'play', validatorSource: 'native', yamlPath: 'defaults/main.yml' },
+      { ruleId: 'M002', message: 'Module is deprecated, use the replacement', ruleDescription: '', file: 'tasks/report.yml', lineStart: 14, severity: 'low', fixTier: 'manual', category: 'modernize', scope: 'task', validatorSource: 'ansible', yamlPath: 'tasks/report.yml/plays[0]/tasks[1]' },
+      { ruleId: 'L061', message: 'Truthy value should be one of [false, true]', ruleDescription: '', file: 'vars/main.yml', lineStart: 9, severity: 'low', fixTier: 'deterministic', category: 'lint', scope: 'play', validatorSource: 'native', yamlPath: 'vars/main.yml' },
+      { ruleId: 'L060', message: 'Line too long', ruleDescription: '', file: 'tasks/backup.yml', lineStart: 61, severity: 'low', fixTier: 'deterministic', category: 'lint', scope: 'task', validatorSource: 'native', yamlPath: 'tasks/backup.yml/plays[0]/tasks[7]' },
+      { ruleId: 'L027', message: 'Role metadata should contain relevant info', ruleDescription: '', file: 'meta/main.yml', lineStart: 3, severity: 'info', fixTier: 'manual', category: 'lint', scope: 'role', validatorSource: 'native', yamlPath: 'meta/main.yml' },
+      { ruleId: 'L050', message: 'Variables should use a valid name', ruleDescription: '', file: 'defaults/main.yml', lineStart: 18, severity: 'info', fixTier: 'manual', category: 'lint', scope: 'play', validatorSource: 'native', yamlPath: 'defaults/main.yml#line18' },
     ],
     proposals: [],
     ansibleCoreVersion: '2.15.4',
@@ -566,7 +580,7 @@ export function getProjectRemediationStatus(repoName: string): RemediationStatus
 export function getProjectCompatibilityCount(repoName: string): number {
   const data = QUALITY_DATA[repoName];
   if (!data) return 0;
-  return data.violations.filter(v => v.category === 'aap-compatibility').length;
+  return data.violations.filter(v => apmeCategoryOf(v) === 'modernize').length;
 }
 
 export function getProjectTargetVersion(repoName: string): string | undefined {
@@ -624,7 +638,7 @@ export function getFleetViolationData(): {
           ruleId: v.ruleId,
           message: v.message,
           severity: v.severity,
-          category: v.category,
+          category: apmeCategoryOf(v),
           repos: [{ name: repoName, count: 1, fixTier: v.fixTier, lastScannedAt: data.lastScannedAt }],
           totalCount: 1,
         });
@@ -632,16 +646,9 @@ export function getFleetViolationData(): {
     }
   }
 
-  const categoryOrder: ViolationCategory[] = ['aap-compatibility', 'security', 'lint', 'best-practice'];
-  const categoryLabels: Record<ViolationCategory, string> = {
-    'aap-compatibility': 'AAP compatibility',
-    'security': 'Security',
-    'lint': 'Lint',
-    'best-practice': 'Best practice',
-  };
   const sevOrder: SeverityClass[] = ['critical', 'high', 'medium', 'low', 'info'];
 
-  const categories: FleetViolationCategory[] = categoryOrder.map(cat => {
+  const categories: FleetViolationCategory[] = APME_CATEGORY_ORDER.map(cat => {
     const rules = Array.from(ruleMap.values())
       .filter(r => r.category === cat)
       .sort((a, b) => sevOrder.indexOf(a.severity) - sevOrder.indexOf(b.severity));
@@ -649,7 +656,7 @@ export function getFleetViolationData(): {
     rules.forEach(r => r.repos.forEach(repo => repoSet.add(repo.name)));
     return {
       category: cat,
-      label: categoryLabels[cat],
+      label: APME_CATEGORY_LABEL[cat],
       totalViolations: rules.reduce((sum, r) => sum + r.totalCount, 0),
       reposAffected: repoSet.size,
       rules,
@@ -681,16 +688,6 @@ export function getFleetViolationData(): {
   };
 }
 
-/** APME ADR-008 catalog categories — not the Portal demo parallel labels. */
-export type ApmeRuleCategory =
-  | 'lint'
-  | 'modernize'
-  | 'risk'
-  | 'policy'
-  | 'aap'
-  | 'secrets'
-  | 'infrastructure';
-
 export const APME_CATEGORY_ORDER: ApmeRuleCategory[] = [
   'lint',
   'modernize',
@@ -701,31 +698,55 @@ export const APME_CATEGORY_ORDER: ApmeRuleCategory[] = [
   'infrastructure',
 ];
 
+/** Same insertion order as `rule_catalog._PREFIX_TO_CATEGORY`. */
+const APME_RULE_PREFIX_TO_CATEGORY: [string, ApmeRuleCategory][] = [
+  ['A', 'aap'],
+  ['L', 'lint'],
+  ['M', 'modernize'],
+  ['R', 'risk'],
+  ['P', 'policy'],
+  ['SEC', 'secrets'],
+  ['INFRA', 'infrastructure'],
+];
+
 export const APME_CATEGORY_LABEL: Record<ApmeRuleCategory, string> = {
   lint: 'Lint',
   modernize: 'Modernize',
   risk: 'Risk',
   policy: 'Policy',
-  aap: 'AAP compatibility',
+  aap: 'AAP',
   secrets: 'Secrets',
   infrastructure: 'Infrastructure',
 };
 
 export const APME_CATEGORY_HINT: Record<ApmeRuleCategory, string> = {
-  lint: 'Style, correctness, and conventions.',
-  modernize: 'ansible-core version migration.',
-  risk: 'Security and risk patterns.',
-  policy: 'Policy rules.',
-  aap: 'Ansible Automation Platform compatibility.',
-  secrets: 'Detected secrets.',
-  infrastructure: 'Infrastructure checks.',
+  lint: 'Style, correctness, and best practice (L-series).',
+  modernize: 'ansible-core version migration (M-series).',
+  risk: 'Security and risk patterns (R-series).',
+  policy: 'Policy rules (P-series).',
+  aap: 'AAP platform compatibility (A-series).',
+  secrets: 'Secret detection (SEC / Gitleaks).',
+  infrastructure: 'Infrastructure checks (INFRA).',
 };
 
+export function apmeCategoryFromRuleId(
+  ruleId: string,
+): ApmeRuleCategory | 'unknown' {
+  for (const [prefix, category] of APME_RULE_PREFIX_TO_CATEGORY) {
+    if (ruleId.startsWith(prefix)) return category;
+  }
+  return 'unknown';
+}
+
+/** Category from rule-ID prefix — same as APME catalog. */
 export function apmeCategoryOf(v: QualityViolation): ApmeRuleCategory {
+  const fromId = apmeCategoryFromRuleId(v.ruleId);
+  if (fromId !== 'unknown') return fromId;
   if (v.validatorSource === 'gitleaks') return 'secrets';
   if (v.validatorSource === 'dep_audit') return 'infrastructure';
-  if (v.category === 'aap-compatibility') return 'aap';
-  if (v.category === 'security') return 'risk';
+  if ((APME_CATEGORY_ORDER as string[]).includes(v.category)) {
+    return v.category;
+  }
   return 'lint';
 }
 

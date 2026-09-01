@@ -597,7 +597,7 @@ function QualityFindingsCell({ repoName }: { repoName: string }) {
           }
           onClick={e => {
             e.stopPropagation();
-            openLastScan('aap-compatibility');
+            openLastScan('modernize');
           }}
           style={{
             fontSize: 10,

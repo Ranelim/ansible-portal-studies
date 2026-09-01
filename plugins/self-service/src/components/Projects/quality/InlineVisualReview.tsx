@@ -2,7 +2,7 @@
  * Visual redesign of Inline AI Results & Remediation (`?wizard=visual`).
  * Structure follows the ephemeral step-2 prototype: Continue under the
  * stepper, Summary (severity), then findings. Current: Auto-fix / AI-fix /
- * Not fixable. Current redesign: All / Auto-fix / AI-fix / Manual. AI spend
+ * Manual fix. Current redesign: All / Auto-fix / AI-fix / Manual fix. AI spend
  * lives with Generate AI suggestions (Lightspeed quota — no fake
  * token or dollar estimates). `ctaLayout=footer` parks Continue in a sticky
  * footer instead. `reviewLayout=redesign` is a fork of Current: All tab,
@@ -82,8 +82,12 @@ const LightspeedSpark = ({ size = 14 }: { size?: number }) => (
 export type CtaLayout = 'current' | 'footer';
 /** Current = Continue under the stepper. Redesign / 3 / 4 = forks of Current. */
 export type ReviewLayout = 'current' | 'redesign' | 'redesign3' | 'redesign4';
-/** Discrete visual session: results (read-only) then auto then AI. Bundled keeps all lanes on one step. */
-export type ReviewPhase = 'bundled' | 'results' | 'autofix' | 'ai';
+/** Discrete visual session: results (read-only) then auto then AI. Work = auto + manual fix, no Results step. Bundled keeps all lanes on one step. */
+export type ReviewPhase = 'bundled' | 'results' | 'work' | 'autofix' | 'ai';
+
+function showsResultsMix(phase: ReviewPhase): boolean {
+  return phase === 'results' || phase === 'work';
+}
 
 export function isRedesignLayout(layout: ReviewLayout): boolean {
   return layout === 'redesign' || layout === 'redesign3' || layout === 'redesign4';
@@ -103,16 +107,17 @@ const SEV_ORDER: SeverityClass[] = ['critical', 'high', 'medium', 'low', 'info']
 const FINDINGS_BAR_HEIGHT = 6;
 const LANE_TABS: FixLane[] = ['Auto-fix', 'AI-fix', 'Manual-fix'];
 const REDESIGN_TABS: ReviewTab[] = ['All', 'Auto-fix', 'AI-fix', 'Manual-fix'];
+const WORK_TABS: ReviewTab[] = ['All', 'Auto-fix', 'Manual-fix'];
 const TAB_LABEL: Record<FixLane, string> = {
   'Auto-fix': 'Auto-fix',
   'AI-fix': 'AI-fix',
-  'Manual-fix': 'Not fixable',
+  'Manual-fix': 'Manual fix',
 };
 
 const TAB_COUNT_LABEL: Record<FixLane, (n: number) => string> = {
   'Auto-fix': n => `${n} auto-fixes`,
   'AI-fix': n => `${n} AI-fixes`,
-  'Manual-fix': n => `${n} not-fixable findings`,
+  'Manual-fix': n => `${n} manual ${n === 1 ? 'fix' : 'fixes'}`,
 };
 
 function reviewTabLabel(tab: ReviewTab, redesign: boolean, redesign3 = false): string {
@@ -123,7 +128,6 @@ function reviewTabLabel(tab: ReviewTab, redesign: boolean, redesign3 = false): s
     return 'Manual remediations';
   }
   if (tab === 'All') return 'All';
-  if (tab === 'Manual-fix') return redesign ? 'Manual' : 'Not fixable';
   return TAB_LABEL[tab];
 }
 
@@ -140,7 +144,6 @@ function reviewTabCountLabel(
     return `${n} manual remediations`;
   }
   if (tab === 'All') return `${n} findings`;
-  if (tab === 'Manual-fix' && redesign) return `${n} manual findings`;
   return TAB_COUNT_LABEL[tab](n);
 }
 
@@ -160,6 +163,15 @@ const LANE_EXPLAIN: Record<FixLane, string> = {
 
 const AUTO_FIX_EXPLAIN =
   'Deterministic replacements from Ansible quality rules.';
+
+/** Results inventory: same card body slot as Auto / AI, no Accept / Decline. */
+const RESULTS_LANE_BODY: Record<FixLane, string> = {
+  'Auto-fix': AUTO_FIX_EXPLAIN,
+  'AI-fix':
+    'Eligible for an AI-generated suggestion. Review it on the AI remediations step.',
+  'Manual-fix':
+    'Not auto-fixable or eligible for AI. Change this in the file, or leave it.',
+};
 
 const INCLUDE_MENU_EXPLAIN = {
   auto: AUTO_FIX_EXPLAIN,
@@ -658,23 +670,6 @@ const useStyles = makeStyles((theme: Theme) => ({
       color: theme.palette.text.primary,
     },
   },
-  drawerToggleEnd: {
-    textTransform: 'none',
-    color: theme.palette.text.secondary,
-    padding: theme.spacing(0.5, 1.25),
-    minWidth: 0,
-    borderRadius: 16,
-    flexShrink: 0,
-    whiteSpace: 'nowrap',
-    marginLeft: 'auto',
-    '& .MuiButton-endIcon': {
-      marginLeft: 4,
-    },
-    '&:hover': {
-      backgroundColor: theme.palette.action.hover,
-      color: theme.palette.text.primary,
-    },
-  },
   findingsBreakdown: {
     paddingTop: theme.spacing(1),
   },
@@ -698,6 +693,15 @@ const useStyles = makeStyles((theme: Theme) => ({
   mixChips: {
     marginTop: theme.spacing(1.5),
     marginBottom: theme.spacing(1),
+  },
+  resultsFacets: {
+    padding: theme.spacing(1, 2, 0.5),
+  },
+  resultsMix: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: theme.spacing(1),
+    padding: theme.spacing(0.5, 2, 1.5),
   },
   catRow: {
     display: 'flex',
@@ -865,6 +869,53 @@ const useStyles = makeStyles((theme: Theme) => ({
     lineHeight: 1,
     whiteSpace: 'nowrap',
   },
+  typeViz: {
+    padding: theme.spacing(0.5, 2, 1.25),
+    borderBottom: `1px solid ${theme.palette.divider}`,
+  },
+  typeVizRow: {
+    borderTop: 'none',
+    '& + &': {
+      borderTop: `1px solid ${theme.palette.divider}`,
+    },
+  },
+  resultsCatViz: {
+    padding: 0,
+  },
+  resultsCatRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: theme.spacing(1.5),
+    paddingTop: 3,
+    paddingBottom: 3,
+    cursor: 'pointer',
+    borderRadius: 4,
+    '&:hover': {
+      backgroundColor: theme.palette.action.hover,
+    },
+  },
+  resultsCatRowSelected: {
+    backgroundColor: theme.palette.action.selected,
+  },
+  resultsCatName: {
+    ...theme.typography.body2,
+    minWidth: 120,
+    flexShrink: 0,
+  },
+  resultsCatCount: {
+    fontSize: 12,
+    fontWeight: 600,
+    color: theme.palette.text.secondary,
+    minWidth: 16,
+    flexShrink: 0,
+  },
+  resultsCatBar: {
+    flex: 1,
+    minWidth: 80,
+    height: FINDINGS_BAR_HEIGHT,
+    display: 'flex',
+    alignItems: 'center',
+  },
   tabPageHint: {
     ...theme.typography.body2,
     padding: theme.spacing(1.25, 2, 0),
@@ -1005,10 +1056,21 @@ const useStyles = makeStyles((theme: Theme) => ({
     ...theme.typography.body2,
     display: 'flex',
     alignItems: 'center',
+    flexWrap: 'wrap',
     gap: 8,
     padding: theme.spacing(1, 0),
     minHeight: 40,
     color: theme.palette.text.secondary,
+  },
+  suggestionLead: {
+    ...theme.typography.body2,
+    padding: theme.spacing(0, 0, 1),
+    color: theme.palette.text.secondary,
+  },
+  suggestionLeadRow: {
+    minHeight: 0,
+    paddingTop: 0,
+    paddingBottom: theme.spacing(1),
   },
   diffLine: {
     display: 'flex',
@@ -1074,25 +1136,31 @@ export const InlineVisualReview: React.FC<{
 }) => {
   const classes = useStyles();
   const decisions = { ...t1Decisions, ...aiDecisions };
-  const auto = findings.filter(v => v.fixTier === 'deterministic');
-  const ai = findings.filter(v => v.fixTier === 'ai');
-  const manual = findings.filter(v => v.fixTier !== 'deterministic' && v.fixTier !== 'ai');
+  const laterAiCount = findings.filter(v => v.fixTier === 'ai').length;
+  const reviewFindings =
+    phase === 'work' ? findings.filter(v => v.fixTier !== 'ai') : findings;
+  const auto = reviewFindings.filter(v => v.fixTier === 'deterministic');
+  const ai = reviewFindings.filter(v => v.fixTier === 'ai');
+  const manual = reviewFindings.filter(
+    v => v.fixTier !== 'deterministic' && v.fixTier !== 'ai',
+  );
   const laneCount: Record<ReviewTab, number> = {
-    All: findings.length,
+    All: reviewFindings.length,
     'Auto-fix': auto.length,
     'AI-fix': ai.length,
     'Manual-fix': manual.length,
   };
 
-  const mix = useMemo(() => mixFromFindings(findings), [findings]);
+  const mix = useMemo(() => mixFromFindings(reviewFindings), [reviewFindings]);
 
   const [query, setQuery] = useState('');
   const [contentType, setContentType] = useState<'all' | string>('all');
   const [category, setCategory] = useState<'all' | ApmeRuleCategory>('all');
   const [severityFilter, setSeverityFilter] = useState<Set<SeverityClass>>(() => new Set());
   const [fixType, setFixType] = useState<ReviewTab>(() =>
-    phase === 'ai' ? 'AI-fix' : phase === 'results' ? 'All' : 'Auto-fix',
+    phase === 'ai' ? 'AI-fix' : showsResultsMix(phase) ? 'All' : 'Auto-fix',
   );
+  const [laneFilter, setLaneFilter] = useState<FixLane | 'all'>('all');
   const [actionsAnchor, setActionsAnchor] = useState<null | HTMLElement>(null);
   const [breakdownOpen, setBreakdownOpen] = useState(false);
   const [findingsBreakdownOpen, setFindingsBreakdownOpen] = useState(false);
@@ -1130,8 +1198,10 @@ export const InlineVisualReview: React.FC<{
       setFixType('AI-fix');
       return;
     }
-    if (phase === 'results') {
+    if (phase === 'results' || phase === 'work') {
       setFixType('All');
+      setCategory('all');
+      setLaneFilter('all');
       return;
     }
     if (phase === 'autofix') {
@@ -1142,24 +1212,20 @@ export const InlineVisualReview: React.FC<{
   }, [currentRedesign, phase]);
 
   const inActiveTab = (f: QualityViolation) => {
+    if (phase === 'work' && laneOf(f) === 'AI-fix') return false;
     if (phase === 'autofix' && laneOf(f) !== 'Auto-fix') return false;
     if (phase === 'ai' && laneOf(f) !== 'AI-fix') return false;
     return fixType === 'All' || laneOf(f) === fixType;
   };
-  const tabFindings = findings.filter(inActiveTab);
+  const tabFindings = reviewFindings.filter(inActiveTab);
   const contentTypes = useMemo(
-    () =>
-      Array.from(
-        new Set(findings.filter(f => fixType === 'All' || laneOf(f) === fixType).map(kindLabel)),
-      ).sort(),
-    [findings, fixType],
+    () => Array.from(new Set(tabFindings.map(kindLabel))).sort(),
+    [tabFindings],
   );
   const presentCategories = useMemo(() => {
-    const ids = new Set(
-      findings.filter(f => fixType === 'All' || laneOf(f) === fixType).map(apmeCategoryOf),
-    );
+    const ids = new Set(tabFindings.map(apmeCategoryOf));
     return APME_CATEGORY_ORDER.filter(id => ids.has(id));
-  }, [findings, fixType]);
+  }, [tabFindings]);
 
   const toggleSeverity = (sev: SeverityClass) => {
     setBreakdownOpen(true);
@@ -1173,6 +1239,9 @@ export const InlineVisualReview: React.FC<{
   const toggleCategory = (id: ApmeRuleCategory) => {
     setCategory(prev => (prev === id ? 'all' : id));
     setBreakdownOpen(true);
+  };
+  const toggleLaneFilter = (lane: FixLane) => {
+    setLaneFilter(prev => (prev === lane ? 'all' : lane));
   };
 
   const visibleCategories = useMemo(() => {
@@ -1196,10 +1265,38 @@ export const InlineVisualReview: React.FC<{
     [visibleCategories],
   );
 
+  const resultsCatRows = useMemo(() => {
+    const source = mixFromFindings(tabFindings).categories;
+    const any = severityFilter.size > 0;
+    return source
+      .map(cat => {
+        const breakdown = { ...cat.breakdown };
+        if (any) {
+          for (const sev of SEV_ORDER) {
+            if (!severityFilter.has(sev)) breakdown[sev] = 0;
+          }
+        }
+        const count = SEV_ORDER.reduce((sum, sev) => sum + (breakdown[sev] ?? 0), 0);
+        return { ...cat, breakdown, count };
+      })
+      .filter(cat => cat.count > 0);
+  }, [tabFindings, severityFilter]);
+
+  const resultsCatTotal = useMemo(
+    () => resultsCatRows.reduce((sum, cat) => sum + cat.count, 0),
+    [resultsCatRows],
+  );
+
+  const laneMix = useMemo(() => {
+    if (showsResultsMix(phase)) return mix;
+    if (category === 'all') return mix;
+    return mixFromFindings(reviewFindings.filter(f => apmeCategoryOf(f) === category));
+  }, [phase, category, reviewFindings, mix]);
+
   const visibleLanes = useMemo(() => {
     const any = severityFilter.size > 0;
     return LANE_TABS.map(lane => {
-      const breakdown = { ...mix.byLane[lane] };
+      const breakdown = { ...laneMix.byLane[lane] };
       if (any) {
         for (const sev of SEV_ORDER) {
           if (!severityFilter.has(sev)) breakdown[sev] = 0;
@@ -1210,10 +1307,11 @@ export const InlineVisualReview: React.FC<{
     }).filter(row => {
       if (row.count === 0) return false;
       if (phase === 'autofix' && row.lane !== 'Auto-fix') return false;
+      if (phase === 'work' && row.lane === 'AI-fix') return false;
       if (phase === 'ai' && row.lane !== 'AI-fix') return false;
       return true;
     });
-  }, [mix.byLane, severityFilter]);
+  }, [laneMix.byLane, severityFilter, phase]);
 
   const visibleLaneTotal = useMemo(
     () => visibleLanes.reduce((sum, row) => sum + row.count, 0),
@@ -1234,7 +1332,7 @@ export const InlineVisualReview: React.FC<{
   const nextLocked =
     phase === 'results'
       ? false
-      : phase === 'autofix'
+      : phase === 'autofix' || phase === 'work'
         ? pendingT1 > 0
         : phase === 'ai'
           ? pendingGeneratedAi > 0 || aiLoading
@@ -1248,6 +1346,7 @@ export const InlineVisualReview: React.FC<{
     }
     if (contentType !== 'all' && kindLabel(f) !== contentType) return false;
     if (category !== 'all' && apmeCategoryOf(f) !== category) return false;
+    if (!showsResultsMix(phase) && laneFilter !== 'all' && laneOf(f) !== laneFilter) return false;
     if (severityFilter.size > 0 && !severityFilter.has(f.severity)) return false;
     const q = query.trim().toLowerCase();
     if (!q) return true;
@@ -1323,11 +1422,11 @@ export const InlineVisualReview: React.FC<{
       });
       return;
     }
-    const peers = nodePeers(findings, v);
+    const peers = nodePeers(reviewFindings, v);
     const autoPeers =
       phase === 'ai' ? [] : peers.filter(f => f.fixTier === 'deterministic');
     const aiPeers =
-      phase === 'autofix' ? [] : peers.filter(f => f.fixTier === 'ai');
+      phase === 'autofix' || phase === 'work' ? [] : peers.filter(f => f.fixTier === 'ai');
     if (autoPeers.length > 0) {
       setT1Decisions?.(prev => {
         const next = { ...prev };
@@ -1398,7 +1497,7 @@ export const InlineVisualReview: React.FC<{
   const jobTitle =
     phase === 'results'
       ? ''
-      : phase === 'autofix'
+      : phase === 'autofix' || phase === 'work'
       ? pendingT1 > 0
         ? 'Accept or decline each auto-fix to continue.'
         : ''
@@ -1429,7 +1528,7 @@ export const InlineVisualReview: React.FC<{
   const phaseAccepted =
     phase === 'results'
       ? 0
-      : phase === 'autofix'
+      : phase === 'autofix' || phase === 'work'
         ? autoAccepted
         : phase === 'ai'
           ? aiAccepted
@@ -1445,7 +1544,7 @@ export const InlineVisualReview: React.FC<{
     phase !== 'ai' && auto.length > 0
       ? `${autoAccepted} out of ${auto.length} auto-fix${auto.length === 1 ? '' : 'es'}`
       : null,
-    phase !== 'autofix' && ai.length > 0
+    phase !== 'autofix' && phase !== 'work' && ai.length > 0
       ? `${aiAccepted} out of ${ai.length} AI-fix${ai.length === 1 ? '' : 'es'}`
       : null,
   ]
@@ -1461,15 +1560,15 @@ export const InlineVisualReview: React.FC<{
   const useFooter = ctaLayout === 'footer' || currentRedesign;
   const showListChrome = true;
   const searchPlaceholder =
-    fixType === 'All'
+    showsResultsMix(phase)
+      ? 'Search findings'
+      : fixType === 'All'
       ? 'Search findings'
       : fixType === 'Auto-fix'
       ? 'Search auto-fixes'
       : fixType === 'AI-fix'
         ? 'Search AI-fixes'
-        : currentRedesign
-          ? 'Search manual findings'
-          : 'Search not-fixable findings';
+        : 'Search manual fixes';
 
   const severitySelect =
     severityFilter.size === 1 ? Array.from(severityFilter)[0] : 'all';
@@ -1502,12 +1601,14 @@ export const InlineVisualReview: React.FC<{
     query.trim() !== '' ||
     contentType !== 'all' ||
     category !== 'all' ||
+    laneFilter !== 'all' ||
     severityFilter.size > 0 ||
     filterGeneratedAi;
   const clearFilters = () => {
     setQuery('');
     setContentType('all');
     setCategory('all');
+    setLaneFilter('all');
     setSeverityFilter(new Set());
     setFilterGeneratedAi(false);
   };
@@ -1515,9 +1616,13 @@ export const InlineVisualReview: React.FC<{
   const phaseTabs: ReviewTab[] =
     phase === 'ai' || phase === 'autofix'
       ? []
-      : phase === 'results' || currentRedesign
-        ? REDESIGN_TABS
-        : LANE_TABS;
+      : phase === 'results'
+        ? REDESIGN_TABS.filter(tab => tab === 'All' || laneCount[tab] > 0)
+        : phase === 'work'
+          ? WORK_TABS.filter(tab => tab === 'All' || laneCount[tab] > 0)
+          : currentRedesign
+            ? REDESIGN_TABS
+            : LANE_TABS;
   const autoAcceptChecked = auto.length > 0 && autoUndecidedCount === 0 && autoAccepted > 0;
   const autoAcceptIndeterminate = autoAccepted > 0 && autoUndecidedCount > 0;
   const bulkAcceptDecline = (
@@ -1557,7 +1662,7 @@ export const InlineVisualReview: React.FC<{
         style={PILL}
         title={
           nextLocked
-            ? phase === 'autofix'
+            ? phase === 'autofix' || phase === 'work'
               ? 'Accept or decline each auto-fix to continue'
               : phase === 'ai'
                 ? 'Accept or decline generated AI suggestions to continue'
@@ -1571,7 +1676,7 @@ export const InlineVisualReview: React.FC<{
       >
         {phase === 'results'
           ? 'Remediate'
-          : phase === 'autofix' && ai.length > 0
+          : (phase === 'autofix' || phase === 'work') && laterAiCount > 0
             ? 'Continue'
             : 'Continue to commit'}
       </Button>
@@ -1667,7 +1772,7 @@ export const InlineVisualReview: React.FC<{
           />
         </MenuItem>
       )}
-      {phase === 'autofix' ? null : (
+      {phase === 'autofix' || phase === 'work' ? null : (
         <MenuItem
           className={classes.menuItemDescribed}
           disabled={readyAi.length === 0}
@@ -1710,7 +1815,7 @@ export const InlineVisualReview: React.FC<{
           Decline auto-fixes
         </MenuItem>
       )}
-      {phase === 'autofix' ? null : (
+      {phase === 'autofix' || phase === 'work' ? null : (
         <MenuItem
           disabled={
             readyAi.length === 0 ||
@@ -1879,6 +1984,78 @@ export const InlineVisualReview: React.FC<{
       ? generateButton
       : null;
 
+  const showSeverityDropdown = !showsResultsMix(phase) && !redesign4;
+  const filterToolbar = showListChrome ? (
+        <div className={classes.toolbar}>
+          <TextField
+            className={currentRedesign ? classes.searchFill : classes.search}
+            size="small"
+            variant="outlined"
+            placeholder={searchPlaceholder}
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            inputProps={{ 'aria-label': searchPlaceholder }}
+          />
+          <FormControl variant="outlined" size="small" className={classes.select}>
+            <InputLabel id="visual-content-type-label">Content type</InputLabel>
+            <Select
+              labelId="visual-content-type-label"
+              label="Content type"
+              value={contentType}
+              onChange={e => setContentType(e.target.value as string)}
+            >
+              <MenuItem value="all">All content types</MenuItem>
+              {contentTypes.map(k => (
+                <MenuItem key={k} value={k}>
+                  {k} ({tabFindings.filter(f => kindLabel(f) === k).length})
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          {showsResultsMix(phase) ? null : (
+          <FormControl variant="outlined" size="small" className={classes.select}>
+            <InputLabel id="visual-category-label">Category</InputLabel>
+            <Select
+              labelId="visual-category-label"
+              label="Category"
+              value={category}
+              onChange={e => setCategory(e.target.value as 'all' | ApmeRuleCategory)}
+            >
+              <MenuItem value="all">All categories</MenuItem>
+              {presentCategories.map(id => (
+                <MenuItem key={id} value={id}>
+                  {APME_CATEGORY_LABEL[id]} (
+                  {tabFindings.filter(f => apmeCategoryOf(f) === id).length})
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          )}
+          {showSeverityDropdown ? (
+          <FormControl variant="outlined" size="small" className={classes.select}>
+            <InputLabel id="visual-severity-label">Severity</InputLabel>
+            <Select
+              labelId="visual-severity-label"
+              label="Severity"
+              value={severitySelect}
+              onChange={e => {
+                const next = e.target.value as 'all' | SeverityClass;
+                setSeverityFilter(next === 'all' ? new Set() : new Set([next]));
+              }}
+            >
+              <MenuItem value="all">All severities</MenuItem>
+              {presentSeverities.map(sev => (
+                <MenuItem key={sev} value={sev}>
+                  {SEV_LABEL[sev]} (
+                  {tabFindings.filter(f => f.severity === sev).length})
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          ) : null}
+        </div>
+  ) : null;
+
   const renderCategoryBreakdownRows = () =>
     visibleCategories.map(cat => (
       <div
@@ -1932,65 +2109,6 @@ export const InlineVisualReview: React.FC<{
   const findingsBreakdown = (
     <Collapse in={findingsBreakdownOpen}>
       <div className={classes.findingsBreakdown}>
-        <Typography
-          className={classes.breakdownSectionTitle}
-          variant="subtitle2"
-          component="h3"
-        >
-          Issues by severity
-        </Typography>
-        <div className={classes.mixBar}>
-          <SeverityMixBar
-            breakdown={mix.bySeverity}
-            height={FINDINGS_BAR_HEIGHT}
-            activeSeverities={severityFilter}
-            onSegmentClick={toggleSeverity}
-          />
-        </div>
-        <div className={classes.mixChips}>
-          <SeverityFilterChips
-            breakdown={mix.bySeverity}
-            active={severityFilter}
-            onToggle={toggleSeverity}
-          />
-        </div>
-        <Typography
-          className={classes.breakdownSectionTitle}
-          variant="subtitle2"
-          component="h3"
-        >
-          Issues by fix type
-        </Typography>
-        {visibleLanes.map(row => (
-          <div key={row.lane} className={classes.breakdownLaneRow}>
-            <Typography className={classes.catName} variant="body2" component="div">
-              {reviewTabLabel(row.lane, true)}
-              <Tooltip title={LANE_EXPLAIN[row.lane]} arrow>
-                <span
-                  className={classes.catHelpHit}
-                  tabIndex={0}
-                  aria-label={LANE_EXPLAIN[row.lane]}
-                >
-                  <HelpOutlineIcon className={classes.catHelp} aria-hidden />
-                </span>
-              </Tooltip>
-            </Typography>
-            <Chip
-              size="small"
-              label={row.count}
-              className={classes.catCount}
-            />
-            <div className={classes.catBar}>
-              <SeverityMixBar
-                breakdown={row.breakdown}
-                height={FINDINGS_BAR_HEIGHT}
-                shareOfTotal={
-                  visibleLaneTotal > 0 ? row.count / visibleLaneTotal : 0
-                }
-              />
-            </div>
-          </div>
-        ))}
         <Typography
           className={classes.breakdownSectionTitle}
           variant="subtitle2"
@@ -2076,23 +2194,10 @@ export const InlineVisualReview: React.FC<{
                   component="span"
                 >
                   {findingWord} on this scan
-                  {phase === 'results' ? (
-                    <>
-                      {auto.length > 0
-                        ? ` · ${auto.length} auto-fix${auto.length === 1 ? '' : 'es'}`
-                        : ''}
-                      {ai.length > 0
-                        ? ` · ${ai.length} AI ${ai.length === 1 ? 'fix' : 'fixes'}`
-                        : ''}
-                      {manual.length > 0
-                        ? ` · ${manual.length} not fixable`
-                        : ''}
-                    </>
-                  ) : phase === 'autofix' ? (
-                    <>{` · ${auto.length} auto-fix${auto.length === 1 ? '' : 'es'}`}</>
-                  ) : phase === 'ai' ? (
-                    <>{` · ${ai.length} AI ${ai.length === 1 ? 'fix' : 'fixes'}`}</>
-                  ) : redesign4 ? (
+                  {!showsResultsMix(phase) &&
+                  phase !== 'autofix' &&
+                  phase !== 'ai' &&
+                  redesign4 ? (
                     <>
                       {`, ${remediationCount} ${
                         remediationCount === 1 ? 'remediation' : 'remediations'
@@ -2107,28 +2212,7 @@ export const InlineVisualReview: React.FC<{
                   </Typography>
                 ) : null}
               </div>
-              {redesign4 ? (
-                <Button
-                  variant="text"
-                  color="inherit"
-                  size="small"
-                  className={classes.drawerToggleEnd}
-                  endIcon={
-                    findingsBreakdownOpen ? (
-                      <ExpandLessIcon fontSize="small" />
-                    ) : (
-                      <ExpandMoreIcon fontSize="small" />
-                    )
-                  }
-                  aria-expanded={findingsBreakdownOpen}
-                  aria-controls="findings-breakdown"
-                  onClick={() => setFindingsBreakdownOpen(open => !open)}
-                >
-                  {findingsBreakdownOpen
-                    ? 'Hide findings breakdown'
-                    : 'Show findings breakdown'}
-                </Button>
-              ) : redesign3Plus ? null : (
+              {redesign3Plus ? null : (
                 <div className={classes.scanSevCounts} aria-label="Findings by severity">
                   {SEV_ORDER.filter(sev => (mix.bySeverity[sev] ?? 0) > 0).map(sev => {
                     const count = mix.bySeverity[sev];
@@ -2154,9 +2238,49 @@ export const InlineVisualReview: React.FC<{
               )}
             </div>
             {redesign4 ? (
-              <div id="findings-breakdown">{findingsBreakdown}</div>
-            ) : null}
-            {redesign3Plus ? null : (
+              phase === 'results' || phase === 'work' ? null : (
+              <>
+                <div className={classes.scanMixBar}>
+                  <SeverityMixBar
+                    breakdown={mix.bySeverity}
+                    height={FINDINGS_BAR_HEIGHT}
+                    activeSeverities={severityFilter}
+                    onSegmentClick={toggleSeverity}
+                  />
+                </div>
+                <div className={classes.mixChips}>
+                  <SeverityFilterChips
+                    breakdown={mix.bySeverity}
+                    active={severityFilter}
+                    onToggle={toggleSeverity}
+                  />
+                </div>
+                <>
+                    <div className={classes.toggleRow}>
+                      <Button
+                        variant="text"
+                        color="inherit"
+                        size="small"
+                        className={classes.drawerToggle}
+                        endIcon={
+                          findingsBreakdownOpen ? (
+                            <ExpandLessIcon fontSize="small" />
+                          ) : (
+                            <ExpandMoreIcon fontSize="small" />
+                          )
+                        }
+                        aria-expanded={findingsBreakdownOpen}
+                        aria-controls="findings-breakdown"
+                        onClick={() => setFindingsBreakdownOpen(open => !open)}
+                      >
+                        {findingsBreakdownOpen ? 'Hide breakdown' : 'Show breakdown'}
+                      </Button>
+                    </div>
+                    <div id="findings-breakdown">{findingsBreakdown}</div>
+                </>
+              </>
+              )
+            ) : redesign3Plus ? null : (
               <div className={classes.scanMixBar}>
                 <SeverityMixBar
                   breakdown={mix.bySeverity}
@@ -2226,7 +2350,106 @@ export const InlineVisualReview: React.FC<{
             ) : null}
           </div>
         ) : null}
-        {(redesign3Plus && phase === 'bundled') || phaseTabs.length === 0 ? null : (
+        {showsResultsMix(phase) ? (
+        <>
+        <Tabs
+          className={classes.tabs}
+          value={phaseTabs.includes(fixType) ? fixType : phaseTabs[0] ?? 'All'}
+          onChange={(_event, next: ReviewTab) => {
+            setFixType(next);
+            setCategory('all');
+            setContentType('all');
+          }}
+          indicatorColor="primary"
+          textColor="primary"
+          aria-label="Findings by remediations type"
+        >
+          {phaseTabs.map(lane => (
+            <Tab
+              key={lane}
+              className={classes.tab}
+              value={lane}
+              label={
+                <span className={classes.tabLabel}>
+                  <span>{reviewTabLabel(lane, false)}</span>
+                  <ReadCountBadge
+                    count={laneCount[lane]}
+                    label={reviewTabCountLabel(lane, laneCount[lane], false)}
+                    tone="read"
+                  />
+                </span>
+              }
+            />
+          ))}
+        </Tabs>
+        {filterToolbar}
+        <div
+          className={classes.resultsMix}
+          role="group"
+          aria-label="Severity and category mix for this tab"
+        >
+          <SeverityFilterChips
+            breakdown={mixFromFindings(tabFindings).bySeverity}
+            active={severityFilter}
+            onToggle={toggleSeverity}
+          />
+        {resultsCatRows.length > 0 ? (
+          <div className={classes.resultsCatViz}>
+            {resultsCatRows.map(cat => {
+              const selected = category === cat.id;
+              return (
+                <div
+                  key={cat.id}
+                  className={`${classes.resultsCatRow} ${
+                    selected ? classes.resultsCatRowSelected : ''
+                  }`}
+                  role="button"
+                  tabIndex={0}
+                  aria-pressed={selected}
+                  aria-label={`${cat.label}, ${cat.count} findings. ${
+                    selected ? 'Clear' : 'Apply'
+                  } filter. ${cat.hint}`}
+                  onClick={() => toggleCategory(cat.id)}
+                  onKeyDown={event => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      toggleCategory(cat.id);
+                    }
+                  }}
+                >
+                  <Tooltip title={cat.hint} arrow>
+                    <Typography
+                      className={classes.resultsCatName}
+                      variant="body2"
+                      component="span"
+                    >
+                      {cat.label}
+                    </Typography>
+                  </Tooltip>
+                  <Typography
+                    className={classes.resultsCatCount}
+                    variant="body2"
+                    component="span"
+                  >
+                    {cat.count}
+                  </Typography>
+                  <div className={classes.resultsCatBar}>
+                    <SeverityMixBar
+                      breakdown={cat.breakdown}
+                      height={FINDINGS_BAR_HEIGHT}
+                      shareOfTotal={
+                        resultsCatTotal > 0 ? cat.count / resultsCatTotal : 0
+                      }
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : null}
+        </div>
+        </>
+        ) : (redesign3Plus && phase === 'bundled') || phaseTabs.length === 0 ? null : (
         <Tabs
           className={classes.tabs}
           value={phaseTabs.includes(fixType) ? fixType : phaseTabs[0]}
@@ -2262,78 +2485,13 @@ export const InlineVisualReview: React.FC<{
           ))}
         </Tabs>
         )}
-        {currentRedesign && !redesign3Plus ? (
+        {showsResultsMix(phase) || !currentRedesign || redesign3Plus ? null : (
           <Typography className={classes.tabPageHint}>
             {REDESIGN_TAB_HINT[fixType]}
           </Typography>
-        ) : null}
+        )}
 
-        {showListChrome ? (
-        <div className={classes.toolbar}>
-          <TextField
-            className={currentRedesign ? classes.searchFill : classes.search}
-            size="small"
-            variant="outlined"
-            placeholder={searchPlaceholder}
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-            inputProps={{ 'aria-label': searchPlaceholder }}
-          />
-          <FormControl variant="outlined" size="small" className={classes.select}>
-            <InputLabel id="visual-content-type-label">Content type</InputLabel>
-            <Select
-              labelId="visual-content-type-label"
-              label="Content type"
-              value={contentType}
-              onChange={e => setContentType(e.target.value as string)}
-            >
-              <MenuItem value="all">All content types</MenuItem>
-              {contentTypes.map(k => (
-                <MenuItem key={k} value={k}>
-                  {k} ({tabFindings.filter(f => kindLabel(f) === k).length})
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <FormControl variant="outlined" size="small" className={classes.select}>
-            <InputLabel id="visual-category-label">Category</InputLabel>
-            <Select
-              labelId="visual-category-label"
-              label="Category"
-              value={category}
-              onChange={e => setCategory(e.target.value as 'all' | ApmeRuleCategory)}
-            >
-              <MenuItem value="all">All categories</MenuItem>
-              {presentCategories.map(id => (
-                <MenuItem key={id} value={id}>
-                  {APME_CATEGORY_LABEL[id]} (
-                  {tabFindings.filter(f => apmeCategoryOf(f) === id).length})
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <FormControl variant="outlined" size="small" className={classes.select}>
-            <InputLabel id="visual-severity-label">Severity</InputLabel>
-            <Select
-              labelId="visual-severity-label"
-              label="Severity"
-              value={severitySelect}
-              onChange={e => {
-                const next = e.target.value as 'all' | SeverityClass;
-                setSeverityFilter(next === 'all' ? new Set() : new Set([next]));
-              }}
-            >
-              <MenuItem value="all">All severities</MenuItem>
-              {presentSeverities.map(sev => (
-                <MenuItem key={sev} value={sev}>
-                  {SEV_LABEL[sev]} (
-                  {tabFindings.filter(f => f.severity === sev).length})
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </div>
-        ) : null}
+        {showsResultsMix(phase) ? null : filterToolbar}
 
         {(currentRedesign ||
           (fixType !== 'Manual-fix' &&
@@ -2490,16 +2648,21 @@ export const InlineVisualReview: React.FC<{
                 decision={sharedDecision(bundle, decisions)}
                 aiStatus={aiStatus[findingKey(primary)] ?? 'idle'}
                 onDecision={d => onDecision(primary, d)}
-                onGenerateAi={phase === 'autofix' || phase === 'results' ? undefined : onGenerateAi}
+                onGenerateAi={
+                  phase === 'autofix' || showsResultsMix(phase) ? undefined : onGenerateAi
+                }
                 quietRowActions={currentRedesign}
                 hideDecline={redesign3}
                 includeInPr={redesign4}
                 highlight={bundle.some(f => pulseKey === findingKey(f))}
                 showLane={
                   (currentRedesign && fixType === 'All') ||
-                  (phase === 'results' && fixType === 'All')
+                  (showsResultsMix(phase) && fixType === 'All')
                 }
-                readOnly={phase === 'results'}
+                readOnly={
+                  phase === 'results' ||
+                  (phase === 'work' && laneOf(primary) === 'Manual-fix')
+                }
               />
               );
             })}
@@ -2687,26 +2850,16 @@ const FindingRow: React.FC<{
     </>
   );
 
+  const openDevSpaces = (item: QualityViolation = finding) =>
+    window.open(
+      `/devspaces-mockup.html?file=${encodeURIComponent(
+        item.file || '',
+      )}&line=${item.lineStart}&tier=${item.fixTier}&status=open`,
+      '_blank',
+    );
+
   const actions = readOnly
-    ? copies.some(item => laneOf(item) === 'Manual-fix') ? (
-      <Button
-        size="small"
-        variant="outlined"
-        color="primary"
-        startIcon={<CodeIcon style={{ fontSize: 16 }} />}
-        style={PILL_COMPACT}
-        onClick={() =>
-          window.open(
-            `/devspaces-mockup.html?file=${encodeURIComponent(
-              finding.file || '',
-            )}&line=${finding.lineStart}&tier=${finding.fixTier}&status=open`,
-            '_blank',
-          )
-        }
-      >
-        Open in Dev Spaces
-      </Button>
-    ) : null
+    ? null
     : lane === 'Auto-fix' || (lane === 'AI-fix' && aiStatus === 'ready') ? (
       suggestionActions
     ) : lane === 'AI-fix' && aiStatus === 'loading' ? null : lane === 'AI-fix' ? (
@@ -2728,14 +2881,7 @@ const FindingRow: React.FC<{
         color="primary"
         startIcon={<CodeIcon style={{ fontSize: 16 }} />}
         style={PILL_COMPACT}
-        onClick={() =>
-          window.open(
-            `/devspaces-mockup.html?file=${encodeURIComponent(
-              finding.file || '',
-            )}&line=${finding.lineStart}&tier=${finding.fixTier}&status=open`,
-            '_blank',
-          )
-        }
+        onClick={() => openDevSpaces()}
       >
         Open in Dev Spaces
       </Button>
@@ -2791,7 +2937,7 @@ const FindingRow: React.FC<{
                     <Chip
                       size="small"
                       variant="outlined"
-                      label={itemLane === 'Manual-fix' ? 'Manual' : TAB_LABEL[itemLane]}
+                      label={TAB_LABEL[itemLane]}
                       className={classes.chip}
                     />
                   ) : null}
@@ -2805,19 +2951,38 @@ const FindingRow: React.FC<{
       {copies.map(item => {
         const itemLane = laneOf(item);
         const itemSnip = snippetForRule(item.ruleId);
-        const itemWaiting = readOnly || (itemLane === 'AI-fix' && aiStatus !== 'ready');
         const itemProposed =
-          !readOnly &&
-          (itemLane === 'Auto-fix' || (itemLane === 'AI-fix' && aiStatus === 'ready'));
-        const itemIssueLines: DiffLine[] =
-          itemWaiting || itemLane === 'Manual-fix'
+          itemLane === 'Auto-fix' ||
+          (!readOnly && itemLane === 'AI-fix' && aiStatus === 'ready');
+        const itemIssueContext =
+          itemLane === 'Manual-fix' ||
+          (itemLane === 'AI-fix' && (readOnly || aiStatus !== 'ready'));
+        const itemLines: DiffLine[] = itemProposed
+          ? unifiedDiff(itemSnip.current, itemSnip.proposed)
+          : itemIssueContext
             ? itemSnip.current.map(text => ({ kind: 'context' as const, text }))
             : [];
-        const itemLines = itemProposed
-          ? unifiedDiff(itemSnip.current, itemSnip.proposed)
-          : itemIssueLines;
         return (
       <div className={classes.diffBlock} key={`diff-${findingKey(item)}`}>
+        {readOnly && itemLane === 'Manual-fix' ? (
+          <div className={`${classes.suggestionEmpty} ${classes.suggestionLeadRow}`}>
+            <span>{RESULTS_LANE_BODY[itemLane]}</span>
+            <Button
+              size="small"
+              variant="text"
+              color="primary"
+              startIcon={<CodeIcon style={{ fontSize: 16 }} />}
+              style={PILL_COMPACT}
+              onClick={() => openDevSpaces(item)}
+            >
+              Open in Dev Spaces
+            </Button>
+          </div>
+        ) : readOnly ? (
+          <Typography className={classes.suggestionLead} variant="body2">
+            {RESULTS_LANE_BODY[itemLane]}
+          </Typography>
+        ) : null}
         {itemLines.length === 0 ? (
           <Typography className={classes.diffEmpty}>No snippet for this finding.</Typography>
         ) : (
@@ -2854,7 +3019,7 @@ const FindingRow: React.FC<{
               No suggestion yet. Generate this row, or generate all on this tab.
             </div>
         )}
-        {itemLane === 'Manual-fix' && (
+        {!readOnly && itemLane === 'Manual-fix' && (
           <Typography className={classes.suggestionEmpty} variant="body2" color="textSecondary">
             No automatic or AI suggestion. Change this in the file, or leave it.
           </Typography>

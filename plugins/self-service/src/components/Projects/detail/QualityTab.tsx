@@ -42,8 +42,11 @@ import {
   type ScanRemediationOutcome,
   type SeverityClass,
   type QualityViolation,
-  type ViolationCategory,
+  type ApmeRuleCategory,
   type RemediationStatus,
+  APME_CATEGORY_LABEL,
+  APME_CATEGORY_ORDER,
+  apmeCategoryOf,
   SEVERITY_COLORS,
 } from './qualityDemoData';
 
@@ -164,49 +167,49 @@ const SeverityProgressBar = ({ breakdown }: { breakdown: Record<SeverityClass, n
 // Demo proposals data — maps to violations by ruleId
 // ---------------------------------------------------------------------------
 const DEMO_PROPOSALS: Record<string, { desc: string; tier: 'deterministic' | 'ai'; removed: string[]; added: string[] }> = {
-  'fqcn[action-core]': {
+  'L026': {
     desc: 'Replace bare module name copy with fully qualified ansible.builtin.copy',
     tier: 'deterministic',
     removed: ['    - copy:'],
     added: ['    - ansible.builtin.copy:'],
   },
-  'aap-deprecated-syntax': {
+  'M009': {
     desc: 'Replace with_items loop syntax with the loop keyword',
     tier: 'deterministic',
     removed: ['      with_items: "{{ packages }}"'],
     added: ['      loop: "{{ packages }}"'],
   },
-  'aap-removed-config': {
+  'M022': {
     desc: 'Rename callback_whitelist to callbacks_enabled in ansible.cfg',
     tier: 'deterministic',
     removed: ['callback_whitelist = profile_tasks, timer'],
     added: ['callbacks_enabled = profile_tasks, timer'],
   },
-  'aap-deprecated-module': {
+  'M002': {
     desc: 'Replace ansible.builtin.yum with ansible.builtin.dnf (drop-in replacement)',
     tier: 'deterministic',
     removed: ['    - ansible.builtin.yum:'],
     added: ['    - ansible.builtin.dnf:'],
   },
-  'aap-removed-param': {
+  'L059': {
     desc: 'Remove the warn parameter (no longer supported in ansible-core 2.17+)',
     tier: 'deterministic',
     removed: ['        warn: false'],
     added: [],
   },
-  'aap-collection-update': {
+  'M011': {
     desc: 'Update community.general version requirement from 7.5.0 to >= 8.0.0',
     tier: 'deterministic',
     removed: ['  - name: community.general', '    version: ">=7.5.0"'],
     added: ['  - name: community.general', '    version: ">=8.0.0"'],
   },
-  'yaml[truthy]': {
+  'L061': {
     desc: 'Replace yes/no with true/false for YAML boolean consistency',
     tier: 'deterministic',
     removed: ['enable_reporting: yes'],
     added: ['enable_reporting: true'],
   },
-  'risky-file-permissions': {
+  'L021': {
     desc: 'Add explicit mode: "0644" to the file task. Inferred from task context — verify permissions match your security requirements.',
     tier: 'ai',
     removed: [
@@ -223,7 +226,7 @@ const DEMO_PROPOSALS: Record<string, { desc: string; tier: 'deterministic' | 'ai
       '        mode: "0644"',
     ],
   },
-  'no-changed-when': {
+  'L013': {
     desc: 'Add changed_when: false to this status-check command. The task registers output but does not modify system state.',
     tier: 'ai',
     removed: [
@@ -240,7 +243,7 @@ const DEMO_PROPOSALS: Record<string, { desc: string; tier: 'deterministic' | 'ai
       '      changed_when: false',
     ],
   },
-  'name[missing]': {
+  'L024': {
     desc: 'Add a descriptive task name based on module and parameters used',
     tier: 'deterministic',
     removed: ['    - ansible.builtin.file:'],
@@ -249,80 +252,74 @@ const DEMO_PROPOSALS: Record<string, { desc: string; tier: 'deterministic' | 'ai
 };
 
 const DEMO_PROPOSALS_CONFIDENCE: Record<string, number> = {
-  'risky-file-permissions': 0.94,
-  'no-changed-when': 0.91,
-  'name[missing]': 0.88,
+  'L021': 0.94,
+  'L013': 0.91,
+  'L024': 0.88,
 };
 
 const DEMO_CODE_CONTEXT: Record<string, { lines: { num: number; text: string; highlighted?: boolean }[]; detail?: string }> = {
-  'meta-no-info': { lines: [
+  'L027': { lines: [
     { num: 1, text: '# meta/main.yml' },
     { num: 2, text: '---' },
     { num: 3, text: 'galaxy_info:', highlighted: true },
     { num: 4, text: '  author: ""' },
     { num: 5, text: '  description: ""' },
   ], detail: 'Role metadata should include author, description, license, and supported platforms to help users discover and evaluate this role.' },
-  'yaml[truthy]': { lines: [
+  'L061': { lines: [
     { num: 6, text: 'gather_facts: true' },
     { num: 7, text: '' },
     { num: 8, text: 'enable_reporting: yes', highlighted: true },
     { num: 9, text: 'verbose_output: no' },
   ], detail: 'YAML 1.1 accepts yes/no as booleans, but YAML 1.2 does not. Use true/false for forward compatibility.' },
-  'deprecated-module': { lines: [
+  'M002': { lines: [
     { num: 16, text: '    - name: Apply patches to all packages' },
     { num: 17, text: '      ansible.builtin.include_tasks: patch-apply.yml' },
     { num: 18, text: '      ansible.builtin.yum:', highlighted: true },
     { num: 19, text: '        name: "*"' },
     { num: 20, text: '        state: latest' },
   ], detail: 'ansible.builtin.yum is deprecated in AAP 2.7+. Use ansible.builtin.dnf which is a drop-in replacement.' },
-  'fqcn[action-core]': { lines: [
+  'L026': { lines: [
     { num: 11, text: '    - name: Copy patching script to target' },
     { num: 12, text: '      copy:', highlighted: true },
     { num: 13, text: '        src: files/patch.sh' },
     { num: 14, text: '        dest: /tmp/patch.sh' },
     { num: 15, text: '        mode: "0755"' },
   ], detail: 'Use the fully qualified collection name (ansible.builtin.copy) to avoid ambiguity with custom modules sharing the same short name.' },
-  'no-changed-when': { lines: [
+  'L013': { lines: [
     { num: 20, text: '    - name: Check current patch level' },
     { num: 21, text: '      ansible.builtin.command:', highlighted: true },
     { num: 22, text: '        cmd: rpm -qa --last' },
     { num: 23, text: '      register: patch_level' },
   ], detail: 'Commands that only read state should declare changed_when: false so Ansible reports them as "ok" rather than "changed".' },
-  'name[missing]': { lines: [
+  'L024': { lines: [
     { num: 3, text: '    - ansible.builtin.file:', highlighted: true },
     { num: 4, text: '        path: /var/backup/rollback' },
     { num: 5, text: '        state: directory' },
   ], detail: 'Unnamed tasks make playbook output hard to read and debug. Every task should have a descriptive name.' },
-  'aap-removed-param': { lines: [
+  'L059': { lines: [
     { num: 6, text: '    - name: Check disk space' },
     { num: 7, text: '      ansible.builtin.command:' },
     { num: 8, text: '        cmd: df -h', highlighted: true },
     { num: 9, text: '        warn: false', highlighted: true },
   ], detail: 'The warn parameter was removed in ansible-core 2.17 (AAP 2.7). Commands no longer emit deprecation warnings by default.' },
-  'aap-collection-update': { lines: [
+  'M011': { lines: [
     { num: 4, text: 'collections:' },
     { num: 5, text: '  - name: community.general' },
     { num: 6, text: '    version: ">=7.5.0"', highlighted: true },
   ], detail: 'community.general 7.5.0 is unsupported in AAP 2.7. Update to >= 8.0.0 for compatibility.' },
-  'risky-file-permissions': { lines: [
+  'L021': { lines: [
     { num: 32, text: '    - name: Write patch report' },
     { num: 33, text: '      ansible.builtin.copy:' },
     { num: 34, text: '        content: "{{ patch_results | to_nice_yaml }}"', highlighted: true },
     { num: 35, text: '        dest: /var/log/patch-report.yml' },
   ], detail: 'File created without explicit permissions inherits umask defaults, which may be too permissive. Set mode explicitly.' },
-  'aap-deprecated-module': { lines: [
-    { num: 12, text: '    - name: Install prerequisites' },
-    { num: 13, text: '      ansible.builtin.yum:', highlighted: true },
-    { num: 14, text: '        name: "{{ prereq_packages }}"' },
-    { num: 15, text: '        state: present' },
-  ], detail: 'ansible.builtin.yum is deprecated in AAP 2.5+. Use ansible.builtin.dnf as a drop-in replacement.' },
-  'aap-deprecated-syntax': { lines: [
+  'M009': { lines: [
     { num: 20, text: '    - name: Apply security updates' },
     { num: 21, text: '      ansible.builtin.dnf:' },
     { num: 22, text: '        name: "{{ item }}"', highlighted: true },
     { num: 23, text: '      with_items: "{{ packages }}"', highlighted: true },
   ], detail: 'with_items is deprecated loop syntax. Use loop for forward compatibility with future Ansible versions.' },
-  'aap-removed-config': { lines: [
+  'M022': { lines: [
     { num: 1, text: '[defaults]' },
     { num: 2, text: 'inventory = ./inventory' },
     { num: 3, text: 'callback_whitelist = profile_tasks, timer', highlighted: true },
@@ -630,7 +627,7 @@ export const QualityTab = ({
 }) => {
   const { hasRole } = useUserRoleContext();
   const isDeveloper = hasRole('developer');
-  const [categoryFilter, setCategoryFilter] = useState<ViolationCategory | 'all'>('all');
+  const [categoryFilter, setCategoryFilter] = useState<ApmeRuleCategory | 'all'>('all');
   const [severityFilter, setSeverityFilter] = useState<SeverityClass | null>(initialSeverity ?? null);
   const [statusFilter, setStatusFilter] = useState<'all' | 'needs-attention' | 'in-pr' | 'fixed'>('all');
   const [demoRemediationState, setDemoRemediationState] = useState<RemediationStatus | null>(null);
@@ -782,7 +779,7 @@ export const QualityTab = ({
   const filteredViolations = useMemo(() => {
     let result = quality.violations;
     if (severityFilter) result = result.filter(v => v.severity === severityFilter);
-    if (categoryFilter !== 'all') result = result.filter(v => v.category === categoryFilter);
+    if (categoryFilter !== 'all') result = result.filter(v => apmeCategoryOf(v) === categoryFilter);
     if (statusFilter !== 'all') {
       result = result.filter(v => {
         const rs = getRowState(v);
@@ -797,7 +794,10 @@ export const QualityTab = ({
 
   const categoryCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    quality.violations.forEach(v => { counts[v.category] = (counts[v.category] || 0) + 1; });
+    quality.violations.forEach(v => {
+      const id = apmeCategoryOf(v);
+      counts[id] = (counts[id] || 0) + 1;
+    });
     return counts;
   }, [quality.violations]);
 
@@ -840,7 +840,7 @@ export const QualityTab = ({
     let source = tabViolations;
     if (activeTab === 0) {
       if (severityFilter) source = source.filter(v => v.severity === severityFilter);
-      if (categoryFilter !== 'all') source = source.filter(v => v.category === categoryFilter);
+      if (categoryFilter !== 'all') source = source.filter(v => apmeCategoryOf(v) === categoryFilter);
     }
     const map = new Map<string, QualityViolation[]>();
     source.forEach(v => {
@@ -1260,10 +1260,10 @@ export const QualityTab = ({
                 <Box display="flex" style={{ gap: 4 }}>
                   {([
                     { key: 'all' as const, label: 'All' },
-                    { key: 'aap-compatibility' as const, label: 'Compatibility' },
-                    { key: 'security' as const, label: 'Security' },
-                    { key: 'lint' as const, label: 'Lint' },
-                    { key: 'best-practice' as const, label: 'Best practice' },
+                    ...APME_CATEGORY_ORDER.map(key => ({
+                      key,
+                      label: APME_CATEGORY_LABEL[key],
+                    })),
                   ] as const).filter(f => f.key === 'all' || categoryCounts[f.key]).map(f => (
                     <Chip
                       key={f.key} size="small" clickable
@@ -1507,12 +1507,7 @@ type UnifiedViolationStatus = 'open' | 'proposed' | 'approved' | 'declined' | 'f
 
 type QualityPageState = 'idle' | 'in-progress' | 'proposals-ready' | 'creating-pr' | 'pr-open' | 'pr-merged';
 
-const CATEGORY_LABELS: Record<ViolationCategory, string> = {
-  lint: 'Syntax',
-  'aap-compatibility': 'Migration',
-  security: 'Security',
-  'best-practice': 'Best practice',
-};
+const CATEGORY_LABELS: Record<ApmeRuleCategory, string> = APME_CATEGORY_LABEL;
 
 const TIER_TOOLTIPS = {
   deterministic: 'Deterministic rule-based transform. Ready immediately with high confidence — like a linter auto-fix.',
@@ -1925,7 +1920,7 @@ const FixChipStyled = ({
   mode: 'tier' | 'status';
   method: 'deterministic' | 'ai' | 'manual';
   status: UnifiedViolationStatus;
-  category?: ViolationCategory;
+  category?: ApmeRuleCategory;
   classes: ReturnType<typeof useQualityStyles>;
 }) => {
   const categoryLabel = category ? CATEGORY_LABELS[category] : undefined;
@@ -2277,7 +2272,7 @@ export const QualityTabUnified = ({
   initialScanId?: string | null;
   initialSeverity?: SeverityClass | null;
   initialRuleFilter?: string | null;
-  initialCategoryFilter?: ViolationCategory | null;
+  initialCategoryFilter?: ApmeRuleCategory | null;
   repoUrl?: string;
   branch?: string;
 }) => {
@@ -2287,7 +2282,7 @@ export const QualityTabUnified = ({
   const { hasRole } = useUserRoleContext();
   const isDeveloper = hasRole('developer');
 
-  const [categoryFilter, setCategoryFilter] = useState<ViolationCategory | 'all'>(initialCategoryFilter ?? 'all');
+  const [categoryFilter, setCategoryFilter] = useState<ApmeRuleCategory | 'all'>(initialCategoryFilter ?? 'all');
   const [severityFilters, setSeverityFilters] = useState<Set<SeverityClass>>(initialSeverity ? new Set([initialSeverity]) : new Set());
   const [ruleFilter, setRuleFilter] = useState<string | null>(initialRuleFilter ?? null);
   type FixTierFilter = 'deterministic' | 'ai' | 'manual';
@@ -2379,7 +2374,7 @@ export const QualityTabUnified = ({
     if (ruleFilter) result = result.filter(v => v.ruleId === ruleFilter);
     if (severityFilters.size > 0) result = result.filter(v => severityFilters.has(v.severity));
     if (fixFilters.size > 0) result = result.filter(v => fixFilters.has(v.fixTier));
-    if (categoryFilter !== 'all') result = result.filter(v => v.category === categoryFilter);
+    if (categoryFilter !== 'all') result = result.filter(v => apmeCategoryOf(v) === categoryFilter);
 
     const sorted = [...result].sort((a, b) => {
       if (pageState !== 'idle' && pageState !== 'in-progress') {
@@ -2896,7 +2891,7 @@ export const QualityTabUnified = ({
                     Showing {filteredViolations.length} of {scan.totalViolations} violations
                   </Typography>
                   {categoryFilter !== 'all' && (
-                    <Chip size="small" label={categoryFilter === 'aap-compatibility' ? 'AAP compatibility' : categoryFilter}
+                    <Chip size="small" label={categoryFilter === 'all' ? 'All' : APME_CATEGORY_LABEL[categoryFilter]}
                       onDelete={() => setCategoryFilter('all')}
                       style={{ height: 20, fontSize: 11, fontWeight: 600 }} />
                   )}

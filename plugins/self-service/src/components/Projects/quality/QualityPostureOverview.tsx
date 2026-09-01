@@ -3,7 +3,6 @@ import { EmptyState } from '@backstage/core-components';
 import {
   Box,
   Button,
-  Chip,
   Tooltip,
   Typography,
   makeStyles,
@@ -133,22 +132,18 @@ const useStyles = makeStyles(theme => ({
     marginBottom: theme.spacing(1),
   },
   mixChips: {
-    marginBottom: theme.spacing(2),
+    marginBottom: theme.spacing(1),
   },
   catRow: {
     display: 'flex',
     alignItems: 'center',
     gap: theme.spacing(1.5),
-    paddingTop: theme.spacing(1.25),
-    paddingBottom: theme.spacing(1.25),
-    borderTop: `1px solid ${theme.palette.divider}`,
+    paddingTop: 3,
+    paddingBottom: 3,
     cursor: 'pointer',
     borderRadius: 4,
     '&:hover': {
       backgroundColor: theme.palette.action.hover,
-    },
-    '&:last-child': {
-      paddingBottom: 0,
     },
   },
   catName: {
@@ -166,9 +161,10 @@ const useStyles = makeStyles(theme => ({
     cursor: 'help',
   },
   catCount: {
-    height: 20,
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: 600,
+    color: theme.palette.text.secondary,
+    minWidth: 16,
     flexShrink: 0,
   },
   catBar: {
@@ -490,11 +486,9 @@ export const QualityPostureOverview = ({
                       />
                     </Tooltip>
                   </Typography>
-                  <Chip
-                    size="small"
-                    label={cat.count}
-                    className={classes.catCount}
-                  />
+                  <Typography className={classes.catCount} component="span">
+                    {cat.count}
+                  </Typography>
                   <Box className={classes.catBar}>
                     <SeverityMixBar
                       breakdown={cat.breakdown}

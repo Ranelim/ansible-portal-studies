@@ -63,14 +63,14 @@ import {
 } from '../catalog/projectsDemoData';
 import { useProjectDetailStyles } from './styles';
 import { statusColors } from '../../common/statusColors';
-import { getProjectQuality } from './qualityDemoData';
+import { getProjectQuality, getProjectCompatibilityCount } from './qualityDemoData';
 import { QualityTabUnified } from './QualityTab';
 import { QualityOverviewCard } from './QualityOverviewCard';
 import { DependenciesTab } from './DependenciesTab';
 import VerifiedUserOutlinedIcon from '@material-ui/icons/VerifiedUserOutlined';
 import Chip from '@material-ui/core/Chip';
 import { useNavIaModel } from '../../../hooks/useNavIaModel';
-import { qualitySummaryOnRepo } from '../quality/qualitySurfacePaths';
+import { qualitySummaryOnRepo, parseScanCategoryParam } from '../quality/qualitySurfacePaths';
 
 
 const HOST_TABS = [
@@ -1106,7 +1106,7 @@ export const ProjectDetailsPage = () => {
   const urlScan = searchParams.get('scan');
   const urlSeverity = searchParams.get('severity') as import('./qualityDemoData').SeverityClass | null;
   const urlRule = searchParams.get('rule');
-  const urlCategory = searchParams.get('category') as import('./qualityDemoData').ViolationCategory | null;
+  const urlCategory = parseScanCategoryParam(searchParams.get('category'));
   const [selectedTab, setSelectedTab] = useState(() => {
     if (repoQualitySummary) {
       if (urlTab === 'ci-activity') return 1;
@@ -1186,7 +1186,7 @@ export const ProjectDetailsPage = () => {
   }
 
   const quality = getProjectQuality(project.name);
-  const compatCount = quality?.violations.filter(v => v.category === 'aap-compatibility').length ?? 0;
+  const compatCount = getProjectCompatibilityCount(project.name);
 
   return (
     <Page themeId="app">
@@ -1301,7 +1301,7 @@ export const ProjectDetailsPage = () => {
               background: isDark ? 'rgba(251,191,36,0.06)' : '#fffbeb',
               cursor: 'pointer',
             }}
-            onClick={() => { window.location.href = `/self-service/repositories/${project.name}?tab=quality&category=aap-compatibility`; }}
+            onClick={() => { window.location.href = `/self-service/repositories/${project.name}?tab=quality&category=modernize`; }}
           >
             <Box display="flex" alignItems="center" style={{ gap: 8 }}>
               <WarningIcon style={{ fontSize: 18, color: isDark ? '#fbbf24' : '#b45309' }} />
@@ -1313,7 +1313,7 @@ export const ProjectDetailsPage = () => {
               size="small" variant="text"
               onClick={(e: React.MouseEvent) => {
                 e.stopPropagation();
-                window.location.href = `/self-service/repositories/${project.name}?tab=quality&category=aap-compatibility`;
+                window.location.href = `/self-service/repositories/${project.name}?tab=quality&category=modernize`;
               }}
               style={{
                 textTransform: 'none', fontSize: 12, fontWeight: 500,
@@ -1356,7 +1356,7 @@ export const ProjectDetailsPage = () => {
               initialScanId={initialScanId}
               initialSeverity={urlSeverity}
               initialRuleFilter={urlRule}
-              initialCategoryFilter={urlCategory}
+              initialCategoryFilter={urlCategory === 'all' ? null : urlCategory}
               repoUrl={project.repo.url}
               branch={project.repo.branch}
             />

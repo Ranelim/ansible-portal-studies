@@ -126,14 +126,27 @@ function isCraigRedesign(chrome: WizardChrome): boolean {
   return chrome === 'new';
 }
 
+type StepsModel = 'with-results' | 'work';
+
+function parseStepsModel(value: string | null): StepsModel {
+  return value === 'work' ? 'work' : 'with-results';
+}
+
 function isResultsFixChrome(chrome: WizardChrome): boolean {
   return isInlineChrome(chrome) || isCraigRedesign(chrome);
 }
 
 /** Map engine/progress stations onto the visible stepper. */
-function displayStepId(step: StepId, chrome: WizardChrome): StepId {
+function displayStepId(
+  step: StepId,
+  chrome: WizardChrome,
+  stepsModel: StepsModel = 'with-results',
+): StepId {
   if (chrome === 'original') return step;
   if (chrome === 'visual') {
+    if (stepsModel === 'work' && step === 'findings') {
+      return 'tier1_proposals';
+    }
     switch (step) {
       case 'scan':
         return 'scan';
@@ -287,6 +300,20 @@ const useStyles = makeStyles(theme => ({
     fontSize: 12,
     color: theme.palette.text.secondary,
   },
+  stepsToggle: {
+    display: 'flex',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: theme.spacing(1),
+    marginBottom: theme.spacing(1.25),
+  },
+  stepsToggleLabel: {
+    fontSize: 11,
+    fontWeight: 700,
+    letterSpacing: '0.04em',
+    textTransform: 'uppercase',
+    color: theme.palette.text.secondary,
+  },
   backButton: {
     textTransform: 'none',
     fontWeight: 500,
@@ -407,8 +434,21 @@ function workflowSteps(
   includeAi: boolean,
   chrome: WizardChrome,
   includeAuto = true,
+  includeManual = false,
+  stepsModel: StepsModel = 'with-results',
 ): StepDef[] {
   if (chrome === 'visual') {
+    if (stepsModel === 'work') {
+      const steps: StepDef[] = [{ id: 'scan', label: 'Scan' }];
+      if (includeAuto || includeManual) {
+        steps.push({ id: 'tier1_proposals', label: 'Auto & manual' });
+      }
+      if (includeAi) {
+        steps.push({ id: 'ai_proposals', label: 'AI remediations' });
+      }
+      steps.push({ id: 'commit', label: 'Commit' });
+      return steps;
+    }
     const steps: StepDef[] = [
       { id: 'scan', label: 'Scan' },
       { id: 'findings', label: 'Results' },
@@ -1056,11 +1096,17 @@ function GatePanel({
   );
 }
 
-function initialStep(resume: boolean, status?: string): StepId {
+function initialStep(
+  resume: boolean,
+  status: string | undefined,
+  stepsModel: StepsModel,
+): StepId {
   if (!resume) return 'scan';
   if (status === 'pr-open' || status === 'pr-merged') return 'complete';
   if (status === 'proposals-ready') return 'tier1_proposals';
-  if (status === 'in-progress') return 'findings';
+  if (status === 'in-progress') {
+    return stepsModel === 'work' ? 'tier1_proposals' : 'findings';
+  }
   return 'scan';
 }
 
@@ -1078,6 +1124,7 @@ export const ApmeRemediationPage = () => {
   const wizard = parseWizardChrome(params.get('wizard'));
   const ctaLayout = parseCtaLayout(params.get('cta'));
   const reviewLayout = parseReviewLayout(params.get('review'));
+  const stepsModel = parseStepsModel(params.get('steps'));
   const compact = wizard !== 'original';
   const inline = isInlineChrome(wizard);
   const visual = isVisualChrome(wizard);
@@ -1099,14 +1146,25 @@ export const ApmeRemediationPage = () => {
     if (!quality) return false;
     return quality.violations.some(v => v.fixTier === 'deterministic');
   }, [quality]);
+  const includeManual = useMemo(() => {
+    if (!quality) return false;
+    return quality.violations.some(
+      v => v.fixTier !== 'deterministic' && v.fixTier !== 'ai',
+    );
+  }, [quality]);
 
   const steps = useMemo(
-    () => workflowSteps(includeAi, wizard, includeAuto),
-    [includeAi, includeAuto, wizard],
+    () =>
+      workflowSteps(includeAi, wizard, includeAuto, includeManual, stepsModel),
+    [includeAi, includeAuto, includeManual, wizard, stepsModel],
   );
 
   const [step, setStep] = useState<StepId>(() =>
-    initialStep(resume, quality?.remediationStatus),
+    initialStep(
+      resume,
+      quality?.remediationStatus,
+      parseStepsModel(params.get('steps')),
+    ),
   );
   const [logIndex, setLogIndex] = useState(0);
   const [applyTick, setApplyTick] = useState(0);
@@ -1160,7 +1218,7 @@ export const ApmeRemediationPage = () => {
     (step === 'ai_assessment' && aiGenerating) ||
     step === 'ai_applied' ||
     (step === 'commit' && committing);
-  const stepperCurrent = displayStepId(step, wizard);
+  const stepperCurrent = displayStepId(step, wizard, stepsModel);
   const sessionDone = compact && step === 'complete';
 
   useEffect(() => {
@@ -1181,14 +1239,36 @@ export const ApmeRemediationPage = () => {
       setLogIndex(i => {
         if (i >= SCAN_PHASES.length - 1) {
           window.clearInterval(id);
-          setStep('findings');
+          if (stepsModel === 'work') {
+            setStep(
+              includeAuto || includeManual
+                ? 'tier1_proposals'
+                : includeAi
+                  ? 'ai_proposals'
+                  : 'commit',
+            );
+          } else {
+            setStep('findings');
+          }
           return i;
         }
         return i + 1;
       });
     }, 700);
     return () => window.clearInterval(id);
-  }, [step]);
+  }, [step, stepsModel, includeAuto, includeManual, includeAi]);
+
+  useEffect(() => {
+    if (!visual || stepsModel !== 'work') return;
+    if (step !== 'findings') return;
+    setStep(
+      includeAuto || includeManual
+        ? 'tier1_proposals'
+        : includeAi
+          ? 'ai_proposals'
+          : 'commit',
+    );
+  }, [visual, stepsModel, step, includeAuto, includeManual, includeAi]);
 
   useEffect(() => {
     if (step !== 'tier1_applied' && step !== 'ai_applied' && !(step === 'ai_assessment' && aiGenerating)) {
@@ -1286,8 +1366,38 @@ export const ApmeRemediationPage = () => {
   }
 
   const displayRepo = `${repo.org}/${repo.name}`;
+  const setStepsModel = (next: StepsModel) => {
+    const nextParams = new URLSearchParams(params);
+    if (next === 'with-results') {
+      nextParams.delete('steps');
+    } else {
+      nextParams.set('steps', 'work');
+    }
+    setParams(nextParams, { replace: true });
+  };
+
   const pageChrome = (
     <Box className={classes.chrome}>
+      {visual ? (
+        <Box className={classes.stepsToggle} role="region" aria-label="Remediation steps compare">
+          <Typography className={classes.stepsToggleLabel} component="span">
+            Steps
+          </Typography>
+          <ToggleButtonGroup
+            exclusive
+            size="small"
+            value={stepsModel}
+            onChange={(_event, next: StepsModel | null) => {
+              if (next == null) return;
+              setStepsModel(next);
+            }}
+            aria-label="Remediation steps model"
+          >
+            <ToggleButton value="with-results">With Results</ToggleButton>
+            <ToggleButton value="work">Auto & manual</ToggleButton>
+          </ToggleButtonGroup>
+        </Box>
+      ) : null}
       <Button
         variant="text"
         color="inherit"
@@ -1328,7 +1438,11 @@ export const ApmeRemediationPage = () => {
                 ? 'All findings from this scan. AI remediations are next.'
                 : 'All findings from this scan.'
             : step === 'tier1_proposals'
-              ? includeAi
+              ? stepsModel === 'work'
+                ? includeAi
+                  ? 'Accept or decline each auto-fix. Manual fixes stay in the file. AI remediations are next.'
+                  : 'Accept or decline each auto-fix. Manual fixes stay in the file.'
+                : includeAi
                 ? 'Accept or decline each auto-fix. AI remediations are next.'
                 : 'Accept or decline each auto-fix you want to include in the commit.'
               : step === 'ai_proposals'
@@ -1480,7 +1594,7 @@ export const ApmeRemediationPage = () => {
             onCancel={goBack}
             ctaLayout={ctaLayout}
             reviewLayout={reviewLayout}
-            phase="autofix"
+            phase={stepsModel === 'work' ? 'work' : 'autofix'}
             header={
               isRedesignLayout(reviewLayout) ? (
                 <>

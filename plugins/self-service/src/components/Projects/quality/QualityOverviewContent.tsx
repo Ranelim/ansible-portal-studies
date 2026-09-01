@@ -21,17 +21,13 @@ import { qualitySummaryOnRepo } from './qualitySurfacePaths';
 import {
   getFleetViolationData,
   SEVERITY_COLORS,
+  APME_CATEGORY_LABEL,
+  type ApmeRuleCategory,
   type FleetViolationRule,
-  type ViolationCategory,
   type SeverityClass,
 } from '../detail/qualityDemoData';
 
-const CATEGORY_LABELS: Record<ViolationCategory, string> = {
-  'aap-compatibility': 'AAP compatibility',
-  'security': 'Security',
-  'lint': 'Lint',
-  'best-practice': 'Best practice',
-};
+const CATEGORY_LABELS = APME_CATEGORY_LABEL;
 
 const SEVERITY_WEIGHT: Record<SeverityClass, number> = {
   critical: 50, high: 20, medium: 5, low: 2, info: 1,
@@ -119,7 +115,7 @@ export const QualityOverviewContent = () => {
   const fleet = useMemo(() => getFleetViolationData(), []);
 
   const [severityFilters, setSeverityFilters] = useState<Set<SeverityClass>>(new Set());
-  const [categoryFilters, setCategoryFilters] = useState<Set<ViolationCategory>>(new Set());
+  const [categoryFilters, setCategoryFilters] = useState<Set<ApmeRuleCategory>>(new Set());
   const [sortCol, setSortCol] = useState<SortColumn>('impact');
   const [sortAsc, setSortAsc] = useState(false);
 
@@ -175,7 +171,7 @@ export const QualityOverviewContent = () => {
     setSeverityFilters(prev => { const n = new Set(prev); if (n.has(sev)) n.delete(sev); else n.add(sev); return n; });
   };
 
-  const toggleCategory = (cat: ViolationCategory) => {
+  const toggleCategory = (cat: ApmeRuleCategory) => {
     setCategoryFilters(prev => { const n = new Set(prev); if (n.has(cat)) n.delete(cat); else n.add(cat); return n; });
   };
 

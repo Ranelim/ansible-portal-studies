@@ -9,7 +9,7 @@ export type FindingCodeContext = {
 
 /** Demo snippets keyed by rule id — same evidence as the Quality tab preview. */
 export const FINDING_CODE_CONTEXT: Record<string, FindingCodeContext> = {
-  'meta-no-info': {
+  'L027': {
     lines: [
       { num: 1, text: '# meta/main.yml' },
       { num: 2, text: '---' },
@@ -20,7 +20,7 @@ export const FINDING_CODE_CONTEXT: Record<string, FindingCodeContext> = {
     detail:
       'Role metadata should include author, description, license, and supported platforms to help users discover and evaluate this role.',
   },
-  'yaml[truthy]': {
+  'L061': {
     lines: [
       { num: 6, text: 'gather_facts: true' },
       { num: 7, text: '' },
@@ -30,7 +30,7 @@ export const FINDING_CODE_CONTEXT: Record<string, FindingCodeContext> = {
     detail:
       'YAML 1.1 accepts yes/no as booleans, but YAML 1.2 does not. Use true/false for forward compatibility.',
   },
-  'deprecated-module': {
+  'M002': {
     lines: [
       { num: 16, text: '    - name: Apply patches to all packages' },
       { num: 17, text: '      ansible.builtin.include_tasks: patch-apply.yml' },
@@ -41,7 +41,7 @@ export const FINDING_CODE_CONTEXT: Record<string, FindingCodeContext> = {
     detail:
       'ansible.builtin.yum is deprecated in AAP 2.7+. Use ansible.builtin.dnf which is a drop-in replacement.',
   },
-  'fqcn[action-core]': {
+  'L026': {
     lines: [
       { num: 11, text: '    - name: Copy patching script to target' },
       { num: 12, text: '      copy:', highlighted: true },
@@ -52,7 +52,7 @@ export const FINDING_CODE_CONTEXT: Record<string, FindingCodeContext> = {
     detail:
       'Use the fully qualified collection name (ansible.builtin.copy) to avoid ambiguity with custom modules sharing the same short name.',
   },
-  'no-changed-when': {
+  'L013': {
     lines: [
       { num: 20, text: '    - name: Check current patch level' },
       { num: 21, text: '      ansible.builtin.command:', highlighted: true },
@@ -62,7 +62,7 @@ export const FINDING_CODE_CONTEXT: Record<string, FindingCodeContext> = {
     detail:
       'Commands that only read state should declare changed_when: false so Ansible reports them as "ok" rather than "changed".',
   },
-  'name[missing]': {
+  'L024': {
     lines: [
       { num: 3, text: '    - ansible.builtin.file:', highlighted: true },
       { num: 4, text: '        path: /var/backup/rollback' },
@@ -71,7 +71,7 @@ export const FINDING_CODE_CONTEXT: Record<string, FindingCodeContext> = {
     detail:
       'Unnamed tasks make playbook output hard to read and debug. Every task should have a descriptive name.',
   },
-  'aap-removed-param': {
+  'L059': {
     lines: [
       { num: 6, text: '    - name: Check disk space' },
       { num: 7, text: '      ansible.builtin.command:' },
@@ -81,7 +81,7 @@ export const FINDING_CODE_CONTEXT: Record<string, FindingCodeContext> = {
     detail:
       'The warn parameter was removed in ansible-core 2.17 (AAP 2.7). Commands no longer emit deprecation warnings by default.',
   },
-  'aap-collection-update': {
+  'M011': {
     lines: [
       { num: 4, text: 'collections:' },
       { num: 5, text: '  - name: community.general' },
@@ -90,7 +90,7 @@ export const FINDING_CODE_CONTEXT: Record<string, FindingCodeContext> = {
     detail:
       'community.general 7.5.0 is unsupported in AAP 2.7. Update to >= 8.0.0 for compatibility.',
   },
-  'risky-file-permissions': {
+  'L021': {
     lines: [
       { num: 32, text: '    - name: Write patch report' },
       { num: 33, text: '      ansible.builtin.copy:' },
@@ -100,17 +100,7 @@ export const FINDING_CODE_CONTEXT: Record<string, FindingCodeContext> = {
     detail:
       'File created without explicit permissions inherits umask defaults, which may be too permissive. Set mode explicitly.',
   },
-  'aap-deprecated-module': {
-    lines: [
-      { num: 12, text: '    - name: Install prerequisites' },
-      { num: 13, text: '      ansible.builtin.yum:', highlighted: true },
-      { num: 14, text: '        name: "{{ prereq_packages }}"' },
-      { num: 15, text: '        state: present' },
-    ],
-    detail:
-      'ansible.builtin.yum is deprecated in AAP 2.5+. Use ansible.builtin.dnf as a drop-in replacement.',
-  },
-  'aap-deprecated-syntax': {
+  'M009': {
     lines: [
       { num: 20, text: '    - name: Apply security updates' },
       { num: 21, text: '      ansible.builtin.dnf:' },
@@ -120,7 +110,7 @@ export const FINDING_CODE_CONTEXT: Record<string, FindingCodeContext> = {
     detail:
       'with_items is deprecated loop syntax. Use loop for forward compatibility with future Ansible versions.',
   },
-  'aap-removed-config': {
+  'M022': {
     lines: [
       { num: 1, text: '[defaults]' },
       { num: 2, text: 'inventory = ./inventory' },
@@ -129,7 +119,7 @@ export const FINDING_CODE_CONTEXT: Record<string, FindingCodeContext> = {
     detail:
       'callback_whitelist was renamed to callbacks_enabled in ansible-core 2.17. The old name is no longer recognized.',
   },
-  'SEC-001': {
+  'SEC:generic-api-key': {
     lines: [
       { num: 6, text: 'backup_user: ansible' },
       { num: 7, text: '' },
@@ -139,7 +129,7 @@ export const FINDING_CODE_CONTEXT: Record<string, FindingCodeContext> = {
     detail:
       'A hardcoded secret in vars is visible in git history. Move this value to Ansible Vault or a credential.',
   },
-  'command-instead-of-shell': {
+  'L007': {
     lines: [
       { num: 7, text: '    - name: Verify backup checksum' },
       { num: 8, text: '      ansible.builtin.shell:', highlighted: true },
