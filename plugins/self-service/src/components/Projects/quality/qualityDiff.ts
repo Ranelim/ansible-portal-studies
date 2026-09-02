@@ -38,3 +38,21 @@ export function unifiedDiff(current: string[], proposed: string[]): DiffLine[] {
   return out;
 }
 
+/** Side-by-side panes from a unified diff: current keeps dels, proposed keeps adds. */
+export function splitDiff(diff: DiffLine[]): {
+  current: DiffLine[];
+  proposed: DiffLine[];
+} {
+  const current: DiffLine[] = [];
+  const proposed: DiffLine[] = [];
+  for (const line of diff) {
+    if (line.kind === 'del') current.push(line);
+    else if (line.kind === 'add') proposed.push(line);
+    else {
+      current.push(line);
+      proposed.push(line);
+    }
+  }
+  return { current, proposed };
+}
+

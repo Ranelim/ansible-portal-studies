@@ -41,6 +41,7 @@ import {
 } from './SpaRemediationReview';
 import {
   InlineVisualReview,
+  CommitFindingReview,
   isRedesignLayout,
   type CtaLayout,
   type ReviewLayout,
@@ -464,7 +465,7 @@ function workflowSteps(
       if (includeAuto || includeManual) {
         steps.push({
           id: 'tier1_proposals',
-          label: 'Findings and auto remediations',
+          label: 'Findings and Auto remediations',
         });
       }
       if (includeAi) {
@@ -1197,6 +1198,7 @@ export const ApmeRemediationPage = () => {
   const [aiOptIn, setAiOptIn] = useState<Record<string, boolean>>({});
   const [aiGenerating, setAiGenerating] = useState(false);
   const [aiStatus, setAiStatus] = useState<Record<string, AiRowStatus>>({});
+  const [sideBySide, setSideBySide] = useState(false);
   const generateInlineAi = useCallback((key: string) => {
     setAiStatus(prev => ({ ...prev, [key]: 'loading' }));
     window.setTimeout(() => {
@@ -1552,7 +1554,8 @@ export const ApmeRemediationPage = () => {
             ctaLayout={ctaLayout}
             reviewLayout={reviewLayout}
             phase="results"
-            sideBySide={!isWithoutFindings}
+            sideBySide={sideBySide}
+            onSideBySideChange={setSideBySide}
             header={
               isRedesignLayout(reviewLayout) ? (
                 <>
@@ -1610,7 +1613,8 @@ export const ApmeRemediationPage = () => {
             ctaLayout={ctaLayout}
             reviewLayout={reviewLayout}
             phase={isWithoutFindings ? 'review' : 'autofix'}
-            sideBySide={!isWithoutFindings}
+            sideBySide={sideBySide}
+            onSideBySideChange={setSideBySide}
             header={
               isRedesignLayout(reviewLayout) ? (
                 <>
@@ -1698,7 +1702,8 @@ export const ApmeRemediationPage = () => {
             ctaLayout={ctaLayout}
             reviewLayout={reviewLayout}
             phase="ai"
-            sideBySide={!isWithoutFindings}
+            sideBySide={sideBySide}
+            onSideBySideChange={setSideBySide}
             header={
               isRedesignLayout(reviewLayout) ? (
                 <>
@@ -1731,6 +1736,7 @@ export const ApmeRemediationPage = () => {
           ? `Commit ${count} remediated change${count !== 1 ? 's' : ''}`
           : 'Commit remediation changes';
       return (
+        <>
         <Paper variant="outlined" className={classes.panel}>
           <div className={classes.commitHeader}>
             <Box>
@@ -1822,6 +1828,18 @@ export const ApmeRemediationPage = () => {
             </Button>
           </Box>
         </Paper>
+        {visual ? (
+          <CommitFindingReview
+            findings={quality.violations}
+            t1Decisions={t1Decisions}
+            setT1Decisions={setT1Decisions}
+            aiDecisions={aiDecisions}
+            setAiDecisions={setAiDecisions}
+            aiStatus={aiStatus}
+            sideBySide={sideBySide}
+          />
+        ) : null}
+        </>
       );
     }
 
@@ -1833,7 +1851,11 @@ export const ApmeRemediationPage = () => {
         hasPullRequest={Boolean(createPr && pushed && prUrl)}
         findings={quality.violations}
         t1Decisions={t1Decisions}
+        setT1Decisions={setT1Decisions}
         aiDecisions={aiDecisions}
+        setAiDecisions={setAiDecisions}
+        aiStatus={aiStatus}
+        sideBySide={sideBySide}
         onDone={goBack}
         doneLabel={`Back to ${backLabel}`}
       />

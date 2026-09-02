@@ -15,7 +15,7 @@
  * one card with one Accept / Decline. Single-finding cards stay unchanged.
  */
 
-import { useLayoutEffect, useMemo, useRef, useState, Fragment, type Dispatch, type ReactNode, type SetStateAction } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, Fragment, type Dispatch, type ReactNode, type SetStateAction } from 'react';
 import { HeaderTabs } from '@backstage/core-components';
 import {
   Button,
@@ -66,11 +66,83 @@ import {
   type WizardDecision,
 } from './SpaRemediationReview';
 import { snippetForRule } from './spaWizardSnippets';
-import { unifiedDiff, type DiffLine } from './qualityDiff';
+import { splitDiff, unifiedDiff, type DiffLine } from './qualityDiff';
 import { ReadCountBadge } from '../../common/ReadCountBadge';
+import { statusColors } from '../../common/statusColors';
 
 const PILL = { borderRadius: 20, textTransform: 'none' as const, fontWeight: 600 };
 const PILL_COMPACT = { ...PILL, minWidth: 0, padding: '2px 12px' };
+/** Header-slot control — same 28px row as Accept / Decline. */
+const HEADER_ACTION = {
+  ...PILL,
+  minWidth: 0,
+  minHeight: 28,
+  height: 28,
+  padding: '0 12px',
+  boxSizing: 'border-box' as const,
+};
+const ROW_TOGGLE_SX = {
+  height: 28,
+  minHeight: 28,
+  py: 0,
+  px: '10px',
+  textTransform: 'none' as const,
+  fontWeight: 500,
+  '& .MuiSvgIcon-root': { fontSize: 14 },
+};
+const DIFF_TOGGLE_SX = {
+  height: 32,
+  minHeight: 32,
+  width: 32,
+  minWidth: 32,
+  p: 0,
+};
+
+const DiffStackedIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden>
+    <rect
+      x="1.75"
+      y="1.75"
+      width="12.5"
+      height="5"
+      rx="1.25"
+      stroke="currentColor"
+      strokeWidth="1.5"
+    />
+    <rect
+      x="1.75"
+      y="9.25"
+      width="12.5"
+      height="5"
+      rx="1.25"
+      stroke="currentColor"
+      strokeWidth="1.5"
+    />
+  </svg>
+);
+
+const DiffSplitIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden>
+    <rect
+      x="1.75"
+      y="1.75"
+      width="5"
+      height="12.5"
+      rx="1.25"
+      stroke="currentColor"
+      strokeWidth="1.5"
+    />
+    <rect
+      x="9.25"
+      y="1.75"
+      width="5"
+      height="12.5"
+      rx="1.25"
+      stroke="currentColor"
+      strokeWidth="1.5"
+    />
+  </svg>
+);
 
 const LightspeedSpark = ({ size = 14 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 16 16" fill="currentColor" aria-hidden>
@@ -173,20 +245,12 @@ function findingsTabCountLabel(tab: ReviewTab, n: number): string {
   return n === 1 ? '1 manual remediation only' : `${n} manual remediations only`;
 }
 
-const RESULTS_LANE_BADGE: Record<FixLane, string> = {
-  'Auto-fix': 'Auto remediation available',
-  'AI-fix': 'Requires AI suggestion',
-  'Manual-fix': 'Manual remediation only',
-};
-
 function laneFilterLabel(lane: FixLane, phase: ReviewPhase): string {
   return usesRemediationVocab(phase) ? REMEDIATION_LANE_LABEL[lane] : TAB_LABEL[lane];
 }
 
-function laneBadgeLabel(lane: FixLane, phase: ReviewPhase): string {
-  if (phase === 'results') return RESULTS_LANE_BADGE[lane];
-  if (isCombinedPhase(phase) && lane === 'AI-fix') return RESULTS_LANE_BADGE[lane];
-  return laneFilterLabel(lane, phase);
+function laneBadgeLabel(lane: FixLane, _phase?: ReviewPhase): string {
+  return REMEDIATION_LANE_LABEL[lane];
 }
 
 const TAB_COUNT_LABEL: Record<FixLane, (n: number) => string> = {
@@ -496,7 +560,7 @@ const useStyles = makeStyles((theme: Theme) => ({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: theme.spacing(2),
-    flexWrap: 'wrap',
+    flexWrap: 'nowrap',
     margin: theme.spacing(0, 0.25, 0.5),
     padding: theme.spacing(1.5, 2),
     backgroundColor: theme.palette.background.paper,
@@ -516,12 +580,55 @@ const useStyles = makeStyles((theme: Theme) => ({
   },
   footerStatus: {
     ...theme.typography.body2,
-    flex: '1 1 220px',
+    flex: '1 1 auto',
     color: theme.palette.text.secondary,
     minWidth: 0,
+    display: 'flex',
+    alignItems: 'center',
+  },
+  footerBulk: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: theme.spacing(0.5),
+    flexShrink: 0,
+  },
+  footerLink: {
+    textTransform: 'none',
+    fontWeight: 500,
+    fontFamily: theme.typography.fontFamily,
+    minHeight: 28,
+    padding: '0 8px',
   },
   footerLead: {
-    display: 'block',
+    ...theme.typography.body2,
+    fontFamily: theme.typography.fontFamily,
+    color: theme.palette.text.secondary,
+    fontWeight: theme.typography.fontWeightRegular ?? 400,
+    whiteSpace: 'nowrap',
+    flexShrink: 0,
+  },
+  footerStat: {
+    ...theme.typography.body2,
+    fontFamily: theme.typography.fontFamily,
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 2,
+    whiteSpace: 'nowrap',
+    fontWeight: 600,
+    lineHeight: 1.4,
+    flexShrink: 0,
+  },
+  footerStatAccept: {
+    color: statusColors.success,
+  },
+  footerStatDecline: {
+    color: statusColors.error,
+  },
+  footerStatRemain: {
+    color: theme.palette.text.primary,
+  },
+  footerStatIcon: {
+    fontSize: 16,
   },
   footerHint: {
     display: 'block',
@@ -536,16 +643,17 @@ const useStyles = makeStyles((theme: Theme) => ({
   footerActions: {
     display: 'flex',
     alignItems: 'center',
+    flexWrap: 'nowrap',
     marginLeft: 'auto',
   },
   footerAccepted: {
     display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'center',
-    alignItems: 'flex-end',
-    textAlign: 'right',
-    gap: 2,
-    maxWidth: 280,
+    flexDirection: 'row',
+    flexWrap: 'nowrap',
+    alignItems: 'center',
+    whiteSpace: 'nowrap',
+    gap: 0,
+    minWidth: 'max-content',
     marginRight: theme.spacing(2),
   },
   footerContinue: {
@@ -669,6 +777,41 @@ const useStyles = makeStyles((theme: Theme) => ({
     color: theme.palette.text.secondary,
     maxWidth: 640,
   },
+  laneMix: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: theme.spacing(2),
+    marginTop: theme.spacing(0.5),
+  },
+  laneMixItem: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 4,
+  },
+  laneMixHit: {
+    ...theme.typography.body2,
+    display: 'inline-flex',
+    alignItems: 'baseline',
+    gap: 4,
+    padding: 0,
+    border: 'none',
+    background: 'none',
+    cursor: 'pointer',
+    color: theme.palette.text.primary,
+    fontFamily: theme.typography.fontFamily,
+    '&:hover': {
+      textDecoration: 'underline',
+    },
+    '&:disabled': {
+      cursor: 'default',
+      color: theme.palette.text.secondary,
+      textDecoration: 'none',
+    },
+  },
+  laneMixCount: {
+    fontWeight: 600,
+  },
   mixMeta: {
     ...theme.typography.body2,
     color: theme.palette.text.secondary,
@@ -704,6 +847,32 @@ const useStyles = makeStyles((theme: Theme) => ({
   },
   findingsTabsHost: {
     paddingTop: theme.spacing(0.5),
+  },
+  commitReview: {
+    marginBottom: theme.spacing(2),
+    overflow: 'hidden',
+  },
+  commitFilters: {
+    display: 'flex',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: theme.spacing(1),
+    padding: theme.spacing(1.5, 2, 1),
+    width: '100%',
+    boxSizing: 'border-box',
+    borderBottom: `1px solid ${theme.palette.divider}`,
+  },
+  commitTabHint: {
+    ...theme.typography.body2,
+    color: theme.palette.text.secondary,
+    margin: 0,
+    padding: theme.spacing(1.5, 2, 0),
+  },
+  commitList: {
+    padding: theme.spacing(1.5, 2, 2),
+    display: 'flex',
+    flexDirection: 'column',
+    gap: theme.spacing(1.5),
   },
   bulkBarBeforeTabs: {
     paddingBottom: theme.spacing(0.5),
@@ -836,7 +1005,7 @@ const useStyles = makeStyles((theme: Theme) => ({
     alignItems: 'center',
     gap: theme.spacing(1.5),
     flexWrap: 'wrap',
-    margin: theme.spacing(2, 2, 1.5),
+    margin: theme.spacing(0, 2, 0.5),
     padding: theme.spacing(1.25, 1.5),
     backgroundColor:
       theme.palette.type === 'light' ? '#e7f1fa' : 'rgba(38, 117, 195, 0.12)',
@@ -1021,6 +1190,7 @@ const useStyles = makeStyles((theme: Theme) => ({
     flexWrap: 'nowrap',
     gap: 8,
     width: '100%',
+    minHeight: 32,
   },
   showingInline: {
     display: 'flex',
@@ -1030,6 +1200,42 @@ const useStyles = makeStyles((theme: Theme) => ({
     flex: '0 1 auto',
     width: 'auto',
     minWidth: 0,
+  },
+  diffToggle: {
+    flexShrink: 0,
+    alignSelf: 'center',
+    '& .MuiToggleButtonGroup-grouped': {
+      margin: 0,
+    },
+    '& .MuiToggleButton-root': {
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: 0,
+      minWidth: 32,
+      width: 32,
+      minHeight: 32,
+      height: 32,
+      boxSizing: 'border-box',
+      borderColor: theme.palette.divider,
+      color: theme.palette.text.secondary,
+    },
+    '& .MuiToggleButton-root.MuiToggleButton-sizeSmall': {
+      padding: 0,
+      minWidth: 32,
+      width: 32,
+      minHeight: 32,
+      height: 32,
+    },
+    '& .MuiToggleButton-root.Mui-selected': {
+      color: theme.palette.text.primary,
+      backgroundColor: theme.palette.action.selected,
+    },
+    '& svg': {
+      display: 'block',
+      width: 14,
+      height: 14,
+    },
   },
   clearFilters: {
     textTransform: 'none',
@@ -1237,7 +1443,7 @@ const useStyles = makeStyles((theme: Theme) => ({
     display: 'flex',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
-    flexWrap: 'wrap',
+    flexWrap: 'nowrap',
     gap: theme.spacing(2),
     padding: theme.spacing(1.5, 2),
   },
@@ -1249,58 +1455,83 @@ const useStyles = makeStyles((theme: Theme) => ({
   bundledCopy: {
     marginTop: theme.spacing(1.5),
   },
-  chips: { display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', marginTop: 8 },
+  fileMetaRow: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 4,
+  },
+  chips: { display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' },
   chip: { height: 22, maxWidth: '100%' },
   fileMeta: {
     ...theme.typography.caption,
-    marginTop: 4,
     color: theme.palette.text.secondary,
-    wordBreak: 'break-all',
+    wordBreak: 'break-word',
   },
   filePath: {
     fontFamily: '"Red Hat Mono", ui-monospace, monospace',
   },
   cardActions: {
     display: 'flex',
-    flexWrap: 'wrap',
+    flexWrap: 'nowrap',
     gap: 6,
     alignItems: 'center',
+    justifyContent: 'flex-end',
     flexShrink: 0,
+    minHeight: 28,
     paddingTop: 2,
     marginLeft: 'auto',
+    whiteSpace: 'nowrap',
   },
   rowToggle: {
     flexShrink: 0,
     '& .MuiToggleButton-root': {
       textTransform: 'none',
-      fontWeight: 600,
-      fontSize: 13,
-      lineHeight: 1.4,
-      padding: '4px 12px',
+      fontFamily: theme.typography.fontFamily,
+      fontWeight: 500,
+      fontSize: theme.typography.body2.fontSize,
+      lineHeight: 1.2,
+      padding: '0 10px',
+      minHeight: 28,
+      height: 28,
+      boxSizing: 'border-box',
       gap: 4,
       whiteSpace: 'nowrap',
+      borderColor: theme.palette.divider,
+    },
+    '& .MuiToggleButton-root.MuiToggleButton-sizeSmall': {
+      padding: '0 10px',
+      minHeight: 28,
+      height: 28,
     },
     '& .MuiSvgIcon-root': {
-      fontSize: 16,
+      fontSize: 14,
     },
   },
   rowToggleAccept: {
     '&.Mui-selected': {
-      backgroundColor: theme.palette.success.main,
-      color: '#fff',
-      borderColor: `${theme.palette.success.main} !important`,
+      backgroundColor: fade(theme.palette.success.main, 0.16),
+      color: theme.palette.success.dark,
+      borderColor: `${fade(theme.palette.success.main, 0.45)} !important`,
+      '& .MuiSvgIcon-root': {
+        color: theme.palette.success.dark,
+      },
       '&:hover': {
-        backgroundColor: theme.palette.success.dark,
+        backgroundColor: fade(theme.palette.success.main, 0.22),
       },
     },
   },
   rowToggleDecline: {
     '&.Mui-selected': {
-      backgroundColor: theme.palette.error.main,
-      color: '#fff',
-      borderColor: `${theme.palette.error.main} !important`,
+      backgroundColor: fade(theme.palette.error.main, 0.16),
+      color: theme.palette.error.dark,
+      borderColor: `${fade(theme.palette.error.main, 0.45)} !important`,
+      '& .MuiSvgIcon-root': {
+        color: theme.palette.error.dark,
+      },
       '&:hover': {
-        backgroundColor: theme.palette.error.dark,
+        backgroundColor: fade(theme.palette.error.main, 0.22),
       },
     },
   },
@@ -1330,8 +1561,26 @@ const useStyles = makeStyles((theme: Theme) => ({
       color: '#fff',
     },
   },
-  rowAccept: { backgroundColor: fade(theme.palette.success.main, 0.06) },
-  rowDecline: { backgroundColor: fade(theme.palette.error.main, 0.06) },
+  rowAccept: {
+    backgroundColor: fade(
+      theme.palette.success.main,
+      theme.palette.type === 'dark' ? 0.1 : 0.05,
+    ),
+    borderColor: fade(
+      theme.palette.success.main,
+      theme.palette.type === 'dark' ? 0.4 : 0.28,
+    ),
+  },
+  rowDecline: {
+    backgroundColor: fade(
+      theme.palette.error.main,
+      theme.palette.type === 'dark' ? 0.1 : 0.05,
+    ),
+    borderColor: fade(
+      theme.palette.error.main,
+      theme.palette.type === 'dark' ? 0.4 : 0.28,
+    ),
+  },
   rowNeutral: { backgroundColor: theme.palette.background.paper },
   diffBlock: {
     borderTop: `1px solid ${theme.palette.divider}`,
@@ -1471,8 +1720,9 @@ export const InlineVisualReview: React.FC<{
   ctaLayout?: CtaLayout;
   reviewLayout?: ReviewLayout;
   phase?: ReviewPhase;
-  /** With findings: Current | Remediation split on Findings, Auto, and AI. */
+  /** Current | Remediation split. Default stacked. */
   sideBySide?: boolean;
+  onSideBySideChange?: (next: boolean) => void;
   header?: ReactNode;
 }> = ({
   findings,
@@ -1489,6 +1739,7 @@ export const InlineVisualReview: React.FC<{
   reviewLayout = 'current',
   phase = 'bundled',
   sideBySide = false,
+  onSideBySideChange,
   header,
 }) => {
   const classes = useStyles();
@@ -1691,13 +1942,15 @@ export const InlineVisualReview: React.FC<{
   );
 
   const mixFindings = useMemo(() => {
-    if (phase === 'results') return reviewFindings;
-    if (phase === 'autofix' || phase === 'review') return auto;
+    if (phase === 'results' || phase === 'review') return reviewFindings;
+    if (phase === 'autofix') return auto;
     if (phase === 'ai') return ai;
     return contentType === 'all'
       ? tabFindings
       : tabFindings.filter(f => kindLabel(f) === contentType);
   }, [phase, reviewFindings, auto, ai, tabFindings, contentType]);
+
+  const categoryAsChips = showsFindingsFilters(phase);
 
   const resultsCatRows = useMemo(() => {
     const source = mixFromFindings(mixFindings).categories;
@@ -1762,6 +2015,7 @@ export const InlineVisualReview: React.FC<{
   const autoAccepted = auto.filter(v => t1Decisions[findingKey(v)] === 'accept').length;
   const autoDeclined = auto.filter(v => t1Decisions[findingKey(v)] === 'decline').length;
   const aiAccepted = ai.filter(v => aiDecisions[findingKey(v)] === 'accept').length;
+  const aiDeclined = ai.filter(v => aiDecisions[findingKey(v)] === 'decline').length;
   const selectedSuggestions = autoAccepted + aiAccepted;
   const nextLocked =
     phase === 'results' || phase === 'work'
@@ -1832,6 +2086,17 @@ export const InlineVisualReview: React.FC<{
   const stampT1Items = (items: QualityViolation[], value: WizardDecision) => {
     if (items.length === 0) return;
     setT1Decisions?.(prev => {
+      const next = { ...prev };
+      items.forEach(v => {
+        next[findingKey(v)] = value;
+      });
+      return next;
+    });
+  };
+
+  const stampAiItems = (items: QualityViolation[], value: WizardDecision) => {
+    if (items.length === 0) return;
+    setAiDecisions?.(prev => {
       const next = { ...prev };
       items.forEach(v => {
         next[findingKey(v)] = value;
@@ -1981,38 +2246,15 @@ export const InlineVisualReview: React.FC<{
                 ? 'Accept or decline generated AI suggestions to continue.'
                 : 'Auto-fixes decided. Ungenerated AI stays in the file.';
 
-  const phaseAccepted =
-    phase === 'results'
-      ? 0
-      : phase === 'autofix' || isCombinedPhase(phase)
-        ? autoAccepted
-        : phase === 'ai'
-          ? aiAccepted
-          : selectedSuggestions;
-  const selectedLabel =
-    phaseAccepted === 0
-      ? 'No remediations accepted'
-      : phaseAccepted === 1
-        ? '1 remediation accepted'
-        : `${phaseAccepted} remediations accepted`;
-  const selectedHint =
-    phaseAccepted > 0
-      ? 'They go into the pull request on the Commit step.'
-      : '';
-  const selectedBreakdown = [
-    phase !== 'ai' && auto.length > 0
-      ? usesRemediationVocab(phase)
-        ? `${autoAccepted} out of ${auto.length} auto remediation${auto.length === 1 ? '' : 's'}`
-        : `${autoAccepted} out of ${auto.length} auto-fix${auto.length === 1 ? '' : 'es'}`
-      : null,
-    phase !== 'autofix' && phase !== 'work' && phase !== 'review' && ai.length > 0
-      ? usesRemediationVocab(phase)
-        ? `${aiAccepted} out of ${ai.length} AI remediation${ai.length === 1 ? '' : 's'}`
-        : `${aiAccepted} out of ${ai.length} AI-fix${ai.length === 1 ? '' : 'es'}`
-      : null,
-  ]
-    .filter(Boolean)
-    .join(', ');
+  const commitAccepted =
+    phase === 'ai' ? aiAccepted : autoAccepted;
+  const commitDeclined =
+    phase === 'ai' ? aiDeclined : autoDeclined;
+  const commitRemaining = pendingGeneratedAi;
+  const showFooterRemainCount = phase === 'ai';
+  const commitSummaryLabel = showFooterRemainCount
+    ? `${commitAccepted} accepted, ${commitDeclined} declined, ${commitRemaining} remaining`
+    : `${commitAccepted} accepted, ${commitDeclined} declined`;
 
   const decideCount =
     auto.length === 0
@@ -2024,10 +2266,16 @@ export const InlineVisualReview: React.FC<{
         : `${autoDecided} of ${auto.length} auto-fixes decided`;
 
   const findingWord = mix.total === 1 ? 'finding' : 'findings';
+  const reviewAutoTitle =
+    auto.length === 1
+      ? '1 with auto remediations'
+      : `${auto.length} with auto remediations`;
   const stepHeading =
     phase === 'results'
       ? `${mix.total} ${mix.total === 1 ? 'finding' : 'findings'}`
-      : phase === 'autofix' || phase === 'review'
+      : phase === 'review'
+        ? `${mix.total} ${mix.total === 1 ? 'finding' : 'findings'}, ${reviewAutoTitle}`
+      : phase === 'autofix'
         ? auto.length === 1
           ? '1 finding with auto remediations'
           : `${auto.length} findings with auto remediations`
@@ -2037,18 +2285,20 @@ export const InlineVisualReview: React.FC<{
             : `${ai.length} findings that require AI remediations`
           : '';
   const stepDescription =
-    phase === 'autofix' || phase === 'review'
-      ? AUTO_STEP_DESC
-      : phase === 'ai'
-        ? AI_STEP_DESC
-        : null;
+    phase === 'review'
+      ? 'Auto remediations are ready-made replacements from Ansible quality rules. They start accepted. Decline any you do not want in the pull request.'
+      : phase === 'autofix'
+        ? AUTO_STEP_DESC
+        : phase === 'ai'
+          ? AI_STEP_DESC
+          : null;
   const useFooter = ctaLayout === 'footer' || currentRedesign;
   const showListChrome = true;
   const searchPlaceholder =
     showsResultsMix(phase)
       ? 'Search findings'
       : phase === 'review'
-        ? 'Search auto remediations'
+        ? 'Search findings'
       : fixType === 'All'
       ? 'Search findings'
       : fixType === 'Auto-fix'
@@ -2069,7 +2319,14 @@ export const InlineVisualReview: React.FC<{
     tabFindings.some(f => f.severity === sev),
   );
 
-  const showingCount = filtered.length;
+  const showingCount =
+    phase === 'review'
+      ? (reviewShowAutos ? filtered.length : 0) +
+        (reviewShowAi ? reviewAi.length : 0) +
+        (reviewShowManual ? reviewManual.length : 0)
+      : filtered.length;
+  const showingTotal =
+    phase === 'review' ? reviewFindings.length : tabFindings.length;
   const showingLabel = `${showingCount} showing`;
   const remainingItems =
     fixType === 'AI-fix'
@@ -2092,6 +2349,26 @@ export const InlineVisualReview: React.FC<{
   const remainingAutoDecline = filtered.filter(
     v => v.fixTier === 'deterministic' && t1Decisions[findingKey(v)] !== 'decline',
   );
+  const remainingAiAccept = filtered.filter(f => {
+    if (laneOf(f) !== 'AI-fix') return false;
+    if (aiStatus[findingKey(f)] !== 'ready') return false;
+    return aiDecisions[findingKey(f)] !== 'accept';
+  });
+  const remainingAiDecline = filtered.filter(f => {
+    if (laneOf(f) !== 'AI-fix') return false;
+    if (aiStatus[findingKey(f)] !== 'ready') return false;
+    return aiDecisions[findingKey(f)] !== 'decline';
+  });
+  const showFooterRemaining = redesign4 && phase === 'ai';
+  const showFooterAll = redesign4 && isAutoDecidePhase(phase);
+  const autoAllAccepted =
+    auto.length > 0 &&
+    auto.every(v => t1Decisions[findingKey(v)] === 'accept');
+  const autoAllDeclined =
+    auto.length > 0 &&
+    auto.every(v => t1Decisions[findingKey(v)] === 'decline');
+  const footerRemainingAccept = remainingAiAccept;
+  const footerRemainingDecline = remainingAiDecline;
   const autoUndecidedCount = auto.filter(v => {
     const d = t1Decisions[findingKey(v)];
     return d !== 'accept' && d !== 'decline';
@@ -2118,7 +2395,7 @@ export const InlineVisualReview: React.FC<{
         variant="body2"
         color="textSecondary"
       >
-        {showingCount} showing out of {tabFindings.length}
+        {showingCount} showing out of {showingTotal}
       </Typography>
       {filtersActive ? (
         <Button
@@ -2134,6 +2411,53 @@ export const InlineVisualReview: React.FC<{
     </div>
   );
   const generateAiLabel = `Generate remediations with AI (${idleAi.length})`;
+  const diffDisplayToggle = (
+    <ToggleButtonGroup
+      exclusive
+      size="small"
+      className={classes.diffToggle}
+      value={sideBySide ? 'split' : 'stacked'}
+      onChange={(_event, next: 'stacked' | 'split' | null) => {
+        if (next == null) return;
+        onSideBySideChange?.(next === 'split');
+      }}
+      aria-label="Diff layout"
+    >
+      <ToggleButton value="stacked" aria-label="Stacked" title="Stacked" sx={DIFF_TOGGLE_SX}>
+        <DiffStackedIcon />
+      </ToggleButton>
+      <ToggleButton value="split" aria-label="Side by side" title="Side by side" sx={DIFF_TOGGLE_SX}>
+        <DiffSplitIcon />
+      </ToggleButton>
+    </ToggleButtonGroup>
+  );
+  const aiGenerateBanner =
+    phase === 'ai' && redesign3Plus && (idleAi.length > 0 || aiLoading) ? (
+      <div className={classes.aiBanner} role="status">
+        <InfoOutlinedIcon className={classes.aiBannerIcon} aria-hidden />
+        <Typography className={classes.aiBannerCopy} variant="body2">
+          {aiLoading
+            ? loadingAiCount === 1
+              ? 'Generating 1 AI remediation.'
+              : `Generating ${loadingAiCount} AI remediations.`
+            : idleAi.length === 1
+              ? '1 finding has no remediation suggestion yet. Generate an AI remediation to review it.'
+              : `${idleAi.length} findings have no remediation suggestions yet. Generate AI remediations to review them.`}
+        </Typography>
+        <Button
+          className={classes.aiBannerAction}
+          size="small"
+          variant="contained"
+          color="primary"
+          disabled={aiLoading || idleAi.length === 0}
+          startIcon={<LightspeedSpark size={14} />}
+          onClick={generateAll}
+          style={PILL}
+        >
+          {aiLoading ? 'Generating…' : generateAiLabel}
+        </Button>
+      </div>
+    ) : null;
   const phaseTabs: ReviewTab[] =
     phase === 'ai' || phase === 'autofix' || phase === 'review'
       ? []
@@ -2594,6 +2918,70 @@ export const InlineVisualReview: React.FC<{
       )
     ) : null;
 
+  const footerRemainingControl = showFooterRemaining ? (
+    <div
+      className={classes.footerBulk}
+      role="group"
+      aria-label="Accept or decline remaining AI remediations"
+    >
+      <Button
+        size="small"
+        variant="text"
+        color="primary"
+        className={classes.footerLink}
+        disabled={footerRemainingAccept.length === 0}
+        onClick={() => stampAiItems(footerRemainingAccept, 'accept')}
+      >
+        Accept remaining
+        {footerRemainingAccept.length > 0
+          ? ` (${footerRemainingAccept.length})`
+          : ''}
+      </Button>
+      <Button
+        size="small"
+        variant="text"
+        color="primary"
+        className={classes.footerLink}
+        disabled={footerRemainingDecline.length === 0}
+        onClick={() => stampAiItems(footerRemainingDecline, 'decline')}
+      >
+        Decline remaining
+        {footerRemainingDecline.length > 0
+          ? ` (${footerRemainingDecline.length})`
+          : ''}
+      </Button>
+    </div>
+  ) : null;
+
+  const footerAllControl = showFooterAll ? (
+    <div
+      className={classes.footerBulk}
+      role="group"
+      aria-label="Accept or decline all auto remediations"
+    >
+      <Button
+        size="small"
+        variant="text"
+        color="primary"
+        className={classes.footerLink}
+        disabled={auto.length === 0 || autoAllAccepted}
+        onClick={() => stampAutoFixes('accept')}
+      >
+        Accept all
+      </Button>
+      <Button
+        size="small"
+        variant="text"
+        color="primary"
+        className={classes.footerLink}
+        disabled={auto.length === 0 || autoAllDeclined}
+        onClick={() => stampAutoFixes('decline')}
+      >
+        Decline all
+      </Button>
+    </div>
+  ) : null;
+
   const redesignGenerate =
     currentRedesign && !redesign3Plus && (fixType === 'All' || fixType === 'AI-fix')
       ? generateButton
@@ -2796,10 +3184,7 @@ export const InlineVisualReview: React.FC<{
           hideDecline={redesign3}
           includeInPr={redesign4 && !isAutoDecidePhase(phase)}
           highlight={bundle.some(f => pulseKey === findingKey(f))}
-          showLane={
-            (currentRedesign && fixType === 'All') ||
-            (showsResultsMix(phase) && fixType === 'All')
-          }
+          showLane
           phase={phase}
           sideBySide={sideBySide}
           readOnly={
@@ -2879,6 +3264,63 @@ export const InlineVisualReview: React.FC<{
               >
                 {stepDescription}
               </Typography>
+            ) : null}
+            {phase === 'review' ? (
+              <div
+                className={classes.laneMix}
+                role="group"
+                aria-label="How findings can be remediated"
+              >
+                {(
+                  [
+                    {
+                      id: 'review-autos',
+                      count: auto.length,
+                      label:
+                        auto.length === 1
+                          ? 'auto remediation'
+                          : 'auto remediations',
+                      hint: `${LANE_EXPLAIN['Auto-fix']} They start accepted.`,
+                    },
+                    {
+                      id: 'review-needs-ai',
+                      count: ai.length,
+                      label: ai.length === 1 ? 'needs AI' : 'need AI',
+                      hint: LANE_EXPLAIN['AI-fix'],
+                    },
+                    {
+                      id: 'review-manual',
+                      count: manual.length,
+                      label: 'manual only',
+                      hint: LANE_EXPLAIN['Manual-fix'],
+                    },
+                  ] as const
+                ).map(item => (
+                  <span key={item.id} className={classes.laneMixItem}>
+                    <button
+                      type="button"
+                      className={classes.laneMixHit}
+                      disabled={item.count === 0}
+                      onClick={() =>
+                        document
+                          .getElementById(item.id)
+                          ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                      }
+                    >
+                      <span className={classes.laneMixCount}>{item.count}</span>
+                      {item.label}
+                    </button>
+                    <Tooltip title={item.hint} arrow>
+                      <span className={classes.catHelpHit} tabIndex={0}>
+                        <HelpOutlineIcon
+                          className={classes.catHelp}
+                          aria-label={item.hint}
+                        />
+                      </span>
+                    </Tooltip>
+                  </span>
+                ))}
+              </div>
             ) : null}
           </div>
         ) : currentRedesign && phase !== 'autofix' ? (
@@ -3023,34 +3465,7 @@ export const InlineVisualReview: React.FC<{
             )}
           </div>
         ) : null}
-        {phase === 'ai' &&
-        redesign3Plus &&
-        (idleAi.length > 0 || aiLoading) ? (
-          <div className={classes.aiBanner} role="status">
-            <InfoOutlinedIcon className={classes.aiBannerIcon} aria-hidden />
-            <Typography className={classes.aiBannerCopy} variant="body2">
-              {aiLoading
-                ? loadingAiCount === 1
-                  ? 'Generating 1 AI remediation.'
-                  : `Generating ${loadingAiCount} AI remediations.`
-                : idleAi.length === 1
-                  ? '1 finding has no remediation suggestion yet. Generate an AI remediation to review it.'
-                  : `${idleAi.length} findings have no remediation suggestions yet. Generate AI remediations to review them.`}
-            </Typography>
-            <Button
-              className={classes.aiBannerAction}
-              size="small"
-              variant="contained"
-              color="primary"
-              disabled={aiLoading || idleAi.length === 0}
-              startIcon={<LightspeedSpark size={14} />}
-              onClick={generateAll}
-              style={PILL}
-            >
-              {aiLoading ? 'Generating…' : generateAiLabel}
-            </Button>
-          </div>
-        ) : null}
+
         {showsResultsMix(phase) ||
         (redesign3Plus && phase === 'bundled') ||
         phaseTabs.length === 0 ? null : (
@@ -3104,7 +3519,7 @@ export const InlineVisualReview: React.FC<{
           aria-label={
             phase === 'ai'
               ? 'Severity and category mix for AI remediations'
-              : phase === 'autofix' || phase === 'review'
+              : phase === 'autofix'
                 ? 'Severity and category mix for auto remediations'
                 : 'Severity and category mix for this scan'
           }
@@ -3114,7 +3529,7 @@ export const InlineVisualReview: React.FC<{
             active={severityFilter}
             onToggle={toggleSeverity}
             categories={
-              sideBySide && (phase === 'autofix' || phase === 'ai')
+              categoryAsChips
                 ? mixFromFindings(mixFindings).categories.map(cat => ({
                     id: cat.id,
                     label: cat.label,
@@ -3123,19 +3538,14 @@ export const InlineVisualReview: React.FC<{
                   }))
                 : undefined
             }
-            activeCategory={
-              sideBySide && (phase === 'autofix' || phase === 'ai')
-                ? category
-                : undefined
-            }
+            activeCategory={categoryAsChips ? category : undefined}
             onToggleCategory={
-              sideBySide && (phase === 'autofix' || phase === 'ai')
+              categoryAsChips
                 ? id => toggleCategory(id as ApmeRuleCategory)
                 : undefined
             }
           />
-        {resultsCatRows.length > 0 &&
-        !(sideBySide && (phase === 'autofix' || phase === 'ai')) ? (
+        {resultsCatRows.length > 0 && !categoryAsChips ? (
           <div className={classes.resultsCatViz}>
             {resultsCatRows.map(cat => {
               const selected = category === cat.id;
@@ -3192,6 +3602,7 @@ export const InlineVisualReview: React.FC<{
         </div>
         ) : null}
         {filterToolbar}
+        {aiGenerateBanner}
         </>
         ) : null}
         {showsResultsMix(phase) || !currentRedesign || redesign3Plus ? null : (
@@ -3266,10 +3677,13 @@ export const InlineVisualReview: React.FC<{
                   ) : (
                     <div>{redesignActionsControl}</div>
                   )}
-                  {phase === 'results' ? (
-                    <span />
-                  ) : (
-                    <div>{redesign3Plus ? redesignActionsControl : redesignGenerate}</div>
+                  {phase === 'results' || showFooterRemaining || showFooterAll
+                    ? diffDisplayToggle
+                    : (
+                    <div className={classes.bulkTwinActions}>
+                      {redesign3Plus ? redesignActionsControl : redesignGenerate}
+                      {diffDisplayToggle}
+                    </div>
                   )}
                 </div>
               </>
@@ -3287,7 +3701,7 @@ export const InlineVisualReview: React.FC<{
             No findings match the current filters.
           </Typography>
         ) : reviewShowAutos && files.length > 0 ? (
-          <div className={classes.fileList}>
+          <div className={classes.fileList} id="review-autos">
             {renderFindingRows(files.flatMap(group => group.findings))}
           </div>
         ) : null}
@@ -3295,7 +3709,11 @@ export const InlineVisualReview: React.FC<{
           <div className={classes.reviewRemainder}>
             {reviewShowAi ? (
               <>
-                <Typography className={classes.reviewRemainderHead} component="h3">
+                <Typography
+                  className={classes.reviewRemainderHead}
+                  component="h3"
+                  id="review-needs-ai"
+                >
                   Needs AI
                 </Typography>
                 <Typography className={classes.reviewRemainderHint} component="p">
@@ -3306,7 +3724,11 @@ export const InlineVisualReview: React.FC<{
             ) : null}
             {reviewShowManual ? (
               <>
-                <Typography className={classes.reviewRemainderHead} component="h3">
+                <Typography
+                  className={classes.reviewRemainderHead}
+                  component="h3"
+                  id="review-manual"
+                >
                   Manual only
                 </Typography>
                 <Typography className={classes.reviewRemainderHint} component="p">
@@ -3364,14 +3786,22 @@ export const InlineVisualReview: React.FC<{
           aria-label="Remediation step actions"
         >
           <div className={classes.footerStatus}>
-            {phase === 'work' ? (
-              autoAcceptControl
-            ) : currentRedesign ? null : (
-              <>
-                {jobTitle}
-                <span className={classes.footerCount}>{decideCount}</span>
-              </>
-            )}
+            {footerAllControl
+              ? footerAllControl
+              : footerRemainingControl
+                ? footerRemainingControl
+                : isCombinedPhase(phase) || phase === 'ai' || phase === 'autofix'
+                  ? null
+                  : phase === 'work'
+                    ? autoAcceptControl
+                    : currentRedesign
+                      ? null
+                      : (
+                          <>
+                            {jobTitle}
+                            <span className={classes.footerCount}>{decideCount}</span>
+                          </>
+                        )}
           </div>
           <div
             className={`${classes.footerActions}${
@@ -3390,23 +3820,50 @@ export const InlineVisualReview: React.FC<{
               </Button>
             )}
             {isCombinedPhase(phase) || phase === 'ai' || phase === 'autofix' ? (
-              <div className={classes.footerAccepted}>
+              <div
+                className={classes.footerAccepted}
+                aria-label={commitSummaryLabel}
+              >
+                <Typography
+                  className={`${classes.footerStat} ${classes.footerStatAccept}`}
+                  variant="body2"
+                  component="span"
+                >
+                  <CheckIcon className={classes.footerStatIcon} aria-hidden />
+                  {commitAccepted} accepted
+                </Typography>
                 <Typography
                   className={classes.footerLead}
                   variant="body2"
                   component="span"
                 >
-                  {selectedLabel}
+                  ,{' '}
                 </Typography>
-                {selectedHint ? (
-                  <Typography
-                    className={classes.footerHint}
-                    variant="caption"
-                    color="textSecondary"
-                    component="span"
-                  >
-                    {selectedHint}
-                  </Typography>
+                <Typography
+                  className={`${classes.footerStat} ${classes.footerStatDecline}`}
+                  variant="body2"
+                  component="span"
+                >
+                  <CloseIcon className={classes.footerStatIcon} aria-hidden />
+                  {commitDeclined} declined
+                </Typography>
+                {showFooterRemainCount ? (
+                  <>
+                    <Typography
+                      className={classes.footerLead}
+                      variant="body2"
+                      component="span"
+                    >
+                      ,{' '}
+                    </Typography>
+                    <Typography
+                      className={`${classes.footerStat} ${classes.footerStatRemain}`}
+                      variant="body2"
+                      component="span"
+                    >
+                      {commitRemaining} remaining
+                    </Typography>
+                  </>
                 ) : null}
               </div>
             ) : null}
@@ -3443,7 +3900,7 @@ const FindingRow: React.FC<{
   hideDecline,
   includeInPr,
   highlight,
-  showLane,
+  showLane = true,
   phase,
   sideBySide = false,
   readOnly,
@@ -3452,12 +3909,9 @@ const FindingRow: React.FC<{
   const copies = bundled && bundled.length > 0 ? bundled : [finding];
   const lane = laneOf(finding);
   const key = findingKey(finding);
-  const rowClass = readOnly
-    ? classes.issueCard
-    : decision === 'accept'
-      ? `${classes.issueCard} ${
-          isAutoDecidePhase(phase ?? 'bundled') ? classes.rowNeutral : classes.rowAccept
-        }`
+  const rowClass =
+    decision === 'accept'
+      ? `${classes.issueCard} ${classes.rowAccept}`
       : decision === 'decline'
         ? `${classes.issueCard} ${classes.rowDecline}`
         : includeInPr
@@ -3474,14 +3928,16 @@ const FindingRow: React.FC<{
       className={acceptFilled ? classes.rowBtnAccepted : undefined}
       startIcon={<CheckIcon />}
       style={PILL_COMPACT}
+      disabled={readOnly}
       aria-pressed={acceptFilled}
-      onClick={() =>
+      onClick={() => {
+        if (readOnly) return;
         onDecision(
           acceptFilled && !isAutoDecidePhase(phase ?? 'bundled')
             ? null
             : 'accept',
-        )
-      }
+        );
+      }}
     >
       {acceptFilled ? 'Accepted' : 'Accept'}
     </Button>
@@ -3490,10 +3946,12 @@ const FindingRow: React.FC<{
       exclusive
       size="small"
       className={classes.rowToggle}
+      disabled={readOnly}
       value={
         decision === 'accept' || decision === 'decline' ? decision : null
       }
       onChange={(_event, next: WizardDecision | null) => {
+        if (readOnly) return;
         if (next == null) {
           if (isAutoDecidePhase(phase ?? 'bundled')) return;
           onDecision(null);
@@ -3503,12 +3961,12 @@ const FindingRow: React.FC<{
       }}
       aria-label="Accept or decline this remediation"
     >
-      <ToggleButton value="accept" className={classes.rowToggleAccept}>
-        <CheckIcon fontSize="small" />
+      <ToggleButton value="accept" className={classes.rowToggleAccept} sx={ROW_TOGGLE_SX}>
+        <CheckIcon style={{ fontSize: 14 }} />
         {acceptFilled ? 'Accepted' : 'Accept'}
       </ToggleButton>
-      <ToggleButton value="decline" className={classes.rowToggleDecline}>
-        <CloseIcon fontSize="small" />
+      <ToggleButton value="decline" className={classes.rowToggleDecline} sx={ROW_TOGGLE_SX}>
+        <CloseIcon style={{ fontSize: 14 }} />
         {declineFilled ? 'Declined' : 'Decline'}
       </ToggleButton>
     </ToggleButtonGroup>
@@ -3522,11 +3980,25 @@ const FindingRow: React.FC<{
       '_blank',
     );
 
-  const actions = readOnly
-    ? null
-    : lane === 'Auto-fix' || (lane === 'AI-fix' && aiStatus === 'ready') ? (
+  const canDecide =
+    lane === 'Auto-fix' || (lane === 'AI-fix' && aiStatus === 'ready');
+  const devSpacesAction = (
+    <Button
+      size="small"
+      variant="outlined"
+      color="primary"
+      startIcon={<CodeIcon style={{ fontSize: 14 }} />}
+      style={HEADER_ACTION}
+      onClick={() => openDevSpaces()}
+    >
+      Open in Dev Spaces
+    </Button>
+  );
+  const actions = canDecide ? (
       suggestionActions
-    ) : lane === 'AI-fix' && aiStatus === 'loading' ? null : lane === 'AI-fix' ? (
+    ) : lane === 'Manual-fix' ? (
+      devSpacesAction
+    ) : readOnly ? null : lane === 'AI-fix' && aiStatus === 'loading' ? null : lane === 'AI-fix' ? (
       onGenerateAi ? (
         <Button
           size="small"
@@ -3538,17 +4010,6 @@ const FindingRow: React.FC<{
           Generate AI suggestion
         </Button>
       ) : null
-    ) : lane === 'Manual-fix' ? (
-      <Button
-        size="small"
-        variant="outlined"
-        color="primary"
-        startIcon={<CodeIcon style={{ fontSize: 16 }} />}
-        style={PILL_COMPACT}
-        onClick={() => openDevSpaces()}
-      >
-        Open in Dev Spaces
-      </Button>
     ) : null;
 
   return (
@@ -3568,6 +4029,7 @@ const FindingRow: React.FC<{
                 <Typography className={classes.title} variant="subtitle2">
                   {item.message}
                 </Typography>
+                <div className={classes.fileMetaRow}>
                 <Typography
                   className={classes.fileMeta}
                   variant="caption"
@@ -3602,13 +4064,12 @@ const FindingRow: React.FC<{
                       <Chip
                         size="small"
                         variant="outlined"
-                        label={
-                          phase ? laneBadgeLabel(itemLane, phase) : TAB_LABEL[itemLane]
-                        }
+                        label={laneBadgeLabel(itemLane, phase)}
                         className={classes.chip}
                       />
                     </Tooltip>
                   ) : null}
+                </div>
                 </div>
               </div>
             );
@@ -3620,47 +4081,41 @@ const FindingRow: React.FC<{
         const itemLane = laneOf(item);
         const itemSnip = snippetForRule(item.ruleId);
         const fullDiff = unifiedDiff(itemSnip.current, itemSnip.proposed);
+        const split = splitDiff(fullDiff);
         const showProposed =
           itemLane === 'Auto-fix' ||
           (itemLane === 'AI-fix' && aiStatus === 'ready');
-        const renderYaml = (lines: string[], tone: 'current' | 'proposed') =>
+        const renderDiffLines = (lines: DiffLine[]) =>
           lines.length === 0 ? (
             <Typography className={classes.diffEmpty}>No snippet for this finding.</Typography>
           ) : (
-            lines.map((text, idx) => (
+            lines.map((line, idx) => (
               <div
-                key={`${tone}-${idx}`}
+                key={`${line.kind}-${idx}`}
                 className={`${classes.diffLine} ${
-                  tone === 'proposed' ? classes.add : classes.ctx
+                  line.kind === 'del'
+                    ? classes.del
+                    : line.kind === 'add'
+                      ? classes.add
+                      : classes.ctx
                 }`}
               >
                 <span className={classes.gutter} />
-                <span>{text || ' '}</span>
+                <span>{line.text || ' '}</span>
               </div>
             ))
           );
+        const currentLines = showProposed
+          ? split.current
+          : itemSnip.current.map(text => ({ kind: 'context' as const, text }));
         const findingsNote =
           itemLane === 'AI-fix' ? (
             <p className={classes.splitNote}>{FINDINGS_AI_BODY}</p>
           ) : itemLane === 'Manual-fix' ? (
-            <div>
-              <p className={classes.splitNote}>{FINDINGS_MANUAL_BODY}</p>
-              <div className={classes.splitNoteActions}>
-                <Button
-                  size="small"
-                  variant="text"
-                  color="primary"
-                  startIcon={<CodeIcon style={{ fontSize: 16 }} />}
-                  style={PILL_COMPACT}
-                  onClick={() => openDevSpaces(item)}
-                >
-                  Open in Dev Spaces
-                </Button>
-              </div>
-            </div>
+            <p className={classes.splitNote}>{FINDINGS_MANUAL_BODY}</p>
           ) : null;
         const rightBody = showProposed ? (
-          renderYaml(itemSnip.proposed, 'proposed')
+          renderDiffLines(split.proposed)
         ) : itemLane === 'AI-fix' && aiStatus === 'loading' ? (
           <div className={classes.suggestionEmpty}>
             <CircularProgress size={16} />
@@ -3670,14 +4125,16 @@ const FindingRow: React.FC<{
           findingsNote
         ) : itemLane === 'AI-fix' && aiStatus === 'idle' ? (
           <p className={classes.splitNote}>
-            No suggestion yet. Generate this row, or generate all on this tab.
+            {onGenerateAi
+              ? 'No suggestion yet. Generate this row, or generate all on this tab.'
+              : 'No suggestion was generated for this finding. It will stay in the file.'}
           </p>
         ) : itemLane === 'Manual-fix' ? (
           <p className={classes.splitNote}>
             No automatic or AI suggestion. Change this in the file, or leave it.
           </p>
         ) : (
-          renderYaml(itemSnip.current, 'current')
+          renderDiffLines(currentLines)
         );
 
         if (sideBySide) {
@@ -3686,7 +4143,7 @@ const FindingRow: React.FC<{
               <div className={classes.splitPane}>
                 <div className={classes.splitPaneHead}>Current</div>
                 <div className={classes.splitPaneBody}>
-                  {renderYaml(itemSnip.current, 'current')}
+                  {renderDiffLines(currentLines)}
                 </div>
               </div>
               <div className={classes.splitPane}>
@@ -3711,16 +4168,6 @@ const FindingRow: React.FC<{
         {readOnly && itemLane === 'Manual-fix' ? (
           <div className={`${classes.suggestionEmpty} ${classes.suggestionLeadRow}`}>
             <span>{RESULTS_MANUAL_BODY}</span>
-            <Button
-              size="small"
-              variant="text"
-              color="primary"
-              startIcon={<CodeIcon style={{ fontSize: 16 }} />}
-              style={PILL_COMPACT}
-              onClick={() => openDevSpaces(item)}
-            >
-              Open in Dev Spaces
-            </Button>
           </div>
         ) : null}
         {readOnly && itemLane === 'AI-fix' && isCombinedPhase(phase) ? (
@@ -3761,7 +4208,9 @@ const FindingRow: React.FC<{
         )}
         {!readOnly && itemLane === 'AI-fix' && aiStatus === 'idle' && (
             <div className={classes.suggestionEmpty}>
-              No suggestion yet. Generate this row, or generate all on this tab.
+              {onGenerateAi
+                ? 'No suggestion yet. Generate this row, or generate all on this tab.'
+                : 'No suggestion was generated for this finding. It will stay in the file.'}
             </div>
         )}
         {!readOnly && itemLane === 'Manual-fix' && (
@@ -3775,3 +4224,222 @@ const FindingRow: React.FC<{
     </div>
   );
 };
+
+const COMMIT_CARD_EXIT_MS = 280;
+
+function commitMatchesQuery(finding: QualityViolation, query: string): boolean {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  const hay = `${finding.message} ${finding.file} ${finding.ruleId} ${kindLabel(finding)}`.toLowerCase();
+  return hay.includes(q);
+}
+
+/** Commit step: last-chance review of what goes in the PR vs what stays in the files. */
+export const CommitFindingReview: React.FC<{
+  findings: QualityViolation[];
+  t1Decisions: Record<string, WizardDecision>;
+  setT1Decisions: Dispatch<SetStateAction<Record<string, WizardDecision>>>;
+  aiDecisions: Record<string, WizardDecision>;
+  setAiDecisions: Dispatch<SetStateAction<Record<string, WizardDecision>>>;
+  aiStatus: Record<string, AiRowStatus>;
+  sideBySide?: boolean;
+  readOnly?: boolean;
+}> = ({
+  findings,
+  t1Decisions,
+  setT1Decisions,
+  aiDecisions,
+  setAiDecisions,
+  aiStatus,
+  sideBySide = false,
+  readOnly = false,
+}) => {
+  const classes = useStyles();
+  const [tab, setTab] = useState(0);
+  const [query, setQuery] = useState('');
+  const [contentType, setContentType] = useState<'all' | string>('all');
+  const [exitingKeys, setExitingKeys] = useState<string[]>([]);
+  const accepted = useMemo(
+    () =>
+      sortFindingsBySeverity(
+        findings.filter(v => {
+          const key = findingKey(v);
+          if (v.fixTier === 'deterministic') return t1Decisions[key] === 'accept';
+          if (v.fixTier === 'ai') return aiDecisions[key] === 'accept';
+          return false;
+        }),
+      ),
+    [findings, t1Decisions, aiDecisions],
+  );
+  const remaining = useMemo(
+    () =>
+      sortFindingsBySeverity(
+        findings.filter(v => {
+          const key = findingKey(v);
+          if (v.fixTier === 'deterministic') return t1Decisions[key] !== 'accept';
+          if (v.fixTier === 'ai') return aiDecisions[key] !== 'accept';
+          return true;
+        }),
+      ),
+    [findings, t1Decisions, aiDecisions],
+  );
+  const contentTypes = useMemo(
+    () => Array.from(new Set(findings.map(kindLabel))).sort(),
+    [findings],
+  );
+  const tabItems = tab === 0 ? accepted : remaining;
+  const listed = useMemo(() => {
+    const extras = findings.filter(finding => {
+      const key = findingKey(finding);
+      return exitingKeys.includes(key) && !tabItems.some(item => findingKey(item) === key);
+    });
+    return sortFindingsBySeverity([...tabItems, ...extras]).filter(finding => {
+      if (contentType !== 'all' && kindLabel(finding) !== contentType) return false;
+      return commitMatchesQuery(finding, query);
+    });
+  }, [findings, tabItems, exitingKeys, query, contentType]);
+
+  useEffect(() => {
+    setExitingKeys([]);
+  }, [tab]);
+
+  const decideFinding = (finding: QualityViolation, next: WizardDecision | null) => {
+    if (readOnly || next == null) return;
+    const key = findingKey(finding);
+    const leavesTab =
+      (tab === 0 && next !== 'accept') || (tab === 1 && next === 'accept');
+    if (leavesTab) {
+      setExitingKeys(prev => (prev.includes(key) ? prev : [...prev, key]));
+    } else {
+      setExitingKeys(prev => prev.filter(item => item !== key));
+    }
+    if (finding.fixTier === 'ai') {
+      setAiDecisions(prev => ({ ...prev, [key]: next }));
+      return;
+    }
+    if (finding.fixTier === 'deterministic') {
+      setT1Decisions(prev => ({ ...prev, [key]: next }));
+    }
+  };
+
+  const emptyCopy =
+    query.trim() || contentType !== 'all'
+      ? 'No remediations match this search.'
+      : tab === 0
+        ? readOnly
+          ? 'No remediations were included in this pull request.'
+          : 'No remediations will be included in this commit.'
+        : readOnly
+          ? 'No remaining issues.'
+          : 'No remaining issues. Every finding with a remediation is in this commit.';
+
+  return (
+    <Paper variant="outlined" className={classes.commitReview} elevation={0}>
+      <div className={classes.commitFilters}>
+        <TextField
+          className={classes.searchFill}
+          size="small"
+          variant="outlined"
+          placeholder="Search remediations"
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          inputProps={{ 'aria-label': 'Search remediations' }}
+        />
+        <FormControl variant="outlined" size="small" className={classes.select}>
+          <InputLabel id="commit-content-type-label">Content type</InputLabel>
+          <Select
+            labelId="commit-content-type-label"
+            label="Content type"
+            value={contentType}
+            onChange={e => setContentType(e.target.value as string)}
+          >
+            <MenuItem value="all">All content types</MenuItem>
+            {contentTypes.map(kind => (
+              <MenuItem key={kind} value={kind}>
+                {kind} ({findings.filter(f => kindLabel(f) === kind).length})
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </div>
+      <div className={`${classes.tabsHost} ${classes.findingsTabsHost}`}>
+        <HeaderTabs
+          selectedIndex={tab}
+          onChange={index => setTab(index)}
+          tabs={[
+            {
+              id: 'accepted',
+              label: (
+                <span className={classes.tabLabel}>
+                  <span>Accepted remediations</span>
+                  <ReadCountBadge
+                    count={accepted.length}
+                    label={`${accepted.length} accepted remediations`}
+                    showZero
+                  />
+                </span>
+              ),
+            },
+            {
+              id: 'remaining',
+              label: (
+                <span className={classes.tabLabel}>
+                  <span>Remaining issues</span>
+                  <ReadCountBadge
+                    count={remaining.length}
+                    label={`${remaining.length} remaining issues`}
+                    showZero
+                  />
+                </span>
+              ),
+            },
+          ]}
+        />
+      </div>
+      <Typography className={classes.commitTabHint} variant="body2" component="p">
+        {tab === 0
+          ? readOnly
+            ? 'These remediations are in the pull request.'
+            : 'These remediations go into the pull request. Decline one to leave it out.'
+          : readOnly
+            ? 'These were not included in the pull request.'
+            : 'These stay in the files. Accept a remediation to include it in this commit.'}
+      </Typography>
+      <div className={classes.commitList}>
+        {listed.length === 0 ? (
+          <Typography color="textSecondary" variant="body2">
+            {emptyCopy}
+          </Typography>
+        ) : (
+          listed.map(finding => {
+            const key = findingKey(finding);
+            const decision =
+              finding.fixTier === 'ai' ? aiDecisions[key] : t1Decisions[key];
+            return (
+              <Collapse
+                key={key}
+                in={!exitingKeys.includes(key)}
+                timeout={{ enter: 0, exit: COMMIT_CARD_EXIT_MS }}
+                unmountOnExit
+                onExited={() =>
+                  setExitingKeys(prev => prev.filter(item => item !== key))
+                }
+              >
+                <FindingRow
+                  finding={finding}
+                  decision={decision}
+                  aiStatus={aiStatus[key] ?? 'idle'}
+                  onDecision={next => decideFinding(finding, next)}
+                  showLane
+                  sideBySide={sideBySide}
+                  readOnly={readOnly}
+                />
+              </Collapse>
+            );
+          })
+        )}
+      </div>
+    </Paper>
+  );
+};
+

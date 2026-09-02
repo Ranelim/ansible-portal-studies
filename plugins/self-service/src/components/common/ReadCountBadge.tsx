@@ -41,13 +41,15 @@ export const ReadCountBadge = ({
   count,
   label,
   tone = 'read',
+  showZero = false,
 }: {
   count: number;
   label: string;
   tone?: 'read' | 'unread';
+  showZero?: boolean;
 }) => {
   const classes = useStyles();
-  if (count <= 0) return null;
+  if (count < 0 || (count === 0 && !showZero)) return null;
   return (
     <span
       className={`${classes.badge}${tone === 'unread' ? ` ${classes.unread}` : ''}`}
