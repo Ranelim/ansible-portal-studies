@@ -700,6 +700,53 @@ const useStyles = makeStyles((theme: Theme) => ({
       textDecoration: 'underline',
     },
   },
+  reviewReadout: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: theme.spacing(0.5),
+  },
+  reviewReadoutRow: {
+    display: 'flex',
+    alignItems: 'baseline',
+    flexWrap: 'wrap',
+    columnGap: theme.spacing(0.75),
+    rowGap: theme.spacing(0.25),
+  },
+  reviewReadoutCluster: {
+    display: 'inline-flex',
+    alignItems: 'baseline',
+    flexWrap: 'wrap',
+    columnGap: theme.spacing(0.75),
+    rowGap: theme.spacing(0.25),
+  },
+  reviewReadoutHit: {
+    ...theme.typography.body2,
+    padding: 0,
+    border: 'none',
+    background: 'none',
+    cursor: 'pointer',
+    color: theme.palette.text.secondary,
+    fontWeight: 400,
+    lineHeight: 1.35,
+    '&:hover': {
+      textDecoration: 'underline',
+      color: theme.palette.text.primary,
+    },
+  },
+  reviewReadoutHitOn: {
+    color: theme.palette.text.primary,
+    fontWeight: 600,
+    textDecoration: 'underline',
+    textUnderlineOffset: 2,
+  },
+  reviewReadoutDim: {
+    opacity: 0.45,
+  },
+  reviewReadoutSep: {
+    ...theme.typography.body2,
+    color: theme.palette.text.secondary,
+    userSelect: 'none',
+  },
   scanMixBar: {
     width: '100%',
     height: FINDINGS_BAR_HEIGHT,
@@ -1436,6 +1483,19 @@ export const InlineVisualReview: React.FC<{
   const toggleLaneFilter = (lane: FixLane) => {
     setLaneFilter(prev => (prev === lane ? 'all' : lane));
   };
+  const toggleReviewSeverity = (sev: SeverityClass) => {
+    setSeverityFilter(prev => {
+      const next = new Set(prev);
+      if (next.has(sev)) next.delete(sev);
+      else next.add(sev);
+      return next;
+    });
+  };
+  const clearReviewFacets = () => {
+    setLaneFilter('all');
+    setCategory('all');
+    setSeverityFilter(new Set());
+  };
 
   const visibleCategories = useMemo(() => {
     const any = severityFilter.size > 0;
@@ -1561,6 +1621,25 @@ export const InlineVisualReview: React.FC<{
     );
   });
   const files = groupByFile(filtered);
+  const reviewFacetsIdle =
+    laneFilter === 'all' && category === 'all' && severityFilter.size === 0;
+  const matchesReviewFacets = (f: QualityViolation) => {
+    if (category !== 'all' && apmeCategoryOf(f) !== category) return false;
+    if (severityFilter.size > 0 && !severityFilter.has(f.severity)) return false;
+    return true;
+  };
+  const reviewAi = ai.filter(matchesReviewFacets);
+  const reviewManual = manual.filter(matchesReviewFacets);
+  const reviewShowAutos =
+    phase !== 'review' || laneFilter === 'all' || laneFilter === 'Auto-fix';
+  const reviewShowAi =
+    phase === 'review' &&
+    (laneFilter === 'all' || laneFilter === 'AI-fix') &&
+    reviewAi.length > 0;
+  const reviewShowManual =
+    phase === 'review' &&
+    (laneFilter === 'all' || laneFilter === 'Manual-fix') &&
+    reviewManual.length > 0;
   const visibleAuto = filtered.filter(v => v.fixTier === 'deterministic' && !t1Decisions[findingKey(v)]);
   const visibleReadyAi = filtered.filter(
     v => v.fixTier === 'ai' && aiStatus[findingKey(v)] === 'ready' && !aiDecisions[findingKey(v)],
@@ -2582,7 +2661,120 @@ export const InlineVisualReview: React.FC<{
       )}
 
       <Paper className={classes.box} elevation={0}>
-        {currentRedesign && phase !== 'autofix' && phase !== 'review' ? (
+        {phase === 'review' ? (
+          <div className={classes.scanCountHead}>
+            <div
+              className={classes.reviewReadout}
+              role="group"
+              aria-label="Filter findings by remediation type, severity, or category"
+            >
+              <div className={classes.reviewReadoutRow}>
+                <button
+                  type="button"
+                  className={`${classes.reviewReadoutHit}${
+                    reviewFacetsIdle ? ` ${classes.reviewReadoutHitOn}` : ''
+                  }`}
+                  aria-pressed={reviewFacetsIdle}
+                  onClick={clearReviewFacets}
+                >
+                  {reviewFindings.length}{' '}
+                  {reviewFindings.length === 1 ? 'finding' : 'findings'}
+                </button>
+                {reviewCountItems.map(item => {
+                  const lane: FixLane =
+                    item.id === 'auto'
+                      ? 'Auto-fix'
+                      : item.id === 'ai'
+                        ? 'AI-fix'
+                        : 'Manual-fix';
+                  const pressed = laneFilter === lane;
+                  const dim = laneFilter !== 'all' && !pressed;
+                  return (
+                    <Fragment key={item.id}>
+                      <span className={classes.reviewReadoutSep} aria-hidden>
+                        ·
+                      </span>
+                      <button
+                        type="button"
+                        className={`${classes.reviewReadoutHit}${
+                          pressed ? ` ${classes.reviewReadoutHitOn}` : ''
+                        }${dim ? ` ${classes.reviewReadoutDim}` : ''}`}
+                        aria-pressed={pressed}
+                        onClick={() => toggleLaneFilter(lane)}
+                      >
+                        {item.count} {item.label}
+                      </button>
+                    </Fragment>
+                  );
+                })}
+              </div>
+              <div className={classes.reviewReadoutRow}>
+                <div className={classes.reviewReadoutCluster}>
+                  {SEV_ORDER.filter(sev => (mix.bySeverity[sev] ?? 0) > 0).map(
+                    (sev, index) => {
+                      const pressed = severityFilter.has(sev);
+                      const dim = severityFilter.size > 0 && !pressed;
+                      return (
+                        <Fragment key={sev}>
+                          {index > 0 ? (
+                            <span className={classes.reviewReadoutSep} aria-hidden>
+                              ·
+                            </span>
+                          ) : null}
+                          <button
+                            type="button"
+                            className={`${classes.reviewReadoutHit}${
+                              pressed ? ` ${classes.reviewReadoutHitOn}` : ''
+                            }${dim ? ` ${classes.reviewReadoutDim}` : ''}`}
+                            style={{ color: SEVERITY_COLORS[sev] }}
+                            aria-pressed={pressed}
+                            onClick={() => toggleReviewSeverity(sev)}
+                          >
+                            {SEV_LABEL[sev]} {mix.bySeverity[sev]}
+                          </button>
+                        </Fragment>
+                      );
+                    },
+                  )}
+                </div>
+                {mix.categories.length > 0 ? (
+                  <div className={classes.reviewReadoutCluster}>
+                    {mix.categories.map((cat, index) => {
+                      const pressed = category === cat.id;
+                      const dim = category !== 'all' && !pressed;
+                      return (
+                        <Fragment key={cat.id}>
+                          {index === 0 &&
+                          SEV_ORDER.some(sev => (mix.bySeverity[sev] ?? 0) > 0) ? (
+                            <span className={classes.reviewReadoutSep} aria-hidden>
+                              ·
+                            </span>
+                          ) : index > 0 ? (
+                            <span className={classes.reviewReadoutSep} aria-hidden>
+                              ·
+                            </span>
+                          ) : null}
+                          <button
+                            type="button"
+                            className={`${classes.reviewReadoutHit}${
+                              pressed ? ` ${classes.reviewReadoutHitOn}` : ''
+                            }${dim ? ` ${classes.reviewReadoutDim}` : ''}`}
+                            aria-pressed={pressed}
+                            onClick={() =>
+                              setCategory(prev => (prev === cat.id ? 'all' : cat.id))
+                            }
+                          >
+                            {cat.label} {cat.count}
+                          </button>
+                        </Fragment>
+                      );
+                    })}
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        ) : currentRedesign && phase !== 'autofix' ? (
           <div className={classes.scanCountHead}>
             <div
               className={`${classes.scanCountRow}${
@@ -2908,7 +3100,8 @@ export const InlineVisualReview: React.FC<{
 
         {(currentRedesign ||
           (fixType !== 'Manual-fix' &&
-            (showListChrome || fixType === 'AI-fix' || fixType === 'All'))) ? (
+            (showListChrome || fixType === 'AI-fix' || fixType === 'All'))) &&
+        (phase !== 'review' || (reviewShowAutos && files.length > 0)) ? (
           <div
             className={`${classes.bulkBar}${
               currentRedesign ? ` ${classes.bulkBarSpaced}` : ''
@@ -2980,18 +3173,21 @@ export const InlineVisualReview: React.FC<{
           </div>
         ) : null}
 
-        {files.length === 0 ? (
+        {reviewShowAutos &&
+        files.length === 0 &&
+        !reviewShowAi &&
+        !reviewShowManual ? (
           <Typography className={classes.empty} variant="body2" color="textSecondary">
             No findings match the current filters.
           </Typography>
-        ) : (
+        ) : reviewShowAutos && files.length > 0 ? (
           <div className={classes.fileList}>
             {renderFindingRows(files.flatMap(group => group.findings))}
           </div>
-        )}
-        {phase === 'review' && (ai.length > 0 || manual.length > 0) ? (
+        ) : null}
+        {phase === 'review' && (reviewShowAi || reviewShowManual) ? (
           <div className={classes.reviewRemainder}>
-            {ai.length > 0 ? (
+            {reviewShowAi ? (
               <>
                 <Typography className={classes.reviewRemainderHead} component="h3">
                   Needs AI
@@ -2999,10 +3195,10 @@ export const InlineVisualReview: React.FC<{
                 <Typography className={classes.reviewRemainderHint} component="p">
                   {REVIEW_AI_TAB_HINT}
                 </Typography>
-                {renderFindingRows(ai)}
+                {renderFindingRows(reviewAi)}
               </>
             ) : null}
-            {manual.length > 0 ? (
+            {reviewShowManual ? (
               <>
                 <Typography className={classes.reviewRemainderHead} component="h3">
                   Manual only
@@ -3010,7 +3206,7 @@ export const InlineVisualReview: React.FC<{
                 <Typography className={classes.reviewRemainderHint} component="p">
                   {REVIEW_MANUAL_TAB_HINT}
                 </Typography>
-                {renderFindingRows(manual)}
+                {renderFindingRows(reviewManual)}
               </>
             ) : null}
           </div>

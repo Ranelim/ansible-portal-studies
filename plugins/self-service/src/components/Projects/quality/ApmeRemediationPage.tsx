@@ -56,8 +56,9 @@ import { RemediationReceipt } from './RemediationReceipt';
  * Steps compare (`?steps=work|review`): Combined post-scan (no Results step).
  * `work` = mixed Combined. `review` = tight Combined. Stepper for both:
  * Scan → Results and auto remediations → AI remediations → Commit.
- * Review chrome: page title is the scan id (not the repo); findings
- * inventory is the subtitle; no second findings hero.
+ * Review chrome: page title is the repo (`org/name`), same as Combined;
+ * subtitle is Health scan timestamp · commit SHA (Scans identity).
+ * Findings inventory sits in the list box below the stepper.
  * Bundled one-page review (no Results step; Generate AI on Results & Remediation):
  * git tag `remediation-bundled-results-and-ai` (`b82fca95`).
  * CTA compare (`?cta=current|footer`): Current puts Continue + Cancel under
@@ -1381,32 +1382,11 @@ export const ApmeRemediationPage = () => {
 
   const displayRepo = `${repo.org}/${repo.name}`;
   const isReviewOption = stepsModel === 'review';
-  const autoCount = quality.violations.filter(v => v.fixTier === 'deterministic').length;
-  const aiCount = quality.violations.filter(v => v.fixTier === 'ai').length;
-  const manualCount = quality.violations.filter(
-    v => v.fixTier !== 'deterministic' && v.fixTier !== 'ai',
-  ).length;
-  const reviewInventory = [
-    findingsPhrase(quality.violations.length),
-    autoCount > 0
-      ? `${autoCount} auto remediation${autoCount === 1 ? '' : 's'}`
-      : null,
-    aiCount > 0 ? (aiCount === 1 ? '1 needs AI' : `${aiCount} need AI`) : null,
-    manualCount > 0 ? `${manualCount} manual only` : null,
-  ]
-    .filter(Boolean)
-    .join(' · ');
-  const pageTitle = isReviewOption ? quality.latestScan.scanId : displayRepo;
-  const pageMeta = isReviewOption
-    ? [
-        fromRepo ? null : displayRepo,
-        step === 'scan'
-          ? `commit ${quality.lastScannedCommit} · ${quality.lastScannedAt}`
-          : reviewInventory,
-      ]
-        .filter(Boolean)
-        .join(' · ')
-    : `${quality.latestScan.scanId} · commit ${quality.lastScannedCommit} · ${quality.lastScannedAt}`;
+  const scanWhen =
+    quality.scanHistory[0]?.createdAt ?? quality.latestScan.createdAt;
+  const scanSha = quality.latestScan.commitHash;
+  const pageTitle = displayRepo;
+  const pageMeta = `Health scan: ${scanWhen} · commit ${scanSha}`;
   const setStepsModel = (next: StepsModel) => {
     const nextParams = new URLSearchParams(params);
     if (next === 'with-results') {
