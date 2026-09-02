@@ -54,12 +54,11 @@ import { RemediationReceipt } from './RemediationReceipt';
  * Redesign = Scan → Review auto-fixes → Choose AI findings → Review AI-fixes → Commit.
  * Inline AI = Scan → Results & Remediation → Commit.
  * Inline visual = Scan → Findings → Auto remediations → AI remediations → Commit.
- * Design-options compare (`?steps=without-findings`): With findings (default)
- * keeps a read-only Findings step. Without findings skips it — Scan → Findings
- * and auto remediations → AI remediations → Commit. Stale
- * `?steps=without-results|review|work` maps to without-findings. With findings
- * uses a Current | Remediation split on Findings, Auto, and AI. Findings
- * shows auto remediations; AI and manual are copy-only. Sorted by severity.
+ * Session is Without findings (no separate Findings step): Scan → Findings
+ * and Auto remediations → AI remediations → Commit. Design-options compare
+ * (With findings vs Without findings) is parked — set SHOW_STEPS_COMPARE
+ * `true` and FORCED_STEPS_MODEL `null` to revive. Stale
+ * `?steps=without-results|review|work` still maps to without-findings.
  * Chrome: page title is the repo (`org/name`);
  * subtitle is Health scan timestamp · commit SHA (Scans identity).
  * Bundled one-page review (no Results step; Generate AI on Results & Remediation):
@@ -101,6 +100,9 @@ const FORCED_REMEDIATION_WIZARD: WizardChrome | null = 'visual';
 const FORCED_CTA_LAYOUT: CtaLayout | null = 'current';
 const FORCED_REVIEW_LAYOUT: ReviewLayout | null = 'redesign4';
 const SHOW_REVIEW_LAYOUT_COMPARE = false;
+/** Parked: With findings vs Without findings toggle. Session is Without findings. */
+const FORCED_STEPS_MODEL: StepsModel | null = 'without-findings';
+const SHOW_STEPS_COMPARE = false;
 
 function parseWizardChrome(value: string | null): WizardChrome {
   if (FORCED_REMEDIATION_WIZARD) return FORCED_REMEDIATION_WIZARD;
@@ -138,6 +140,7 @@ function isCraigRedesign(chrome: WizardChrome): boolean {
 type StepsModel = 'with-findings' | 'without-findings';
 
 function parseStepsModel(value: string | null): StepsModel {
+  if (FORCED_STEPS_MODEL) return FORCED_STEPS_MODEL;
   if (
     value === 'without-findings' ||
     value === 'without-results' ||
@@ -289,6 +292,9 @@ const useStyles = makeStyles(theme => ({
     width: '100%',
     maxWidth: '100%',
     minWidth: 0,
+  },
+  chromeBeforePanel: {
+    paddingBottom: theme.spacing(4),
   },
   reviewFill: {
     flex: 1,
@@ -1409,8 +1415,12 @@ export const ApmeRemediationPage = () => {
   };
 
   const pageChrome = (
-    <Box className={classes.chrome}>
-      {visual ? (
+    <Box
+      className={`${classes.chrome}${
+        visual && step === 'complete' ? ` ${classes.chromeBeforePanel}` : ''
+      }`}
+    >
+      {visual && SHOW_STEPS_COMPARE ? (
         <Box className={classes.stepsToggle} role="region" aria-label="Design options">
           <Typography className={classes.stepsToggleLabel} component="span">
             Design options
@@ -1449,21 +1459,13 @@ export const ApmeRemediationPage = () => {
         sessionDone={sessionDone}
         bare={visual}
       />
-      {visual &&
-      step !== 'tier1_proposals' &&
-      (step === 'ai_proposals' || step === 'commit') ? (
+      {visual && step === 'commit' ? (
         <Typography
-          className={`${classes.stepperHint}${
-            step === 'commit' ? ` ${classes.stepperHintBeforePanel}` : ''
-          }`}
+          className={`${classes.stepperHint} ${classes.stepperHintBeforePanel}`}
           variant="body2"
           color="textSecondary"
         >
-          {step === 'tier1_proposals'
-              ? 'Accept or decline auto remediations to include in the commit.'
-              : step === 'ai_proposals'
-                ? 'Generate the suggestions you want, then accept or decline each generated one.'
-                : 'Create a branch, push the remediations you accepted, and optionally open a pull request.'}
+          Create a branch, push the remediations you accepted, and optionally open a pull request.
         </Typography>
       ) : null}
     </Box>

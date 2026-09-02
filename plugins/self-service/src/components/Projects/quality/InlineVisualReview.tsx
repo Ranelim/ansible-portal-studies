@@ -90,6 +90,51 @@ const ROW_TOGGLE_SX = {
   fontWeight: 500,
   '& .MuiSvgIcon-root': { fontSize: 14 },
 };
+
+/** MUI v5 ToggleButton theme wins over JSS — selected fill must live in `sx`. */
+const ACCEPT_TOGGLE_SX = {
+  ...ROW_TOGGLE_SX,
+  '&.Mui-selected': {
+    backgroundColor: `${statusColors.success} !important`,
+    color: '#fff !important',
+    borderColor: `${statusColors.success} !important`,
+    '& .MuiSvgIcon-root': { color: '#fff !important' },
+    '&:hover': {
+      backgroundColor: '#3D7317 !important',
+      borderColor: '#3D7317 !important',
+      color: '#fff !important',
+    },
+  },
+  '&.Mui-selected.Mui-disabled': {
+    backgroundColor: `${statusColors.success} !important`,
+    color: '#fff !important',
+    borderColor: `${statusColors.success} !important`,
+    opacity: 1,
+    '& .MuiSvgIcon-root': { color: '#fff !important' },
+  },
+};
+
+const DECLINE_TOGGLE_SX = {
+  ...ROW_TOGGLE_SX,
+  '&.Mui-selected': {
+    backgroundColor: `${statusColors.error} !important`,
+    color: '#fff !important',
+    borderColor: `${statusColors.error} !important`,
+    '& .MuiSvgIcon-root': { color: '#fff !important' },
+    '&:hover': {
+      backgroundColor: '#A30000 !important',
+      borderColor: '#A30000 !important',
+      color: '#fff !important',
+    },
+  },
+  '&.Mui-selected.Mui-disabled': {
+    backgroundColor: `${statusColors.error} !important`,
+    color: '#fff !important',
+    borderColor: `${statusColors.error} !important`,
+    opacity: 1,
+    '& .MuiSvgIcon-root': { color: '#fff !important' },
+  },
+};
 const DIFF_TOGGLE_SX = {
   height: 32,
   minHeight: 32,
@@ -614,7 +659,7 @@ const useStyles = makeStyles((theme: Theme) => ({
     alignItems: 'center',
     gap: 2,
     whiteSpace: 'nowrap',
-    fontWeight: 600,
+    fontWeight: theme.typography.fontWeightRegular ?? 400,
     lineHeight: 1.4,
     flexShrink: 0,
   },
@@ -628,7 +673,7 @@ const useStyles = makeStyles((theme: Theme) => ({
     color: theme.palette.text.primary,
   },
   footerStatIcon: {
-    fontSize: 16,
+    fontSize: 14,
   },
   footerHint: {
     display: 'block',
@@ -862,6 +907,13 @@ const useStyles = makeStyles((theme: Theme) => ({
     boxSizing: 'border-box',
     borderBottom: `1px solid ${theme.palette.divider}`,
   },
+  commitFilterSelects: {
+    display: 'flex',
+    alignItems: 'center',
+    flexWrap: 'nowrap',
+    gap: theme.spacing(1),
+    flex: '0 1 auto',
+  },
   commitTabHint: {
     ...theme.typography.body2,
     color: theme.palette.text.secondary,
@@ -1005,7 +1057,7 @@ const useStyles = makeStyles((theme: Theme) => ({
     alignItems: 'center',
     gap: theme.spacing(1.5),
     flexWrap: 'wrap',
-    margin: theme.spacing(0, 2, 0.5),
+    margin: theme.spacing(0.25, 2, 0.5),
     padding: theme.spacing(1.25, 1.5),
     backgroundColor:
       theme.palette.type === 'light' ? '#e7f1fa' : 'rgba(38, 117, 195, 0.12)',
@@ -1101,6 +1153,22 @@ const useStyles = makeStyles((theme: Theme) => ({
     flexDirection: 'column',
     gap: theme.spacing(1),
     padding: theme.spacing(0.5, 2, 1.5),
+  },
+  resultsMixBeforeSearch: {
+    paddingBottom: theme.spacing(1),
+  },
+  toolbar: {
+    display: 'flex',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: theme.spacing(1),
+    padding: theme.spacing(1.5, 2),
+    width: '100%',
+    boxSizing: 'border-box',
+  },
+  toolbarOnAi: {
+    paddingTop: theme.spacing(1.25),
+    paddingBottom: theme.spacing(2.5),
   },
   catRow: {
     display: 'flex',
@@ -1340,15 +1408,6 @@ const useStyles = makeStyles((theme: Theme) => ({
     padding: theme.spacing(1.25, 2, 0),
     color: theme.palette.text.secondary,
   },
-  toolbar: {
-    display: 'flex',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: theme.spacing(1),
-    padding: theme.spacing(1.5, 2),
-    width: '100%',
-    boxSizing: 'border-box',
-  },
   search: { width: 220 },
   searchFill: {
     flex: '1 1 220px',
@@ -1359,6 +1418,11 @@ const useStyles = makeStyles((theme: Theme) => ({
     },
   },
   select: { minWidth: 168, flexShrink: 0 },
+  commitSelect: {
+    minWidth: 176,
+    flex: '0 0 auto',
+    '& .MuiSelect-root': { whiteSpace: 'nowrap' },
+  },
   bulkBar: {
     display: 'flex',
     flexDirection: 'column',
@@ -1510,28 +1574,56 @@ const useStyles = makeStyles((theme: Theme) => ({
     },
   },
   rowToggleAccept: {
-    '&.Mui-selected': {
-      backgroundColor: fade(theme.palette.success.main, 0.16),
-      color: theme.palette.success.dark,
-      borderColor: `${fade(theme.palette.success.main, 0.45)} !important`,
+    '&.MuiToggleButton-root.Mui-selected': {
+      backgroundColor: theme.palette.success.main,
+      color: '#fff',
+      borderColor: `${theme.palette.success.main} !important`,
+      '& .MuiToggleButton-label': {
+        color: '#fff',
+      },
       '& .MuiSvgIcon-root': {
-        color: theme.palette.success.dark,
+        color: '#fff',
       },
       '&:hover': {
-        backgroundColor: fade(theme.palette.success.main, 0.22),
+        backgroundColor: theme.palette.success.dark,
+        borderColor: `${theme.palette.success.dark} !important`,
+        color: '#fff',
+      },
+    },
+    '&.MuiToggleButton-root.Mui-selected.Mui-disabled': {
+      backgroundColor: theme.palette.success.main,
+      color: '#fff',
+      borderColor: `${theme.palette.success.main} !important`,
+      opacity: 1,
+      '& .MuiToggleButton-label, & .MuiSvgIcon-root': {
+        color: '#fff',
       },
     },
   },
   rowToggleDecline: {
-    '&.Mui-selected': {
-      backgroundColor: fade(theme.palette.error.main, 0.16),
-      color: theme.palette.error.dark,
-      borderColor: `${fade(theme.palette.error.main, 0.45)} !important`,
+    '&.MuiToggleButton-root.Mui-selected': {
+      backgroundColor: theme.palette.error.main,
+      color: '#fff',
+      borderColor: `${theme.palette.error.main} !important`,
+      '& .MuiToggleButton-label': {
+        color: '#fff',
+      },
       '& .MuiSvgIcon-root': {
-        color: theme.palette.error.dark,
+        color: '#fff',
       },
       '&:hover': {
-        backgroundColor: fade(theme.palette.error.main, 0.22),
+        backgroundColor: theme.palette.error.dark,
+        borderColor: `${theme.palette.error.dark} !important`,
+        color: '#fff',
+      },
+    },
+    '&.MuiToggleButton-root.Mui-selected.Mui-disabled': {
+      backgroundColor: theme.palette.error.main,
+      color: '#fff',
+      borderColor: `${theme.palette.error.main} !important`,
+      opacity: 1,
+      '& .MuiToggleButton-label, & .MuiSvgIcon-root': {
+        color: '#fff',
       },
     },
   },
@@ -2989,7 +3081,11 @@ export const InlineVisualReview: React.FC<{
 
   const showSeverityDropdown = false;
   const filterToolbar = showListChrome ? (
-        <div className={classes.toolbar}>
+        <div
+          className={`${classes.toolbar}${
+            phase === 'ai' ? ` ${classes.toolbarOnAi}` : ''
+          }`}
+        >
           <TextField
             className={currentRedesign ? classes.searchFill : classes.search}
             size="small"
@@ -3514,7 +3610,9 @@ export const InlineVisualReview: React.FC<{
         <>
         {showsFindingsFilters(phase) ? (
         <div
-          className={classes.resultsMix}
+          className={`${classes.resultsMix}${
+            phase === 'ai' ? ` ${classes.resultsMixBeforeSearch}` : ''
+          }`}
           role="group"
           aria-label={
             phase === 'ai'
@@ -3961,11 +4059,11 @@ const FindingRow: React.FC<{
       }}
       aria-label="Accept or decline this remediation"
     >
-      <ToggleButton value="accept" className={classes.rowToggleAccept} sx={ROW_TOGGLE_SX}>
+      <ToggleButton value="accept" className={classes.rowToggleAccept} sx={ACCEPT_TOGGLE_SX}>
         <CheckIcon style={{ fontSize: 14 }} />
         {acceptFilled ? 'Accepted' : 'Accept'}
       </ToggleButton>
-      <ToggleButton value="decline" className={classes.rowToggleDecline} sx={ROW_TOGGLE_SX}>
+      <ToggleButton value="decline" className={classes.rowToggleDecline} sx={DECLINE_TOGGLE_SX}>
         <CloseIcon style={{ fontSize: 14 }} />
         {declineFilled ? 'Declined' : 'Decline'}
       </ToggleButton>
@@ -4258,6 +4356,8 @@ export const CommitFindingReview: React.FC<{
   const [tab, setTab] = useState(0);
   const [query, setQuery] = useState('');
   const [contentType, setContentType] = useState<'all' | string>('all');
+  const [severity, setSeverity] = useState<'all' | SeverityClass>('all');
+  const [remediationType, setRemediationType] = useState<'all' | FixLane>('all');
   const [exitingKeys, setExitingKeys] = useState<string[]>([]);
   const accepted = useMemo(
     () =>
@@ -4287,6 +4387,14 @@ export const CommitFindingReview: React.FC<{
     () => Array.from(new Set(findings.map(kindLabel))).sort(),
     [findings],
   );
+  const presentSeverities = useMemo(
+    () => SEV_ORDER.filter(sev => findings.some(f => f.severity === sev)),
+    [findings],
+  );
+  const presentLanes = useMemo(
+    () => LANE_TABS.filter(lane => findings.some(f => laneOf(f) === lane)),
+    [findings],
+  );
   const tabItems = tab === 0 ? accepted : remaining;
   const listed = useMemo(() => {
     const extras = findings.filter(finding => {
@@ -4295,9 +4403,19 @@ export const CommitFindingReview: React.FC<{
     });
     return sortFindingsBySeverity([...tabItems, ...extras]).filter(finding => {
       if (contentType !== 'all' && kindLabel(finding) !== contentType) return false;
+      if (severity !== 'all' && finding.severity !== severity) return false;
+      if (remediationType !== 'all' && laneOf(finding) !== remediationType) return false;
       return commitMatchesQuery(finding, query);
     });
-  }, [findings, tabItems, exitingKeys, query, contentType]);
+  }, [
+    findings,
+    tabItems,
+    exitingKeys,
+    query,
+    contentType,
+    severity,
+    remediationType,
+  ]);
 
   useEffect(() => {
     setExitingKeys([]);
@@ -4322,9 +4440,14 @@ export const CommitFindingReview: React.FC<{
     }
   };
 
+  const filtersActive =
+    query.trim() !== '' ||
+    contentType !== 'all' ||
+    severity !== 'all' ||
+    remediationType !== 'all';
   const emptyCopy =
-    query.trim() || contentType !== 'all'
-      ? 'No remediations match this search.'
+    filtersActive
+      ? 'No remediations match these filters.'
       : tab === 0
         ? readOnly
           ? 'No remediations were included in this pull request.'
@@ -4345,22 +4468,77 @@ export const CommitFindingReview: React.FC<{
           onChange={e => setQuery(e.target.value)}
           inputProps={{ 'aria-label': 'Search remediations' }}
         />
-        <FormControl variant="outlined" size="small" className={classes.select}>
+        <div className={classes.commitFilterSelects}>
+        <FormControl variant="outlined" size="small" className={classes.commitSelect}>
+          <InputLabel id="commit-severity-label">Severity</InputLabel>
+          <Select
+            labelId="commit-severity-label"
+            label="Severity"
+            value={severity}
+            onChange={e =>
+              setSeverity(e.target.value as 'all' | SeverityClass)
+            }
+            renderValue={value =>
+              value === 'all'
+                ? 'All severities'
+                : SEV_LABEL[value as SeverityClass]
+            }
+          >
+            <MenuItem value="all">All severities</MenuItem>
+            {presentSeverities.map(sev => (
+              <MenuItem key={sev} value={sev}>
+                {SEV_LABEL[sev]} (
+                {tabItems.filter(f => f.severity === sev).length})
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+        <FormControl variant="outlined" size="small" className={classes.commitSelect}>
+          <InputLabel id="commit-remediation-type-label">
+            Remediation type
+          </InputLabel>
+          <Select
+            labelId="commit-remediation-type-label"
+            label="Remediation type"
+            value={remediationType}
+            onChange={e =>
+              setRemediationType(e.target.value as 'all' | FixLane)
+            }
+            renderValue={value =>
+              value === 'all'
+                ? 'All remediation types'
+                : REMEDIATION_LANE_LABEL[value as FixLane]
+            }
+          >
+            <MenuItem value="all">All remediation types</MenuItem>
+            {presentLanes.map(lane => (
+              <MenuItem key={lane} value={lane}>
+                {REMEDIATION_LANE_LABEL[lane]} (
+                {tabItems.filter(f => laneOf(f) === lane).length})
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+        <FormControl variant="outlined" size="small" className={classes.commitSelect}>
           <InputLabel id="commit-content-type-label">Content type</InputLabel>
           <Select
             labelId="commit-content-type-label"
             label="Content type"
             value={contentType}
             onChange={e => setContentType(e.target.value as string)}
+            renderValue={value =>
+              value === 'all' ? 'All content types' : String(value)
+            }
           >
             <MenuItem value="all">All content types</MenuItem>
             {contentTypes.map(kind => (
               <MenuItem key={kind} value={kind}>
-                {kind} ({findings.filter(f => kindLabel(f) === kind).length})
+                {kind} ({tabItems.filter(f => kindLabel(f) === kind).length})
               </MenuItem>
             ))}
           </Select>
         </FormControl>
+        </div>
       </div>
       <div className={`${classes.tabsHost} ${classes.findingsTabsHost}`}>
         <HeaderTabs
