@@ -52,13 +52,15 @@ import { RemediationReceipt } from './RemediationReceipt';
  * Original = SPA 9-step. AI assessment = pick which findings get an AI suggestion.
  * Redesign = Scan → Review auto-fixes → Choose AI findings → Review AI-fixes → Commit.
  * Inline AI = Scan → Results & Remediation → Commit.
- * Inline visual = Scan → Results → Auto remediations → AI remediations → Commit.
- * Steps compare (`?steps=work|review`): Combined post-scan (no Results step).
- * `work` = mixed Combined. `review` = tight Combined. Stepper for both:
- * Scan → Results and auto remediations → AI remediations → Commit.
- * Review chrome: page title is the repo (`org/name`), same as Combined;
+ * Inline visual = Scan → Findings → Auto remediations → AI remediations → Commit.
+ * Design-options compare (`?steps=without-findings`): With findings (default)
+ * keeps a read-only Findings step. Without findings skips it — Scan → Findings
+ * and auto remediations → AI remediations → Commit. Stale
+ * `?steps=without-results|review|work` maps to without-findings. With findings
+ * uses a Current | Remediation split on Findings, Auto, and AI. Findings
+ * shows auto remediations; AI and manual are copy-only. Sorted by severity.
+ * Chrome: page title is the repo (`org/name`);
  * subtitle is Health scan timestamp · commit SHA (Scans identity).
- * Findings inventory sits in the list box below the stepper.
  * Bundled one-page review (no Results step; Generate AI on Results & Remediation):
  * git tag `remediation-bundled-results-and-ai` (`b82fca95`).
  * CTA compare (`?cta=current|footer`): Current puts Continue + Cancel under
@@ -86,7 +88,7 @@ type WizardChrome = 'original' | 'new' | 'inline' | 'visual';
 
 /**
  * Force Inline visual:
- * Scan → Results → Auto remediations → AI remediations (if any) → Commit.
+ * Scan → Findings → Auto remediations → AI remediations (if any) → Commit.
  * Continue under the stepper — not mixed with Accept/Decline.
  * Prototype wizard + Continue-placement compares stay parked.
  * Results layout compare is parked. Redesign 4 is forced.
@@ -132,16 +134,23 @@ function isCraigRedesign(chrome: WizardChrome): boolean {
   return chrome === 'new';
 }
 
-type StepsModel = 'with-results' | 'work' | 'review';
+type StepsModel = 'with-findings' | 'without-findings';
 
 function parseStepsModel(value: string | null): StepsModel {
-  if (value === 'review') return 'review';
-  return value === 'work' ? 'work' : 'with-results';
+  if (
+    value === 'without-findings' ||
+    value === 'without-results' ||
+    value === 'review' ||
+    value === 'work'
+  ) {
+    return 'without-findings';
+  }
+  return 'with-findings';
 }
 
-/** Combined post-scan step — no separate Results. */
-function skipsResultsStep(model: StepsModel): boolean {
-  return model === 'work' || model === 'review';
+/** Without findings — no separate Findings step. */
+function skipsFindingsStep(model: StepsModel): boolean {
+  return model === 'without-findings';
 }
 
 function isResultsFixChrome(chrome: WizardChrome): boolean {
@@ -152,11 +161,11 @@ function isResultsFixChrome(chrome: WizardChrome): boolean {
 function displayStepId(
   step: StepId,
   chrome: WizardChrome,
-  stepsModel: StepsModel = 'with-results',
+  stepsModel: StepsModel = 'with-findings',
 ): StepId {
   if (chrome === 'original') return step;
   if (chrome === 'visual') {
-    if (skipsResultsStep(stepsModel) && step === 'findings') {
+    if (skipsFindingsStep(stepsModel) && step === 'findings') {
       return 'tier1_proposals';
     }
     switch (step) {
@@ -447,15 +456,15 @@ function workflowSteps(
   chrome: WizardChrome,
   includeAuto = true,
   includeManual = false,
-  stepsModel: StepsModel = 'with-results',
+  stepsModel: StepsModel = 'with-findings',
 ): StepDef[] {
   if (chrome === 'visual') {
-    if (skipsResultsStep(stepsModel)) {
+    if (skipsFindingsStep(stepsModel)) {
       const steps: StepDef[] = [{ id: 'scan', label: 'Scan' }];
       if (includeAuto || includeManual) {
         steps.push({
           id: 'tier1_proposals',
-          label: 'Results and auto remediations',
+          label: 'Findings and auto remediations',
         });
       }
       if (includeAi) {
@@ -466,13 +475,13 @@ function workflowSteps(
     }
     const steps: StepDef[] = [
       { id: 'scan', label: 'Scan' },
-      { id: 'findings', label: 'Results' },
+      { id: 'findings', label: 'Findings' },
     ];
     if (includeAuto) {
-      steps.push({ id: 'tier1_proposals', label: 'Auto remediation' });
+      steps.push({ id: 'tier1_proposals', label: 'Auto remediations' });
     }
     if (includeAi) {
-      steps.push({ id: 'ai_proposals', label: 'AI remediation' });
+      steps.push({ id: 'ai_proposals', label: 'AI remediations' });
     }
     steps.push({ id: 'commit', label: 'Commit' });
     return steps;
@@ -1120,7 +1129,7 @@ function initialStep(
   if (status === 'pr-open' || status === 'pr-merged') return 'complete';
   if (status === 'proposals-ready') return 'tier1_proposals';
   if (status === 'in-progress') {
-    return skipsResultsStep(stepsModel) ? 'tier1_proposals' : 'findings';
+    return skipsFindingsStep(stepsModel) ? 'tier1_proposals' : 'findings';
   }
   return 'scan';
 }
@@ -1254,7 +1263,7 @@ export const ApmeRemediationPage = () => {
       setLogIndex(i => {
         if (i >= SCAN_PHASES.length - 1) {
           window.clearInterval(id);
-          if (skipsResultsStep(stepsModel)) {
+          if (skipsFindingsStep(stepsModel)) {
             setStep(
               includeAuto || includeManual
                 ? 'tier1_proposals'
@@ -1274,7 +1283,7 @@ export const ApmeRemediationPage = () => {
   }, [step, stepsModel, includeAuto, includeManual, includeAi]);
 
   useEffect(() => {
-    if (!visual || !skipsResultsStep(stepsModel)) return;
+    if (!visual || !skipsFindingsStep(stepsModel)) return;
     if (step !== 'findings') return;
     setStep(
       includeAuto || includeManual
@@ -1381,7 +1390,7 @@ export const ApmeRemediationPage = () => {
   }
 
   const displayRepo = `${repo.org}/${repo.name}`;
-  const isReviewOption = stepsModel === 'review';
+  const isWithoutFindings = stepsModel === 'without-findings';
   const scanWhen =
     quality.scanHistory[0]?.createdAt ?? quality.latestScan.createdAt;
   const scanSha = quality.latestScan.commitHash;
@@ -1389,7 +1398,7 @@ export const ApmeRemediationPage = () => {
   const pageMeta = `Health scan: ${scanWhen} · commit ${scanSha}`;
   const setStepsModel = (next: StepsModel) => {
     const nextParams = new URLSearchParams(params);
-    if (next === 'with-results') {
+    if (next === 'with-findings') {
       nextParams.delete('steps');
     } else {
       nextParams.set('steps', next);
@@ -1400,9 +1409,9 @@ export const ApmeRemediationPage = () => {
   const pageChrome = (
     <Box className={classes.chrome}>
       {visual ? (
-        <Box className={classes.stepsToggle} role="region" aria-label="Remediation steps compare">
+        <Box className={classes.stepsToggle} role="region" aria-label="Design options">
           <Typography className={classes.stepsToggleLabel} component="span">
-            Steps
+            Design options
           </Typography>
           <ToggleButtonGroup
             exclusive
@@ -1412,11 +1421,10 @@ export const ApmeRemediationPage = () => {
               if (next == null) return;
               setStepsModel(next);
             }}
-            aria-label="Remediation steps model"
+            aria-label="Remediation design options"
           >
-            <ToggleButton value="with-results">With Results</ToggleButton>
-            <ToggleButton value="work">Results and auto remediations</ToggleButton>
-            <ToggleButton value="review">Review</ToggleButton>
+            <ToggleButton value="with-findings">With findings</ToggleButton>
+            <ToggleButton value="without-findings">Without findings</ToggleButton>
           </ToggleButtonGroup>
         </Box>
       ) : null}
@@ -1440,10 +1448,8 @@ export const ApmeRemediationPage = () => {
         bare={visual}
       />
       {visual &&
-      !(isReviewOption && step === 'tier1_proposals') &&
-      (step === 'tier1_proposals' ||
-        step === 'ai_proposals' ||
-        step === 'commit') ? (
+      step !== 'tier1_proposals' &&
+      (step === 'ai_proposals' || step === 'commit') ? (
         <Typography
           className={`${classes.stepperHint}${
             step === 'commit' ? ` ${classes.stepperHintBeforePanel}` : ''
@@ -1546,6 +1552,7 @@ export const ApmeRemediationPage = () => {
             ctaLayout={ctaLayout}
             reviewLayout={reviewLayout}
             phase="results"
+            sideBySide={!isWithoutFindings}
             header={
               isRedesignLayout(reviewLayout) ? (
                 <>
@@ -1602,13 +1609,8 @@ export const ApmeRemediationPage = () => {
             onCancel={goBack}
             ctaLayout={ctaLayout}
             reviewLayout={reviewLayout}
-            phase={
-              stepsModel === 'review'
-                ? 'review'
-                : stepsModel === 'work'
-                  ? 'work'
-                  : 'autofix'
-            }
+            phase={isWithoutFindings ? 'review' : 'autofix'}
+            sideBySide={!isWithoutFindings}
             header={
               isRedesignLayout(reviewLayout) ? (
                 <>
@@ -1696,6 +1698,7 @@ export const ApmeRemediationPage = () => {
             ctaLayout={ctaLayout}
             reviewLayout={reviewLayout}
             phase="ai"
+            sideBySide={!isWithoutFindings}
             header={
               isRedesignLayout(reviewLayout) ? (
                 <>
@@ -1913,7 +1916,7 @@ export const ApmeRemediationPage = () => {
           </ToggleButtonGroup>
           <Typography className={classes.compareHint}>
             {wizard === 'visual'
-              ? 'Scan → Results → Auto remediation → AI remediation → Commit. Results is all findings. Generate AI only on the AI remediation step.'
+              ? 'Scan → Findings → Auto remediations → AI remediations → Commit. Findings is all findings. Generate AI only on the AI remediations step.'
               : wizard === 'inline'
               ? 'Scan. One Results & Remediation step: auto-fixes plus Generate AI per row. Then commit.'
               : wizard === 'new'

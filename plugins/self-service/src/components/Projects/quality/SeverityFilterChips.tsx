@@ -48,22 +48,49 @@ const useStyles = makeStyles(theme => ({
           : 'rgba(0,0,0,0.04)',
     },
   },
+  catChip: {
+    color: theme.palette.text.primary,
+    borderColor: theme.palette.divider,
+  },
+  catChipOn: {
+    borderColor: theme.palette.text.primary,
+    backgroundColor:
+      theme.palette.type === 'dark'
+        ? 'rgba(255,255,255,0.08)'
+        : 'rgba(0,0,0,0.06)',
+  },
 }));
+
+export type MixCategoryChip = {
+  id: string;
+  label: string;
+  count: number;
+  hint: string;
+};
 
 /** Outlined severity chips — same filter control on Overview and scan details. */
 export function SeverityFilterChips({
   breakdown,
   active,
   onToggle,
+  categories,
+  activeCategory,
+  onToggleCategory,
 }: {
   breakdown: Record<SeverityClass, number>;
   active: Set<SeverityClass>;
   onToggle: (sev: SeverityClass) => void;
+  categories?: MixCategoryChip[];
+  activeCategory?: string;
+  onToggleCategory?: (id: string) => void;
 }) {
   const classes = useStyles();
   const present = SEV_ORDER.filter(sev => (breakdown[sev] ?? 0) > 0);
-  if (present.length === 0) return null;
+  const catList = categories ?? [];
+  if (present.length === 0 && catList.length === 0) return null;
   const anyActive = active.size > 0;
+  const catDim =
+    activeCategory && activeCategory !== 'all' ? activeCategory : '';
 
   return (
     <Box className={classes.row}>
@@ -94,6 +121,33 @@ export function SeverityFilterChips({
                     ? `${SEVERITY_COLORS[sev]}18`
                     : 'transparent',
                   opacity: anyActive && !isActive ? 0.4 : 1,
+                }}
+              />
+            </span>
+          </Tooltip>
+        );
+      })}
+      {(categories ?? []).map(cat => {
+        const isActive = activeCategory === cat.id;
+        return (
+          <Tooltip
+            key={cat.id}
+            title={`${cat.hint}. Click to ${isActive ? 'clear' : 'apply'} filter.`}
+            arrow
+          >
+            <span>
+              <Chip
+                size="small"
+                variant="outlined"
+                clickable
+                label={`${cat.label} (${cat.count})`}
+                onClick={() => onToggleCategory?.(cat.id)}
+                aria-pressed={isActive}
+                className={`${classes.chip} ${classes.catChip}${
+                  isActive ? ` ${classes.catChipOn}` : ''
+                }`}
+                style={{
+                  opacity: catDim && !isActive ? 0.4 : 1,
                 }}
               />
             </span>
