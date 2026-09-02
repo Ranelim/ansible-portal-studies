@@ -1761,8 +1761,6 @@ export const InlineVisualReview: React.FC<{
   const remediationCount = auto.length + readyAi.length;
   const autoAccepted = auto.filter(v => t1Decisions[findingKey(v)] === 'accept').length;
   const autoDeclined = auto.filter(v => t1Decisions[findingKey(v)] === 'decline').length;
-  const autoAllAccepted = auto.length > 0 && autoAccepted === auto.length;
-  const autoAllDeclined = auto.length > 0 && autoDeclined === auto.length;
   const aiAccepted = ai.filter(v => aiDecisions[findingKey(v)] === 'accept').length;
   const selectedSuggestions = autoAccepted + aiAccepted;
   const nextLocked =
@@ -1771,7 +1769,7 @@ export const InlineVisualReview: React.FC<{
       : phase === 'autofix' || phase === 'review'
         ? pendingT1 > 0
         : phase === 'ai'
-          ? aiLoading
+          ? aiLoading || pendingGeneratedAi > 0
           : currentRedesign
             ? selectedSuggestions < 1
             : pendingT1 > 0 || pendingGeneratedAi > 0 || aiLoading;
@@ -1828,6 +1826,17 @@ export const InlineVisualReview: React.FC<{
         else if (!next[k]) next[k] = value;
         return next;
       });
+    });
+  };
+
+  const stampT1Items = (items: QualityViolation[], value: WizardDecision) => {
+    if (items.length === 0) return;
+    setT1Decisions?.(prev => {
+      const next = { ...prev };
+      items.forEach(v => {
+        next[findingKey(v)] = value;
+      });
+      return next;
     });
   };
 
@@ -1914,14 +1923,6 @@ export const InlineVisualReview: React.FC<{
     else keys.forEach(k => onGenerateAi?.(k));
   };
 
-  const includeItems = (items: QualityViolation[]) => {
-    items.forEach(v => {
-      const k = findingKey(v);
-      const setter = v.fixTier === 'ai' ? setAiDecisions : setT1Decisions;
-      setter?.(prev => ({ ...prev, [k]: 'accept' }));
-    });
-  };
-
   const excludeItems = (items: QualityViolation[]) => {
     items.forEach(v => {
       const k = findingKey(v);
@@ -1959,13 +1960,11 @@ export const InlineVisualReview: React.FC<{
           : 'Accept or decline each auto-fix to continue.'
         : ''
       : phase === 'ai'
-        ? pendingGeneratedAi > 0
-          ? 'Accept or decline generated AI suggestions to continue.'
-          : aiLoading
-            ? 'Wait for AI generation to finish.'
-            : idleAi.length > 0
-              ? 'Generate suggestions for the findings you want, or continue without them.'
-              : ''
+        ? aiLoading
+          ? 'Wait for AI generation to finish.'
+          : pendingGeneratedAi > 0
+            ? 'Accept or decline each generated AI remediation to continue.'
+            : ''
         : currentRedesign
           ? pendingGeneratedAi > 0
             ? 'Accept or decline generated AI suggestions to continue.'
@@ -2087,6 +2086,12 @@ export const InlineVisualReview: React.FC<{
     if (lane === 'AI-fix') return aiStatus[findingKey(f)] === 'ready';
     return false;
   });
+  const remainingAutoAccept = filtered.filter(
+    v => v.fixTier === 'deterministic' && t1Decisions[findingKey(v)] !== 'accept',
+  );
+  const remainingAutoDecline = filtered.filter(
+    v => v.fixTier === 'deterministic' && t1Decisions[findingKey(v)] !== 'decline',
+  );
   const autoUndecidedCount = auto.filter(v => {
     const d = t1Decisions[findingKey(v)];
     return d !== 'accept' && d !== 'decline';
@@ -2211,7 +2216,7 @@ export const InlineVisualReview: React.FC<{
         onClick={() => decideItems(remainingItems, 'decline')}
         style={PILL}
       >
-        Decline remaining
+        Decline remaining{remainingForTab > 0 ? ` (${remainingForTab})` : ''}
       </Button>
     </>
   );
@@ -2231,7 +2236,9 @@ export const InlineVisualReview: React.FC<{
                 ? 'Accept or decline each auto remediation to continue'
                 : 'Accept or decline each auto-fix to continue'
               : phase === 'ai'
-                ? 'Wait for AI generation to finish'
+                ? aiLoading
+                  ? 'Wait for AI generation to finish'
+                  : 'Accept or decline each generated AI remediation to continue'
                 : currentRedesign
                   ? redesign4
                     ? 'Accept at least one remediation to continue'
@@ -2424,7 +2431,7 @@ export const InlineVisualReview: React.FC<{
       </MenuItem>
       {redesign3Plus ? null : (
         <MenuItem disabled={remainingForTab === 0} onClick={() => stampRemaining('decline')}>
-          Decline remaining
+          Decline remaining{remainingForTab > 0 ? ` (${remainingForTab})` : ''}
         </MenuItem>
       )}
       <Divider />
@@ -2499,44 +2506,50 @@ export const InlineVisualReview: React.FC<{
             <div
               className={classes.bulkTwinActions}
               role="group"
-              aria-label="Accept or decline all auto remediations"
+              aria-label="Accept or decline remaining auto remediations"
             >
               <Button
                 size="small"
-                variant={autoAllAccepted ? 'contained' : 'outlined'}
-                color={autoAllAccepted ? 'inherit' : 'primary'}
-                className={autoAllAccepted ? classes.rowBtnAccepted : undefined}
+                variant="outlined"
+                color="primary"
                 startIcon={<CheckIcon />}
-                disabled={auto.length === 0}
-                aria-pressed={autoAllAccepted}
-                onClick={() => stampAutoFixes('accept')}
+                disabled={remainingAutoAccept.length === 0}
+                onClick={() => stampT1Items(remainingAutoAccept, 'accept')}
                 style={PILL}
               >
-                Accept all
+                Accept remaining
+                {remainingAutoAccept.length > 0
+                  ? ` (${remainingAutoAccept.length})`
+                  : ''}
               </Button>
               <Button
                 size="small"
-                variant={autoAllDeclined ? 'contained' : 'outlined'}
-                color={autoAllDeclined ? 'inherit' : 'primary'}
-                className={autoAllDeclined ? classes.rowBtnDeclined : undefined}
+                variant="outlined"
+                color="primary"
                 startIcon={<CloseIcon />}
-                disabled={auto.length === 0}
-                aria-pressed={autoAllDeclined}
-                onClick={() => stampAutoFixes('decline')}
+                disabled={remainingAutoDecline.length === 0}
+                onClick={() => stampT1Items(remainingAutoDecline, 'decline')}
                 style={PILL}
               >
-                Decline all
+                Decline remaining
+                {remainingAutoDecline.length > 0
+                  ? ` (${remainingAutoDecline.length})`
+                  : ''}
               </Button>
             </div>
           ) : (
-            <>
+            <div
+              className={classes.bulkTwinActions}
+              role="group"
+              aria-label="Accept or decline remaining AI remediations"
+            >
               <Button
                 size="small"
                 variant="outlined"
                 color="primary"
                 startIcon={<CheckIcon />}
                 disabled={remainingSuggestions.length === 0}
-                onClick={() => includeItems(remainingSuggestions)}
+                onClick={() => decideItems(remainingSuggestions, 'accept')}
                 style={PILL}
               >
                 Accept remaining
@@ -2548,30 +2561,17 @@ export const InlineVisualReview: React.FC<{
                 size="small"
                 variant="outlined"
                 color="primary"
-                endIcon={<ArrowDropDownIcon />}
-                onClick={event => setActionsAnchor(event.currentTarget)}
-                aria-haspopup="menu"
-                aria-expanded={Boolean(actionsAnchor)}
-                aria-controls={
-                  actionsAnchor ? 'accept-remediations-menu' : undefined
-                }
+                startIcon={<CloseIcon />}
+                disabled={remainingSuggestions.length === 0}
+                onClick={() => decideItems(remainingSuggestions, 'decline')}
                 style={PILL}
               >
-                More actions
+                Decline remaining
+                {remainingSuggestions.length > 0
+                  ? ` (${remainingSuggestions.length})`
+                  : ''}
               </Button>
-              <Menu
-                id="accept-remediations-menu"
-                className={classes.actionsMenu}
-                anchorEl={actionsAnchor}
-                open={Boolean(actionsAnchor)}
-                onClose={closeActions}
-                getContentAnchorEl={null}
-                anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
-                transformOrigin={{ vertical: 'top', horizontal: 'left' }}
-              >
-                {includeMenuItems}
-              </Menu>
-            </>
+            </div>
           )}
         </div>
       ) : (
@@ -3025,7 +3025,7 @@ export const InlineVisualReview: React.FC<{
         ) : null}
         {phase === 'ai' &&
         redesign3Plus &&
-        (idleAi.length > 0 || aiLoading || pendingGeneratedAi > 0) ? (
+        (idleAi.length > 0 || aiLoading) ? (
           <div className={classes.aiBanner} role="status">
             <InfoOutlinedIcon className={classes.aiBannerIcon} aria-hidden />
             <Typography className={classes.aiBannerCopy} variant="body2">
@@ -3033,52 +3033,22 @@ export const InlineVisualReview: React.FC<{
                 ? loadingAiCount === 1
                   ? 'Generating 1 AI remediation.'
                   : `Generating ${loadingAiCount} AI remediations.`
-                : idleAi.length > 0
-                  ? idleAi.length === 1
-                    ? '1 finding has no remediation suggestion yet. Generate an AI remediation to review it.'
-                    : `${idleAi.length} findings have no remediation suggestions yet. Generate AI remediations to review them.`
-                  : pendingGeneratedAi === 1
-                    ? '1 AI remediation generated. Review it below.'
-                    : `${pendingGeneratedAi} AI remediations generated. Review them below.`}
+                : idleAi.length === 1
+                  ? '1 finding has no remediation suggestion yet. Generate an AI remediation to review it.'
+                  : `${idleAi.length} findings have no remediation suggestions yet. Generate AI remediations to review them.`}
             </Typography>
-            {idleAi.length > 0 || aiLoading ? (
-              <Button
-                className={classes.aiBannerAction}
-                size="small"
-                variant="contained"
-                color="primary"
-                disabled={aiLoading || idleAi.length === 0}
-                startIcon={<LightspeedSpark size={14} />}
-                onClick={generateAll}
-                style={PILL}
-              >
-                {aiLoading ? 'Generating…' : generateAiLabel}
-              </Button>
-            ) : pendingGeneratedAi > 0 ? (
-              <Button
-                className={classes.aiBannerLink}
-                size="small"
-                variant="text"
-                color="primary"
-                onClick={() => {
-                  if (filterGeneratedAi) {
-                    setFilterGeneratedAi(false);
-                    return;
-                  }
-                  setFilterGeneratedAi(true);
-                  setQuery('');
-                  setContentType('all');
-                  setCategory('all');
-                  setSeverityFilter(new Set());
-                }}
-              >
-                {filterGeneratedAi
-                  ? 'Show all findings'
-                  : readyAi.length === 1
-                    ? 'View AI remediation'
-                    : 'View AI remediations'}
-              </Button>
-            ) : null}
+            <Button
+              className={classes.aiBannerAction}
+              size="small"
+              variant="contained"
+              color="primary"
+              disabled={aiLoading || idleAi.length === 0}
+              startIcon={<LightspeedSpark size={14} />}
+              onClick={generateAll}
+              style={PILL}
+            >
+              {aiLoading ? 'Generating…' : generateAiLabel}
+            </Button>
           </div>
         ) : null}
         {showsResultsMix(phase) ||

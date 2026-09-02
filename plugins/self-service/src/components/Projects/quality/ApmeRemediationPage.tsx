@@ -1460,7 +1460,7 @@ export const ApmeRemediationPage = () => {
           {step === 'tier1_proposals'
               ? 'Accept or decline auto remediations to include in the commit.'
               : step === 'ai_proposals'
-                ? 'Generate AI suggestions for the findings you want.'
+                ? 'Generate the suggestions you want, then accept or decline each generated one.'
                 : 'Create a branch, push the remediations you accepted, and optionally open a pull request.'}
         </Typography>
       ) : null}
