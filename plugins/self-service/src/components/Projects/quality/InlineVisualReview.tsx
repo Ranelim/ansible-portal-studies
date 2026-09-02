@@ -81,16 +81,26 @@ const LightspeedSpark = ({ size = 14 }: { size?: number }) => (
 export type CtaLayout = 'current' | 'footer';
 /** Current = Continue under the stepper. Redesign / 3 / 4 = forks of Current. */
 export type ReviewLayout = 'current' | 'redesign' | 'redesign3' | 'redesign4';
-/** Discrete visual session: results (read-only) then auto then AI. Work = auto + manual fix, no Results step. Bundled keeps all lanes on one step. */
-export type ReviewPhase = 'bundled' | 'results' | 'work' | 'autofix' | 'ai';
+/** Discrete visual session: results (read-only) then auto then AI. Work = combined inventory + auto. Review = tight combined (default auto list). Bundled keeps all lanes on one step. */
+export type ReviewPhase = 'bundled' | 'results' | 'work' | 'review' | 'autofix' | 'ai';
 
 function showsResultsMix(phase: ReviewPhase): boolean {
   return phase === 'results' || phase === 'work';
 }
 
+/** Combined post-scan step (no separate Results). */
+function isCombinedPhase(phase: ReviewPhase): boolean {
+  return phase === 'work' || phase === 'review';
+}
+
 /** Visual session: Auto / AI / Manual use “remediation”, not “fix”. */
 function usesRemediationVocab(phase: ReviewPhase): boolean {
-  return phase === 'results' || phase === 'autofix' || phase === 'ai' || phase === 'work';
+  return (
+    phase === 'results' ||
+    phase === 'autofix' ||
+    phase === 'ai' ||
+    isCombinedPhase(phase)
+  );
 }
 
 export function isRedesignLayout(layout: ReviewLayout): boolean {
@@ -136,9 +146,15 @@ function laneFilterLabel(lane: FixLane, phase: ReviewPhase): string {
 
 function laneBadgeLabel(lane: FixLane, phase: ReviewPhase): string {
   if (phase === 'results') return RESULTS_LANE_BADGE[lane];
-  if (phase === 'work' && lane === 'AI-fix') return RESULTS_LANE_BADGE[lane];
+  if (isCombinedPhase(phase) && lane === 'AI-fix') return RESULTS_LANE_BADGE[lane];
   return laneFilterLabel(lane, phase);
 }
+
+const WORK_COUNT_LANE: Record<string, FixLane> = {
+  auto: 'Auto-fix',
+  ai: 'AI-fix',
+  manual: 'Manual-fix',
+};
 
 const TAB_COUNT_LABEL: Record<FixLane, (n: number) => string> = {
   'Auto-fix': n => `${n} auto-fixes`,
@@ -614,6 +630,26 @@ const useStyles = makeStyles((theme: Theme) => ({
     fontWeight: 600,
     color: theme.palette.text.primary,
   },
+  workCountHit: {
+    ...theme.typography.body2,
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: theme.spacing(0.5),
+    margin: 0,
+    padding: '2px 6px',
+    border: 'none',
+    borderRadius: 4,
+    background: 'none',
+    cursor: 'pointer',
+    color: 'inherit',
+    '&:hover': {
+      backgroundColor: theme.palette.action.hover,
+    },
+    '&$workCountHitActive': {
+      backgroundColor: fade(theme.palette.primary.main, 0.08),
+    },
+  },
+  workCountHitActive: {},
   scanAside: {
     fontSize: 13,
     color: theme.palette.text.secondary,
@@ -1311,6 +1347,12 @@ export const InlineVisualReview: React.FC<{
       setLaneFilter('all');
       return;
     }
+    if (phase === 'review') {
+      setFixType('Auto-fix');
+      setCategory('all');
+      setLaneFilter('all');
+      return;
+    }
     if (phase === 'autofix') {
       setFixType('Auto-fix');
       return;
@@ -1443,7 +1485,7 @@ export const InlineVisualReview: React.FC<{
   const aiAccepted = ai.filter(v => aiDecisions[findingKey(v)] === 'accept').length;
   const selectedSuggestions = autoAccepted + aiAccepted;
   const nextLocked =
-    phase === 'results' || phase === 'work'
+    phase === 'results' || isCombinedPhase(phase)
       ? false
       : phase === 'autofix'
         ? pendingT1 > 0
@@ -1539,7 +1581,7 @@ export const InlineVisualReview: React.FC<{
     const autoPeers =
       phase === 'ai' ? [] : peers.filter(f => f.fixTier === 'deterministic');
     const aiPeers =
-      phase === 'autofix' || phase === 'work' ? [] : peers.filter(f => f.fixTier === 'ai');
+      phase === 'autofix' || isCombinedPhase(phase) ? [] : peers.filter(f => f.fixTier === 'ai');
     if (autoPeers.length > 0) {
       setT1Decisions?.(prev => {
         const next = { ...prev };
@@ -1610,7 +1652,7 @@ export const InlineVisualReview: React.FC<{
   const jobTitle =
     phase === 'results'
       ? ''
-      : phase === 'autofix' || phase === 'work'
+      : phase === 'autofix' || isCombinedPhase(phase)
       ? pendingT1 > 0
         ? usesRemediationVocab(phase)
           ? 'Accept or decline each auto remediation to continue.'
@@ -1643,7 +1685,7 @@ export const InlineVisualReview: React.FC<{
   const phaseAccepted =
     phase === 'results'
       ? 0
-      : phase === 'autofix' || phase === 'work'
+      : phase === 'autofix' || isCombinedPhase(phase)
         ? autoAccepted
         : phase === 'ai'
           ? aiAccepted
@@ -1765,7 +1807,7 @@ export const InlineVisualReview: React.FC<{
   );
   const generateAiLabel = `Generate remediations with AI (${idleAi.length})`;
   const phaseTabs: ReviewTab[] =
-    phase === 'ai' || phase === 'autofix'
+    phase === 'ai' || phase === 'autofix' || phase === 'review'
       ? []
       : phase === 'results'
         ? REDESIGN_TABS.filter(tab => tab === 'All' || laneCount[tab] > 0)
@@ -1853,7 +1895,7 @@ export const InlineVisualReview: React.FC<{
         style={PILL}
         title={
           nextLocked
-            ? phase === 'autofix' || phase === 'work'
+            ? phase === 'autofix' || isCombinedPhase(phase)
               ? usesRemediationVocab(phase)
                 ? 'Accept or decline each auto remediation to continue'
                 : 'Accept or decline each auto-fix to continue'
@@ -1973,7 +2015,7 @@ export const InlineVisualReview: React.FC<{
           />
         </MenuItem>
       )}
-      {phase === 'autofix' || phase === 'work' ? null : (
+      {phase === 'autofix' || isCombinedPhase(phase) ? null : (
         <MenuItem
           className={classes.menuItemDescribed}
           disabled={readyAi.length === 0}
@@ -2018,7 +2060,7 @@ export const InlineVisualReview: React.FC<{
           {usesRemediationVocab(phase) ? 'Decline auto remediations' : 'Decline auto-fixes'}
         </MenuItem>
       )}
-      {phase === 'autofix' || phase === 'work' ? null : (
+      {phase === 'autofix' || isCombinedPhase(phase) ? null : (
         <MenuItem
           disabled={
             readyAi.length === 0 ||
@@ -2122,6 +2164,7 @@ export const InlineVisualReview: React.FC<{
     (auto.length > 0 || ai.length > 0) ? (
       redesign4 ? (
         <div className={classes.bulkTwinActions}>
+          {phase === 'review' && remainingSuggestions.length === 0 ? null : (
           <Button
             size="small"
             variant="outlined"
@@ -2136,6 +2179,7 @@ export const InlineVisualReview: React.FC<{
               ? ` (${remainingSuggestions.length})`
               : ''}
           </Button>
+          )}
           <Button
             size="small"
             variant="outlined"
@@ -2239,7 +2283,7 @@ export const InlineVisualReview: React.FC<{
               ))}
             </Select>
           </FormControl>
-          {showsResultsMix(phase) ? null : (
+          {showsResultsMix(phase) || phase === 'review' ? null : (
           <FormControl variant="outlined" size="small" className={classes.select}>
             <InputLabel id="visual-category-label">Category</InputLabel>
             <Select
@@ -2428,6 +2472,7 @@ export const InlineVisualReview: React.FC<{
                   {phase !== 'ai' &&
                   !showsResultsMix(phase) &&
                   phase !== 'autofix' &&
+                  phase !== 'review' &&
                   redesign4 ? (
                     <>
                       {`, ${remediationCount} ${
@@ -2468,25 +2513,67 @@ export const InlineVisualReview: React.FC<{
                 </div>
               )}
             </div>
-            {phase === 'work' && workCountItems.length > 0 ? (
-              <div className={classes.workBreakdown}>
-                {workCountItems.map((item, index) => (
+            {isCombinedPhase(phase) && workCountItems.length > 0 ? (
+              <div
+                className={classes.workBreakdown}
+                role="group"
+                aria-label="Findings by remediation type"
+              >
+                {workCountItems.map((item, index) => {
+                  const lane = WORK_COUNT_LANE[item.id];
+                  const active = phase === 'review' && Boolean(lane) && fixType === lane;
+                  const body = (
+                    <>
+                      <Typography className={classes.workCount} component="span">
+                        {item.count}
+                      </Typography>
+                      <CountInfo label={item.label} hint={item.hint} />
+                    </>
+                  );
+                  return (
                   <Fragment key={item.id}>
                     {index > 0 ? (
                       <Typography className={classes.scanCountSep} component="span">
                         ·
                       </Typography>
                     ) : null}
-                    <Typography className={classes.workCount} component="span">
-                      {item.count}
-                    </Typography>
-                    <CountInfo label={item.label} hint={item.hint} />
+                    {phase === 'review' && lane ? (
+                      <button
+                        type="button"
+                        className={`${classes.workCountHit}${
+                          active ? ` ${classes.workCountHitActive}` : ''
+                        }`}
+                        aria-pressed={active}
+                        aria-label={`${item.count} ${item.label}. ${item.hint}`}
+                        title={item.hint}
+                        onClick={() => {
+                          setFixType(lane);
+                          setContentType('all');
+                          setCategory('all');
+                        }}
+                      >
+                        <Typography className={classes.workCount} component="span">
+                          {item.count}
+                        </Typography>
+                        <Typography
+                          className={classes.mixMeta}
+                          variant="body2"
+                          color="textSecondary"
+                          component="span"
+                        >
+                          {item.label}
+                        </Typography>
+                      </button>
+                    ) : (
+                      body
+                    )}
                   </Fragment>
-                ))}
+                  );
+                })}
               </div>
             ) : null}
             {redesign4 ? (
-              showsResultsMix(phase) || phase === 'autofix' || phase === 'ai' ? null : (
+              showsResultsMix(phase) || phase === 'autofix' || phase === 'ai' || phase === 'review' ? null : (
               <>
                 <div className={classes.scanMixBar}>
                   <SeverityMixBar
@@ -2636,7 +2723,7 @@ export const InlineVisualReview: React.FC<{
           ))}
         </Tabs>
         )}
-        {showsResultsMix(phase) || phase === 'autofix' || phase === 'ai' ? (
+        {showsResultsMix(phase) || phase === 'autofix' || phase === 'ai' || phase === 'review' ? (
         <>
         {filterToolbar}
         {showsResultsMix(phase) ? (
@@ -2714,7 +2801,7 @@ export const InlineVisualReview: React.FC<{
           </Typography>
         )}
 
-        {showsResultsMix(phase) || phase === 'autofix' || phase === 'ai' ? null : filterToolbar}
+        {showsResultsMix(phase) || phase === 'autofix' || phase === 'ai' || phase === 'review' ? null : filterToolbar}
 
         {(currentRedesign ||
           (fixType !== 'Manual-fix' &&
@@ -2810,7 +2897,9 @@ export const InlineVisualReview: React.FC<{
                 aiStatus={aiStatus[findingKey(primary)] ?? 'idle'}
                 onDecision={d => onDecision(primary, d)}
                 onGenerateAi={
-                  phase === 'autofix' || showsResultsMix(phase) ? undefined : onGenerateAi
+                  phase === 'autofix' || showsResultsMix(phase) || phase === 'review'
+                    ? undefined
+                    : onGenerateAi
                 }
                 quietRowActions={currentRedesign}
                 hideDecline={redesign3}
@@ -2823,7 +2912,7 @@ export const InlineVisualReview: React.FC<{
                 phase={phase}
                 readOnly={
                   phase === 'results' ||
-                  (phase === 'work' && laneOf(primary) !== 'Auto-fix')
+                  (isCombinedPhase(phase) && laneOf(primary) !== 'Auto-fix')
                 }
               />
               );
@@ -2877,7 +2966,7 @@ export const InlineVisualReview: React.FC<{
           aria-label="Remediation step actions"
         >
           <div className={classes.footerStatus}>
-            {phase === 'work' || phase === 'autofix' ? (
+            {isCombinedPhase(phase) || phase === 'autofix' ? (
               autoAcceptControl
             ) : currentRedesign ? null : (
               <>
@@ -2902,7 +2991,7 @@ export const InlineVisualReview: React.FC<{
                 Cancel
               </Button>
             )}
-            {phase === 'work' || phase === 'ai' || phase === 'autofix' ? (
+            {isCombinedPhase(phase) || phase === 'ai' || phase === 'autofix' ? (
               <Typography className={classes.footerAccepted} component="span">
                 {selectedLabel}
               </Typography>
@@ -3102,7 +3191,7 @@ const FindingRow: React.FC<{
             (itemLane === 'AI-fix' && aiStatus === 'ready'));
         const itemLines: DiffLine[] = showRemediation
           ? fullDiff
-          : phase === 'results' || (phase === 'work' && itemLane === 'AI-fix')
+          : phase === 'results' || (isCombinedPhase(phase) && itemLane === 'AI-fix')
             ? fullDiff.filter(line => line.kind !== 'add')
             : itemSnip.current.map(text => ({ kind: 'context' as const, text }));
         return (
@@ -3122,7 +3211,7 @@ const FindingRow: React.FC<{
             </Button>
           </div>
         ) : null}
-        {readOnly && itemLane === 'AI-fix' && phase === 'work' ? (
+        {readOnly && itemLane === 'AI-fix' && isCombinedPhase(phase) ? (
           <div className={`${classes.suggestionEmpty} ${classes.suggestionLeadRow}`}>
             <span>{RESULTS_AI_BODY}</span>
           </div>

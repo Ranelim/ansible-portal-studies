@@ -53,6 +53,9 @@ import { RemediationReceipt } from './RemediationReceipt';
  * Redesign = Scan → Review auto-fixes → Choose AI findings → Review AI-fixes → Commit.
  * Inline AI = Scan → Results & Remediation → Commit.
  * Inline visual = Scan → Results → Auto remediations → AI remediations → Commit.
+ * Steps compare (`?steps=work|review`): Combined post-scan (no Results step).
+ * `work` = Results and auto remediations. `review` = tight Review (default auto
+ * list, 8·2·2 as filters, remainder for AI/manual).
  * Bundled one-page review (no Results step; Generate AI on Results & Remediation):
  * git tag `remediation-bundled-results-and-ai` (`b82fca95`).
  * CTA compare (`?cta=current|footer`): Current puts Continue + Cancel under
@@ -126,10 +129,16 @@ function isCraigRedesign(chrome: WizardChrome): boolean {
   return chrome === 'new';
 }
 
-type StepsModel = 'with-results' | 'work';
+type StepsModel = 'with-results' | 'work' | 'review';
 
 function parseStepsModel(value: string | null): StepsModel {
+  if (value === 'review') return 'review';
   return value === 'work' ? 'work' : 'with-results';
+}
+
+/** Combined post-scan step — no separate Results. */
+function skipsResultsStep(model: StepsModel): boolean {
+  return model === 'work' || model === 'review';
 }
 
 function isResultsFixChrome(chrome: WizardChrome): boolean {
@@ -144,7 +153,7 @@ function displayStepId(
 ): StepId {
   if (chrome === 'original') return step;
   if (chrome === 'visual') {
-    if (stepsModel === 'work' && step === 'findings') {
+    if (skipsResultsStep(stepsModel) && step === 'findings') {
       return 'tier1_proposals';
     }
     switch (step) {
@@ -438,10 +447,14 @@ function workflowSteps(
   stepsModel: StepsModel = 'with-results',
 ): StepDef[] {
   if (chrome === 'visual') {
-    if (stepsModel === 'work') {
+    if (skipsResultsStep(stepsModel)) {
       const steps: StepDef[] = [{ id: 'scan', label: 'Scan' }];
       if (includeAuto || includeManual) {
-        steps.push({ id: 'tier1_proposals', label: 'Results and auto remediations' });
+        steps.push({
+          id: 'tier1_proposals',
+          label:
+            stepsModel === 'review' ? 'Review' : 'Results and auto remediations',
+        });
       }
       if (includeAi) {
         steps.push({ id: 'ai_proposals', label: 'AI remediation' });
@@ -1105,7 +1118,7 @@ function initialStep(
   if (status === 'pr-open' || status === 'pr-merged') return 'complete';
   if (status === 'proposals-ready') return 'tier1_proposals';
   if (status === 'in-progress') {
-    return stepsModel === 'work' ? 'tier1_proposals' : 'findings';
+    return skipsResultsStep(stepsModel) ? 'tier1_proposals' : 'findings';
   }
   return 'scan';
 }
@@ -1239,7 +1252,7 @@ export const ApmeRemediationPage = () => {
       setLogIndex(i => {
         if (i >= SCAN_PHASES.length - 1) {
           window.clearInterval(id);
-          if (stepsModel === 'work') {
+          if (skipsResultsStep(stepsModel)) {
             setStep(
               includeAuto || includeManual
                 ? 'tier1_proposals'
@@ -1259,7 +1272,7 @@ export const ApmeRemediationPage = () => {
   }, [step, stepsModel, includeAuto, includeManual, includeAi]);
 
   useEffect(() => {
-    if (!visual || stepsModel !== 'work') return;
+    if (!visual || !skipsResultsStep(stepsModel)) return;
     if (step !== 'findings') return;
     setStep(
       includeAuto || includeManual
@@ -1371,7 +1384,7 @@ export const ApmeRemediationPage = () => {
     if (next === 'with-results') {
       nextParams.delete('steps');
     } else {
-      nextParams.set('steps', 'work');
+      nextParams.set('steps', next);
     }
     setParams(nextParams, { replace: true });
   };
@@ -1395,6 +1408,7 @@ export const ApmeRemediationPage = () => {
           >
             <ToggleButton value="with-results">With Results</ToggleButton>
             <ToggleButton value="work">Results and auto remediations</ToggleButton>
+            <ToggleButton value="review">Review</ToggleButton>
           </ToggleButtonGroup>
         </Box>
       ) : null}
@@ -1581,7 +1595,13 @@ export const ApmeRemediationPage = () => {
             onCancel={goBack}
             ctaLayout={ctaLayout}
             reviewLayout={reviewLayout}
-            phase={stepsModel === 'work' ? 'work' : 'autofix'}
+            phase={
+              stepsModel === 'review'
+                ? 'review'
+                : stepsModel === 'work'
+                  ? 'work'
+                  : 'autofix'
+            }
             header={
               isRedesignLayout(reviewLayout) ? (
                 <>
