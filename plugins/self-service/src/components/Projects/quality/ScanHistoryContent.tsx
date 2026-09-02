@@ -9,6 +9,7 @@ import {
   Link,
   MenuItem,
   Select,
+  TextField,
   Tooltip,
   Typography,
   makeStyles,
@@ -20,6 +21,7 @@ import { Table, TableColumn } from '@backstage/core-components';
 import { Link as RouterLink, useNavigate, useSearchParams } from 'react-router-dom';
 import { useNavIaModel } from '../../../hooks/useNavIaModel';
 import {
+  APME_CATEGORY_HINT,
   APME_CATEGORY_LABEL,
   APME_CATEGORY_ORDER,
   SEVERITY_COLORS,
@@ -43,6 +45,7 @@ import { snippetForFinding } from './findingCodeContext';
 import { SeverityFilterChips } from './SeverityFilterChips';
 import { parseScanCategoryParam, scansListPath } from './qualitySurfacePaths';
 import { QualityTabIntro } from './QualityTabIntro';
+import { kindLabel } from './SpaRemediationReview';
 
 type GlobalScanRow = ScanResult & {
   repoName: string;
@@ -74,27 +77,26 @@ const SEV_TIPS: Record<SeverityClass, string> = {
   info: 'Info — No action required',
 };
 
-type FindingKind = QualityViolation['scope'];
+type ScanFixLane = 'Auto-fix' | 'AI-fix' | 'Manual-fix';
 
-const KIND_ORDER: FindingKind[] = [
-  'task',
-  'block',
-  'play',
-  'playbook',
-  'role',
-  'collection',
-  'inventory',
-];
-
-const KIND_LABELS: Record<FindingKind, string> = {
-  task: 'Task',
-  block: 'Block',
-  play: 'Play',
-  playbook: 'Playbook',
-  role: 'Role',
-  collection: 'Collection',
-  inventory: 'Inventory',
+const REMEDIATION_LANE_LABEL: Record<ScanFixLane, string> = {
+  'Auto-fix': 'Auto remediation',
+  'AI-fix': 'AI remediation',
+  'Manual-fix': 'Manual remediation',
 };
+
+const LANE_EXPLAIN: Record<ScanFixLane, string> = {
+  'Auto-fix': 'Ready-made replacements from Ansible quality rules.',
+  'AI-fix':
+    'Eligible for an AI-generated suggestion you review before it goes in the PR.',
+  'Manual-fix': 'No automatic or AI suggestion. Change this in the file, or leave it.',
+};
+
+function laneOf(item: QualityViolation): ScanFixLane {
+  if (item.fixTier === 'deterministic') return 'Auto-fix';
+  if (item.fixTier === 'ai') return 'AI-fix';
+  return 'Manual-fix';
+}
 
 function findingKey(item: QualityViolation): string {
   return `${item.ruleId}-${item.file}-${item.lineStart}`;
@@ -204,36 +206,52 @@ const useStyles = makeStyles(theme => ({
     minWidth: 4,
     height: '100%',
   },
-  sevRow: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'flex-start',
-    gap: theme.spacing(2),
-    marginTop: theme.spacing(1),
-    marginBottom: theme.spacing(1),
-  },
-  kindControls: {
+  findingToolbar: {
     display: 'flex',
     alignItems: 'center',
     flexWrap: 'wrap',
     gap: theme.spacing(1),
-    paddingTop: theme.spacing(0.5),
-    paddingBottom: theme.spacing(2),
+    width: '100%',
+    marginTop: theme.spacing(1),
+    marginBottom: theme.spacing(1),
   },
-  expandBox: {
-    minWidth: 40,
-    width: 40,
-    height: 40,
-    padding: 0,
-    borderRadius: 4,
-    textTransform: 'none',
-    color: theme.palette.text.secondary,
+  searchFill: {
+    flex: '1 1 220px',
+    minWidth: 160,
+    width: 'auto',
+    '& .MuiOutlinedInput-root': {
+      width: '100%',
+    },
   },
   kindSelect: {
-    minWidth: 200,
+    minWidth: 168,
+    flexShrink: 0,
   },
-  categorySelect: {
-    minWidth: 200,
+  showingRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: theme.spacing(2),
+    width: '100%',
+    marginTop: theme.spacing(0.5),
+    marginBottom: theme.spacing(1.5),
+  },
+  showingCount: {
+    ...theme.typography.body2,
+    color: theme.palette.text.secondary,
+    whiteSpace: 'nowrap',
+  },
+  expandAll: {
+    textTransform: 'none',
+    fontWeight: 500,
+    fontSize: 14,
+    minWidth: 0,
+    padding: '4px 8px',
+  },
+  findingList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: theme.spacing(1.5),
   },
   backButton: {
     textTransform: 'none',
@@ -261,9 +279,10 @@ const useStyles = makeStyles(theme => ({
     marginBottom: theme.spacing(0.5),
   },
   detailTitle: {
-    fontWeight: 600,
-    fontSize: 20,
+    fontWeight: 700,
+    fontSize: '1.5rem',
     lineHeight: 1.3,
+    color: theme.palette.text.primary,
   },
   meta: {
     fontSize: 13,
@@ -279,14 +298,16 @@ const useStyles = makeStyles(theme => ({
   metaFindings: {
     fontWeight: 500,
   },
-  findingRow: {
-    borderBottom: `1px solid ${theme.palette.divider}`,
+  issueCard: {
+    border: `1px solid ${theme.palette.divider}`,
+    borderRadius: 8,
+    overflow: 'hidden',
   },
   findingHeader: {
     display: 'flex',
     alignItems: 'flex-start',
     gap: theme.spacing(1),
-    padding: theme.spacing(1, 0),
+    padding: theme.spacing(1.5, 2),
     cursor: 'pointer',
     '&:hover': {
       backgroundColor: theme.palette.action.hover,
@@ -306,8 +327,37 @@ const useStyles = makeStyles(theme => ({
     minWidth: 0,
     flex: 1,
   },
+  findingTitle: {
+    ...theme.typography.subtitle2,
+    color: theme.palette.text.primary,
+  },
+  fileMetaRow: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 4,
+  },
+  chips: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: 6,
+    alignItems: 'center',
+  },
+  chip: {
+    height: 22,
+    maxWidth: '100%',
+  },
+  fileMeta: {
+    ...theme.typography.caption,
+    color: theme.palette.text.secondary,
+    wordBreak: 'break-word',
+  },
+  filePath: {
+    fontFamily: '"Red Hat Mono", ui-monospace, monospace',
+  },
   findingPreview: {
-    padding: theme.spacing(0, 0, 1.5, 4.5),
+    padding: theme.spacing(0, 2, 1.5),
     display: 'flex',
     flexDirection: 'column',
     gap: theme.spacing(1),
@@ -316,11 +366,6 @@ const useStyles = makeStyles(theme => ({
     fontSize: 13,
     lineHeight: 1.5,
     color: theme.palette.text.secondary,
-  },
-  ruleId: {
-    fontSize: 11,
-    fontFamily: "'SF Mono', 'Fira Code', 'Consolas', monospace",
-    color: theme.palette.text.disabled,
   },
   codeContext: {
     borderRadius: 4,
@@ -463,109 +508,27 @@ function SeverityFilterRow({
   breakdown,
   active,
   onToggle,
-  category,
-  categoryOptions,
-  onCategoryChange,
-  kind,
-  kindOptions,
-  onKindChange,
-  canExpand,
-  allExpanded,
-  onToggleAll,
-  classes,
+  categories,
+  activeCategory,
+  onToggleCategory,
 }: {
   breakdown: Record<SeverityClass, number>;
   active: Set<SeverityClass>;
   onToggle: (sev: SeverityClass) => void;
-  category: ApmeRuleCategory | 'all';
-  categoryOptions: { id: ApmeRuleCategory; count: number }[];
-  onCategoryChange: (category: ApmeRuleCategory | 'all') => void;
-  kind: FindingKind | 'all';
-  kindOptions: { kind: FindingKind; count: number }[];
-  onKindChange: (kind: FindingKind | 'all') => void;
-  canExpand?: boolean;
-  allExpanded?: boolean;
-  onToggleAll?: () => void;
-  classes: ReturnType<typeof useStyles>;
+  categories: { id: string; label: string; count: number; hint: string }[];
+  activeCategory: string;
+  onToggleCategory: (id: string) => void;
 }) {
-  const present = SEV_ORDER.filter(sev => (breakdown[sev] ?? 0) > 0);
-  const showCategory = categoryOptions.length >= 1;
-  const showKind = kindOptions.length >= 2;
-  if (present.length === 0 && !showCategory && !showKind && !canExpand) {
-    return null;
-  }
   return (
-    <Box className={classes.sevRow}>
+    <Box mt={1} mb={0.5}>
       <SeverityFilterChips
         breakdown={breakdown}
         active={active}
         onToggle={onToggle}
+        categories={categories}
+        activeCategory={activeCategory}
+        onToggleCategory={onToggleCategory}
       />
-      {(showCategory || showKind || canExpand) && (
-        <Box className={classes.kindControls}>
-            {canExpand && onToggleAll && (
-              <Tooltip
-                title={allExpanded ? 'Collapse all' : 'Expand all'}
-                arrow
-              >
-                <Button
-                  variant="outlined"
-                  className={classes.expandBox}
-                  onClick={onToggleAll}
-                  aria-label={allExpanded ? 'Collapse all' : 'Expand all'}
-                  aria-pressed={allExpanded}
-                >
-                  <ChevronRight
-                    className={`${classes.chevron}${
-                      allExpanded ? ` ${classes.chevronOpen}` : ''
-                    }`}
-                    style={{ marginTop: 0 }}
-                  />
-                </Button>
-              </Tooltip>
-            )}
-            {showCategory && (
-              <FormControl variant="outlined" size="small" className={classes.categorySelect}>
-                <InputLabel id="scan-category-filter-label">Category</InputLabel>
-                <Select
-                  labelId="scan-category-filter-label"
-                  label="Category"
-                  value={category}
-                  onChange={e =>
-                    onCategoryChange(e.target.value as ApmeRuleCategory | 'all')
-                  }
-                >
-                  <MenuItem value="all">All categories</MenuItem>
-                  {categoryOptions.map(opt => (
-                    <MenuItem key={opt.id} value={opt.id}>
-                      {APME_CATEGORY_LABEL[opt.id]} ({opt.count})
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            )}
-            {showKind && (
-              <FormControl variant="outlined" size="small" className={classes.kindSelect}>
-                <InputLabel id="scan-content-type-filter-label">
-                  Content type
-                </InputLabel>
-                <Select
-                  labelId="scan-content-type-filter-label"
-                  label="Content type"
-                  value={kind}
-                  onChange={e => onKindChange(e.target.value as FindingKind | 'all')}
-                >
-                  <MenuItem value="all">All content types</MenuItem>
-                  {kindOptions.map(opt => (
-                    <MenuItem key={opt.kind} value={opt.kind}>
-                      {KIND_LABELS[opt.kind]} ({opt.count})
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            )}
-          </Box>
-      )}
     </Box>
   );
 }
@@ -615,9 +578,10 @@ function FindingPreviewRow({
 }) {
   const snippet = snippetForFinding(item);
   const description = snippet?.detail || item.ruleDescription;
+  const itemLane = laneOf(item);
 
   return (
-    <Box className={classes.findingRow}>
+    <Box className={classes.issueCard}>
       <Box
         className={classes.findingHeader}
         role="button"
@@ -634,27 +598,50 @@ function FindingPreviewRow({
         <ChevronRight
           className={`${classes.chevron}${expanded ? ` ${classes.chevronOpen}` : ''}`}
         />
-        <Chip
-          size="small"
-          label={item.severity}
-          style={{
-            height: 20,
-            fontSize: 11,
-            fontWeight: 600,
-            textTransform: 'capitalize',
-            marginTop: 1,
-            backgroundColor: `${SEVERITY_COLORS[item.severity]}22`,
-            color: SEVERITY_COLORS[item.severity],
-          }}
-        />
         <Box className={classes.findingBody}>
-          <Typography style={{ fontSize: 13 }}>{item.message}</Typography>
-          <Typography
-            style={{ fontSize: 12, fontFamily: 'monospace' }}
-            color="textSecondary"
-          >
-            {item.file}:{item.lineStart}
+          <Typography className={classes.findingTitle} variant="subtitle2">
+            {item.message}
           </Typography>
+          <Box className={classes.fileMetaRow}>
+            <Typography
+              className={classes.fileMeta}
+              variant="caption"
+              color="textSecondary"
+            >
+              <span className={classes.filePath}>
+                {item.file || 'Unknown file'}:{item.lineStart}
+              </span>
+              {' · '}
+              {kindLabel(item)}
+              {' · '}
+              {item.ruleId}
+            </Typography>
+            <Box className={classes.chips}>
+              <Chip
+                size="small"
+                label={SEV_LABELS[item.severity]}
+                className={classes.chip}
+                style={{
+                  backgroundColor: SEVERITY_COLORS[item.severity],
+                  color: '#fff',
+                }}
+              />
+              <Chip
+                size="small"
+                variant="outlined"
+                label={APME_CATEGORY_LABEL[apmeCategoryOf(item)]}
+                className={classes.chip}
+              />
+              <Tooltip title={LANE_EXPLAIN[itemLane]} arrow>
+                <Chip
+                  size="small"
+                  variant="outlined"
+                  label={REMEDIATION_LANE_LABEL[itemLane]}
+                  className={classes.chip}
+                />
+              </Tooltip>
+            </Box>
+          </Box>
         </Box>
       </Box>
       <Collapse in={expanded}>
@@ -677,9 +664,6 @@ function FindingPreviewRow({
               ))}
             </Box>
           ) : null}
-          <Typography className={classes.ruleId}>
-            {item.ruleId}
-          </Typography>
         </Box>
       </Collapse>
     </Box>
@@ -709,10 +693,11 @@ function ScanSnapshotDetail({
   const [severityFilters, setSeverityFilters] = useState<Set<SeverityClass>>(
     () => new Set(),
   );
-  const [kindFilter, setKindFilter] = useState<FindingKind | 'all'>('all');
+  const [kindFilter, setKindFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<
     ApmeRuleCategory | 'all'
   >(initialCategory);
+  const [searchQuery, setSearchQuery] = useState('');
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(() => new Set());
   const quality = getProjectQuality(row.repoName);
   const scanQuality = qualityForScan(row.repoName, row, row.isLatest);
@@ -731,17 +716,26 @@ function ScanSnapshotDetail({
       }),
     );
   }, [findings]);
+  const categoryChips = useMemo(
+    () =>
+      categoryOptions.map(opt => ({
+        id: opt.id,
+        label: APME_CATEGORY_LABEL[opt.id],
+        count: opt.count,
+        hint: APME_CATEGORY_HINT[opt.id],
+      })),
+    [categoryOptions],
+  );
   const kindOptions = useMemo(() => {
-    const counts = new Map<FindingKind, number>();
+    const counts = new Map<string, number>();
     for (const item of findings) {
-      counts.set(item.scope, (counts.get(item.scope) ?? 0) + 1);
+      const label = kindLabel(item);
+      counts.set(label, (counts.get(label) ?? 0) + 1);
     }
-    return KIND_ORDER.filter(kind => (counts.get(kind) ?? 0) > 0).map(kind => ({
-      kind,
-      count: counts.get(kind) ?? 0,
-    }));
+    return [...counts.entries()].map(([kind, count]) => ({ kind, count }));
   }, [findings]);
   const visibleFindings = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
     return findings.filter(item => {
       if (severityFilters.size > 0 && !severityFilters.has(item.severity)) {
         return false;
@@ -752,14 +746,21 @@ function ScanSnapshotDetail({
       ) {
         return false;
       }
-      if (kindFilter !== 'all' && item.scope !== kindFilter) return false;
-      return true;
+      if (kindFilter !== 'all' && kindLabel(item) !== kindFilter) return false;
+      if (!q) return true;
+      return (
+        item.ruleId.toLowerCase().includes(q) ||
+        item.message.toLowerCase().includes(q) ||
+        item.file.toLowerCase().includes(q) ||
+        APME_CATEGORY_LABEL[apmeCategoryOf(item)].toLowerCase().includes(q)
+      );
     });
-  }, [findings, severityFilters, categoryFilter, kindFilter]);
+  }, [findings, severityFilters, categoryFilter, kindFilter, searchQuery]);
   const filtersActive =
     severityFilters.size > 0 ||
     categoryFilter !== 'all' ||
-    kindFilter !== 'all';
+    kindFilter !== 'all' ||
+    searchQuery.trim() !== '';
   const visibleKeys = useMemo(
     () => visibleFindings.map(findingKey),
     [visibleFindings],
@@ -789,6 +790,9 @@ function ScanSnapshotDetail({
       return next;
     });
   }, []);
+  const toggleCategory = useCallback((id: string) => {
+    setCategoryFilter(prev => (prev === id ? 'all' : (id as ApmeRuleCategory)));
+  }, []);
 
   return (
     <Box>
@@ -807,7 +811,7 @@ function ScanSnapshotDetail({
           <Link
             component={RouterLink}
             to={`/self-service/repositories/${encodeURIComponent(row.repoName)}`}
-            color="primary"
+            color="inherit"
             underline="hover"
             className={classes.detailTitle}
           >
@@ -881,23 +885,67 @@ function ScanSnapshotDetail({
         activeSeverities={severityFilters}
         onSegmentClick={toggleSeverity}
       />
-      <SeverityFilterRow
-        breakdown={row.severityBreakdown}
-        active={severityFilters}
-        onToggle={toggleSeverity}
-        kind={kindFilter}
-        kindOptions={kindOptions}
-        onKindChange={setKindFilter}
-        category={categoryFilter}
-        categoryOptions={categoryOptions}
-        onCategoryChange={setCategoryFilter}
-        canExpand={visibleFindings.length > 0}
-        allExpanded={allExpanded}
-        onToggleAll={() =>
-          setExpandedKeys(allExpanded ? new Set() : new Set(visibleKeys))
-        }
-        classes={classes}
-      />
+      {findings.length > 0 ? (
+        <>
+          <SeverityFilterRow
+            breakdown={row.severityBreakdown}
+            active={severityFilters}
+            onToggle={toggleSeverity}
+            categories={categoryChips}
+            activeCategory={categoryFilter}
+            onToggleCategory={toggleCategory}
+          />
+          <Box className={classes.findingToolbar}>
+            <TextField
+              className={classes.searchFill}
+              size="small"
+              variant="outlined"
+              placeholder="Search findings"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              inputProps={{ 'aria-label': 'Search findings' }}
+            />
+            <FormControl variant="outlined" size="small" className={classes.kindSelect}>
+              <InputLabel id="scan-content-type-filter-label">
+                Content type
+              </InputLabel>
+              <Select
+                labelId="scan-content-type-filter-label"
+                label="Content type"
+                value={kindFilter}
+                onChange={e => setKindFilter(e.target.value as string)}
+              >
+                <MenuItem value="all">All content types</MenuItem>
+                {kindOptions.map(opt => (
+                  <MenuItem key={opt.kind} value={opt.kind}>
+                    {opt.kind} ({opt.count})
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Box>
+          <Box className={classes.showingRow}>
+            <Typography className={classes.showingCount} variant="body2">
+              {visibleFindings.length} showing out of {findings.length}
+            </Typography>
+            {visibleFindings.length > 0 ? (
+              <Button
+                variant="text"
+                color="inherit"
+                size="small"
+                className={classes.expandAll}
+                onClick={() =>
+                  setExpandedKeys(
+                    allExpanded ? new Set() : new Set(visibleKeys),
+                  )
+                }
+              >
+                {allExpanded ? 'Collapse all' : 'Expand all'}
+              </Button>
+            ) : null}
+          </Box>
+        </>
+      ) : null}
       {!row.isLatest && (
         <Typography
           variant="body2"
@@ -916,18 +964,20 @@ function ScanSnapshotDetail({
         </Typography>
       )}
       {visibleFindings.length > 0 ? (
-        visibleFindings.map(item => {
-          const key = findingKey(item);
-          return (
-            <FindingPreviewRow
-              key={key}
-              item={item}
-              expanded={expandedKeys.has(key)}
-              onToggle={() => toggleFinding(key)}
-              classes={classes}
-            />
-          );
-        })
+        <Box className={classes.findingList}>
+          {visibleFindings.map(item => {
+            const key = findingKey(item);
+            return (
+              <FindingPreviewRow
+                key={key}
+                item={item}
+                expanded={expandedKeys.has(key)}
+                onToggle={() => toggleFinding(key)}
+                classes={classes}
+              />
+            );
+          })}
+        </Box>
       ) : findings.length > 0 && filtersActive ? (
         <Typography variant="body2" color="textSecondary" style={{ fontSize: 13 }}>
           No findings match the current filters.
@@ -938,7 +988,7 @@ function ScanSnapshotDetail({
         </Typography>
       ) : row.totalViolations === 0 ? (
         <Typography variant="body2" color="textSecondary" style={{ fontSize: 13 }}>
-          This scan found no issues.
+          No findings on this scan.
         </Typography>
       ) : null}
     </Box>
