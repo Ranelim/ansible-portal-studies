@@ -16,6 +16,7 @@
  */
 
 import { useLayoutEffect, useMemo, useRef, useState, Fragment, type Dispatch, type ReactNode, type SetStateAction } from 'react';
+import { HeaderTabs } from '@backstage/core-components';
 import {
   Button,
   Checkbox,
@@ -30,8 +31,6 @@ import {
   MenuItem,
   Paper,
   Select,
-  Tab,
-  Tabs,
   TextField,
   Tooltip,
   Typography,
@@ -134,6 +133,12 @@ const REMEDIATION_LANE_LABEL: Record<FixLane, string> = {
   'Manual-fix': 'Manual remediation',
 };
 
+const REVIEW_TAB_LABEL: Record<FixLane, string> = {
+  'Auto-fix': 'Auto remediations',
+  'AI-fix': 'Needs AI',
+  'Manual-fix': 'Manual only',
+};
+
 const RESULTS_LANE_BADGE: Record<FixLane, string> = {
   'Auto-fix': 'Auto remediation available',
   'AI-fix': 'Requires AI suggestion',
@@ -150,12 +155,6 @@ function laneBadgeLabel(lane: FixLane, phase: ReviewPhase): string {
   return laneFilterLabel(lane, phase);
 }
 
-const WORK_COUNT_LANE: Record<string, FixLane> = {
-  auto: 'Auto-fix',
-  ai: 'AI-fix',
-  manual: 'Manual-fix',
-};
-
 const TAB_COUNT_LABEL: Record<FixLane, (n: number) => string> = {
   'Auto-fix': n => `${n} auto-fixes`,
   'AI-fix': n => `${n} AI-fixes`,
@@ -171,6 +170,15 @@ function reviewTabLabel(tab: ReviewTab, redesign: boolean, redesign3 = false): s
   }
   if (tab === 'All') return 'All';
   return TAB_LABEL[tab];
+}
+
+function reviewLaneCountLabel(tab: ReviewTab, n: number): string {
+  if (tab === 'All') return `${n} findings`;
+  if (tab === 'Auto-fix') return `${n} auto remediations`;
+  if (tab === 'AI-fix') {
+    return n === 1 ? '1 finding that needs AI' : `${n} findings that need AI`;
+  }
+  return n === 1 ? '1 manual-only finding' : `${n} manual-only findings`;
 }
 
 function reviewTabCountLabel(
@@ -212,6 +220,12 @@ const RESULTS_MANUAL_BODY =
 const RESULTS_AI_BODY =
   'Requires an AI suggestion. Generate it on the next step.';
 
+const REVIEW_AI_TAB_HINT =
+  'Suggestions are generated on the next step.';
+
+const REVIEW_MANUAL_TAB_HINT =
+  'No automatic or AI suggestion. Change these in the file, or leave them.';
+
 const INCLUDE_MENU_EXPLAIN = {
   auto: AUTO_FIX_EXPLAIN,
   ai: 'Suggested replacements you generate for a finding, then review.',
@@ -219,6 +233,9 @@ const INCLUDE_MENU_EXPLAIN = {
 
 const AUTO_ACCEPT_EXPLAIN =
   `${AUTO_FIX_EXPLAIN} They start accepted. Decline any you do not want in the PR.`;
+
+const REVIEW_INCLUDE_EXPLAIN =
+  `${AUTO_FIX_EXPLAIN} Accept all remaining, or accept or decline each one before you continue.`;
 
 type BulkPolicyId =
   | 'accept-auto'
@@ -592,6 +609,25 @@ const useStyles = makeStyles((theme: Theme) => ({
       margin: 0,
     },
   },
+  tabsHost: {
+    paddingTop: theme.spacing(2),
+    borderBottom: `1px solid ${theme.palette.divider}`,
+    '& [class*="BackstageHeaderTabs-tabsWrapper"]': {
+      paddingLeft: `${theme.spacing(2)}px !important`,
+      paddingRight: theme.spacing(2),
+      minWidth: 0,
+      backgroundColor: 'transparent',
+    },
+    '& .MuiTabs-scrollButtons': {
+      display: 'none',
+    },
+    '& .MuiTabs-flexContainer': {
+      overflow: 'visible',
+    },
+    '& .MuiTabs-indicator': {
+      height: 3,
+    },
+  },
   scanCountRow: {
     display: 'flex',
     alignItems: 'baseline',
@@ -630,26 +666,6 @@ const useStyles = makeStyles((theme: Theme) => ({
     fontWeight: 600,
     color: theme.palette.text.primary,
   },
-  workCountHit: {
-    ...theme.typography.body2,
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: theme.spacing(0.5),
-    margin: 0,
-    padding: '2px 6px',
-    border: 'none',
-    borderRadius: 4,
-    background: 'none',
-    cursor: 'pointer',
-    color: 'inherit',
-    '&:hover': {
-      backgroundColor: theme.palette.action.hover,
-    },
-    '&$workCountHitActive': {
-      backgroundColor: fade(theme.palette.primary.main, 0.08),
-    },
-  },
-  workCountHitActive: {},
   scanAside: {
     fontSize: 13,
     color: theme.palette.text.secondary,
@@ -931,19 +947,6 @@ const useStyles = makeStyles((theme: Theme) => ({
     color: theme.palette.text.secondary,
     whiteSpace: 'nowrap',
   },
-  tabs: {
-    minHeight: 40,
-    paddingLeft: theme.spacing(2),
-    borderBottom: `1px solid ${theme.palette.divider}`,
-  },
-  tab: {
-    textTransform: 'none',
-    fontWeight: 600,
-    minHeight: 40,
-    minWidth: 0,
-    padding: theme.spacing(1, 1.25, 0.75),
-    marginRight: theme.spacing(1),
-  },
   tabLabel: {
     display: 'inline-flex',
     flexDirection: 'row',
@@ -1075,6 +1078,26 @@ const useStyles = makeStyles((theme: Theme) => ({
     display: 'flex',
     flexDirection: 'column',
     gap: theme.spacing(1.5),
+  },
+  reviewRemainder: {
+    padding: theme.spacing(2, 2, 2),
+    borderTop: `1px solid ${theme.palette.divider}`,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: theme.spacing(1.5),
+  },
+  reviewRemainderHead: {
+    ...theme.typography.subtitle2,
+    fontWeight: 600,
+    margin: 0,
+    '&:not(:first-child)': {
+      paddingTop: theme.spacing(1),
+    },
+  },
+  reviewRemainderHint: {
+    ...theme.typography.body2,
+    color: theme.palette.text.secondary,
+    margin: 0,
   },
   empty: {
     padding: theme.spacing(3, 2),
@@ -1287,6 +1310,28 @@ export const InlineVisualReview: React.FC<{
       hint: LANE_EXPLAIN['Manual-fix'],
     },
   ].filter(Boolean) as { id: string; count: number; label: string; hint: string }[];
+  const reviewCountItems = [
+    auto.length > 0 && {
+      id: 'auto',
+      count: auto.length,
+      label: auto.length === 1 ? 'auto remediation' : 'auto remediations',
+      hint: LANE_EXPLAIN['Auto-fix'],
+    },
+    ai.length > 0 && {
+      id: 'ai',
+      count: ai.length,
+      label: ai.length === 1 ? 'needs AI' : 'need AI',
+      hint: 'Eligible for an AI suggestion. Generate it on the next step.',
+    },
+    manual.length > 0 && {
+      id: 'manual',
+      count: manual.length,
+      label: 'manual only',
+      hint: LANE_EXPLAIN['Manual-fix'],
+    },
+  ].filter(Boolean) as { id: string; count: number; label: string; hint: string }[];
+  const inventoryCountItems =
+    phase === 'review' ? reviewCountItems : phase === 'work' ? workCountItems : [];
   const laneCount: Record<ReviewTab, number> = {
     All: reviewFindings.length,
     'Auto-fix': auto.length,
@@ -1482,12 +1527,15 @@ export const InlineVisualReview: React.FC<{
   const aiLoading = loadingAiCount > 0;
   const remediationCount = auto.length + readyAi.length;
   const autoAccepted = auto.filter(v => t1Decisions[findingKey(v)] === 'accept').length;
+  const autoDeclined = auto.filter(v => t1Decisions[findingKey(v)] === 'decline').length;
+  const autoAllAccepted = auto.length > 0 && autoAccepted === auto.length;
+  const autoAllDeclined = auto.length > 0 && autoDeclined === auto.length;
   const aiAccepted = ai.filter(v => aiDecisions[findingKey(v)] === 'accept').length;
   const selectedSuggestions = autoAccepted + aiAccepted;
   const nextLocked =
-    phase === 'results' || isCombinedPhase(phase)
+    phase === 'results' || phase === 'work'
       ? false
-      : phase === 'autofix'
+      : phase === 'autofix' || phase === 'review'
         ? pendingT1 > 0
         : phase === 'ai'
           ? aiLoading
@@ -1690,20 +1738,27 @@ export const InlineVisualReview: React.FC<{
         : phase === 'ai'
           ? aiAccepted
           : selectedSuggestions;
-  const selectedLabel = redesign4
-    ? phaseAccepted === 1
-      ? '1 accepted'
-      : `${phaseAccepted} accepted`
-    : phaseAccepted === 1
-      ? '1 suggestion accepted'
-      : `${phaseAccepted} suggestions accepted`;
+  const selectedLabel =
+    phase === 'review'
+      ? phaseAccepted === 0
+        ? 'None included in the commit'
+        : phaseAccepted === 1
+          ? '1 included in the commit'
+          : `${phaseAccepted} included in the commit`
+      : redesign4
+        ? phaseAccepted === 1
+          ? '1 accepted'
+          : `${phaseAccepted} accepted`
+        : phaseAccepted === 1
+          ? '1 suggestion accepted'
+          : `${phaseAccepted} suggestions accepted`;
   const selectedBreakdown = [
     phase !== 'ai' && auto.length > 0
       ? usesRemediationVocab(phase)
         ? `${autoAccepted} out of ${auto.length} auto remediation${auto.length === 1 ? '' : 's'}`
         : `${autoAccepted} out of ${auto.length} auto-fix${auto.length === 1 ? '' : 'es'}`
       : null,
-    phase !== 'autofix' && phase !== 'work' && ai.length > 0
+    phase !== 'autofix' && phase !== 'work' && phase !== 'review' && ai.length > 0
       ? usesRemediationVocab(phase)
         ? `${aiAccepted} out of ${ai.length} AI remediation${ai.length === 1 ? '' : 's'}`
         : `${aiAccepted} out of ${ai.length} AI-fix${ai.length === 1 ? '' : 'es'}`
@@ -1727,6 +1782,8 @@ export const InlineVisualReview: React.FC<{
   const searchPlaceholder =
     showsResultsMix(phase)
       ? 'Search findings'
+      : phase === 'review'
+        ? 'Search auto remediations'
       : fixType === 'All'
       ? 'Search findings'
       : fixType === 'Auto-fix'
@@ -1810,14 +1867,22 @@ export const InlineVisualReview: React.FC<{
     phase === 'ai' || phase === 'autofix' || phase === 'review'
       ? []
       : phase === 'results'
-        ? REDESIGN_TABS.filter(tab => tab === 'All' || laneCount[tab] > 0)
-        : phase === 'work'
-          ? WORK_TABS.filter(tab => tab === 'All' || laneCount[tab] > 0)
-          : currentRedesign
-            ? REDESIGN_TABS
-            : LANE_TABS;
+          ? REDESIGN_TABS.filter(tab => tab === 'All' || laneCount[tab] > 0)
+          : phase === 'work'
+            ? WORK_TABS.filter(tab => tab === 'All' || laneCount[tab] > 0)
+            : currentRedesign
+              ? REDESIGN_TABS
+              : LANE_TABS;
   const autoAcceptChecked = auto.length > 0 && autoUndecidedCount === 0 && autoAccepted > 0;
   const autoAcceptIndeterminate = autoAccepted > 0 && autoUndecidedCount > 0;
+  const includeAllLabel =
+    phase === 'review'
+      ? 'Include all auto remediations'
+      : `Auto-accept all ${
+          usesRemediationVocab(phase) ? 'auto remediations' : 'auto-fixes'
+        }`;
+  const includeAllExplain =
+    phase === 'review' ? REVIEW_INCLUDE_EXPLAIN : AUTO_ACCEPT_EXPLAIN;
   const autoAcceptControl =
     auto.length > 0 ? (
       <label className={classes.autoAcceptControl}>
@@ -1836,12 +1901,12 @@ export const InlineVisualReview: React.FC<{
           component="span"
           className={classes.autoAcceptLabel}
         >
-          Auto-accept all {usesRemediationVocab(phase) ? 'auto remediations' : 'auto-fixes'}
-          <Tooltip title={AUTO_ACCEPT_EXPLAIN} arrow>
+          {includeAllLabel}
+          <Tooltip title={includeAllExplain} arrow>
             <span
               className={classes.catHelpHit}
               tabIndex={0}
-              aria-label={AUTO_ACCEPT_EXPLAIN}
+              aria-label={includeAllExplain}
               onClick={event => {
                 event.preventDefault();
                 event.stopPropagation();
@@ -2160,51 +2225,88 @@ export const InlineVisualReview: React.FC<{
   const redesignActionsControl =
     phase !== 'results' &&
     currentRedesign &&
-    fixType !== 'Manual-fix' &&
+    (phase === 'review' ? fixType === 'Auto-fix' : fixType !== 'Manual-fix') &&
     (auto.length > 0 || ai.length > 0) ? (
       redesign4 ? (
         <div className={classes.bulkTwinActions}>
-          {phase === 'review' && remainingSuggestions.length === 0 ? null : (
-          <Button
-            size="small"
-            variant="outlined"
-            color="primary"
-            startIcon={<CheckIcon />}
-            disabled={remainingSuggestions.length === 0}
-            onClick={() => includeItems(remainingSuggestions)}
-            style={PILL}
-          >
-            Accept remaining
-            {remainingSuggestions.length > 0
-              ? ` (${remainingSuggestions.length})`
-              : ''}
-          </Button>
+          {phase === 'review' ? (
+            <div
+              className={classes.bulkTwinActions}
+              role="group"
+              aria-label="Accept or decline all auto remediations"
+            >
+              <Button
+                size="small"
+                variant={autoAllAccepted ? 'contained' : 'outlined'}
+                color={autoAllAccepted ? 'inherit' : 'primary'}
+                className={autoAllAccepted ? classes.rowBtnAccepted : undefined}
+                startIcon={<CheckIcon />}
+                disabled={auto.length === 0}
+                aria-pressed={autoAllAccepted}
+                onClick={() => stampAutoFixes('accept')}
+                style={PILL}
+              >
+                Accept all
+              </Button>
+              <Button
+                size="small"
+                variant={autoAllDeclined ? 'contained' : 'outlined'}
+                color={autoAllDeclined ? 'inherit' : 'primary'}
+                className={autoAllDeclined ? classes.rowBtnDeclined : undefined}
+                startIcon={<CloseIcon />}
+                disabled={auto.length === 0}
+                aria-pressed={autoAllDeclined}
+                onClick={() => stampAutoFixes('decline')}
+                style={PILL}
+              >
+                Decline all
+              </Button>
+            </div>
+          ) : (
+            <>
+              <Button
+                size="small"
+                variant="outlined"
+                color="primary"
+                startIcon={<CheckIcon />}
+                disabled={remainingSuggestions.length === 0}
+                onClick={() => includeItems(remainingSuggestions)}
+                style={PILL}
+              >
+                Accept remaining
+                {remainingSuggestions.length > 0
+                  ? ` (${remainingSuggestions.length})`
+                  : ''}
+              </Button>
+              <Button
+                size="small"
+                variant="outlined"
+                color="primary"
+                endIcon={<ArrowDropDownIcon />}
+                onClick={event => setActionsAnchor(event.currentTarget)}
+                aria-haspopup="menu"
+                aria-expanded={Boolean(actionsAnchor)}
+                aria-controls={
+                  actionsAnchor ? 'accept-remediations-menu' : undefined
+                }
+                style={PILL}
+              >
+                More actions
+              </Button>
+              <Menu
+                id="accept-remediations-menu"
+                className={classes.actionsMenu}
+                anchorEl={actionsAnchor}
+                open={Boolean(actionsAnchor)}
+                onClose={closeActions}
+                getContentAnchorEl={null}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+                transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+              >
+                {includeMenuItems}
+              </Menu>
+            </>
           )}
-          <Button
-            size="small"
-            variant="outlined"
-            color="primary"
-            endIcon={<ArrowDropDownIcon />}
-            onClick={event => setActionsAnchor(event.currentTarget)}
-            aria-haspopup="menu"
-            aria-expanded={Boolean(actionsAnchor)}
-            aria-controls={actionsAnchor ? 'accept-remediations-menu' : undefined}
-            style={PILL}
-          >
-            More actions
-          </Button>
-          <Menu
-            id="accept-remediations-menu"
-            className={classes.actionsMenu}
-            anchorEl={actionsAnchor}
-            open={Boolean(actionsAnchor)}
-            onClose={closeActions}
-            getContentAnchorEl={null}
-            anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
-            transformOrigin={{ vertical: 'top', horizontal: 'left' }}
-          >
-            {includeMenuItems}
-          </Menu>
         </div>
       ) : (
         <>
@@ -2392,6 +2494,39 @@ export const InlineVisualReview: React.FC<{
     </Collapse>
   );
 
+  const renderFindingRows = (items: QualityViolation[]) =>
+    (redesign4 ? groupByNodeOrder(items) : items.map(f => [f])).map(bundle => {
+      const primary = bundle[0];
+      return (
+        <FindingRow
+          key={redesign4 ? nodeKey(primary) : findingKey(primary)}
+          finding={primary}
+          bundled={redesign4 && bundle.length > 1 ? bundle : undefined}
+          decision={sharedDecision(bundle, decisions)}
+          aiStatus={aiStatus[findingKey(primary)] ?? 'idle'}
+          onDecision={d => onDecision(primary, d)}
+          onGenerateAi={
+            phase === 'autofix' || showsResultsMix(phase) || phase === 'review'
+              ? undefined
+              : onGenerateAi
+          }
+          quietRowActions={currentRedesign}
+          hideDecline={redesign3}
+          includeInPr={redesign4 && phase !== 'review'}
+          highlight={bundle.some(f => pulseKey === findingKey(f))}
+          showLane={
+            (currentRedesign && fixType === 'All') ||
+            (showsResultsMix(phase) && fixType === 'All')
+          }
+          phase={phase}
+          readOnly={
+            phase === 'results' ||
+            (isCombinedPhase(phase) && laneOf(primary) !== 'Auto-fix')
+          }
+        />
+      );
+    });
+
   const summaryAndFindings = (
     <>
       {currentRedesign ? null : (
@@ -2447,7 +2582,7 @@ export const InlineVisualReview: React.FC<{
       )}
 
       <Paper className={classes.box} elevation={0}>
-        {currentRedesign && phase !== 'autofix' ? (
+        {currentRedesign && phase !== 'autofix' && phase !== 'review' ? (
           <div className={classes.scanCountHead}>
             <div
               className={`${classes.scanCountRow}${
@@ -2513,63 +2648,25 @@ export const InlineVisualReview: React.FC<{
                 </div>
               )}
             </div>
-            {isCombinedPhase(phase) && workCountItems.length > 0 ? (
+            {inventoryCountItems.length > 0 ? (
               <div
                 className={classes.workBreakdown}
                 role="group"
-                aria-label="Findings by remediation type"
+                aria-label="Findings by how they can be fixed"
               >
-                {workCountItems.map((item, index) => {
-                  const lane = WORK_COUNT_LANE[item.id];
-                  const active = phase === 'review' && Boolean(lane) && fixType === lane;
-                  const body = (
-                    <>
-                      <Typography className={classes.workCount} component="span">
-                        {item.count}
-                      </Typography>
-                      <CountInfo label={item.label} hint={item.hint} />
-                    </>
-                  );
-                  return (
+                {inventoryCountItems.map((item, index) => (
                   <Fragment key={item.id}>
                     {index > 0 ? (
                       <Typography className={classes.scanCountSep} component="span">
                         ·
                       </Typography>
                     ) : null}
-                    {phase === 'review' && lane ? (
-                      <button
-                        type="button"
-                        className={`${classes.workCountHit}${
-                          active ? ` ${classes.workCountHitActive}` : ''
-                        }`}
-                        aria-pressed={active}
-                        aria-label={`${item.count} ${item.label}. ${item.hint}`}
-                        title={item.hint}
-                        onClick={() => {
-                          setFixType(lane);
-                          setContentType('all');
-                          setCategory('all');
-                        }}
-                      >
-                        <Typography className={classes.workCount} component="span">
-                          {item.count}
-                        </Typography>
-                        <Typography
-                          className={classes.mixMeta}
-                          variant="body2"
-                          color="textSecondary"
-                          component="span"
-                        >
-                          {item.label}
-                        </Typography>
-                      </button>
-                    ) : (
-                      body
-                    )}
+                    <Typography className={classes.workCount} component="span">
+                      {item.count}
+                    </Typography>
+                    <CountInfo label={item.label} hint={item.hint} />
                   </Fragment>
-                  );
-                })}
+                ))}
               </div>
             ) : null}
             {redesign4 ? (
@@ -2688,44 +2785,50 @@ export const InlineVisualReview: React.FC<{
         {showsResultsMix(phase) ||
         (redesign3Plus && phase === 'bundled') ||
         phaseTabs.length === 0 ? null : (
-        <Tabs
-          className={classes.tabs}
-          value={phaseTabs.includes(fixType) ? fixType : phaseTabs[0]}
-          onChange={(_event, next: ReviewTab) => {
-            setFixType(next);
-            setContentType('all');
-            setCategory('all');
-          }}
-          indicatorColor="primary"
-          textColor="primary"
-          aria-label="Findings"
-        >
-          {phaseTabs.map(lane => (
-            <Tab
-              key={lane}
-              className={classes.tab}
-              value={lane}
-              label={
+        <div className={classes.tabsHost}>
+          <HeaderTabs
+            selectedIndex={Math.max(
+              0,
+              phaseTabs.findIndex(tab => tab === fixType),
+            )}
+            onChange={index => {
+              const next = phaseTabs[index];
+              if (!next) return;
+              setFixType(next);
+              setContentType('all');
+              setCategory('all');
+            }}
+            tabs={phaseTabs.map(lane => ({
+              id: lane,
+              label: (
                 <span className={classes.tabLabel}>
-                  <span>{reviewTabLabel(lane, phase === 'bundled' && currentRedesign)}</span>
+                  <span>
+                    {phase === 'review' && lane !== 'All'
+                      ? REVIEW_TAB_LABEL[lane]
+                      : reviewTabLabel(lane, phase === 'bundled' && currentRedesign)}
+                  </span>
                   <ReadCountBadge
                     count={laneCount[lane]}
-                    label={reviewTabCountLabel(
-                      lane,
-                      laneCount[lane],
-                      phase === 'bundled' && currentRedesign,
-                    )}
+                    label={
+                      phase === 'review'
+                        ? reviewLaneCountLabel(lane, laneCount[lane])
+                        : reviewTabCountLabel(
+                            lane,
+                            laneCount[lane],
+                            phase === 'bundled' && currentRedesign,
+                          )
+                    }
                     tone="read"
                   />
                 </span>
-              }
-            />
-          ))}
-        </Tabs>
+              ),
+            }))}
+          />
+        </div>
         )}
         {showsResultsMix(phase) || phase === 'autofix' || phase === 'ai' || phase === 'review' ? (
         <>
-        {filterToolbar}
+        {phase === 'review' ? null : filterToolbar}
         {showsResultsMix(phase) ? (
         <div
           className={classes.resultsMix}
@@ -2883,42 +2986,35 @@ export const InlineVisualReview: React.FC<{
           </Typography>
         ) : (
           <div className={classes.fileList}>
-            {(redesign4
-              ? groupByNodeOrder(files.flatMap(group => group.findings))
-              : files.flatMap(group => group.findings).map(f => [f])
-            ).map(bundle => {
-              const primary = bundle[0];
-              return (
-              <FindingRow
-                key={redesign4 ? nodeKey(primary) : findingKey(primary)}
-                finding={primary}
-                bundled={redesign4 && bundle.length > 1 ? bundle : undefined}
-                decision={sharedDecision(bundle, decisions)}
-                aiStatus={aiStatus[findingKey(primary)] ?? 'idle'}
-                onDecision={d => onDecision(primary, d)}
-                onGenerateAi={
-                  phase === 'autofix' || showsResultsMix(phase) || phase === 'review'
-                    ? undefined
-                    : onGenerateAi
-                }
-                quietRowActions={currentRedesign}
-                hideDecline={redesign3}
-                includeInPr={redesign4}
-                highlight={bundle.some(f => pulseKey === findingKey(f))}
-                showLane={
-                  (currentRedesign && fixType === 'All') ||
-                  (showsResultsMix(phase) && fixType === 'All')
-                }
-                phase={phase}
-                readOnly={
-                  phase === 'results' ||
-                  (isCombinedPhase(phase) && laneOf(primary) !== 'Auto-fix')
-                }
-              />
-              );
-            })}
+            {renderFindingRows(files.flatMap(group => group.findings))}
           </div>
         )}
+        {phase === 'review' && (ai.length > 0 || manual.length > 0) ? (
+          <div className={classes.reviewRemainder}>
+            {ai.length > 0 ? (
+              <>
+                <Typography className={classes.reviewRemainderHead} component="h3">
+                  Needs AI
+                </Typography>
+                <Typography className={classes.reviewRemainderHint} component="p">
+                  {REVIEW_AI_TAB_HINT}
+                </Typography>
+                {renderFindingRows(ai)}
+              </>
+            ) : null}
+            {manual.length > 0 ? (
+              <>
+                <Typography className={classes.reviewRemainderHead} component="h3">
+                  Manual only
+                </Typography>
+                <Typography className={classes.reviewRemainderHint} component="p">
+                  {REVIEW_MANUAL_TAB_HINT}
+                </Typography>
+                {renderFindingRows(manual)}
+              </>
+            ) : null}
+          </div>
+        ) : null}
       </Paper>
     </>
   );
@@ -2966,7 +3062,7 @@ export const InlineVisualReview: React.FC<{
           aria-label="Remediation step actions"
         >
           <div className={classes.footerStatus}>
-            {isCombinedPhase(phase) || phase === 'autofix' ? (
+            {phase === 'work' || phase === 'autofix' ? (
               autoAcceptControl
             ) : currentRedesign ? null : (
               <>
@@ -3039,7 +3135,9 @@ const FindingRow: React.FC<{
   const rowClass = readOnly
     ? classes.issueCard
     : decision === 'accept'
-      ? `${classes.issueCard} ${classes.rowAccept}`
+      ? `${classes.issueCard} ${
+          phase === 'review' ? classes.rowNeutral : classes.rowAccept
+        }`
       : decision === 'decline'
         ? `${classes.issueCard} ${classes.rowDecline}`
         : includeInPr
@@ -3058,7 +3156,9 @@ const FindingRow: React.FC<{
         startIcon={<CheckIcon />}
         style={PILL_COMPACT}
         aria-pressed={acceptFilled}
-        onClick={() => onDecision(acceptFilled ? null : 'accept')}
+        onClick={() =>
+          onDecision(acceptFilled && phase !== 'review' ? null : 'accept')
+        }
       >
         {acceptFilled ? 'Accepted' : 'Accept'}
       </Button>
@@ -3071,7 +3171,9 @@ const FindingRow: React.FC<{
           startIcon={<CloseIcon />}
           style={PILL_COMPACT}
           aria-pressed={declineFilled}
-          onClick={() => onDecision(declineFilled ? null : 'decline')}
+          onClick={() =>
+            onDecision(declineFilled && phase !== 'review' ? null : 'decline')
+          }
         >
           {declineFilled ? 'Declined' : 'Decline'}
         </Button>

@@ -54,8 +54,10 @@ import { RemediationReceipt } from './RemediationReceipt';
  * Inline AI = Scan → Results & Remediation → Commit.
  * Inline visual = Scan → Results → Auto remediations → AI remediations → Commit.
  * Steps compare (`?steps=work|review`): Combined post-scan (no Results step).
- * `work` = Results and auto remediations. `review` = tight Review (default auto
- * list, 8·2·2 as filters, remainder for AI/manual).
+ * `work` = mixed Combined. `review` = tight Combined. Stepper for both:
+ * Scan → Results and auto remediations → AI remediations → Commit.
+ * Review chrome: page title is the scan id (not the repo); findings
+ * inventory is the subtitle; no second findings hero.
  * Bundled one-page review (no Results step; Generate AI on Results & Remediation):
  * git tag `remediation-bundled-results-and-ai` (`b82fca95`).
  * CTA compare (`?cta=current|footer`): Current puts Continue + Cancel under
@@ -452,12 +454,11 @@ function workflowSteps(
       if (includeAuto || includeManual) {
         steps.push({
           id: 'tier1_proposals',
-          label:
-            stepsModel === 'review' ? 'Review' : 'Results and auto remediations',
+          label: 'Results and auto remediations',
         });
       }
       if (includeAi) {
-        steps.push({ id: 'ai_proposals', label: 'AI remediation' });
+        steps.push({ id: 'ai_proposals', label: 'AI remediations' });
       }
       steps.push({ id: 'commit', label: 'Commit' });
       return steps;
@@ -1379,6 +1380,33 @@ export const ApmeRemediationPage = () => {
   }
 
   const displayRepo = `${repo.org}/${repo.name}`;
+  const isReviewOption = stepsModel === 'review';
+  const autoCount = quality.violations.filter(v => v.fixTier === 'deterministic').length;
+  const aiCount = quality.violations.filter(v => v.fixTier === 'ai').length;
+  const manualCount = quality.violations.filter(
+    v => v.fixTier !== 'deterministic' && v.fixTier !== 'ai',
+  ).length;
+  const reviewInventory = [
+    findingsPhrase(quality.violations.length),
+    autoCount > 0
+      ? `${autoCount} auto remediation${autoCount === 1 ? '' : 's'}`
+      : null,
+    aiCount > 0 ? (aiCount === 1 ? '1 needs AI' : `${aiCount} need AI`) : null,
+    manualCount > 0 ? `${manualCount} manual only` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+  const pageTitle = isReviewOption ? quality.latestScan.scanId : displayRepo;
+  const pageMeta = isReviewOption
+    ? [
+        fromRepo ? null : displayRepo,
+        step === 'scan'
+          ? `commit ${quality.lastScannedCommit} · ${quality.lastScannedAt}`
+          : reviewInventory,
+      ]
+        .filter(Boolean)
+        .join(' · ')
+    : `${quality.latestScan.scanId} · commit ${quality.lastScannedCommit} · ${quality.lastScannedAt}`;
   const setStepsModel = (next: StepsModel) => {
     const nextParams = new URLSearchParams(params);
     if (next === 'with-results') {
@@ -1422,10 +1450,8 @@ export const ApmeRemediationPage = () => {
       >
         {backLabel}
       </Button>
-      <Typography className={classes.title}>{displayRepo}</Typography>
-      <Typography className={classes.meta}>
-        {quality.latestScan.scanId} · commit {quality.lastScannedCommit} · {quality.lastScannedAt}
-      </Typography>
+      <Typography className={classes.title}>{pageTitle}</Typography>
+      <Typography className={classes.meta}>{pageMeta}</Typography>
       <WorkflowStepper
         steps={steps}
         current={stepperCurrent}
@@ -1434,6 +1460,7 @@ export const ApmeRemediationPage = () => {
         bare={visual}
       />
       {visual &&
+      !(isReviewOption && step === 'tier1_proposals') &&
       (step === 'tier1_proposals' ||
         step === 'ai_proposals' ||
         step === 'commit') ? (
