@@ -407,14 +407,6 @@ const REVIEW_AI_TAB_HINT =
 const REVIEW_MANUAL_TAB_HINT =
   'No automatic or AI suggestion. Change these in the file, or leave them.';
 
-const REVIEW_AI_LANE_TITLE = 'Handled on the AI remediations step';
-const REVIEW_AI_LANE_BODY =
-  'These findings need a Lightspeed suggestion. You generate and review that suggestion on the next step, after auto remediations.';
-
-const REVIEW_MANUAL_LANE_TITLE = 'Manual only';
-const REVIEW_MANUAL_LANE_BODY =
-  'These findings have no auto or AI suggestion. Change them in the file, or leave them. They are not part of the auto or AI remediations steps.';
-
 const INCLUDE_MENU_EXPLAIN = {
   auto: AUTO_FIX_EXPLAIN,
   ai: 'Suggested replacements you generate for a finding, then review.',
@@ -884,43 +876,21 @@ const useStyles = makeStyles((theme: Theme) => ({
     gap: theme.spacing(1),
     width: '100%',
   },
-  searchFull: {
-    width: '100%',
-    '& .MuiOutlinedInput-root': {
-      width: '100%',
-    },
-  },
   reviewFilterRow: {
     display: 'flex',
     alignItems: 'center',
-    flexWrap: 'wrap',
+    flexWrap: 'nowrap',
     gap: theme.spacing(1),
     width: '100%',
   },
   reviewFilterToggle: {
     marginLeft: 'auto',
+    flexShrink: 0,
   },
   bulkBarCompact: {
     paddingTop: theme.spacing(0.5),
-    paddingBottom: theme.spacing(0.75),
+    paddingBottom: theme.spacing(2),
     gap: 0,
-  },
-  laneNote: {
-    margin: theme.spacing(1.5, 2, 0),
-    padding: theme.spacing(1.5, 2),
-    border: `1px solid ${theme.palette.divider}`,
-    borderRadius: 8,
-    backgroundColor: theme.palette.background.paper,
-  },
-  laneNoteTitle: {
-    ...theme.typography.subtitle2,
-    fontWeight: 600,
-    margin: 0,
-  },
-  laneNoteBody: {
-    ...theme.typography.body2,
-    color: theme.palette.text.secondary,
-    margin: theme.spacing(0.5, 0, 0),
   },
   laneMix: {
     display: 'flex',
@@ -2645,16 +2615,16 @@ export const InlineVisualReview: React.FC<{
         role="search"
         aria-label="Filter findings"
       >
-        <TextField
-          className={classes.searchFull}
-          size="small"
-          variant="outlined"
-          placeholder={searchPlaceholder}
-          value={query}
-          onChange={e => setQuery(e.target.value)}
-          inputProps={{ 'aria-label': searchPlaceholder }}
-        />
         <div className={classes.reviewFilterRow}>
+          <TextField
+            className={classes.searchFill}
+            size="small"
+            variant="outlined"
+            placeholder={searchPlaceholder}
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            inputProps={{ 'aria-label': searchPlaceholder }}
+          />
           <FormControl
             variant="outlined"
             size="small"
@@ -3374,27 +3344,6 @@ export const InlineVisualReview: React.FC<{
       </div>
     ) : null;
 
-  const reviewLaneNote =
-    phase === 'review' && fixType === 'AI-fix' ? (
-      <div className={classes.laneNote}>
-        <Typography className={classes.laneNoteTitle} component="h3">
-          {REVIEW_AI_LANE_TITLE}
-        </Typography>
-        <Typography className={classes.laneNoteBody} component="p">
-          {REVIEW_AI_LANE_BODY}
-        </Typography>
-      </div>
-    ) : phase === 'review' && fixType === 'Manual-fix' ? (
-      <div className={classes.laneNote}>
-        <Typography className={classes.laneNoteTitle} component="h3">
-          {REVIEW_MANUAL_LANE_TITLE}
-        </Typography>
-        <Typography className={classes.laneNoteBody} component="p">
-          {REVIEW_MANUAL_LANE_BODY}
-        </Typography>
-      </div>
-    ) : null;
-
   const renderCategoryBreakdownRows = () =>
     visibleCategories.map(cat => (
       <div
@@ -3790,6 +3739,8 @@ export const InlineVisualReview: React.FC<{
             breakdown={mixFromFindings(mixFindings).bySeverity}
             active={severityFilter}
             onToggle={toggleSeverity}
+            severityLabel={phase === 'review' ? 'Severity' : undefined}
+            categoryLabel={phase === 'review' ? 'Category' : undefined}
             categories={
               categoryAsChips
                 ? mixFromFindings(mixFindings).categories.map(cat => ({
@@ -3967,7 +3918,6 @@ export const InlineVisualReview: React.FC<{
         ) : null}
 
         {findingsTabs}
-        {reviewLaneNote}
 
         {((phase === 'review'
           ? reviewAutoItems.length === 0 &&
