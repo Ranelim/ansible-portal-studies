@@ -368,10 +368,10 @@ const AUTO_FIX_EXPLAIN =
   'Ready-made replacements from Ansible quality rules.';
 
 const AUTO_STEP_DESC =
-  'Each auto remediation is a ready-made replacement from this scan, and is already accepted for the pull request. Decline any you do not want included.';
+  'Review auto remediations and decline any you do not want in the pull request. Each is a ready-made replacement from this scan, and starts accepted.';
 
 const AI_STEP_DESC =
-  'Generate a suggestion with Lightspeed, then accept or decline it.';
+  'Generate Lightspeed suggestions, then accept or decline them so the pull request includes only the remediations you want.';
 
 function autoRemediationJobTitle(count: number): string {
   return count === 1
@@ -2609,7 +2609,7 @@ export const InlineVisualReview: React.FC<{
     </ToggleButtonGroup>
   );
   const reviewFilterBar =
-    phase === 'review' ? (
+    phase === 'review' || phase === 'ai' ? (
       <div
         className={classes.reviewFilters}
         role="search"
@@ -2625,6 +2625,7 @@ export const InlineVisualReview: React.FC<{
             onChange={e => setQuery(e.target.value)}
             inputProps={{ 'aria-label': searchPlaceholder }}
           />
+          {phase === 'review' ? (
           <FormControl
             variant="outlined"
             size="small"
@@ -2654,6 +2655,7 @@ export const InlineVisualReview: React.FC<{
               ))}
             </Select>
           </FormControl>
+          ) : null}
           <FormControl
             variant="outlined"
             size="small"
@@ -3704,10 +3706,13 @@ export const InlineVisualReview: React.FC<{
         )}
         {showsResultsMix(phase) || phase === 'autofix' || phase === 'ai' || phase === 'review' ? (
         <>
-        {phase === 'review' ? (
+        {phase === 'review' || phase === 'ai' ? (
           <div className={classes.findingsCountHead}>
             <Typography className={classes.listHeading} component="h2">
-              {mix.total} {findingWord}
+              {phase === 'ai' ? ai.length : mix.total}{' '}
+              {(phase === 'ai' ? ai.length : mix.total) === 1
+                ? 'finding'
+                : 'findings'}
             </Typography>
           </div>
         ) : null}
@@ -3716,7 +3721,9 @@ export const InlineVisualReview: React.FC<{
           className={`${classes.resultsMix}${
             phase === 'ai' ? ` ${classes.resultsMixBeforeSearch}` : ''
           }${
-            phase === 'review' ? ` ${classes.resultsMixAfterCount}` : ''
+            phase === 'review' || phase === 'ai'
+              ? ` ${classes.resultsMixAfterCount}`
+              : ''
           }`}
           role="group"
           aria-label={
@@ -3739,8 +3746,12 @@ export const InlineVisualReview: React.FC<{
             breakdown={mixFromFindings(mixFindings).bySeverity}
             active={severityFilter}
             onToggle={toggleSeverity}
-            severityLabel={phase === 'review' ? 'Severity' : undefined}
-            categoryLabel={phase === 'review' ? 'Category' : undefined}
+            severityLabel={
+              phase === 'review' || phase === 'ai' ? 'Severity' : undefined
+            }
+            categoryLabel={
+              phase === 'review' || phase === 'ai' ? 'Category' : undefined
+            }
             categories={
               categoryAsChips
                 ? mixFromFindings(mixFindings).categories.map(cat => ({
@@ -3814,8 +3825,7 @@ export const InlineVisualReview: React.FC<{
         ) : null}
         </div>
         ) : null}
-        {phase === 'review' ? null : filterToolbar}
-        {aiGenerateBanner}
+        {phase === 'review' || phase === 'ai' ? null : filterToolbar}
         </>
         ) : null}
         {showsResultsMix(phase) || !currentRedesign || redesign3Plus ? null : (
@@ -3831,7 +3841,7 @@ export const InlineVisualReview: React.FC<{
             (showListChrome || fixType === 'AI-fix' || fixType === 'All'))) ? (
           <div
             className={`${classes.bulkBar}${
-              phase === 'review'
+              phase === 'review' || phase === 'ai'
                 ? ` ${classes.bulkBarCompact}`
                 : currentRedesign
                   ? ` ${classes.bulkBarSpaced}`
@@ -3881,12 +3891,14 @@ export const InlineVisualReview: React.FC<{
               <>
                 <div
                   className={`${classes.bulkListActions}${
-                    phase === 'review' ? ` ${classes.bulkListActionsReview}` : ''
+                    phase === 'review' || phase === 'ai'
+                      ? ` ${classes.bulkListActionsReview}`
+                      : ''
                   }`}
                   role="region"
                   aria-label="Bulk finding actions"
                 >
-                  {phase === 'review' ? (
+                  {phase === 'review' || phase === 'ai' ? (
                     reviewFilterBar
                   ) : redesign4 ? (
                     showingCountControl
@@ -3901,7 +3913,8 @@ export const InlineVisualReview: React.FC<{
                   ) : (
                     <div>{redesignActionsControl}</div>
                   )}
-                  {phase === 'review' ? null : phase === 'results' ||
+                  {phase === 'review' || phase === 'ai' ? null : phase ===
+                      'results' ||
                     showFooterRemaining ||
                     showFooterAll ? (
                     diffDisplayToggle
@@ -3916,6 +3929,8 @@ export const InlineVisualReview: React.FC<{
             ) : null}
           </div>
         ) : null}
+
+        {aiGenerateBanner}
 
         {findingsTabs}
 
