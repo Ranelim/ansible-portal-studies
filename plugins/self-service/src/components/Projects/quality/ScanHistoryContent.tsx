@@ -3,19 +3,19 @@ import {
   Box,
   Button,
   Chip,
-  Collapse,
   FormControl,
   InputLabel,
   Link,
   MenuItem,
   Select,
+  Tab,
+  Tabs,
   TextField,
   Tooltip,
   Typography,
   makeStyles,
 } from '@material-ui/core';
 import ArrowBack from '@material-ui/icons/ArrowBack';
-import ChevronRight from '@material-ui/icons/ChevronRight';
 import HelpOutlineIcon from '@material-ui/icons/HelpOutline';
 import { Table, TableColumn } from '@backstage/core-components';
 import { Link as RouterLink, useNavigate, useSearchParams } from 'react-router-dom';
@@ -88,7 +88,7 @@ const REMEDIATION_LANE_LABEL: Record<ScanFixLane, string> = {
 const LANE_EXPLAIN: Record<ScanFixLane, string> = {
   'Auto-fix': 'Ready-made replacements from Ansible quality rules.',
   'AI-fix':
-    'Eligible for an AI-generated suggestion you review before it goes in the PR.',
+    'Needs an AI-generated suggestion you review before it goes in the pull request.',
   'Manual-fix': 'No automatic or AI suggestion. Change this in the file, or leave it.',
 };
 
@@ -208,12 +208,41 @@ const useStyles = makeStyles(theme => ({
   },
   findingToolbar: {
     display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'stretch',
+    gap: theme.spacing(1),
+    width: '100%',
+    marginTop: theme.spacing(1),
+    marginBottom: theme.spacing(1.5),
+  },
+  laneTabs: {
+    minHeight: 36,
+    '& .MuiTabs-flexContainer': {
+      flexWrap: 'nowrap',
+    },
+    '& .MuiTabs-indicator': {
+      height: 2,
+    },
+    '& .MuiTab-root': {
+      minHeight: 36,
+      minWidth: 0,
+      padding: theme.spacing(0.75, 1.5, 0.75, 0),
+      marginRight: theme.spacing(2),
+      textTransform: 'none',
+      fontSize: 14,
+      fontWeight: 500,
+      whiteSpace: 'nowrap',
+    },
+    '& .MuiTab-root:last-child': {
+      marginRight: 0,
+    },
+  },
+  toolbarFilters: {
+    display: 'flex',
     alignItems: 'center',
     flexWrap: 'wrap',
     gap: theme.spacing(1),
     width: '100%',
-    marginTop: theme.spacing(1),
-    marginBottom: theme.spacing(1),
   },
   searchFill: {
     flex: '1 1 220px',
@@ -226,27 +255,6 @@ const useStyles = makeStyles(theme => ({
   kindSelect: {
     minWidth: 168,
     flexShrink: 0,
-  },
-  showingRow: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: theme.spacing(2),
-    width: '100%',
-    marginTop: theme.spacing(0.5),
-    marginBottom: theme.spacing(1.5),
-  },
-  showingCount: {
-    ...theme.typography.body2,
-    color: theme.palette.text.secondary,
-    whiteSpace: 'nowrap',
-  },
-  expandAll: {
-    textTransform: 'none',
-    fontWeight: 500,
-    fontSize: 14,
-    minWidth: 0,
-    padding: '4px 8px',
   },
   findingList: {
     display: 'flex',
@@ -298,6 +306,38 @@ const useStyles = makeStyles(theme => ({
   metaFindings: {
     fontWeight: 500,
   },
+  healthMark: {
+    display: 'inline-flex',
+    alignItems: 'baseline',
+    gap: 6,
+    flexWrap: 'nowrap',
+  },
+  healthLabel: {
+    fontSize: 13,
+    fontWeight: 400,
+    color: theme.palette.text.secondary,
+  },
+  filterStack: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: theme.spacing(1),
+    marginTop: theme.spacing(1.5),
+    marginBottom: theme.spacing(0.5),
+  },
+  filterRow: {
+    display: 'flex',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: theme.spacing(1),
+  },
+  filterRowLabel: {
+    ...theme.typography.caption,
+    fontWeight: 600,
+    letterSpacing: 0.2,
+    color: theme.palette.text.secondary,
+    minWidth: 64,
+    textTransform: 'none' as const,
+  },
   issueCard: {
     border: `1px solid ${theme.palette.divider}`,
     borderRadius: 8,
@@ -306,22 +346,10 @@ const useStyles = makeStyles(theme => ({
   findingHeader: {
     display: 'flex',
     alignItems: 'flex-start',
-    gap: theme.spacing(1),
+    justifyContent: 'space-between',
+    flexWrap: 'nowrap',
+    gap: theme.spacing(2),
     padding: theme.spacing(1.5, 2),
-    cursor: 'pointer',
-    '&:hover': {
-      backgroundColor: theme.palette.action.hover,
-    },
-  },
-  chevron: {
-    fontSize: 18,
-    color: theme.palette.text.secondary,
-    marginTop: 2,
-    flexShrink: 0,
-    transition: 'transform 0.15s ease',
-  },
-  chevronOpen: {
-    transform: 'rotate(90deg)',
   },
   findingBody: {
     minWidth: 0,
@@ -504,6 +532,8 @@ function FindingsBar({
   );
 }
 
+const LANE_ORDER: ScanFixLane[] = ['Auto-fix', 'AI-fix', 'Manual-fix'];
+
 function SeverityFilterRow({
   breakdown,
   active,
@@ -511,6 +541,7 @@ function SeverityFilterRow({
   categories,
   activeCategory,
   onToggleCategory,
+  classes,
 }: {
   breakdown: Record<SeverityClass, number>;
   active: Set<SeverityClass>;
@@ -518,17 +549,41 @@ function SeverityFilterRow({
   categories: { id: string; label: string; count: number; hint: string }[];
   activeCategory: string;
   onToggleCategory: (id: string) => void;
+  classes: ReturnType<typeof useStyles>;
 }) {
   return (
-    <Box mt={1} mb={0.5}>
-      <SeverityFilterChips
-        breakdown={breakdown}
-        active={active}
-        onToggle={onToggle}
-        categories={categories}
-        activeCategory={activeCategory}
-        onToggleCategory={onToggleCategory}
-      />
+    <Box className={classes.filterStack}>
+      <Box className={classes.filterRow}>
+        <Typography className={classes.filterRowLabel} component="span">
+          Severity
+        </Typography>
+        <SeverityFilterChips
+          breakdown={breakdown}
+          active={active}
+          onToggle={onToggle}
+        />
+      </Box>
+      {categories.length > 0 ? (
+        <Box className={classes.filterRow}>
+          <Typography className={classes.filterRowLabel} component="span">
+            Category
+          </Typography>
+          <SeverityFilterChips
+            breakdown={{
+              critical: 0,
+              high: 0,
+              medium: 0,
+              low: 0,
+              info: 0,
+            }}
+            active={new Set()}
+            onToggle={() => undefined}
+            categories={categories}
+            activeCategory={activeCategory}
+            onToggleCategory={onToggleCategory}
+          />
+        </Box>
+      ) : null}
     </Box>
   );
 }
@@ -567,13 +622,9 @@ function ScanStateChip({ current }: { current: boolean }) {
 
 function FindingPreviewRow({
   item,
-  expanded,
-  onToggle,
   classes,
 }: {
   item: QualityViolation;
-  expanded: boolean;
-  onToggle: () => void;
   classes: ReturnType<typeof useStyles>;
 }) {
   const snippet = snippetForFinding(item);
@@ -582,22 +633,7 @@ function FindingPreviewRow({
 
   return (
     <Box className={classes.issueCard}>
-      <Box
-        className={classes.findingHeader}
-        role="button"
-        tabIndex={0}
-        aria-expanded={expanded}
-        onClick={onToggle}
-        onKeyDown={e => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            onToggle();
-          }
-        }}
-      >
-        <ChevronRight
-          className={`${classes.chevron}${expanded ? ` ${classes.chevronOpen}` : ''}`}
-        />
+      <Box className={classes.findingHeader}>
         <Box className={classes.findingBody}>
           <Typography className={classes.findingTitle} variant="subtitle2">
             {item.message}
@@ -644,7 +680,7 @@ function FindingPreviewRow({
           </Box>
         </Box>
       </Box>
-      <Collapse in={expanded}>
+      {(description || snippet) && (
         <Box className={classes.findingPreview}>
           {description ? (
             <Typography className={classes.findingDesc}>{description}</Typography>
@@ -665,7 +701,7 @@ function FindingPreviewRow({
             </Box>
           ) : null}
         </Box>
-      </Collapse>
+      )}
     </Box>
   );
 }
@@ -697,12 +733,23 @@ function ScanSnapshotDetail({
   const [categoryFilter, setCategoryFilter] = useState<
     ApmeRuleCategory | 'all'
   >(initialCategory);
+  const [laneFilter, setLaneFilter] = useState<ScanFixLane | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [expandedKeys, setExpandedKeys] = useState<Set<string>>(() => new Set());
   const quality = getProjectQuality(row.repoName);
   const scanQuality = qualityForScan(row.repoName, row, row.isLatest);
   const findings: QualityViolation[] =
     row.isLatest && quality ? quality.violations : [];
+  const laneCounts = useMemo(() => {
+    const counts: Record<ScanFixLane, number> = {
+      'Auto-fix': 0,
+      'AI-fix': 0,
+      'Manual-fix': 0,
+    };
+    for (const item of findings) {
+      counts[laneOf(item)] += 1;
+    }
+    return counts;
+  }, [findings]);
   const categoryOptions = useMemo(() => {
     const counts = new Map<ApmeRuleCategory, number>();
     for (const item of findings) {
@@ -736,7 +783,7 @@ function ScanSnapshotDetail({
   }, [findings]);
   const visibleFindings = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    return findings.filter(item => {
+    const filtered = findings.filter(item => {
       if (severityFilters.size > 0 && !severityFilters.has(item.severity)) {
         return false;
       }
@@ -747,6 +794,7 @@ function ScanSnapshotDetail({
         return false;
       }
       if (kindFilter !== 'all' && kindLabel(item) !== kindFilter) return false;
+      if (laneFilter !== 'all' && laneOf(item) !== laneFilter) return false;
       if (!q) return true;
       return (
         item.ruleId.toLowerCase().includes(q) ||
@@ -755,18 +803,26 @@ function ScanSnapshotDetail({
         APME_CATEGORY_LABEL[apmeCategoryOf(item)].toLowerCase().includes(q)
       );
     });
-  }, [findings, severityFilters, categoryFilter, kindFilter, searchQuery]);
+    return [...filtered].sort((a, b) => {
+      const rank = SEV_ORDER.indexOf(a.severity) - SEV_ORDER.indexOf(b.severity);
+      if (rank !== 0) return rank;
+      if (a.file !== b.file) return (a.file || '').localeCompare(b.file || '');
+      return a.lineStart - b.lineStart;
+    });
+  }, [
+    findings,
+    severityFilters,
+    categoryFilter,
+    kindFilter,
+    laneFilter,
+    searchQuery,
+  ]);
   const filtersActive =
     severityFilters.size > 0 ||
     categoryFilter !== 'all' ||
     kindFilter !== 'all' ||
+    laneFilter !== 'all' ||
     searchQuery.trim() !== '';
-  const visibleKeys = useMemo(
-    () => visibleFindings.map(findingKey),
-    [visibleFindings],
-  );
-  const allExpanded =
-    visibleKeys.length > 0 && visibleKeys.every(key => expandedKeys.has(key));
   const status = quality?.remediationStatus;
   const showRemediate =
     row.isLatest && row.totalViolations > 0 && !liveSession(status) && status !== 'pr-open';
@@ -782,14 +838,6 @@ function ScanSnapshotDetail({
     });
   }, []);
 
-  const toggleFinding = useCallback((key: string) => {
-    setExpandedKeys(prev => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-  }, []);
   const toggleCategory = useCallback((id: string) => {
     setCategoryFilter(prev => (prev === id ? 'all' : (id as ApmeRuleCategory)));
   }, []);
@@ -820,11 +868,18 @@ function ScanSnapshotDetail({
           <Box className={classes.meta} mt={0.5}>
             {scanQuality != null && (
               <>
-                <QualityScoreMark
-                  score={scanQuality.healthScore}
-                  fontSize={16}
-                  showDenom={false}
-                />
+                <Tooltip title={HEALTH_SCORE_HINT} arrow>
+                  <span
+                    className={classes.healthMark}
+                    aria-label={`Health score ${scanQuality.healthScore} out of 100`}
+                  >
+                    <span className={classes.healthLabel}>Health score</span>
+                    <QualityScoreMark
+                      score={scanQuality.healthScore}
+                      fontSize={16}
+                    />
+                  </span>
+                </Tooltip>
                 <span className={classes.metaDot}>·</span>
               </>
             )}
@@ -894,55 +949,73 @@ function ScanSnapshotDetail({
             categories={categoryChips}
             activeCategory={categoryFilter}
             onToggleCategory={toggleCategory}
+            classes={classes}
           />
           <Box className={classes.findingToolbar}>
-            <TextField
-              className={classes.searchFill}
-              size="small"
-              variant="outlined"
-              placeholder="Search findings"
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              inputProps={{ 'aria-label': 'Search findings' }}
-            />
-            <FormControl variant="outlined" size="small" className={classes.kindSelect}>
-              <InputLabel id="scan-content-type-filter-label">
-                Content type
-              </InputLabel>
-              <Select
-                labelId="scan-content-type-filter-label"
-                label="Content type"
-                value={kindFilter}
-                onChange={e => setKindFilter(e.target.value as string)}
-              >
-                <MenuItem value="all">All content types</MenuItem>
-                {kindOptions.map(opt => (
-                  <MenuItem key={opt.kind} value={opt.kind}>
-                    {opt.kind} ({opt.count})
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Box>
-          <Box className={classes.showingRow}>
-            <Typography className={classes.showingCount} variant="body2">
-              {visibleFindings.length} showing out of {findings.length}
-            </Typography>
-            {visibleFindings.length > 0 ? (
-              <Button
-                variant="text"
-                color="inherit"
+            <Tabs
+              className={classes.laneTabs}
+              value={laneFilter}
+              onChange={(_event, value: ScanFixLane | 'all') =>
+                setLaneFilter(value)
+              }
+              indicatorColor="primary"
+              textColor="primary"
+              variant="scrollable"
+              scrollButtons="off"
+              aria-label="Findings by remediation type"
+            >
+              <Tab value="all" label={`All ${findings.length}`} />
+              {LANE_ORDER.map(id => {
+                const count = laneCounts[id];
+                return (
+                  <Tab
+                    key={id}
+                    value={id}
+                    disabled={count === 0}
+                    label={
+                      <Tooltip title={LANE_EXPLAIN[id]} arrow>
+                        <span>
+                          {REMEDIATION_LANE_LABEL[id]} {count}
+                        </span>
+                      </Tooltip>
+                    }
+                  />
+                );
+              })}
+            </Tabs>
+            <Box className={classes.toolbarFilters}>
+              <TextField
+                className={classes.searchFill}
                 size="small"
-                className={classes.expandAll}
-                onClick={() =>
-                  setExpandedKeys(
-                    allExpanded ? new Set() : new Set(visibleKeys),
-                  )
-                }
+                variant="outlined"
+                placeholder="Search findings"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                inputProps={{ 'aria-label': 'Search findings' }}
+              />
+              <FormControl
+                variant="outlined"
+                size="small"
+                className={classes.kindSelect}
               >
-                {allExpanded ? 'Collapse all' : 'Expand all'}
-              </Button>
-            ) : null}
+                <InputLabel id="scan-content-type-filter-label">
+                  Content type
+                </InputLabel>
+                <Select
+                  labelId="scan-content-type-filter-label"
+                  label="Content type"
+                  value={kindFilter}
+                  onChange={e => setKindFilter(e.target.value as string)}
+                >
+                  <MenuItem value="all">All content types</MenuItem>
+                  {kindOptions.map(opt => (
+                    <MenuItem key={opt.kind} value={opt.kind}>
+                      {opt.kind} ({opt.count})
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Box>
           </Box>
         </>
       ) : null}
@@ -965,18 +1038,13 @@ function ScanSnapshotDetail({
       )}
       {visibleFindings.length > 0 ? (
         <Box className={classes.findingList}>
-          {visibleFindings.map(item => {
-            const key = findingKey(item);
-            return (
+          {visibleFindings.map(item => (
               <FindingPreviewRow
-                key={key}
+                key={findingKey(item)}
                 item={item}
-                expanded={expandedKeys.has(key)}
-                onToggle={() => toggleFinding(key)}
                 classes={classes}
               />
-            );
-          })}
+            ))}
         </Box>
       ) : findings.length > 0 && filtersActive ? (
         <Typography variant="body2" color="textSecondary" style={{ fontSize: 13 }}>

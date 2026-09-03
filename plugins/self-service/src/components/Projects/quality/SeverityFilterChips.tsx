@@ -76,6 +76,9 @@ export function SeverityFilterChips({
   categories,
   activeCategory,
   onToggleCategory,
+  lanes,
+  activeLane,
+  onToggleLane,
 }: {
   breakdown: Record<SeverityClass, number>;
   active: Set<SeverityClass>;
@@ -83,14 +86,21 @@ export function SeverityFilterChips({
   categories?: MixCategoryChip[];
   activeCategory?: string;
   onToggleCategory?: (id: string) => void;
+  lanes?: MixCategoryChip[];
+  activeLane?: string;
+  onToggleLane?: (id: string) => void;
 }) {
   const classes = useStyles();
   const present = SEV_ORDER.filter(sev => (breakdown[sev] ?? 0) > 0);
   const catList = categories ?? [];
-  if (present.length === 0 && catList.length === 0) return null;
+  const laneList = lanes ?? [];
+  if (present.length === 0 && catList.length === 0 && laneList.length === 0) {
+    return null;
+  }
   const anyActive = active.size > 0;
   const catDim =
     activeCategory && activeCategory !== 'all' ? activeCategory : '';
+  const laneDim = activeLane && activeLane !== 'all' ? activeLane : '';
 
   return (
     <Box className={classes.row}>
@@ -148,6 +158,33 @@ export function SeverityFilterChips({
                 }`}
                 style={{
                   opacity: catDim && !isActive ? 0.4 : 1,
+                }}
+              />
+            </span>
+          </Tooltip>
+        );
+      })}
+      {laneList.map(lane => {
+        const isActive = activeLane === lane.id;
+        return (
+          <Tooltip
+            key={lane.id}
+            title={`${lane.hint}. Click to ${isActive ? 'clear' : 'apply'} filter.`}
+            arrow
+          >
+            <span>
+              <Chip
+                size="small"
+                variant="outlined"
+                clickable
+                label={`${lane.label} (${lane.count})`}
+                onClick={() => onToggleLane?.(lane.id)}
+                aria-pressed={isActive}
+                className={`${classes.chip} ${classes.catChip}${
+                  isActive ? ` ${classes.catChipOn}` : ''
+                }`}
+                style={{
+                  opacity: laneDim && !isActive ? 0.4 : 1,
                 }}
               />
             </span>
