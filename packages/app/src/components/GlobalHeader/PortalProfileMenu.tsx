@@ -23,6 +23,7 @@ import {
   applySeat,
   usePrototypeSeatSync,
 } from './prototypeSeats';
+import { prototypeDisplayName } from './prototypeIdentity';
 
 /** user:default/guest → /catalog/default/user/guest */
 function entityRefToCatalogPath(entityRef: string): string | null {
@@ -98,7 +99,7 @@ export const PortalProfileMenu = () => {
     };
   }, [identityApi]);
 
-  const name = displayName || 'Guest';
+  const name = prototypeDisplayName(displayName, seatId);
 
   const handleOpen = (event: MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);

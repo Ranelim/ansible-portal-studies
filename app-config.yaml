@@ -17,10 +17,10 @@
 #
 
 app:
-  title: Automation Portal
+  title: Ansible Automation Portal
   baseUrl: http://localhost:3000
 organization:
-  name: Automation Portal
+  name: Ansible Automation Portal
 backend:
   auth:
     keys:

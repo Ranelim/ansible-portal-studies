@@ -46,7 +46,7 @@ jest.mock(
 jest.mock('./AutomationPortalBrand', () => ({
   AutomationPortalBrand: () => (
     <a href="/">
-      <span>Automation Portal</span>
+      <span>Ansible Automation Portal</span>
     </a>
   ),
 }));
@@ -92,7 +92,7 @@ jest.mock('./PortalHelpMenu', () => ({
 jest.mock('./PortalProfileMenu', () => ({
   PortalProfileMenu: () => (
     <button type="button" aria-label="Profile">
-      Guest
+      Admin
     </button>
   ),
 }));
@@ -100,7 +100,7 @@ jest.mock('./PortalProfileMenu', () => ({
 import { GlobalHeader } from './GlobalHeader';
 
 describe('GlobalHeader', () => {
-  it('composes RHDH header with Automation Portal brand and quiet search', () => {
+  it('composes RHDH header with Ansible Automation Portal brand and quiet search', () => {
     render(
       <MemoryRouter>
         <GlobalHeader />
@@ -108,7 +108,7 @@ describe('GlobalHeader', () => {
     );
 
     expect(screen.getByTestId('rhdh-global-header')).toBeInTheDocument();
-    expect(screen.getByText('Automation Portal')).toBeInTheDocument();
+    expect(screen.getByText('Ansible Automation Portal')).toBeInTheDocument();
     expect(screen.getByPlaceholderText('Search...')).toBeInTheDocument();
     expect(screen.queryByText(/Error fetching results/i)).not.toBeInTheDocument();
     expect(screen.getByTitle('All templates')).toBeInTheDocument();

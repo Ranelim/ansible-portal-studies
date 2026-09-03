@@ -115,6 +115,11 @@ export const SetupDemoBar = () => {
       navigate('/self-service/setup');
       return;
     }
+    if (next === 'setup') {
+      writeNavExperience('admin');
+      navigate('/self-service/admin/overview');
+      return;
+    }
     writeNavExperience('all');
     navigate('/self-service/experiences');
   };

@@ -12,7 +12,7 @@ import {
   POST_SETUP_CONNECTIONS,
   writeAllConnectionSetup,
 } from './connectionSetup';
-import { seedQuickstartCompleted } from './adminQuickstart';
+import { seedQuickstartCompleted, clearQuickstartCompleted } from './adminQuickstart';
 import {
   markSetupAttentionSeen,
   resetSetupAttentionUnread,
@@ -37,6 +37,7 @@ function seedFirstPortalSession() {
     edge: true,
     orchestrator: false,
   });
+  clearQuickstartCompleted();
   resetSetupAttentionUnread();
 }
 

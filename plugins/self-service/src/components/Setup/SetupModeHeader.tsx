@@ -36,9 +36,10 @@ const useStyles = makeStyles(theme => {
     },
     subtitle: {
       color: appBarFg,
-      fontSize: 16,
+      fontSize: 13,
       fontWeight: 400,
-      lineHeight: 1.15,
+      lineHeight: 1.2,
+      whiteSpace: 'nowrap',
     },
     chip: {
       marginLeft: 'auto',
@@ -70,7 +71,7 @@ export const SetupModeHeader = () => {
       </Box>
       <Box>
         <Typography className={classes.title}>Red Hat</Typography>
-        <Typography className={classes.subtitle}>Automation Portal</Typography>
+        <Typography className={classes.subtitle}>Ansible Automation Portal</Typography>
       </Box>
       <Box className={classes.chip}>SETUP MODE</Box>
     </Box>

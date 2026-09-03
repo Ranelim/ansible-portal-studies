@@ -122,8 +122,8 @@ export const CustomSignInPage = (props: CustomSignInPageProps) => {
       signedIn.current = true;
       props.onSignInSuccess({
         getProfileInfo: async () => ({
-          email: 'guest@portal.local',
-          displayName: 'Guest User',
+          email: 'admin@portal.local',
+          displayName: 'Admin',
         }),
         getBackstageIdentity: async () => ({
           type: 'user' as const,
@@ -153,7 +153,7 @@ export const CustomSignInPage = (props: CustomSignInPageProps) => {
         <Box className={classes.card}>
           <LockOutlinedIcon className={classes.icon} />
           <Typography variant="h6" className={classes.title}>
-            Automation Portal Prototype
+            Ansible Automation Portal Prototype
           </Typography>
           <Typography className={classes.subtitle}>
             Enter the access code provided by the research team.
@@ -233,7 +233,7 @@ export const CustomSignInPage = (props: CustomSignInPageProps) => {
               getId: async () => 'setup-admin',
               getProfile: async () => ({
                 email: 'admin@portal.local',
-                displayName: 'Setup Admin',
+                displayName: 'Admin',
               }),
               getCredentials: async () => ({ token: '' }),
               signOut: async () => {},

@@ -11,8 +11,14 @@ import {
   SHOW_EXPERIENCES_WAFFLE,
 } from './ExperiencesWaffleButton';
 
-/** Matches Backstage/RHDH open sidebar — brand column = rail width so search hits the gutter. */
+/** Matches Backstage/RHDH open sidebar. */
 export const SIDEBAR_WIDTH_OPEN = 224;
+
+/**
+ * Prototype-only: “Ansible Automation Portal” must not ellipsize.
+ * Wider than the rail so the full product name fits at a slightly smaller size.
+ */
+export const BRAND_COLUMN_WIDTH = 280;
 
 
 /**
@@ -57,9 +63,9 @@ export const AutomationPortalBrand = () => {
     <Box
       data-testid="global-header-company-logo"
       sx={{
-        width: SIDEBAR_WIDTH_OPEN,
-        minWidth: SIDEBAR_WIDTH_OPEN,
-        maxWidth: SIDEBAR_WIDTH_OPEN,
+        width: BRAND_COLUMN_WIDTH,
+        minWidth: BRAND_COLUMN_WIDTH,
+        maxWidth: BRAND_COLUMN_WIDTH,
         marginRight: 0,
         display: 'flex',
         justifyContent: 'flex-start',
@@ -80,7 +86,7 @@ export const AutomationPortalBrand = () => {
         to={homeTo}
         underline="none"
         color="inherit"
-        aria-label="Home — Automation Portal"
+        aria-label="Home — Ansible Automation Portal"
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -119,16 +125,14 @@ export const AutomationPortalBrand = () => {
             sx={{
               fontFamily:
                 '"Red Hat Text", "RedHatText", Helvetica, Arial, sans-serif',
-              fontSize: 16,
+              fontSize: 13,
               fontWeight: 400,
-              lineHeight: 1.15,
+              lineHeight: 1.2,
               color: ink,
               whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
             }}
           >
-            Automation Portal
+            Ansible Automation Portal
           </Typography>
         </Box>
       </Link>

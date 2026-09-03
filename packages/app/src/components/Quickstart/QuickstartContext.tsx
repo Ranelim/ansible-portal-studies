@@ -80,18 +80,6 @@ const ADMIN_QUICKSTART_ITEMS: QuickstartItem[] = [
     },
   },
   {
-    id: 'setup-experiences',
-    title: 'Discover and set up experiences',
-    description:
-      'Enable Develop, Compliance, and Edge so they appear with Launch on the Bridge. Hide and edit stay here — not on the cards.',
-    icon: 'experiences',
-    roles: ['admin'],
-    cta: {
-      text: 'Open Experiences',
-      link: '/self-service/admin/experiences?tab=discover',
-    },
-  },
-  {
     id: 'review-sync',
     title: 'Review sync schedules',
     description:
@@ -101,6 +89,18 @@ const ADMIN_QUICKSTART_ITEMS: QuickstartItem[] = [
     cta: {
       text: 'Open Integrations',
       link: '/self-service/admin/integrations',
+    },
+  },
+  {
+    id: 'setup-experiences',
+    title: 'Discover and set up experiences',
+    description:
+      'Enable Develop, Compliance, and Edge so they appear with Launch on the Bridge. Hide and edit stay here — not on the cards.',
+    icon: 'experiences',
+    roles: ['admin'],
+    cta: {
+      text: 'Open Experiences',
+      link: '/self-service/admin/experiences?tab=discover',
     },
   },
 ];

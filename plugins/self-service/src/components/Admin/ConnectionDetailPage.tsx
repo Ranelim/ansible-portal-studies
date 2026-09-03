@@ -37,6 +37,7 @@ import {
   DEMO_SYNC_SCHEDULES,
   ConnectionProvider,
 } from './syncDemoData';
+import { ConnectionSyncDialog } from './ConnectionSyncDialog';
 import {
   isSyncConnectionId,
   useConnectionSetup,
@@ -196,6 +197,8 @@ const providerDescription = (id: string): string => {
   switch (id) {
     case 'aap':
       return 'Provides job templates, user and team sync, and OAuth-based authentication for the portal.';
+    case 'orchestrator':
+      return 'Provides software templates and workflows from Ansible Orchestrator.';
     case 'pah':
       return 'Syncs collections, execution environments, and roles from your private content hub.';
     case 'github':
@@ -235,6 +238,15 @@ const disconnectConfigs: Record<string, DisconnectConfig> = {
     ],
     reassurance: 'Credentials and configuration are removed from the portal only. Your AAP Controller is not affected. You can reconnect at any time.',
     confirmName: 'Ansible Automation Platform',
+  },
+  orchestrator: {
+    risk: 'medium',
+    title: 'Disconnect Ansible Orchestrator?',
+    consequences: [
+      'Software template sync will stop.',
+      'Existing templates remain in the catalog but will not receive updates.',
+    ],
+    reassurance: 'Your Orchestrator instance is not affected. You can reconnect at any time.',
   },
   pah: {
     risk: 'medium',
@@ -453,6 +465,53 @@ const AAPConnectionTab = ({ provider, onSave, onRequestDisconnect }: { provider:
         <Typography className={classes.fieldLabel}>OAuth Client Secret *</Typography>
         <TextField fullWidth variant="outlined" size="small" type="password"
           defaultValue={isConfigured ? '••••••••••' : ''} placeholder="Enter secret" />
+      </Box>
+      <StickyFooter>
+        <Button variant="outlined" style={{ textTransform: 'none', fontSize: 13 }}>
+          {isConfigured ? 'Test connection' : 'Cancel'}
+        </Button>
+        <Button variant="contained" color="primary" onClick={onSave} style={{ textTransform: 'none', fontSize: 13 }}>
+          {isConfigured ? 'Save changes' : 'Connect'}
+        </Button>
+      </StickyFooter>
+      <DisconnectSection providerName={provider.name} isConfigured={isConfigured} onRequestDisconnect={onRequestDisconnect} />
+    </>
+  );
+};
+
+const OrchestratorConnectionTab = ({ provider, onSave, onRequestDisconnect }: { provider: ConnectionProvider; onSave: () => void; onRequestDisconnect: () => void }) => {
+  const classes = useStyles();
+  const isConfigured = provider.status !== 'Not configured';
+
+  return (
+    <>
+      <Box className={classes.fieldGroup}>
+        <Typography className={classes.fieldLabel}>Orchestrator URL *</Typography>
+        <TextField fullWidth variant="outlined" size="small"
+          defaultValue={isConfigured ? `https://${provider.host}` : ''}
+          placeholder="https://orchestrator.example.com"
+          disabled={isConfigured}
+          InputProps={isConfigured ? { style: { opacity: 0.6 } } : undefined}
+        />
+        {isConfigured && (
+          <Box display="flex" alignItems="center" style={{ gap: 4, marginTop: 4 }}>
+            <InsertDriveFileOutlinedIcon style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)' }} />
+            <Typography style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', fontStyle: 'italic' }}>
+              Set in configuration file
+            </Typography>
+          </Box>
+        )}
+      </Box>
+      <FormControlLabel
+        control={<Checkbox defaultChecked color="primary" size="small" />}
+        label={<Typography style={{ fontSize: 13 }}>Verify TLS certificate</Typography>}
+        style={{ marginBottom: 16, display: 'flex' }}
+      />
+      <Box className={classes.fieldGroup}>
+        <Typography className={classes.fieldLabel}>API token *</Typography>
+        <TextField fullWidth variant="outlined" size="small" type="password"
+          defaultValue={isConfigured ? '••••••••••' : ''} placeholder="Enter access token" />
+        <Typography className={classes.helperText}>Required for API access and software template sync.</Typography>
       </Box>
       <StickyFooter>
         <Button variant="outlined" style={{ textTransform: 'none', fontSize: 13 }}>
@@ -849,6 +908,40 @@ const AAPContentTab = ({ onSave }: { onSave: () => void }) => {
 
 };
 
+const OrchestratorContentTab = ({ onSave }: { onSave: () => void }) => {
+  const classes = useStyles();
+  const templates = [
+    { name: 'RHEL patching workflow', detail: 'Patches RHEL hosts on a cadence' },
+    { name: 'Network provisioning', detail: 'Provisions switch and router configs' },
+    { name: 'VM lifecycle', detail: 'Create, snapshot, and retire VMs' },
+    { name: 'Compliance scan pipeline', detail: 'Runs inventory scans and reports' },
+  ];
+
+  return (
+    <>
+      <Box className={classes.sectionCard}>
+        <Typography className={classes.sectionTitle}>Software templates to sync</Typography>
+        <Typography className={classes.sectionDescription}>
+          Select which Orchestrator software templates appear in the Portal catalog.
+        </Typography>
+        {templates.map(t => (
+          <Box key={t.name} className={classes.scheduleRow}>
+            <Box>
+              <Typography style={{ fontSize: 13, fontWeight: 500 }}>{t.name}</Typography>
+              <Typography style={{ fontSize: 12, color: '#999' }}>{t.detail}</Typography>
+            </Box>
+            <Checkbox defaultChecked color="primary" size="small" />
+          </Box>
+        ))}
+      </Box>
+      <StickyFooter>
+        <Button variant="outlined" style={{ textTransform: 'none', fontSize: 13 }}>Reset</Button>
+        <Button variant="contained" color="primary" onClick={onSave} style={{ textTransform: 'none', fontSize: 13 }}>Save changes</Button>
+      </StickyFooter>
+    </>
+  );
+};
+
 const PAHContentTab = ({ onSave }: { onSave: () => void }) => {
   const classes = useStyles();
   const remotes = [
@@ -1003,6 +1096,7 @@ const intervalToValue = (interval: string): string => {
 const connectionIdToSource = (id: string): string => {
   switch (id) {
     case 'aap': return 'AAP';
+    case 'orchestrator': return 'Orchestrator';
     case 'pah': return 'Private Automation Hub';
     case 'github': return 'GitHub';
     case 'gitlab': return 'GitLab';
@@ -1039,7 +1133,7 @@ const SyncTabEmptyState = ({ provider, onGoToConnection }: { provider: Connectio
   );
 };
 
-const SyncTab = ({ provider, isConfigured, onGoToConnection }: { provider: ConnectionProvider; isConfigured: boolean; onGoToConnection: () => void }) => {
+const SyncTab = ({ provider, isConfigured, onGoToConnection, onSyncNow }: { provider: ConnectionProvider; isConfigured: boolean; onGoToConnection: () => void; onSyncNow: () => void }) => {
   const classes = useStyles();
 
   if (!isConfigured) {
@@ -1085,8 +1179,9 @@ const SyncTab = ({ provider, isConfigured, onGoToConnection }: { provider: Conne
             color="primary"
             startIcon={<SyncIcon style={{ fontSize: 14 }} />}
             style={{ textTransform: 'none', fontSize: 12 }}
+            onClick={onSyncNow}
           >
-            Sync all now
+            Sync now
           </Button>
         </Box>
 
@@ -1196,6 +1291,7 @@ export const ConnectionDetailPage = () => {
   };
   const [disconnectOpen, setDisconnectOpen] = useState(false);
   const [kebabAnchor, setKebabAnchor] = useState<null | HTMLElement>(null);
+  const [syncOpen, setSyncOpen] = useState(false);
 
   const handleDisconnect = () => {
     if (providerId && isSyncConnectionId(providerId) && providerId !== 'aap') {
@@ -1335,6 +1431,7 @@ export const ConnectionDetailPage = () => {
         {activeTab === 'connection' && (
           <>
             {provider.type === 'aap' && <AAPConnectionTab provider={provider} onSave={handleSave} onRequestDisconnect={openDisconnectDialog} />}
+            {provider.type === 'orchestrator' && <OrchestratorConnectionTab provider={provider} onSave={handleSave} onRequestDisconnect={openDisconnectDialog} />}
             {provider.type === 'pah' && <PAHConnectionTab provider={provider} onSave={handleSave} onRequestDisconnect={openDisconnectDialog} />}
             {provider.type === 'git' && <GitConnectionTab provider={provider} onSave={handleSave} onRequestDisconnect={openDisconnectDialog} />}
             {provider.type === 'registry' && <RegistryConnectionTab provider={provider} onSave={handleSave} onRequestDisconnect={openDisconnectDialog} />}
@@ -1344,13 +1441,19 @@ export const ConnectionDetailPage = () => {
         {activeTab === 'content' && (
           <>
             {provider.type === 'aap' && <AAPContentTab onSave={handleSave} />}
+            {provider.type === 'orchestrator' && <OrchestratorContentTab onSave={handleSave} />}
             {provider.type === 'pah' && <PAHContentTab onSave={handleSave} />}
             {provider.type === 'git' && <GitContentTab provider={provider} onSave={handleSave} />}
           </>
         )}
 
         {activeTab === 'sync' && (
-          <SyncTab provider={provider} isConfigured={isConfigured} onGoToConnection={() => setSelectedTab(0)} />
+          <SyncTab
+            provider={provider}
+            isConfigured={isConfigured}
+            onGoToConnection={() => setSelectedTab(0)}
+            onSyncNow={() => setSyncOpen(true)}
+          />
         )}
 
       </Content>
@@ -1360,6 +1463,11 @@ export const ConnectionDetailPage = () => {
         onConfirm={handleDisconnect}
         providerId={provider.id}
         providerName={provider.name}
+      />
+      <ConnectionSyncDialog
+        open={syncOpen}
+        provider={provider}
+        onClose={() => setSyncOpen(false)}
       />
     </Page>
   );

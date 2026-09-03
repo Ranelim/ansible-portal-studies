@@ -7,8 +7,8 @@ export const OPEN_QUICKSTART_EVENT = 'portal-open-quickstart';
 export const ADMIN_QUICKSTART_ITEM_IDS = [
   'connect-integrations',
   'configure-access',
-  'setup-experiences',
   'review-sync',
+  'setup-experiences',
 ] as const;
 
 export type AdminQuickstartItemId = (typeof ADMIN_QUICKSTART_ITEM_IDS)[number];
@@ -53,6 +53,14 @@ export function seedQuickstartCompleted() {
 export function quickstartRemainingCount(): number {
   const done = readQuickstartCompleted();
   return ADMIN_QUICKSTART_ITEM_IDS.filter(id => !done.has(id)).length;
+}
+
+/** Same percent as the Quick start panel footer. */
+export function quickstartProgressPercent(): number {
+  const total = ADMIN_QUICKSTART_ITEM_IDS.length;
+  if (total === 0) return 0;
+  const done = total - quickstartRemainingCount();
+  return Math.round((done / total) * 100);
 }
 
 export function openQuickstartPanel() {

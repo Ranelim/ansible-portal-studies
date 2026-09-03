@@ -5,6 +5,7 @@ import { readSetupDemoMode } from './setupDemoMode';
 /** Integrations that persist connected vs not — Dev Spaces stays in its own store. */
 export const SYNC_CONNECTION_IDS = [
   'aap',
+  'orchestrator',
   'pah',
   'github',
   'gitlab',
@@ -30,6 +31,7 @@ export function isSyncConnectionId(id: string): id is SyncConnectionId {
 /** After Day 0: AAP only. Git, Hub, and registries still need connecting. */
 export const FIRST_SESSION_CONNECTIONS: ConnectionSetupMap = {
   aap: true,
+  orchestrator: false,
   pah: false,
   github: false,
   gitlab: false,
@@ -39,6 +41,7 @@ export const FIRST_SESSION_CONNECTIONS: ConnectionSetupMap = {
 /** Experiences ready. Optional Dev Spaces leftover is the Dev Spaces store. */
 export const POST_SETUP_CONNECTIONS: ConnectionSetupMap = {
   aap: true,
+  orchestrator: true,
   pah: true,
   github: true,
   gitlab: true,

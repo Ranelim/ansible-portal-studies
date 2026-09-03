@@ -1,4 +1,9 @@
-export type SyncSource = 'AAP' | 'Private Automation Hub' | 'GitHub' | 'Public Registries';
+export type SyncSource =
+  | 'AAP'
+  | 'Orchestrator'
+  | 'Private Automation Hub'
+  | 'GitHub'
+  | 'Public Registries';
 export type SyncContentType =
   | 'Job Templates'
   | 'Collections'
@@ -51,7 +56,7 @@ export type SyncScheduleEntry = {
 export type ConnectionProvider = {
   id: string;
   name: string;
-  type: 'aap' | 'pah' | 'git' | 'registry' | 'devtools';
+  type: 'aap' | 'orchestrator' | 'pah' | 'git' | 'registry' | 'devtools';
   status: 'Active' | 'Not configured' | 'Error';
   lastSync?: string;
   host?: string;
@@ -79,6 +84,18 @@ export const DEMO_CONNECTIONS: ConnectionProvider[] = [
       { name: 'Job Templates', interval: 'Every 30 minutes', enabled: true },
       { name: 'Teams & Users', interval: 'Every 1 hour', enabled: true },
       { name: 'Job Run Logs', interval: 'Every 15 minutes', enabled: true },
+    ],
+  },
+  {
+    id: 'orchestrator',
+    name: 'Ansible Orchestrator',
+    type: 'orchestrator',
+    status: 'Not configured',
+    lastSync: '18 minutes ago',
+    host: 'orchestrator.example.com',
+    auth: 'OAuth',
+    syncJobs: [
+      { name: 'Software Templates', interval: 'Every 30 minutes', enabled: true },
     ],
   },
   {
@@ -382,6 +399,16 @@ export const DEMO_SYNC_SCHEDULES: SyncScheduleEntry[] = [
     interval: 'Every 15 min',
     lastRun: 'Today 14:45',
     nextRun: 'Today 15:00',
+    enabled: true,
+    lastStatus: 'Success',
+  },
+  {
+    id: 's-orch-1',
+    source: 'Orchestrator',
+    syncJob: 'Software Templates',
+    interval: 'Every 30 min',
+    lastRun: 'Today 14:12',
+    nextRun: 'Today 14:42',
     enabled: true,
     lastStatus: 'Success',
   },

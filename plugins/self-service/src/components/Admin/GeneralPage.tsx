@@ -1,10 +1,17 @@
 import { useEffect, useState } from 'react';
 import { Page, Header, Content } from '@backstage/core-components';
-import { Box, Button, Typography, makeStyles } from '@material-ui/core';
+import {
+  Box,
+  Button,
+  LinearProgress,
+  Typography,
+  makeStyles,
+} from '@material-ui/core';
 import PlaylistAddCheckIcon from '@material-ui/icons/PlaylistAddCheck';
 import { PageHelpIcon } from '../common/PageHelpIcon';
 import {
   openQuickstartPanel,
+  quickstartProgressPercent,
   quickstartRemainingCount,
   subscribeQuickstartProgress,
 } from '../../hooks/adminQuickstart';
@@ -27,16 +34,31 @@ const useStyles = makeStyles(theme => ({
     color: theme.palette.text.secondary,
     marginBottom: theme.spacing(2),
   },
-  meta: {
-    fontSize: 12,
-    color: theme.palette.text.secondary,
-    marginLeft: theme.spacing(1.5),
+  progress: {
+    marginBottom: theme.spacing(2),
   },
-  actions: {
+  progressRow: {
     display: 'flex',
     alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: theme.spacing(1),
+    justifyContent: 'space-between',
+    marginBottom: theme.spacing(0.5),
+  },
+  progressText: {
+    fontSize: 12,
+    color: theme.palette.text.secondary,
+    fontWeight: 500,
+  },
+  progressBar: {
+    borderRadius: 4,
+    height: 6,
+    backgroundColor:
+      theme.palette.type === 'dark'
+        ? theme.palette.grey[800]
+        : theme.palette.grey[200],
+  },
+  progressBarFill: {
+    borderRadius: 4,
+    backgroundColor: '#63993D',
   },
   pill: {
     textTransform: 'none',
@@ -47,15 +69,20 @@ const useStyles = makeStyles(theme => ({
 
 /**
  * Administration landing — Usage / Metrics Dashboard (first Admin rail item).
- * Setup beat: Finish Portal setup card opens Quick start (same list as Help).
- * Charts TBD (Taufique Aug 13).
+ * Setup beat: Finish Portal setup card mirrors Quick start progress; CTA opens
+ * the same side panel as Help. Charts TBD (Taufique Aug 13).
  */
 export const GeneralPage = () => {
   const classes = useStyles();
   const [remaining, setRemaining] = useState(quickstartRemainingCount);
+  const [progress, setProgress] = useState(quickstartProgressPercent);
 
   useEffect(
-    () => subscribeQuickstartProgress(() => setRemaining(quickstartRemainingCount())),
+    () =>
+      subscribeQuickstartProgress(() => {
+        setRemaining(quickstartRemainingCount());
+        setProgress(quickstartProgressPercent());
+      }),
     [],
   );
 
@@ -87,22 +114,33 @@ export const GeneralPage = () => {
               ? 'Integrations, access, and experiences are ready. Reopen the list anytime from Help.'
               : 'Connect integrations, set who has access, and enable experiences. This is platform work — not a per-experience wizard. Reopen the list anytime from Help.'}
           </Typography>
-          <Box className={classes.actions}>
-            <Button
-              className={classes.pill}
-              variant={setupComplete ? 'outlined' : 'contained'}
-              color="primary"
-              startIcon={<PlaylistAddCheckIcon />}
-              onClick={() => openQuickstartPanel()}
-            >
-              Open Quick start
-            </Button>
-            {!setupComplete && (
-              <Typography className={classes.meta} component="span">
+          <Box className={classes.progress}>
+            <Box className={classes.progressRow}>
+              <Typography className={classes.progressText}>
+                {progress}% complete
+              </Typography>
+              <Typography className={classes.progressText}>
                 {remaining} remaining
               </Typography>
-            )}
+            </Box>
+            <LinearProgress
+              variant="determinate"
+              value={progress}
+              classes={{
+                root: classes.progressBar,
+                bar: classes.progressBarFill,
+              }}
+            />
           </Box>
+          <Button
+            className={classes.pill}
+            variant={setupComplete ? 'outlined' : 'contained'}
+            color="primary"
+            startIcon={<PlaylistAddCheckIcon />}
+            onClick={() => openQuickstartPanel()}
+          >
+            Open Quick start
+          </Button>
         </Box>
       </Content>
     </Page>

@@ -143,6 +143,7 @@ export {
   OPEN_QUICKSTART_EVENT,
   openQuickstartPanel,
   quickstartRemainingCount,
+  quickstartProgressPercent,
   subscribeQuickstartProgress,
   readQuickstartCompleted,
   writeQuickstartCompleted,

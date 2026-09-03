@@ -23,7 +23,9 @@ import PublicIcon from '@material-ui/icons/Public';
 import ComputerIcon from '@material-ui/icons/Computer';
 import OpenInNewIcon from '@material-ui/icons/OpenInNew';
 import AddIcon from '@material-ui/icons/Add';
+import AccountTreeIcon from '@material-ui/icons/AccountTree';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { ConnectionSyncDialog } from './ConnectionSyncDialog';
 import { useAdminSyncIa } from './useAdminSyncIa';
 import { useIntegrationsOrientIa } from './useIntegrationsOrientIa';
 import { SyncHistoryEmbedded } from './SyncActivityPage';
@@ -186,6 +188,11 @@ const providerIcon = (id: string): { icon: React.ReactNode; bg: string } => {
   switch (id) {
     case 'aap':
       return { icon: <AnsibleIcon style={{ fontSize: 20, color: '#fff' }} />, bg: '#ee0000' };
+    case 'orchestrator':
+      return {
+        icon: <AccountTreeIcon style={{ fontSize: 20, color: '#fff' }} />,
+        bg: '#8476D1',
+      };
     case 'pah':
       return { icon: <PAHIcon style={{ fontSize: 20, color: '#fff' }} />, bg: '#ee0000' };
     case 'github':
@@ -204,6 +211,7 @@ const providerIcon = (id: string): { icon: React.ReactNode; bg: string } => {
 const providerTypeLabel = (type: ConnectionProvider['type']): string => {
   switch (type) {
     case 'aap': return 'Automation Platform';
+    case 'orchestrator': return 'Automation Platform';
     case 'pah': return 'Automation Hub';
     case 'git': return 'Source control';
     case 'registry': return 'Container registry';
@@ -214,6 +222,7 @@ const providerTypeLabel = (type: ConnectionProvider['type']): string => {
 
 const JOB_LINE: Record<string, string> = {
   aap: 'Job templates, users, and teams from Controller.',
+  orchestrator: 'Software templates and workflows from Orchestrator.',
   pah: 'Collections, execution environments, and roles from your private Hub.',
   github: 'Organizations the Portal crawls for automation content.',
   gitlab: 'Groups the Portal crawls for automation content.',
@@ -226,12 +235,15 @@ const getCardDescription = (id: string, isConfigured: boolean): string => {
   if (isConfigured) {
     switch (id) {
       case 'aap': return '3 organizations · 42 job templates · 60 users';
+      case 'orchestrator': return '4 software templates';
       case 'devspaces': return JOB_LINE.devspaces;
       default: return '';
     }
   }
   switch (id) {
     case 'pah': return JOB_LINE.pah;
+    case 'orchestrator':
+      return 'Connect Orchestrator so software templates appear in the Portal catalog.';
     case 'github': return 'Import repositories containing playbooks, roles, and automation projects.';
     case 'gitlab': return 'Import repositories containing playbooks, roles, and automation projects.';
     case 'registries': return 'Index certified and validated content from Ansible Galaxy and Red Hat.';
@@ -254,14 +266,19 @@ const getCardWarning = (provider: ConnectionProvider): string | null => {
   return null;
 };
 
-const ProviderCard = ({ provider }: { provider: ConnectionProvider }) => {
+const ProviderCard = ({
+  provider,
+  onRequestSync,
+}: {
+  provider: ConnectionProvider;
+  onRequestSync: (provider: ConnectionProvider) => void;
+}) => {
   const classes = useStyles();
   const navigate = useNavigate();
   const { variant } = useAdminSyncIa();
   const { variant: orientVariant } = useIntegrationsOrientIa();
   const connectOnly = variant === 'opt2';
   const orient = orientVariant === 'orient';
-  const [syncing, setSyncing] = useState(false);
 
   const isConfigured = provider.status !== 'Not configured';
   const isActive = provider.status === 'Active';
@@ -273,8 +290,7 @@ const ProviderCard = ({ provider }: { provider: ConnectionProvider }) => {
 
   const handleSync = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setSyncing(true);
-    setTimeout(() => setSyncing(false), 2000);
+    onRequestSync(provider);
   };
 
   return (
@@ -349,6 +365,11 @@ const ProviderCard = ({ provider }: { provider: ConnectionProvider }) => {
                   3 organizations · 42 job templates · 60 users
                 </Typography>
               )}
+              {orient && provider.id === 'orchestrator' && (
+                <Typography className={classes.cardMeta} style={{ fontWeight: 500, color: 'inherit' }}>
+                  4 software templates
+                </Typography>
+              )}
               {orient && cadence && (
                 <Typography className={classes.cardMeta}>
                   Updates on a schedule — change under Sync.
@@ -371,10 +392,9 @@ const ProviderCard = ({ provider }: { provider: ConnectionProvider }) => {
                     color="primary"
                     startIcon={<SyncIcon style={{ fontSize: 16 }} />}
                     onClick={handleSync}
-                    disabled={syncing}
                     style={{ textTransform: 'none', fontSize: 12 }}
                   >
-                    {syncing ? 'Syncing…' : 'Sync now'}
+                    Sync now
                   </Button>
                 )}
                 <Box display="flex" alignItems="center" style={{ gap: 4, color: '#0066CC', fontSize: 12 }}>
@@ -525,7 +545,9 @@ export const ConnectionsPage = () => {
   const connectionMap = useConnectionSetup();
   const location = useLocation();
   const navigate = useNavigate();
-  const [syncing, setSyncing] = useState(false);
+  const [syncProvider, setSyncProvider] = useState<ConnectionProvider | null>(
+    null,
+  );
   const merged = variant === 'opt1';
   const orient = orientVariant === 'orient';
   const search = new URLSearchParams(location.search);
@@ -552,7 +574,9 @@ export const ConnectionsPage = () => {
     if (filter === 'needs-setup') return needsSetup(p);
     return true;
   });
-  const connections = visibleProviders.filter(c => c.type === 'aap' || c.type === 'pah');
+  const connections = visibleProviders.filter(
+    c => c.type === 'aap' || c.type === 'orchestrator' || c.type === 'pah',
+  );
   const sourceControl = visibleProviders.filter(c => c.type === 'git');
   const containerRegistries = visibleProviders.filter(c => c.type === 'registry');
   const devTools = visibleProviders.filter(c => c.type === 'devtools');
@@ -562,11 +586,6 @@ export const ConnectionsPage = () => {
       'integrations-needs-setup',
       filter === 'needs-setup' && needsSetupCount > 0,
     );
-
-  const handleSyncAll = () => {
-    setSyncing(true);
-    setTimeout(() => setSyncing(false), 2500);
-  };
 
   const setMergedTab = (next: 'connections' | 'history') => {
     setTab(next);
@@ -604,8 +623,8 @@ export const ConnectionsPage = () => {
                 orient
                   ? 'Each card is an external system. Connect it, then set how often it syncs. Developer tools (Dev Spaces) are a URL only — they do not sync content.'
                   : merged
-                  ? 'Opt 1: Connections (wire systems + Sync all / Sync now) and Sync history live as tabs here — no separate Sync rail.'
-                  : 'Connect systems here. Schedules, Sync all, and history live under Sync.'
+                  ? 'Opt 1: Connections (wire systems + Sync now) and Sync history live as tabs here — no separate Sync rail.'
+                  : 'Connect systems here. Schedules and history live under Sync.'
               }
             />
           </Box>
@@ -620,18 +639,6 @@ export const ConnectionsPage = () => {
         }
       >
         <Box className={classes.headerActions}>
-          {merged && (
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={<SyncIcon style={{ fontSize: 16 }} />}
-              onClick={handleSyncAll}
-              disabled={syncing}
-              style={{ textTransform: 'none', fontSize: 13, borderRadius: 20 }}
-            >
-              {syncing ? 'Syncing…' : 'Sync all connections'}
-            </Button>
-          )}
           {!orient && (
             <Button
               variant="contained"
@@ -725,7 +732,11 @@ export const ConnectionsPage = () => {
             </Typography>
             <Box className={classes.cardGrid}>
               {connections.map(provider => (
-                <ProviderCard key={provider.id} provider={provider} />
+                <ProviderCard
+                  key={provider.id}
+                  provider={provider}
+                  onRequestSync={setSyncProvider}
+                />
               ))}
             </Box>
               </>
@@ -738,7 +749,11 @@ export const ConnectionsPage = () => {
             </Typography>
             <Box className={classes.cardGrid}>
               {sourceControl.map(provider => (
-                <ProviderCard key={provider.id} provider={provider} />
+                <ProviderCard
+                  key={provider.id}
+                  provider={provider}
+                  onRequestSync={setSyncProvider}
+                />
               ))}
             </Box>
               </>
@@ -754,7 +769,11 @@ export const ConnectionsPage = () => {
             </Typography>
             <Box className={classes.cardGrid}>
               {containerRegistries.map(provider => (
-                <ProviderCard key={provider.id} provider={provider} />
+                <ProviderCard
+                  key={provider.id}
+                  provider={provider}
+                  onRequestSync={setSyncProvider}
+                />
               ))}
             </Box>
               </>
@@ -782,6 +801,11 @@ export const ConnectionsPage = () => {
           </>
         )}
       </Content>
+      <ConnectionSyncDialog
+        open={Boolean(syncProvider)}
+        provider={syncProvider}
+        onClose={() => setSyncProvider(null)}
+      />
     </Page>
   );
 };
@@ -790,6 +814,9 @@ export const SCMIntegrationPage = () => {
   const classes = useStyles();
   const { connected: scmDevSpacesConnected } = useDevSpacesSetup();
   const scmConnectionMap = useConnectionSetup();
+  const [syncProvider, setSyncProvider] = useState<ConnectionProvider | null>(
+    null,
+  );
   const sourceControlProviders = DEMO_CONNECTIONS.filter(c => c.type === 'git').map(
     c =>
       withLiveConnectionStatus(c, {
@@ -817,10 +844,19 @@ export const SCMIntegrationPage = () => {
       <Content>
         <Box className={classes.cardGrid}>
           {sourceControlProviders.map(provider => (
-            <ProviderCard key={provider.id} provider={provider} />
+            <ProviderCard
+              key={provider.id}
+              provider={provider}
+              onRequestSync={setSyncProvider}
+            />
           ))}
         </Box>
       </Content>
+      <ConnectionSyncDialog
+        open={Boolean(syncProvider)}
+        provider={syncProvider}
+        onClose={() => setSyncProvider(null)}
+      />
     </Page>
   );
 };

@@ -12,6 +12,8 @@ import {
   makeStyles,
 } from '@material-ui/core';
 import AccountCircleOutlinedIcon from '@material-ui/icons/AccountCircleOutlined';
+import { prototypeDisplayName } from '../GlobalHeader/prototypeIdentity';
+import { usePrototypeSeatSync } from '../GlobalHeader/prototypeSeats';
 
 const useStyles = makeStyles(theme => ({
   intro: {
@@ -81,6 +83,7 @@ export const PortalMyProfilePage = () => {
   const navigate = useNavigate();
   const identityApi = useApi(identityApiRef);
   const { displayName, profile, loading } = useUserProfile();
+  const seatId = usePrototypeSeatSync();
   const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -101,7 +104,7 @@ export const PortalMyProfilePage = () => {
     };
   }, [identityApi]);
 
-  const name = displayName || 'Guest';
+  const name = prototypeDisplayName(displayName, seatId);
 
   return (
     <Page themeId="tool">
@@ -151,7 +154,7 @@ export const PortalMyProfilePage = () => {
           </Grid>
           <Grid item xs={12} md={6}>
             <InfoCard title="Teams" variant="gridItem">
-              <Typography variant="body1">Guests</Typography>
+              <Typography variant="body1">Administrators</Typography>
             </InfoCard>
           </Grid>
         </Grid>

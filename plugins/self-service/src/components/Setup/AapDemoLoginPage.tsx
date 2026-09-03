@@ -131,9 +131,9 @@ export const AapDemoLoginPage = () => {
     }
     applySetupDemoWorld('setup');
     writeSetupDemoMode('setup');
-    writeNavExperience('all');
+    writeNavExperience('admin');
     window.setTimeout(() => {
-      navigate('/self-service/experiences');
+      navigate('/self-service/admin/overview');
     }, 400);
   };
 
