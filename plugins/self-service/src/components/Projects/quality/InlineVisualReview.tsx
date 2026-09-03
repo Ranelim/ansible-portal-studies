@@ -360,7 +360,7 @@ const AUTO_FIX_EXPLAIN =
   'Ready-made replacements from Ansible quality rules.';
 
 const AUTO_STEP_DESC =
-  'They start accepted. Decline any you do not want in the pull request.';
+  'Each auto remediation is a ready-made replacement from this scan, and is already accepted for the pull request. Decline any you do not want included.';
 
 const AI_STEP_DESC =
   'Generate a suggestion with Lightspeed, then accept or decline it.';
@@ -840,6 +840,23 @@ const useStyles = makeStyles((theme: Theme) => ({
     color: theme.palette.text.secondary,
     maxWidth: 640,
   },
+  jobHint: {
+    ...theme.typography.body2,
+    color: theme.palette.text.secondary,
+    marginTop: theme.spacing(1.5),
+    marginBottom: theme.spacing(1),
+    maxWidth: 720,
+  },
+  findingsCountHead: {
+    display: 'flex',
+    alignItems: 'baseline',
+    flexWrap: 'wrap',
+    gap: theme.spacing(1),
+    padding: theme.spacing(1.5, 2, 0),
+  },
+  resultsMixAfterCount: {
+    paddingTop: theme.spacing(1),
+  },
   reviewLaneTabs: {
     minHeight: 36,
     padding: theme.spacing(0, 2),
@@ -1193,7 +1210,7 @@ const useStyles = makeStyles((theme: Theme) => ({
     display: 'flex',
     flexDirection: 'column',
     gap: theme.spacing(1),
-    padding: theme.spacing(0.5, 2, 1.5),
+    padding: theme.spacing(2, 2, 1.5),
   },
   resultsMixBeforeSearch: {
     paddingBottom: theme.spacing(1),
@@ -1925,12 +1942,6 @@ export const InlineVisualReview: React.FC<{
   ].filter(Boolean) as { id: string; count: number; label: string; hint: string }[];
   const inventoryCountItems =
     phase === 'review' ? reviewCountItems : phase === 'work' ? workCountItems : [];
-  const laneCount: Record<ReviewTab, number> = {
-    All: reviewFindings.length,
-    'Auto-fix': auto.length,
-    'AI-fix': ai.length,
-    'Manual-fix': manual.length,
-  };
 
   const mix = useMemo(() => mixFromFindings(reviewFindings), [reviewFindings]);
   const autoMix = useMemo(
@@ -2165,13 +2176,9 @@ export const InlineVisualReview: React.FC<{
             ? selectedSuggestions < 1
             : pendingT1 > 0 || pendingGeneratedAi > 0 || aiLoading;
 
-  const filtered = tabFindings.filter(f => {
-    if (filterGeneratedAi) {
-      if (laneOf(f) !== 'AI-fix' || aiStatus[findingKey(f)] !== 'ready') return false;
-    }
+  const matchesListFacets = (f: QualityViolation) => {
     if (contentType !== 'all' && kindLabel(f) !== contentType) return false;
     if (category !== 'all' && apmeCategoryOf(f) !== category) return false;
-    if (!showsResultsMix(phase) && laneFilter !== 'all' && laneOf(f) !== laneFilter) return false;
     if (severityFilter.size > 0 && !severityFilter.has(f.severity)) return false;
     const q = query.trim().toLowerCase();
     if (!q) return true;
@@ -2181,6 +2188,28 @@ export const InlineVisualReview: React.FC<{
       f.file.toLowerCase().includes(q) ||
       APME_CATEGORY_LABEL[apmeCategoryOf(f)].toLowerCase().includes(q)
     );
+  };
+  const facetFindings = reviewFindings.filter(f => {
+    if (phase === 'autofix' && laneOf(f) !== 'Auto-fix') return false;
+    if (phase === 'ai' && laneOf(f) !== 'AI-fix') return false;
+    return matchesListFacets(f);
+  });
+  const laneCount: Record<ReviewTab, number> = {
+    All: facetFindings.length,
+    'Auto-fix': facetFindings.filter(f => laneOf(f) === 'Auto-fix').length,
+    'AI-fix': facetFindings.filter(f => laneOf(f) === 'AI-fix').length,
+    'Manual-fix': facetFindings.filter(f => laneOf(f) === 'Manual-fix').length,
+  };
+  const filtered = facetFindings.filter(f => {
+    if (filterGeneratedAi) {
+      if (laneOf(f) !== 'AI-fix' || aiStatus[findingKey(f)] !== 'ready') {
+        return false;
+      }
+    }
+    if (!showsResultsMix(phase) && laneFilter !== 'all' && laneOf(f) !== laneFilter) {
+      return false;
+    }
+    return inActiveTab(f);
   });
   const files = groupByFile(filtered);
   const reviewAutoItems = filtered.filter(f => laneOf(f) === 'Auto-fix');
@@ -2385,8 +2414,8 @@ export const InlineVisualReview: React.FC<{
   const showFooterRemainCount = phase === 'ai';
   const autoSuggestionLabel =
     auto.length === 1
-      ? '1 auto remediation suggestion'
-      : `${auto.length} auto remediation suggestions`;
+      ? '1 auto remediation'
+      : `${auto.length} auto remediations`;
   const showAutoSuggestionCount = isAutoDecidePhase(phase);
   const commitSummaryLabel = [
     showAutoSuggestionCount ? autoSuggestionLabel : null,
@@ -3090,7 +3119,7 @@ export const InlineVisualReview: React.FC<{
         onClick={() => stampAutoFixes('accept')}
         style={PILL}
       >
-        Accept all
+        Accept all remediations
       </Button>
       <Button
         size="small"
@@ -3100,7 +3129,7 @@ export const InlineVisualReview: React.FC<{
         onClick={() => stampAutoFixes('decline')}
         style={PILL}
       >
-        Decline all
+        Decline all remediations
       </Button>
     </div>
   ) : null;
@@ -3325,6 +3354,15 @@ export const InlineVisualReview: React.FC<{
 
   const summaryAndFindings = (
     <>
+      {stepDescription ? (
+        <Typography
+          className={classes.jobHint}
+          variant="body2"
+          color="textSecondary"
+        >
+          {stepDescription}
+        </Typography>
+      ) : null}
       {currentRedesign ? null : (
       <Paper className={classes.box} elevation={0}>
             <div className={classes.boxHead}>
@@ -3377,23 +3415,8 @@ export const InlineVisualReview: React.FC<{
       </Paper>
       )}
 
-      <Paper className={classes.box} elevation={0}>
-        {showsFindingsFilters(phase) ? (
-          <div className={classes.scanCountHead}>
-            <Typography className={classes.listHeading} component="h2">
-              {stepHeading}
-            </Typography>
-            {stepDescription ? (
-              <Typography
-                className={classes.listSubhead}
-                variant="body2"
-                color="textSecondary"
-              >
-                {stepDescription}
-              </Typography>
-            ) : null}
-          </div>
-        ) : currentRedesign && phase !== 'autofix' ? (
+      <Paper className={classes.box} elevation={0} aria-label={stepHeading || undefined}>
+        {showsFindingsFilters(phase) ? null : currentRedesign && phase !== 'autofix' ? (
           <div className={classes.scanCountHead}>
             <div
               className={`${classes.scanCountRow}${
@@ -3582,11 +3605,26 @@ export const InlineVisualReview: React.FC<{
         )}
         {showsResultsMix(phase) || phase === 'autofix' || phase === 'ai' || phase === 'review' ? (
         <>
+        {phase === 'review' ? (
+          <div className={classes.findingsCountHead}>
+            <Typography className={classes.mixTotal} component="span">
+              {mix.total}
+            </Typography>
+            <Typography
+              className={classes.mixMeta}
+              variant="body2"
+              color="textSecondary"
+              component="span"
+            >
+              {findingWord}
+            </Typography>
+          </div>
+        ) : null}
         {showsFindingsFilters(phase) ? (
         <div
           className={`${classes.resultsMix}${
             phase === 'ai' ? ` ${classes.resultsMixBeforeSearch}` : ''
-          }`}
+          }${phase === 'review' ? ` ${classes.resultsMixAfterCount}` : ''}`}
           role="group"
           aria-label={
             phase === 'ai'
@@ -3684,7 +3722,7 @@ export const InlineVisualReview: React.FC<{
             scrollButtons="off"
             aria-label="Findings by remediation type"
           >
-            <Tab value="All" label={`All ${reviewFindings.length}`} />
+            <Tab value="All" label={`All ${laneCount.All}`} />
             {LANE_TABS.map(id => {
               const count = laneCount[id];
               const hint =
