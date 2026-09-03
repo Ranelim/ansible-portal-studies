@@ -877,18 +877,28 @@ const useStyles = makeStyles((theme: Theme) => ({
     width: '100%',
     height: FINDINGS_BAR_HEIGHT,
   },
-  reviewTools: {
+  reviewFilters: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'stretch',
+    gap: theme.spacing(1),
+    width: '100%',
+  },
+  searchFull: {
+    width: '100%',
+    '& .MuiOutlinedInput-root': {
+      width: '100%',
+    },
+  },
+  reviewFilterRow: {
     display: 'flex',
     alignItems: 'center',
     flexWrap: 'wrap',
-    gap: 8,
-    justifyContent: 'flex-end',
-    marginLeft: 'auto',
+    gap: theme.spacing(1),
+    width: '100%',
   },
-  searchCompact: {
-    width: 200,
-    flex: '0 1 200px',
-    minWidth: 132,
+  reviewFilterToggle: {
+    marginLeft: 'auto',
   },
   bulkBarCompact: {
     paddingTop: theme.spacing(0.5),
@@ -1349,6 +1359,13 @@ const useStyles = makeStyles((theme: Theme) => ({
     gap: 8,
     width: '100%',
     minHeight: 32,
+  },
+  bulkListActionsReview: {
+    flexDirection: 'column',
+    alignItems: 'stretch',
+    flexWrap: 'nowrap',
+    gap: theme.spacing(1),
+    minHeight: 0,
   },
   showingInline: {
     display: 'flex',
@@ -2567,7 +2584,8 @@ export const InlineVisualReview: React.FC<{
     category !== 'all' ||
     laneFilter !== 'all' ||
     severityFilter.size > 0 ||
-    filterGeneratedAi;
+    filterGeneratedAi ||
+    (phase === 'review' && fixType !== 'All');
   const clearFilters = () => {
     setQuery('');
     setContentType('all');
@@ -2575,6 +2593,7 @@ export const InlineVisualReview: React.FC<{
     setLaneFilter('all');
     setSeverityFilter(new Set());
     setFilterGeneratedAi(false);
+    if (phase === 'review') setFixType('All');
   };
   const showingCountControl = (
     <div className={classes.showingInline}>
@@ -2619,6 +2638,80 @@ export const InlineVisualReview: React.FC<{
       </ToggleButton>
     </ToggleButtonGroup>
   );
+  const reviewFilterBar =
+    phase === 'review' ? (
+      <div
+        className={classes.reviewFilters}
+        role="search"
+        aria-label="Filter findings"
+      >
+        <TextField
+          className={classes.searchFull}
+          size="small"
+          variant="outlined"
+          placeholder={searchPlaceholder}
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          inputProps={{ 'aria-label': searchPlaceholder }}
+        />
+        <div className={classes.reviewFilterRow}>
+          <FormControl
+            variant="outlined"
+            size="small"
+            className={classes.select}
+          >
+            <InputLabel id="review-remediation-type-label">
+              Remediation type
+            </InputLabel>
+            <Select
+              labelId="review-remediation-type-label"
+              label="Remediation type"
+              value={fixType}
+              onChange={e => setFixType(e.target.value as ReviewTab)}
+              renderValue={value =>
+                value === 'All'
+                  ? 'All remediation types'
+                  : REVIEW_FILTER_TAB_LABEL[value as ReviewTab]
+              }
+            >
+              {REVIEW_FILTER_TABS.map(lane => (
+                <MenuItem key={lane} value={lane}>
+                  {lane === 'All'
+                    ? 'All remediation types'
+                    : REVIEW_FILTER_TAB_LABEL[lane]}{' '}
+                  ({laneCount[lane]})
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <FormControl
+            variant="outlined"
+            size="small"
+            className={classes.select}
+          >
+            <InputLabel id="review-content-type-label">Content type</InputLabel>
+            <Select
+              labelId="review-content-type-label"
+              label="Content type"
+              value={contentType}
+              onChange={e => setContentType(e.target.value as string)}
+              renderValue={value =>
+                value === 'all' ? 'All content types' : String(value)
+              }
+            >
+              <MenuItem value="all">All content types</MenuItem>
+              {contentTypes.map(k => (
+                <MenuItem key={k} value={k}>
+                  {k} ({tabFindings.filter(f => kindLabel(f) === k).length})
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <div className={classes.reviewFilterToggle}>{diffDisplayToggle}</div>
+        </div>
+        {filtersActive ? showingCountControl : null}
+      </div>
+    ) : null;
   const aiGenerateBanner =
     phase === 'ai' && redesign3Plus && (idleAi.length > 0 || aiLoading) ? (
       <div className={classes.aiBanner} role="status">
@@ -3281,39 +3374,6 @@ export const InlineVisualReview: React.FC<{
       </div>
     ) : null;
 
-  const reviewLaneTabs =
-    phase === 'review' ? (
-      <div className={`${classes.tabsHost} ${classes.findingsTabsHost}`}>
-        <HeaderTabs
-          selectedIndex={Math.max(
-            0,
-            REVIEW_FILTER_TABS.findIndex(tab => tab === fixType),
-          )}
-          onChange={index => {
-            const next = REVIEW_FILTER_TABS[index];
-            if (!next) return;
-            setFixType(next);
-            setContentType('all');
-            setCategory('all');
-          }}
-          tabs={REVIEW_FILTER_TABS.map(lane => ({
-            id: lane,
-            label: (
-              <span className={classes.tabLabel}>
-                <span>{REVIEW_FILTER_TAB_LABEL[lane]}</span>
-                <ReadCountBadge
-                  count={laneCount[lane]}
-                  label={reviewLaneCountLabel(lane, laneCount[lane])}
-                  tone="read"
-                  showZero
-                />
-              </span>
-            ),
-          }))}
-        />
-      </div>
-    ) : null;
-
   const reviewLaneNote =
     phase === 'review' && fixType === 'AI-fix' ? (
       <div className={classes.laneNote}>
@@ -3825,11 +3885,7 @@ export const InlineVisualReview: React.FC<{
                 : currentRedesign
                   ? ` ${classes.bulkBarSpaced}`
                   : ''
-            }${
-              phase === 'results' || phase === 'review'
-                ? ` ${classes.bulkBarBeforeTabs}`
-                : ''
-            }`}
+            }${phase === 'results' ? ` ${classes.bulkBarBeforeTabs}` : ''}`}
           >
             {!currentRedesign &&
             phase === 'ai' &&
@@ -3872,8 +3928,16 @@ export const InlineVisualReview: React.FC<{
             {currentRedesign &&
             (redesign3Plus || redesignActionsControl || redesignGenerate) ? (
               <>
-                <div className={classes.bulkListActions} role="region" aria-label="Bulk finding actions">
-                  {redesign4 ? (
+                <div
+                  className={`${classes.bulkListActions}${
+                    phase === 'review' ? ` ${classes.bulkListActionsReview}` : ''
+                  }`}
+                  role="region"
+                  aria-label="Bulk finding actions"
+                >
+                  {phase === 'review' ? (
+                    reviewFilterBar
+                  ) : redesign4 ? (
                     showingCountControl
                   ) : redesign3Plus ? (
                     <Typography
@@ -3886,46 +3950,11 @@ export const InlineVisualReview: React.FC<{
                   ) : (
                     <div>{redesignActionsControl}</div>
                   )}
-                  {phase === 'review' ? (
-                    <div className={classes.reviewTools}>
-                      <TextField
-                        className={classes.searchCompact}
-                        size="small"
-                        variant="outlined"
-                        placeholder={searchPlaceholder}
-                        value={query}
-                        onChange={e => setQuery(e.target.value)}
-                        inputProps={{ 'aria-label': searchPlaceholder }}
-                      />
-                      <FormControl
-                        variant="outlined"
-                        size="small"
-                        className={classes.select}
-                      >
-                        <InputLabel id="visual-content-type-label">
-                          Content type
-                        </InputLabel>
-                        <Select
-                          labelId="visual-content-type-label"
-                          label="Content type"
-                          value={contentType}
-                          onChange={e =>
-                            setContentType(e.target.value as string)
-                          }
-                        >
-                          <MenuItem value="all">All content types</MenuItem>
-                          {contentTypes.map(k => (
-                            <MenuItem key={k} value={k}>
-                              {k} ({tabFindings.filter(f => kindLabel(f) === k).length})
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
-                      {diffDisplayToggle}
-                    </div>
-                  ) : phase === 'results' || showFooterRemaining || showFooterAll
-                    ? diffDisplayToggle
-                    : (
+                  {phase === 'review' ? null : phase === 'results' ||
+                    showFooterRemaining ||
+                    showFooterAll ? (
+                    diffDisplayToggle
+                  ) : (
                     <div className={classes.bulkTwinActions}>
                       {redesign3Plus ? redesignActionsControl : redesignGenerate}
                       {diffDisplayToggle}
@@ -3938,7 +3967,6 @@ export const InlineVisualReview: React.FC<{
         ) : null}
 
         {findingsTabs}
-        {reviewLaneTabs}
         {reviewLaneNote}
 
         {((phase === 'review'
