@@ -215,7 +215,7 @@ const useStyles = makeStyles(theme => ({
     alignItems: 'stretch',
     gap: theme.spacing(1),
     width: '100%',
-    marginTop: theme.spacing(1),
+    marginTop: theme.spacing(2),
     marginBottom: theme.spacing(1.5),
   },
   laneTabs: {
@@ -325,7 +325,7 @@ const useStyles = makeStyles(theme => ({
     flexDirection: 'column',
     gap: theme.spacing(1),
     marginTop: theme.spacing(1.5),
-    marginBottom: theme.spacing(0.5),
+    marginBottom: 0,
   },
   filterRow: {
     display: 'flex',

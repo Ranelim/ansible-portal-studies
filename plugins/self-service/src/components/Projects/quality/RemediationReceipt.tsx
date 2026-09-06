@@ -125,7 +125,7 @@ export const RemediationReceipt: React.FC<{
             </Typography>
           </div>
           <div className={classes.actions}>
-            {hasPullRequest && (
+            {accepted > 0 && (
               <Button
                 variant="contained"
                 color="primary"
@@ -133,7 +133,7 @@ export const RemediationReceipt: React.FC<{
                 startIcon={<CodeIcon fontSize="small" />}
                 onClick={() =>
                   window.open(
-                    `/devspaces-mockup.html?state=pr-review&branch=${encodeURIComponent(branchName)}`,
+                    `/devspaces-mockup.html?state=${hasPullRequest ? 'pr-review' : 'branch-review'}&branch=${encodeURIComponent(branchName)}`,
                     '_blank',
                   )
                 }

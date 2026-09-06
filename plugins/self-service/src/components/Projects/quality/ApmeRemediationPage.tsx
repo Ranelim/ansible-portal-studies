@@ -1422,6 +1422,13 @@ export const ApmeRemediationPage = () => {
     setParams(nextParams, { replace: true });
   };
 
+  const completeAcceptedCount = (quality?.violations ?? []).filter(v => {
+    const key = findingKey(v);
+    if (v.fixTier === 'deterministic') return t1Decisions[key] === 'accept';
+    if (v.fixTier === 'ai') return aiDecisions[key] === 'accept';
+    return false;
+  }).length;
+
   const pageChrome = (
     <Box
       className={`${classes.chrome}${
@@ -1474,6 +1481,16 @@ export const ApmeRemediationPage = () => {
           color="textSecondary"
         >
           Create a branch, push the remediations you accepted, and optionally open a pull request.
+        </Typography>
+      ) : visual && step === 'complete' && completeAcceptedCount > 0 ? (
+        <Typography
+          className={`${classes.stepperHint} ${classes.stepperHintBeforePanel}`}
+          variant="body2"
+          color="textSecondary"
+        >
+          {createPr
+            ? 'Review the accepted remediations as a diff in Dev Spaces, or open the pull request.'
+            : 'Review the accepted remediations as a diff in Dev Spaces on this branch.'}
         </Typography>
       ) : null}
     </Box>

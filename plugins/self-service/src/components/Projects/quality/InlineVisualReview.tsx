@@ -269,7 +269,7 @@ const REMEDIATION_LANE_LABEL: Record<FixLane, string> = {
 
 const REVIEW_TAB_LABEL: Record<FixLane, string> = {
   'Auto-fix': 'Auto remediations',
-  'AI-fix': 'Needs AI',
+  'AI-fix': 'AI remediations',
   'Manual-fix': 'Manual only',
 };
 
@@ -389,6 +389,35 @@ function findingsJobTitle(count: number): string {
   return count === 1 ? 'Review 1 finding' : `Review ${count} findings`;
 }
 
+function findingsRemediationHeading(
+  findings: number,
+  remediations: number,
+): string {
+  const findingWord = findings === 1 ? 'finding' : 'findings';
+  const remediationWord = remediations === 1 ? 'remediation' : 'remediations';
+  return `${findings} ${findingWord}, ${remediations} ${remediationWord}`;
+}
+
+/** Dual count only when findings ≠ remediations. Omit “0 remediations”. */
+function findingsOrRemediationsHeading(
+  findings: number,
+  remediations: number,
+): string {
+  if (remediations <= 0) {
+    return findings === 1 ? '1 finding' : `${findings} findings`;
+  }
+  if (remediations === findings) {
+    return remediations === 1 ? '1 remediation' : `${remediations} remediations`;
+  }
+  return findingsRemediationHeading(findings, remediations);
+}
+
+type ReviewSort = 'remediation-type' | 'severity';
+const REVIEW_SORT_LABEL: Record<ReviewSort, string> = {
+  'remediation-type': 'Remediation type',
+  severity: 'Severity',
+};
+
 const RESULTS_MANUAL_BODY =
   'No remediation found. Remediate this manually.';
 
@@ -399,14 +428,16 @@ const FINDINGS_AI_BODY = RESULTS_AI_BODY;
 
 const FINDINGS_MANUAL_BODY = RESULTS_MANUAL_BODY;
 
-const REVIEW_AI_TAB_HINT =
-  'No remediation yet. Generate AI suggestions on the next step.';
+const REVIEW_AUTO_SECTION_HINT =
+  'Ready-made replacements. They start accepted.';
 
-const REVIEW_MANUAL_TAB_HINT =
-  'No remediation found. Remediate these manually.';
+const REVIEW_AI_SECTION_HINT =
+  'Generate suggestions on the next step.';
+
+const REVIEW_MANUAL_SECTION_HINT = 'No remediation found.';
 
 const AI_GENERATE_HINT =
-  'No suggestion yet. Generate this row, or generate all on this tab.';
+  'No AI suggestion yet. Generate one for this finding, or generate all AI remediations.';
 
 const INCLUDE_MENU_EXPLAIN = {
   auto: AUTO_FIX_EXPLAIN,
@@ -534,12 +565,12 @@ function sortFindingsBySeverity(items: QualityViolation[]): QualityViolation[] {
   });
 }
 
-/** Keep list order; bundle findings that share a ContentGraph path. */
+/** Keep list order; bundle same-lane findings that share a ContentGraph path. */
 function groupByNodeOrder(items: QualityViolation[]): QualityViolation[][] {
   const order: string[] = [];
   const map = new Map<string, QualityViolation[]>();
   items.forEach(v => {
-    const id = nodeKey(v);
+    const id = `${nodeKey(v)}:${laneOf(v)}`;
     if (!map.has(id)) {
       order.push(id);
       map.set(id, []);
@@ -1133,7 +1164,8 @@ const useStyles = makeStyles((theme: Theme) => ({
     alignItems: 'center',
     gap: theme.spacing(1.5),
     flexWrap: 'wrap',
-    margin: theme.spacing(0.25, 2, 0.5),
+    /* Top 0: bulkBar padding already supplies the gap above. Bottom matches that 8px. */
+    margin: theme.spacing(0, 2, 1),
     padding: theme.spacing(1.25, 1.5),
     backgroundColor:
       theme.palette.type === 'light' ? '#e7f1fa' : 'rgba(38, 117, 195, 0.12)',
@@ -1228,10 +1260,10 @@ const useStyles = makeStyles((theme: Theme) => ({
     display: 'flex',
     flexDirection: 'column',
     gap: theme.spacing(1),
-    padding: theme.spacing(1.5, 2, 1),
+    padding: theme.spacing(1.5, 2, 2),
   },
   resultsMixBeforeSearch: {
-    paddingBottom: theme.spacing(1),
+    paddingBottom: theme.spacing(2),
   },
   toolbar: {
     display: 'flex',
@@ -1502,6 +1534,7 @@ const useStyles = makeStyles((theme: Theme) => ({
     },
   },
   select: { minWidth: 168, flexShrink: 0 },
+  sortSelect: { minWidth: 176, flexShrink: 0 },
   commitSelect: {
     minWidth: 176,
     flex: '0 0 auto',
@@ -1566,18 +1599,40 @@ const useStyles = makeStyles((theme: Theme) => ({
     flexDirection: 'column',
     gap: theme.spacing(1.5),
   },
+  reviewSections: {
+    padding: theme.spacing(1.5, 2, 2),
+    display: 'flex',
+    flexDirection: 'column',
+    gap: theme.spacing(2.5),
+  },
+  reviewSection: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: theme.spacing(1.5),
+    '& + &': {
+      paddingTop: theme.spacing(2),
+      borderTop: `1px solid ${theme.palette.divider}`,
+    },
+  },
+  reviewSectionLine: {
+    display: 'flex',
+    alignItems: 'baseline',
+    flexWrap: 'wrap',
+    columnGap: theme.spacing(1.5),
+    rowGap: theme.spacing(0.25),
+  },
   reviewRemainderHead: {
     ...theme.typography.subtitle2,
     fontWeight: 600,
     margin: 0,
-    '&:not(:first-child)': {
-      paddingTop: theme.spacing(1),
-    },
   },
   reviewRemainderHint: {
     ...theme.typography.body2,
     color: theme.palette.text.secondary,
     margin: 0,
+    '&::before': {
+      content: '"—\\00a0"',
+    },
   },
   empty: {
     padding: theme.spacing(3, 2),
@@ -1991,6 +2046,7 @@ export const InlineVisualReview: React.FC<{
         : 'Auto-fix',
   );
   const [laneFilter, setLaneFilter] = useState<FixLane | 'all'>('all');
+  const [reviewSort, setReviewSort] = useState<ReviewSort>('remediation-type');
   const [actionsAnchor, setActionsAnchor] = useState<null | HTMLElement>(null);
   const [breakdownOpen, setBreakdownOpen] = useState(false);
   const [findingsBreakdownOpen, setFindingsBreakdownOpen] = useState(false);
@@ -2255,6 +2311,7 @@ export const InlineVisualReview: React.FC<{
     phase === 'review' &&
     (fixType === 'All' || fixType === 'Manual-fix') &&
     reviewManual.length > 0;
+  const reviewSortFlat = phase === 'review' && reviewSort === 'severity';
   const visibleAuto = filtered.filter(v => v.fixTier === 'deterministic' && !t1Decisions[findingKey(v)]);
   const visibleReadyAi = filtered.filter(
     v => v.fixTier === 'ai' && aiStatus[findingKey(v)] === 'ready' && !aiDecisions[findingKey(v)],
@@ -2451,8 +2508,8 @@ export const InlineVisualReview: React.FC<{
     isAutoDecidePhase(phase) || phase === 'ai' || isCombinedPhase(phase);
   const commitSummaryLabel = `${
     showRemediationCount ? `${footerRemediationLabel}: ` : ''
-  }${commitAccepted} accepted, ${commitDeclined} declined${
-    showFooterRemainCount ? `, ${commitRemaining} remaining` : ''
+  }${commitAccepted} Accepted, ${commitDeclined} Declined${
+    showFooterRemainCount ? `, ${commitRemaining} Remaining` : ''
   }`;
 
   const decideCount =
@@ -2561,8 +2618,7 @@ export const InlineVisualReview: React.FC<{
     category !== 'all' ||
     laneFilter !== 'all' ||
     severityFilter.size > 0 ||
-    filterGeneratedAi ||
-    (phase === 'review' && fixType !== 'All');
+    filterGeneratedAi;
   const clearFilters = () => {
     setQuery('');
     setContentType('all');
@@ -2620,46 +2676,30 @@ export const InlineVisualReview: React.FC<{
       <div
         className={classes.reviewFilters}
         role="search"
-        aria-label="Filter findings"
+        aria-label={
+          phase === 'review' ? 'Filter and sort findings' : 'Filter findings'
+        }
       >
         <div className={classes.reviewFilterRow}>
-          <TextField
-            className={classes.searchFill}
-            size="small"
-            variant="outlined"
-            placeholder={searchPlaceholder}
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-            inputProps={{ 'aria-label': searchPlaceholder }}
-          />
           {phase === 'review' ? (
           <FormControl
             variant="outlined"
             size="small"
-            className={classes.select}
+            className={classes.sortSelect}
           >
-            <InputLabel id="review-remediation-type-label">
-              Remediation type
-            </InputLabel>
+            <InputLabel id="review-sort-label">Sort by</InputLabel>
             <Select
-              labelId="review-remediation-type-label"
-              label="Remediation type"
-              value={fixType}
-              onChange={e => setFixType(e.target.value as ReviewTab)}
-              renderValue={value =>
-                value === 'All'
-                  ? 'All remediation types'
-                  : REVIEW_FILTER_TAB_LABEL[value as ReviewTab]
-              }
+              labelId="review-sort-label"
+              label="Sort by"
+              value={reviewSort}
+              onChange={e => setReviewSort(e.target.value as ReviewSort)}
             >
-              {REVIEW_FILTER_TABS.map(lane => (
-                <MenuItem key={lane} value={lane}>
-                  {lane === 'All'
-                    ? 'All remediation types'
-                    : REVIEW_FILTER_TAB_LABEL[lane]}{' '}
-                  ({laneCount[lane]})
-                </MenuItem>
-              ))}
+              <MenuItem value="remediation-type">
+                {REVIEW_SORT_LABEL['remediation-type']}
+              </MenuItem>
+              <MenuItem value="severity">
+                {REVIEW_SORT_LABEL.severity}
+              </MenuItem>
             </Select>
           </FormControl>
           ) : null}
@@ -2686,6 +2726,15 @@ export const InlineVisualReview: React.FC<{
               ))}
             </Select>
           </FormControl>
+          <TextField
+            className={classes.searchFill}
+            size="small"
+            variant="outlined"
+            placeholder={searchPlaceholder}
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            inputProps={{ 'aria-label': searchPlaceholder }}
+          />
           <div className={classes.reviewFilterToggle}>{diffDisplayToggle}</div>
         </div>
         {filtersActive ? showingCountControl : null}
@@ -3192,10 +3241,7 @@ export const InlineVisualReview: React.FC<{
         onClick={() => stampAiItems(footerRemainingAccept, 'accept')}
         style={PILL}
       >
-        Accept remaining
-        {footerRemainingAccept.length > 0
-          ? ` (${footerRemainingAccept.length})`
-          : ''}
+        {`Accept remaining (${footerRemainingAccept.length})`}
       </Button>
       <Button
         size="small"
@@ -3205,10 +3251,7 @@ export const InlineVisualReview: React.FC<{
         onClick={() => stampAiItems(footerRemainingDecline, 'decline')}
         style={PILL}
       >
-        Decline remaining
-        {footerRemainingDecline.length > 0
-          ? ` (${footerRemainingDecline.length})`
-          : ''}
+        {`Decline remaining (${footerRemainingDecline.length})`}
       </Button>
     </div>
   ) : null;
@@ -3419,12 +3462,16 @@ export const InlineVisualReview: React.FC<{
   );
 
   const renderFindingRows = (items: QualityViolation[]) => {
+    const ordered =
+      phase === 'review' || phase === 'results'
+        ? sortFindingsBySeverity(items)
+        : items;
     const bundles =
       phase === 'results'
-        ? sortFindingsBySeverity(items).map(f => [f])
+        ? ordered.map(f => [f])
         : redesign4
-          ? groupByNodeOrder(items)
-          : items.map(f => [f]);
+          ? groupByNodeOrder(ordered)
+          : ordered.map(f => [f]);
     return bundles.map(bundle => {
       const primary = bundle[0];
       return (
@@ -3716,10 +3763,9 @@ export const InlineVisualReview: React.FC<{
         {phase === 'review' || phase === 'ai' ? (
           <div className={classes.findingsCountHead}>
             <Typography className={classes.listHeading} component="h2">
-              {phase === 'ai' ? ai.length : mix.total}{' '}
-              {(phase === 'ai' ? ai.length : mix.total) === 1
-                ? 'finding'
-                : 'findings'}
+              {phase === 'ai'
+                ? findingsOrRemediationsHeading(ai.length, readyAi.length)
+                : findingsRemediationHeading(mix.total, auto.length)}
             </Typography>
           </div>
         ) : null}
@@ -3955,57 +4001,86 @@ export const InlineVisualReview: React.FC<{
           <Typography className={classes.empty} variant="body2" color="textSecondary">
             No findings match the current filters.
           </Typography>
-        ) : reviewShowAutos &&
-          (phase === 'review' ? reviewAutoItems.length > 0 : files.length > 0) ? (
-          <div className={classes.fileList} id="review-autos">
-            {renderFindingRows(
-              phase === 'review'
-                ? reviewAutoItems
-                : files.flatMap(group => group.findings),
-            )}
+        ) : reviewSortFlat ? (
+          <div className={classes.fileList} id="review-findings">
+            {renderFindingRows(filtered)}
           </div>
-        ) : null}
-        {phase === 'review' &&
-        fixType === 'All' &&
-        (reviewShowAi || reviewShowManual) ? (
-          <div className={classes.reviewRemainder}>
+        ) : phase === 'review' ? (
+          <div className={classes.reviewSections} id="review-findings">
+            {reviewAutoItems.length > 0 ? (
+              <section
+                className={classes.reviewSection}
+                aria-labelledby="review-auto"
+              >
+                <div className={classes.reviewSectionLine}>
+                  <Typography
+                    className={classes.reviewRemainderHead}
+                    component="h3"
+                    id="review-auto"
+                  >
+                    Auto remediations
+                  </Typography>
+                  <Typography
+                    className={classes.reviewRemainderHint}
+                    component="span"
+                  >
+                    {REVIEW_AUTO_SECTION_HINT}
+                  </Typography>
+                </div>
+                {renderFindingRows(reviewAutoItems)}
+              </section>
+            ) : null}
             {reviewShowAi ? (
-              <>
-                <Typography
-                  className={classes.reviewRemainderHead}
-                  component="h3"
-                  id="review-needs-ai"
-                >
-                  Needs AI
-                </Typography>
-                <Typography className={classes.reviewRemainderHint} component="p">
-                  {REVIEW_AI_TAB_HINT}
-                </Typography>
+              <section
+                className={classes.reviewSection}
+                aria-labelledby="review-ai"
+              >
+                <div className={classes.reviewSectionLine}>
+                  <Typography
+                    className={classes.reviewRemainderHead}
+                    component="h3"
+                    id="review-ai"
+                  >
+                    AI remediations
+                  </Typography>
+                  <Typography
+                    className={classes.reviewRemainderHint}
+                    component="span"
+                  >
+                    {REVIEW_AI_SECTION_HINT}
+                  </Typography>
+                </div>
                 {renderFindingRows(reviewAi)}
-              </>
+              </section>
             ) : null}
             {reviewShowManual ? (
-              <>
-                <Typography
-                  className={classes.reviewRemainderHead}
-                  component="h3"
-                  id="review-manual"
-                >
-                  Manual only
-                </Typography>
-                <Typography className={classes.reviewRemainderHint} component="p">
-                  {REVIEW_MANUAL_TAB_HINT}
-                </Typography>
+              <section
+                className={classes.reviewSection}
+                aria-labelledby="review-manual"
+              >
+                <div className={classes.reviewSectionLine}>
+                  <Typography
+                    className={classes.reviewRemainderHead}
+                    component="h3"
+                    id="review-manual"
+                  >
+                    Manual only
+                  </Typography>
+                  <Typography
+                    className={classes.reviewRemainderHint}
+                    component="span"
+                  >
+                    {REVIEW_MANUAL_SECTION_HINT}
+                  </Typography>
+                </div>
                 {renderFindingRows(reviewManual)}
-              </>
+              </section>
             ) : null}
           </div>
-        ) : phase === 'review' && fixType === 'AI-fix' && reviewAi.length > 0 ? (
-          <div className={classes.fileList}>{renderFindingRows(reviewAi)}</div>
-        ) : phase === 'review' &&
-          fixType === 'Manual-fix' &&
-          reviewManual.length > 0 ? (
-          <div className={classes.fileList}>{renderFindingRows(reviewManual)}</div>
+        ) : reviewShowAutos && files.length > 0 ? (
+          <div className={classes.fileList} id="review-autos">
+            {renderFindingRows(files.flatMap(group => group.findings))}
+          </div>
         ) : null}
       </Paper>
     </>
@@ -4083,7 +4158,7 @@ export const InlineVisualReview: React.FC<{
                   component="span"
                 >
                   <CheckIcon className={classes.footerStatIcon} aria-hidden />
-                  {commitAccepted} accepted
+                  {commitAccepted} Accepted
                 </Typography>
                 <Typography
                   className={classes.footerLead}
@@ -4098,7 +4173,7 @@ export const InlineVisualReview: React.FC<{
                   component="span"
                 >
                   <CloseIcon className={classes.footerStatIcon} aria-hidden />
-                  {commitDeclined} declined
+                  {commitDeclined} Declined
                 </Typography>
                 {showFooterRemainCount ? (
                   <>
@@ -4114,7 +4189,7 @@ export const InlineVisualReview: React.FC<{
                       variant="body2"
                       component="span"
                     >
-                      {commitRemaining} remaining
+                      {commitRemaining} Remaining
                     </Typography>
                   </>
                 ) : null}
