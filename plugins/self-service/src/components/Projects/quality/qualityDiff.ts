@@ -50,6 +50,16 @@ export function beforeOnlyDiff(current: string[], proposed: string[]): DiffLine[
   return current.map(text => ({ kind: 'del' as const, text }));
 }
 
+/** Stacked preview: problem lines in red, proposed adds in green. */
+export function previewDiff(current: string[], proposed: string[]): DiffLine[] {
+  const full = unifiedDiff(current, proposed);
+  if (full.some(line => line.kind === 'del')) return full;
+  return [
+    ...current.map(text => ({ kind: 'del' as const, text })),
+    ...full.filter(line => line.kind === 'add'),
+  ];
+}
+
 /** Side-by-side panes from a unified diff: current keeps dels, proposed keeps adds. */
 export function splitDiff(diff: DiffLine[]): {
   current: DiffLine[];

@@ -253,6 +253,13 @@ const useStyles = makeStyles(theme => ({
     overflowX: 'hidden',
     paddingBottom: theme.spacing(4),
   },
+  /**
+   * Scan / apply panels sit beside chrome (no step copy). Match copy → panel
+   * (16px) so loading is not flush against the stepper.
+   */
+  afterStepper: {
+    marginTop: theme.spacing(2),
+  },
   pageClip: {
     minWidth: 0,
     maxWidth: '100%',
@@ -378,16 +385,17 @@ const useStyles = makeStyles(theme => ({
     marginBottom: theme.spacing(2),
   },
   stepperBare: {
-    padding: theme.spacing(1, 0, 1),
+    padding: theme.spacing(1, 0, 0),
     marginBottom: 0,
   },
   stepperHint: {
     ...theme.typography.body2,
     color: theme.palette.text.secondary,
+    width: '100%',
+    maxWidth: 'none',
     marginTop: theme.spacing(1.5),
-    maxWidth: 720,
   },
-  /** Commit panel is a sibling of chrome; findings get this gap from the review stack. */
+  /** Copy → panel: 16px. Stepper → copy is marginTop on stepperHint / jobHint. */
   stepperHintBeforePanel: {
     marginBottom: theme.spacing(2),
   },
@@ -1204,7 +1212,7 @@ export const ApmeRemediationPage = () => {
   const [aiOptIn, setAiOptIn] = useState<Record<string, boolean>>({});
   const [aiGenerating, setAiGenerating] = useState(false);
   const [aiStatus, setAiStatus] = useState<Record<string, AiRowStatus>>({});
-  const [sideBySide, setSideBySide] = useState(false);
+  const [sideBySide, setSideBySide] = useState(true);
   const generateInlineAi = useCallback((key: string) => {
     setAiStatus(prev => ({ ...prev, [key]: 'loading' }));
     window.setTimeout(() => {
@@ -1528,12 +1536,14 @@ export const ApmeRemediationPage = () => {
     if (step === 'scan') {
       const pct = Math.round(((logIndex + 1) / SCAN_PHASES.length) * 95);
       return (
-        <OperationProgressPanel
-          heading={logIndex < 1 ? 'Starting operation...' : 'Checking...'}
-          progress={pct}
-          lines={SCAN_PHASES.slice(0, logIndex + 1)}
-          onCancel={goBack}
-        />
+        <Box className={classes.afterStepper}>
+          <OperationProgressPanel
+            heading={logIndex < 1 ? 'Starting operation...' : 'Checking...'}
+            progress={pct}
+            lines={SCAN_PHASES.slice(0, logIndex + 1)}
+            onCancel={goBack}
+          />
+        </Box>
       );
     }
 
@@ -1678,12 +1688,14 @@ export const ApmeRemediationPage = () => {
               { phase: 'tier1', text: 'Converged — final scan' },
             ];
       return (
-        <OperationProgressPanel
-          heading={heading}
-          progress={Math.min(20 + applyTick * 25, 95)}
-          lines={logs.slice(0, applyTick + 1)}
-          onCancel={goBack}
-        />
+        <Box className={classes.afterStepper}>
+          <OperationProgressPanel
+            heading={heading}
+            progress={Math.min(20 + applyTick * 25, 95)}
+            lines={logs.slice(0, applyTick + 1)}
+            onCancel={goBack}
+          />
+        </Box>
       );
     }
 

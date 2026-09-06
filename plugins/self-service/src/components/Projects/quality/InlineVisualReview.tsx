@@ -66,7 +66,7 @@ import {
   type WizardDecision,
 } from './SpaRemediationReview';
 import { snippetForRule } from './spaWizardSnippets';
-import { beforeOnlyDiff, splitDiff, unifiedDiff, type DiffLine } from './qualityDiff';
+import { beforeOnlyDiff, previewDiff, splitDiff, unifiedDiff, type DiffLine } from './qualityDiff';
 import { ReadCountBadge } from '../../common/ReadCountBadge';
 import { statusColors } from '../../common/statusColors';
 
@@ -136,10 +136,10 @@ const DECLINE_TOGGLE_SX = {
   },
 };
 const DIFF_TOGGLE_SX = {
-  height: 32,
-  minHeight: 32,
-  width: 32,
-  minWidth: 32,
+  height: 40,
+  minHeight: 40,
+  width: 40,
+  minWidth: 40,
   p: 0,
 };
 
@@ -354,14 +354,14 @@ const REDESIGN_TAB_HINT: Record<ReviewTab, string> = {
   All: 'Auto-fix, AI-fix, and Manual-fix findings together.',
   'Auto-fix': 'Ready-made replacements from Ansible quality rules.',
   'AI-fix': 'Optional Lightspeed suggestions. Generating uses quota.',
-  'Manual-fix': 'No suggestion. Change these in the file, or leave them.',
+  'Manual-fix': 'No remediation found. Remediate these manually.',
 };
 
 /** Short definition for tab and chip tooltips. */
 const LANE_EXPLAIN: Record<FixLane, string> = {
   'Auto-fix': 'Ready-made replacements from Ansible quality rules.',
   'AI-fix': 'Eligible for an AI-generated suggestion you review before it goes in the PR.',
-  'Manual-fix': 'No automatic or AI suggestion. Change this in the file, or leave it.',
+  'Manual-fix': 'No remediation found. Remediate this manually.',
 };
 
 const AUTO_FIX_EXPLAIN =
@@ -390,22 +390,23 @@ function findingsJobTitle(count: number): string {
 }
 
 const RESULTS_MANUAL_BODY =
-  'Not auto-fixable or eligible for AI. Change this in the file, or leave it.';
+  'No remediation found. Remediate this manually.';
 
 const RESULTS_AI_BODY =
-  'Requires an AI suggestion. Generate it on the next step.';
+  'No remediation yet. Generate an AI suggestion on the next step.';
 
-const FINDINGS_AI_BODY =
-  'Select this finding on the AI remediations step and generate a suggestion. That step comes after Auto remediations.';
+const FINDINGS_AI_BODY = RESULTS_AI_BODY;
 
-const FINDINGS_MANUAL_BODY =
-  'Manual only. Change this in the file. It is not part of this remediation flow.';
+const FINDINGS_MANUAL_BODY = RESULTS_MANUAL_BODY;
 
 const REVIEW_AI_TAB_HINT =
-  'Suggestions are generated on the next step.';
+  'No remediation yet. Generate AI suggestions on the next step.';
 
 const REVIEW_MANUAL_TAB_HINT =
-  'No automatic or AI suggestion. Change these in the file, or leave them.';
+  'No remediation found. Remediate these manually.';
+
+const AI_GENERATE_HINT =
+  'No suggestion yet. Generate this row, or generate all on this tab.';
 
 const INCLUDE_MENU_EXPLAIN = {
   auto: AUTO_FIX_EXPLAIN,
@@ -851,9 +852,11 @@ const useStyles = makeStyles((theme: Theme) => ({
   jobHint: {
     ...theme.typography.body2,
     color: theme.palette.text.secondary,
-    marginTop: theme.spacing(1.5),
+    width: '100%',
+    maxWidth: 'none',
+    /* scrollBodyRedesign gap is 8px; these make stepper → copy 12px, copy → panel 16px. */
+    marginTop: theme.spacing(0.5),
     marginBottom: theme.spacing(1),
-    maxWidth: 720,
   },
   findingsCountHead: {
     display: 'flex',
@@ -886,6 +889,9 @@ const useStyles = makeStyles((theme: Theme) => ({
   reviewFilterToggle: {
     marginLeft: 'auto',
     flexShrink: 0,
+    alignSelf: 'stretch',
+    display: 'flex',
+    alignItems: 'stretch',
   },
   bulkBarCompact: {
     paddingTop: theme.spacing(0.5),
@@ -1348,7 +1354,8 @@ const useStyles = makeStyles((theme: Theme) => ({
   },
   diffToggle: {
     flexShrink: 0,
-    alignSelf: 'center',
+    alignSelf: 'stretch',
+    height: 40,
     '& .MuiToggleButtonGroup-grouped': {
       margin: 0,
     },
@@ -1357,20 +1364,20 @@ const useStyles = makeStyles((theme: Theme) => ({
       alignItems: 'center',
       justifyContent: 'center',
       padding: 0,
-      minWidth: 32,
-      width: 32,
-      minHeight: 32,
-      height: 32,
+      minWidth: 40,
+      width: 40,
+      minHeight: 40,
+      height: 40,
       boxSizing: 'border-box',
       borderColor: theme.palette.divider,
       color: theme.palette.text.secondary,
     },
     '& .MuiToggleButton-root.MuiToggleButton-sizeSmall': {
       padding: 0,
-      minWidth: 32,
-      width: 32,
-      minHeight: 32,
-      height: 32,
+      minWidth: 40,
+      width: 40,
+      minHeight: 40,
+      height: 40,
     },
     '& .MuiToggleButton-root.Mui-selected': {
       color: theme.palette.text.primary,
@@ -1907,7 +1914,7 @@ export const InlineVisualReview: React.FC<{
   ctaLayout = 'current',
   reviewLayout = 'current',
   phase = 'bundled',
-  sideBySide = false,
+  sideBySide = true,
   onSideBySideChange,
   header,
 }) => {
@@ -1950,7 +1957,7 @@ export const InlineVisualReview: React.FC<{
       id: 'ai',
       count: ai.length,
       label: ai.length === 1 ? 'needs AI' : 'need AI',
-      hint: 'Eligible for an AI suggestion. Generate it on the next step.',
+      hint: 'No remediation yet. Generate an AI suggestion on the next step.',
     },
     manual.length > 0 && {
       id: 'manual',
@@ -2434,19 +2441,19 @@ export const InlineVisualReview: React.FC<{
   const commitDeclined =
     phase === 'ai' ? aiDeclined : autoDeclined;
   const commitRemaining = pendingGeneratedAi;
+  const footerRemediationCount = phase === 'ai' ? ai.length : auto.length;
+  const footerRemediationLabel =
+    footerRemediationCount === 1
+      ? '1 remediation'
+      : `${footerRemediationCount} remediations`;
   const showFooterRemainCount = phase === 'ai';
-  const autoSuggestionLabel =
-    auto.length === 1
-      ? '1 auto remediation'
-      : `${auto.length} auto remediations`;
-  const showAutoSuggestionCount = isAutoDecidePhase(phase);
-  const commitSummaryLabel = [
-    showAutoSuggestionCount ? autoSuggestionLabel : null,
-    `${commitAccepted} accepted, ${commitDeclined} declined`,
-    showFooterRemainCount ? `${commitRemaining} remaining` : null,
-  ]
-    .filter(Boolean)
-    .join(', ');
+  const showRemediationCount =
+    isAutoDecidePhase(phase) || phase === 'ai' || isCombinedPhase(phase);
+  const commitSummaryLabel = `${
+    showRemediationCount ? `${footerRemediationLabel}: ` : ''
+  }${commitAccepted} accepted, ${commitDeclined} declined${
+    showFooterRemainCount ? `, ${commitRemaining} remaining` : ''
+  }`;
 
   const decideCount =
     auto.length === 0
@@ -4052,21 +4059,21 @@ export const InlineVisualReview: React.FC<{
                 className={classes.footerAccepted}
                 aria-label={commitSummaryLabel}
               >
-                {showAutoSuggestionCount ? (
+                {showRemediationCount ? (
                   <>
                     <Typography
                       className={`${classes.footerStat} ${classes.footerStatRemain}`}
                       variant="body2"
                       component="span"
                     >
-                      {autoSuggestionLabel}
+                      {footerRemediationLabel}
                     </Typography>
                     <Typography
                       className={classes.footerLead}
                       variant="body2"
                       component="span"
                     >
-                      ,{' '}
+                      :{' '}
                     </Typography>
                   </>
                 ) : null}
@@ -4176,7 +4183,7 @@ const FindingRow: React.FC<{
   highlight,
   showLane = true,
   phase,
-  sideBySide = false,
+  sideBySide = true,
   readOnly,
 }) => {
   const classes = useStyles();
@@ -4357,9 +4364,11 @@ const FindingRow: React.FC<{
         const fullDiff = unifiedDiff(itemSnip.current, itemSnip.proposed);
         const split = splitDiff(fullDiff);
         const beforeLines = beforeOnlyDiff(itemSnip.current, itemSnip.proposed);
+        const previewLines = previewDiff(itemSnip.current, itemSnip.proposed);
         const showProposed =
           itemLane === 'Auto-fix' ||
           (itemLane === 'AI-fix' && aiStatus === 'ready');
+        const aiEmptyCopy = onGenerateAi ? AI_GENERATE_HINT : RESULTS_AI_BODY;
         const renderDiffLines = (lines: DiffLine[]) =>
           lines.length === 0 ? (
             <Typography className={classes.diffEmpty}>No snippet for this finding.</Typography>
@@ -4380,7 +4389,7 @@ const FindingRow: React.FC<{
               </div>
             ))
           );
-        const currentLines = showProposed ? split.current : beforeLines;
+        const currentLines = beforeLines;
         const findingsNote =
           itemLane === 'AI-fix' ? (
             <p className={classes.splitNote}>{FINDINGS_AI_BODY}</p>
@@ -4397,15 +4406,9 @@ const FindingRow: React.FC<{
         ) : phase === 'results' && findingsNote ? (
           findingsNote
         ) : itemLane === 'AI-fix' && aiStatus === 'idle' ? (
-          <p className={classes.splitNote}>
-            {onGenerateAi
-              ? 'No suggestion yet. Generate this row, or generate all on this tab.'
-              : 'No suggestion was generated for this finding. It will stay in the file.'}
-          </p>
+          <p className={classes.splitNote}>{aiEmptyCopy}</p>
         ) : itemLane === 'Manual-fix' ? (
-          <p className={classes.splitNote}>
-            No automatic or AI suggestion. Change this in the file, or leave it.
-          </p>
+          <p className={classes.splitNote}>{RESULTS_MANUAL_BODY}</p>
         ) : (
           renderDiffLines(currentLines)
         );
@@ -4431,7 +4434,7 @@ const FindingRow: React.FC<{
           !readOnly &&
           (itemLane === 'Auto-fix' ||
             (itemLane === 'AI-fix' && aiStatus === 'ready'));
-        const itemLines: DiffLine[] = showRemediation ? fullDiff : beforeLines;
+        const itemLines: DiffLine[] = showRemediation ? previewLines : beforeLines;
         return (
       <div className={classes.diffBlock} key={`diff-${findingKey(item)}`}>
         {readOnly && itemLane === 'Manual-fix' ? (
@@ -4477,14 +4480,12 @@ const FindingRow: React.FC<{
         )}
         {!readOnly && itemLane === 'AI-fix' && aiStatus === 'idle' && (
             <div className={classes.suggestionEmpty}>
-              {onGenerateAi
-                ? 'No suggestion yet. Generate this row, or generate all on this tab.'
-                : 'No suggestion was generated for this finding. It will stay in the file.'}
+              {onGenerateAi ? AI_GENERATE_HINT : RESULTS_AI_BODY}
             </div>
         )}
         {!readOnly && itemLane === 'Manual-fix' && (
           <Typography className={classes.suggestionEmpty} variant="body2" color="textSecondary">
-            No automatic or AI suggestion. Change this in the file, or leave it.
+            {RESULTS_MANUAL_BODY}
           </Typography>
         )}
       </div>
@@ -4520,7 +4521,7 @@ export const CommitFindingReview: React.FC<{
   aiDecisions,
   setAiDecisions,
   aiStatus,
-  sideBySide = false,
+  sideBySide = true,
   readOnly = false,
 }) => {
   const classes = useStyles();

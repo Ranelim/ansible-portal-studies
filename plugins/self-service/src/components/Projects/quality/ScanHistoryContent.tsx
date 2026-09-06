@@ -17,6 +17,7 @@ import {
 } from '@material-ui/core';
 import ArrowBack from '@material-ui/icons/ArrowBack';
 import HelpOutlineIcon from '@material-ui/icons/HelpOutline';
+import { fade } from '@material-ui/core/styles';
 import { Table, TableColumn } from '@backstage/core-components';
 import { Link as RouterLink, useNavigate, useSearchParams } from 'react-router-dom';
 import { useNavIaModel } from '../../../hooks/useNavIaModel';
@@ -42,6 +43,8 @@ import {
 } from '../catalog/HealthScorePopover';
 import { CommitSha, shortSha } from './CommitSha';
 import { snippetForFinding } from './findingCodeContext';
+import { snippetForRule } from './spaWizardSnippets';
+import { beforeOnlyDiff } from './qualityDiff';
 import { SeverityFilterChips } from './SeverityFilterChips';
 import { parseScanCategoryParam, scansListPath } from './qualitySurfacePaths';
 import { QualityTabIntro } from './QualityTabIntro';
@@ -89,7 +92,7 @@ const LANE_EXPLAIN: Record<ScanFixLane, string> = {
   'Auto-fix': 'Ready-made replacements from Ansible quality rules.',
   'AI-fix':
     'Needs an AI-generated suggestion you review before it goes in the pull request.',
-  'Manual-fix': 'No automatic or AI suggestion. Change this in the file, or leave it.',
+  'Manual-fix': 'No remediation found. Remediate this manually.',
 };
 
 function laneOf(item: QualityViolation): ScanFixLane {
@@ -408,20 +411,19 @@ const useStyles = makeStyles(theme => ({
   codeLine: {
     display: 'flex',
     padding: '0 12px',
+    fontFamily: '"Red Hat Mono", ui-monospace, monospace',
+    fontSize: 12,
+    lineHeight: 1.55,
+    whiteSpace: 'pre' as const,
   },
-  codeLineError: {
+  codeLineDel: {
+    backgroundColor: fade(theme.palette.error.main, theme.palette.type === 'dark' ? 0.22 : 0.12),
+  },
+  codeLineCtx: {
     backgroundColor:
-      theme.palette.type === 'dark' ? 'rgba(201,25,11,0.12)' : '#ffeaea',
-    borderLeft: `3px solid ${SEVERITY_COLORS.high}`,
-    paddingLeft: 9,
-  },
-  codeLineNum: {
-    width: 36,
-    textAlign: 'right' as const,
-    color: theme.palette.text.disabled,
-    userSelect: 'none' as const,
-    paddingRight: 12,
-    flexShrink: 0,
+      theme.palette.type === 'dark'
+        ? fade(theme.palette.common.white, 0.04)
+        : fade(theme.palette.common.black, 0.04),
   },
   codeLineText: {
     whiteSpace: 'pre' as const,
@@ -628,8 +630,17 @@ function FindingPreviewRow({
   classes: ReturnType<typeof useStyles>;
 }) {
   const snippet = snippetForFinding(item);
+  const wizard = snippetForRule(item.ruleId);
+  const beforeLines = beforeOnlyDiff(wizard.current, wizard.proposed);
   const description = snippet?.detail || item.ruleDescription;
   const itemLane = laneOf(item);
+  const previewLines =
+    beforeLines.length > 0
+      ? beforeLines
+      : (snippet?.lines ?? []).map(line => ({
+          kind: line.highlighted ? ('del' as const) : ('context' as const),
+          text: line.text,
+        }));
 
   return (
     <Box className={classes.issueCard}>
@@ -680,22 +691,21 @@ function FindingPreviewRow({
           </Box>
         </Box>
       </Box>
-      {(description || snippet) && (
+      {(description || previewLines.length > 0) && (
         <Box className={classes.findingPreview}>
           {description ? (
             <Typography className={classes.findingDesc}>{description}</Typography>
           ) : null}
-          {snippet ? (
+          {previewLines.length > 0 ? (
             <Box className={classes.codeContext} aria-label="Code excerpt">
-              {snippet.lines.map((line, i) => (
+              {previewLines.map((line, i) => (
                 <Box
-                  key={`${line.num}-${i}`}
-                  className={`${classes.codeLine}${
-                    line.highlighted ? ` ${classes.codeLineError}` : ''
+                  key={`${line.kind}-${i}`}
+                  className={`${classes.codeLine} ${
+                    line.kind === 'del' ? classes.codeLineDel : classes.codeLineCtx
                   }`}
                 >
-                  <span className={classes.codeLineNum}>{line.num}</span>
-                  <span className={classes.codeLineText}>{line.text}</span>
+                  <span className={classes.codeLineText}>{line.text || ' '}</span>
                 </Box>
               ))}
             </Box>
