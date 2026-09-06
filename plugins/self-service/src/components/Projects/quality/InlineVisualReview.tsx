@@ -2498,7 +2498,7 @@ export const InlineVisualReview: React.FC<{
   const commitDeclined =
     phase === 'ai' ? aiDeclined : autoDeclined;
   const commitRemaining = pendingGeneratedAi;
-  const footerRemediationCount = phase === 'ai' ? ai.length : auto.length;
+  const footerRemediationCount = phase === 'ai' ? readyAi.length : auto.length;
   const footerRemediationLabel =
     footerRemediationCount === 1
       ? '1 remediation'
@@ -4706,15 +4706,6 @@ export const CommitFindingReview: React.FC<{
   return (
     <Paper variant="outlined" className={classes.commitReview} elevation={0}>
       <div className={classes.commitFilters}>
-        <TextField
-          className={classes.searchFill}
-          size="small"
-          variant="outlined"
-          placeholder="Search remediations"
-          value={query}
-          onChange={e => setQuery(e.target.value)}
-          inputProps={{ 'aria-label': 'Search remediations' }}
-        />
         <div className={classes.commitFilterSelects}>
         <FormControl variant="outlined" size="small" className={classes.commitSelect}>
           <InputLabel id="commit-severity-label">Severity</InputLabel>
@@ -4786,6 +4777,15 @@ export const CommitFindingReview: React.FC<{
           </Select>
         </FormControl>
         </div>
+        <TextField
+          className={classes.searchFill}
+          size="small"
+          variant="outlined"
+          placeholder="Search remediations"
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          inputProps={{ 'aria-label': 'Search remediations' }}
+        />
       </div>
       <div className={`${classes.tabsHost} ${classes.findingsTabsHost}`}>
         <HeaderTabs

@@ -96,7 +96,7 @@ export function SeverityFilterChips({
   activeCategory,
   onToggleCategory,
   lanes,
-  activeLane,
+  activeLanes,
   onToggleLane,
   severityLabel,
   categoryLabel,
@@ -108,7 +108,7 @@ export function SeverityFilterChips({
   activeCategory?: string;
   onToggleCategory?: (id: string) => void;
   lanes?: MixCategoryChip[];
-  activeLane?: string;
+  activeLanes?: Set<string>;
   onToggleLane?: (id: string) => void;
   severityLabel?: string;
   categoryLabel?: string;
@@ -123,7 +123,8 @@ export function SeverityFilterChips({
   const anyActive = active.size > 0;
   const catDim =
     activeCategory && activeCategory !== 'all' ? activeCategory : '';
-  const laneDim = activeLane && activeLane !== 'all' ? activeLane : '';
+  const laneActive = activeLanes ?? new Set<string>();
+  const anyLaneActive = laneActive.size > 0;
   const grouped = Boolean(severityLabel || categoryLabel);
 
   const severityChips = present.map(sev => {
@@ -187,11 +188,13 @@ export function SeverityFilterChips({
     );
   });
   const laneChips = laneList.map(lane => {
-    const isActive = activeLane === lane.id;
+    const isActive = laneActive.has(lane.id);
     return (
       <Tooltip
         key={lane.id}
-        title={`${lane.hint}. Click to ${isActive ? 'clear' : 'apply'} filter.`}
+        title={`${lane.hint.replace(/\.$/, '')}. Click to ${
+          isActive ? 'remove' : 'add'
+        } filter.`}
         arrow
       >
         <span>
@@ -206,7 +209,7 @@ export function SeverityFilterChips({
               isActive ? ` ${classes.catChipOn}` : ''
             }`}
             style={{
-              opacity: laneDim && !isActive ? 0.4 : 1,
+              opacity: anyLaneActive && !isActive ? 0.4 : 1,
             }}
           />
         </span>

@@ -8,8 +8,6 @@ import {
   Link,
   MenuItem,
   Select,
-  Tab,
-  Tabs,
   TextField,
   Tooltip,
   Typography,
@@ -83,9 +81,9 @@ const SEV_TIPS: Record<SeverityClass, string> = {
 type ScanFixLane = 'Auto-fix' | 'AI-fix' | 'Manual-fix';
 
 const REMEDIATION_LANE_LABEL: Record<ScanFixLane, string> = {
-  'Auto-fix': 'Auto remediation',
-  'AI-fix': 'AI remediation',
-  'Manual-fix': 'Manual remediation',
+  'Auto-fix': 'Auto remediations',
+  'AI-fix': 'AI remediations',
+  'Manual-fix': 'Manual only',
 };
 
 const LANE_EXPLAIN: Record<ScanFixLane, string> = {
@@ -218,28 +216,6 @@ const useStyles = makeStyles(theme => ({
     marginTop: theme.spacing(2),
     marginBottom: theme.spacing(1.5),
   },
-  laneTabs: {
-    minHeight: 36,
-    '& .MuiTabs-flexContainer': {
-      flexWrap: 'nowrap',
-    },
-    '& .MuiTabs-indicator': {
-      height: 2,
-    },
-    '& .MuiTab-root': {
-      minHeight: 36,
-      minWidth: 0,
-      padding: theme.spacing(0.75, 1.5, 0.75, 0),
-      marginRight: theme.spacing(2),
-      textTransform: 'none',
-      fontSize: 14,
-      fontWeight: 500,
-      whiteSpace: 'nowrap',
-    },
-    '& .MuiTab-root:last-child': {
-      marginRight: 0,
-    },
-  },
   toolbarFilters: {
     display: 'flex',
     alignItems: 'center',
@@ -338,7 +314,8 @@ const useStyles = makeStyles(theme => ({
     fontWeight: 600,
     letterSpacing: 0.2,
     color: theme.palette.text.secondary,
-    minWidth: 64,
+    minWidth: 118,
+    whiteSpace: 'nowrap' as const,
     textTransform: 'none' as const,
   },
   issueCard: {
@@ -536,6 +513,14 @@ function FindingsBar({
 
 const LANE_ORDER: ScanFixLane[] = ['Auto-fix', 'AI-fix', 'Manual-fix'];
 
+const EMPTY_SEVERITY_BREAKDOWN: Record<SeverityClass, number> = {
+  critical: 0,
+  high: 0,
+  medium: 0,
+  low: 0,
+  info: 0,
+};
+
 function SeverityFilterRow({
   breakdown,
   active,
@@ -543,6 +528,9 @@ function SeverityFilterRow({
   categories,
   activeCategory,
   onToggleCategory,
+  lanes,
+  activeLanes,
+  onToggleLane,
   classes,
 }: {
   breakdown: Record<SeverityClass, number>;
@@ -551,6 +539,9 @@ function SeverityFilterRow({
   categories: { id: string; label: string; count: number; hint: string }[];
   activeCategory: string;
   onToggleCategory: (id: string) => void;
+  lanes: { id: ScanFixLane; label: string; count: number; hint: string }[];
+  activeLanes: Set<ScanFixLane>;
+  onToggleLane: (id: string) => void;
   classes: ReturnType<typeof useStyles>;
 }) {
   return (
@@ -571,18 +562,27 @@ function SeverityFilterRow({
             Category
           </Typography>
           <SeverityFilterChips
-            breakdown={{
-              critical: 0,
-              high: 0,
-              medium: 0,
-              low: 0,
-              info: 0,
-            }}
+            breakdown={EMPTY_SEVERITY_BREAKDOWN}
             active={new Set()}
             onToggle={() => undefined}
             categories={categories}
             activeCategory={activeCategory}
             onToggleCategory={onToggleCategory}
+          />
+        </Box>
+      ) : null}
+      {lanes.length > 0 ? (
+        <Box className={classes.filterRow}>
+          <Typography className={classes.filterRowLabel} component="span">
+            Remediation type
+          </Typography>
+          <SeverityFilterChips
+            breakdown={EMPTY_SEVERITY_BREAKDOWN}
+            active={new Set()}
+            onToggle={() => undefined}
+            lanes={lanes}
+            activeLanes={activeLanes}
+            onToggleLane={onToggleLane}
           />
         </Box>
       ) : null}
@@ -743,7 +743,9 @@ function ScanSnapshotDetail({
   const [categoryFilter, setCategoryFilter] = useState<
     ApmeRuleCategory | 'all'
   >(initialCategory);
-  const [laneFilter, setLaneFilter] = useState<ScanFixLane | 'all'>('all');
+  const [laneFilters, setLaneFilters] = useState<Set<ScanFixLane>>(
+    () => new Set(),
+  );
   const [searchQuery, setSearchQuery] = useState('');
   const quality = getProjectQuality(row.repoName);
   const scanQuality = qualityForScan(row.repoName, row, row.isLatest);
@@ -783,6 +785,16 @@ function ScanSnapshotDetail({
       })),
     [categoryOptions],
   );
+  const laneChips = useMemo(
+    () =>
+      LANE_ORDER.filter(id => laneCounts[id] > 0).map(id => ({
+        id,
+        label: REMEDIATION_LANE_LABEL[id],
+        count: laneCounts[id],
+        hint: LANE_EXPLAIN[id],
+      })),
+    [laneCounts],
+  );
   const kindOptions = useMemo(() => {
     const counts = new Map<string, number>();
     for (const item of findings) {
@@ -804,7 +816,7 @@ function ScanSnapshotDetail({
         return false;
       }
       if (kindFilter !== 'all' && kindLabel(item) !== kindFilter) return false;
-      if (laneFilter !== 'all' && laneOf(item) !== laneFilter) return false;
+      if (laneFilters.size > 0 && !laneFilters.has(laneOf(item))) return false;
       if (!q) return true;
       return (
         item.ruleId.toLowerCase().includes(q) ||
@@ -824,14 +836,14 @@ function ScanSnapshotDetail({
     severityFilters,
     categoryFilter,
     kindFilter,
-    laneFilter,
+    laneFilters,
     searchQuery,
   ]);
   const filtersActive =
     severityFilters.size > 0 ||
     categoryFilter !== 'all' ||
     kindFilter !== 'all' ||
-    laneFilter !== 'all' ||
+    laneFilters.size > 0 ||
     searchQuery.trim() !== '';
   const status = quality?.remediationStatus;
   const showRemediate =
@@ -850,6 +862,16 @@ function ScanSnapshotDetail({
 
   const toggleCategory = useCallback((id: string) => {
     setCategoryFilter(prev => (prev === id ? 'all' : (id as ApmeRuleCategory)));
+  }, []);
+
+  const toggleLane = useCallback((id: string) => {
+    setLaneFilters(prev => {
+      const next = new Set(prev);
+      const lane = id as ScanFixLane;
+      if (next.has(lane)) next.delete(lane);
+      else next.add(lane);
+      return next;
+    });
   }, []);
 
   return (
@@ -959,50 +981,13 @@ function ScanSnapshotDetail({
             categories={categoryChips}
             activeCategory={categoryFilter}
             onToggleCategory={toggleCategory}
+            lanes={laneChips}
+            activeLanes={laneFilters}
+            onToggleLane={toggleLane}
             classes={classes}
           />
           <Box className={classes.findingToolbar}>
-            <Tabs
-              className={classes.laneTabs}
-              value={laneFilter}
-              onChange={(_event, value: ScanFixLane | 'all') =>
-                setLaneFilter(value)
-              }
-              indicatorColor="primary"
-              textColor="primary"
-              variant="scrollable"
-              scrollButtons="off"
-              aria-label="Findings by remediation type"
-            >
-              <Tab value="all" label={`All ${findings.length}`} />
-              {LANE_ORDER.map(id => {
-                const count = laneCounts[id];
-                return (
-                  <Tab
-                    key={id}
-                    value={id}
-                    disabled={count === 0}
-                    label={
-                      <Tooltip title={LANE_EXPLAIN[id]} arrow>
-                        <span>
-                          {REMEDIATION_LANE_LABEL[id]} {count}
-                        </span>
-                      </Tooltip>
-                    }
-                  />
-                );
-              })}
-            </Tabs>
             <Box className={classes.toolbarFilters}>
-              <TextField
-                className={classes.searchFill}
-                size="small"
-                variant="outlined"
-                placeholder="Search findings"
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                inputProps={{ 'aria-label': 'Search findings' }}
-              />
               <FormControl
                 variant="outlined"
                 size="small"
@@ -1025,6 +1010,15 @@ function ScanSnapshotDetail({
                   ))}
                 </Select>
               </FormControl>
+              <TextField
+                className={classes.searchFill}
+                size="small"
+                variant="outlined"
+                placeholder="Search findings"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                inputProps={{ 'aria-label': 'Search findings' }}
+              />
             </Box>
           </Box>
         </>
