@@ -38,6 +38,18 @@ export function unifiedDiff(current: string[], proposed: string[]): DiffLine[] {
   return out;
 }
 
+/**
+ * Current-only preview when there is no suggestion to show yet (AI not generated,
+ * manual / info). Keeps deletion highlighting and hides proposed adds.
+ * Additive findings have no deleted line — mark the current snippet as the
+ * problem location so it still reads as a finding, not as plain context.
+ */
+export function beforeOnlyDiff(current: string[], proposed: string[]): DiffLine[] {
+  const withoutAdds = unifiedDiff(current, proposed).filter(line => line.kind !== 'add');
+  if (withoutAdds.some(line => line.kind === 'del')) return withoutAdds;
+  return current.map(text => ({ kind: 'del' as const, text }));
+}
+
 /** Side-by-side panes from a unified diff: current keeps dels, proposed keeps adds. */
 export function splitDiff(diff: DiffLine[]): {
   current: DiffLine[];

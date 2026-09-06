@@ -66,7 +66,7 @@ import {
   type WizardDecision,
 } from './SpaRemediationReview';
 import { snippetForRule } from './spaWizardSnippets';
-import { splitDiff, unifiedDiff, type DiffLine } from './qualityDiff';
+import { beforeOnlyDiff, splitDiff, unifiedDiff, type DiffLine } from './qualityDiff';
 import { ReadCountBadge } from '../../common/ReadCountBadge';
 import { statusColors } from '../../common/statusColors';
 
@@ -4356,6 +4356,7 @@ const FindingRow: React.FC<{
         const itemSnip = snippetForRule(item.ruleId);
         const fullDiff = unifiedDiff(itemSnip.current, itemSnip.proposed);
         const split = splitDiff(fullDiff);
+        const beforeLines = beforeOnlyDiff(itemSnip.current, itemSnip.proposed);
         const showProposed =
           itemLane === 'Auto-fix' ||
           (itemLane === 'AI-fix' && aiStatus === 'ready');
@@ -4379,9 +4380,7 @@ const FindingRow: React.FC<{
               </div>
             ))
           );
-        const currentLines = showProposed
-          ? split.current
-          : itemSnip.current.map(text => ({ kind: 'context' as const, text }));
+        const currentLines = showProposed ? split.current : beforeLines;
         const findingsNote =
           itemLane === 'AI-fix' ? (
             <p className={classes.splitNote}>{FINDINGS_AI_BODY}</p>
@@ -4432,11 +4431,7 @@ const FindingRow: React.FC<{
           !readOnly &&
           (itemLane === 'Auto-fix' ||
             (itemLane === 'AI-fix' && aiStatus === 'ready'));
-        const itemLines: DiffLine[] = showRemediation
-          ? fullDiff
-          : phase === 'results' || (isCombinedPhase(phase) && itemLane === 'AI-fix')
-            ? fullDiff.filter(line => line.kind !== 'add')
-            : itemSnip.current.map(text => ({ kind: 'context' as const, text }));
+        const itemLines: DiffLine[] = showRemediation ? fullDiff : beforeLines;
         return (
       <div className={classes.diffBlock} key={`diff-${findingKey(item)}`}>
         {readOnly && itemLane === 'Manual-fix' ? (
