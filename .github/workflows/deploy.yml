@@ -34,8 +34,9 @@ jobs:
         run: yarn install --frozen-lockfile
 
       - name: Build frontend bundle
-        run: yarn tsc:skip || true && yarn build:backend --config ../../app-config.yaml || yarn workspace app build
+        run: yarn workspace app build
         env:
+          PUBLIC_URL: '/ansible-portal-studies/'
           NODE_OPTIONS: '--max-old-space-size=4096'
 
       - name: Setup Pages

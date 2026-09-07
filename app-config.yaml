@@ -18,7 +18,7 @@
 
 app:
   title: Ansible Automation Portal
-  baseUrl: http://localhost:3000
+  baseUrl: https://ranelim.github.io/ansible-portal-studies
 organization:
   name: Ansible Automation Portal
 backend:
