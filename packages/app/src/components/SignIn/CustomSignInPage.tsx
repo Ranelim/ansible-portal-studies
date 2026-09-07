@@ -3,12 +3,13 @@ import { SignInPage } from '@backstage/core-components';
 import { SignInPageProps } from '@backstage/core-plugin-api';
 import { Box, Typography, Button, makeStyles, CircularProgress, TextField } from '@material-ui/core';
 import LockOutlinedIcon from '@material-ui/icons/LockOutlined';
+import { STUDY_DISPLAY_NAME, STUDY_PASSWORD } from '../../studyLock';
 
 type CustomSignInPageProps = SignInPageProps & {
   providers: any[];
 };
 
-const STUDY_ACCESS_CODE = 'cedar-nimbus';
+const STUDY_ACCESS_CODE = STUDY_PASSWORD;
 const SESSION_KEY = 'portal-study-access';
 
 const LOCALHOST_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0'];
@@ -151,7 +152,7 @@ export const CustomSignInPage = (props: CustomSignInPageProps) => {
         <Box className={classes.card}>
           <LockOutlinedIcon className={classes.icon} />
           <Typography variant="h6" className={classes.title}>
-            Ansible Automation Portal Prototype
+          {STUDY_DISPLAY_NAME}
           </Typography>
           <Typography className={classes.subtitle}>
             Enter the access code provided by the research team.
