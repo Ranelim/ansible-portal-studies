@@ -1,71 +1,31 @@
-import {
-  type NavIaModel,
-} from '@ansible/plugin-backstage-self-service';
+import { type NavIaModel } from '@ansible/plugin-backstage-self-service';
+import { STUDY_LANDING } from '../../studyLock';
 
-function readSeatRole(): string {
-  try {
-    // Match useUserRole prototype default when no override is set
-    return localStorage.getItem('portal-user-role') || 'admin';
-  } catch {
-    return 'admin';
-  }
-}
-
-/** Experiences shell: SME → Automate; multi-seat → Bridge. */
+/** Study prototype — always land on Git Repositories. */
 export function modelHomePath(_model?: NavIaModel): string {
-  if (readSeatRole() === 'sme') {
-    return '/create?scope=experience';
-  }
-  return '/self-service/experiences';
+  return STUDY_LANDING;
 }
 
-/** Seat-aware fallback used by RoleLandingRedirect for operator plugins. */
 export function curatedLandingPath(): string {
-  let role = 'admin';
-  let compliance = false;
-  let rhem = false;
-  try {
-    role = localStorage.getItem('portal-user-role') || 'admin';
-    const plugins = JSON.parse(
-      localStorage.getItem('portal-nav-plugins') || '{}',
-    );
-    compliance = Boolean(plugins.compliance);
-    rhem = Boolean(plugins.rhem);
-  } catch {
-    /* ignore */
-  }
-  if (role === 'developer' || role === 'admin') {
-    return '/self-service/repositories';
-  }
-  if (role === 'operator') {
-    if (compliance) return '/self-service/inventories';
-    if (rhem) return '/self-service/edge-fleets';
-  }
-  return modelHomePath();
+  return STUDY_LANDING;
 }
 
-/**
- * Experiences shell — leave bakeoff-only surfaces.
- * Option B: SME may visit Bridge (no Automate card) for compare.
- * Option A: SME never stays on Bridge.
- */
 export function mismatchedModelRedirect(
   _model: NavIaModel,
   pathname: string,
 ): string | null {
-  const onBridge = pathname.startsWith('/self-service/experiences');
-  const onFlatHome =
+  if (
+    pathname === '/self-service/experiences' ||
+    pathname.startsWith('/self-service/experiences/') ||
+    pathname === '/setup' ||
+    pathname === '/self-service/setup' ||
+    pathname.startsWith('/self-service/setup/') ||
     pathname === '/self-service/home' ||
-    pathname.startsWith('/self-service/home/');
-  const onOutcomes = pathname.startsWith('/self-service/outcomes');
-  const onHomeDashboard = pathname.startsWith('/self-service/home-dashboard');
-  const sme = readSeatRole() === 'sme';
-
-  if (sme && onBridge && readAutomateShellVariant() === 'automate-rail') {
-    return '/create?scope=experience';
-  }
-  if (onFlatHome || onOutcomes || onHomeDashboard) {
-    return modelHomePath();
+    pathname.startsWith('/self-service/home/') ||
+    pathname.startsWith('/self-service/outcomes') ||
+    pathname.startsWith('/self-service/home-dashboard')
+  ) {
+    return STUDY_LANDING;
   }
   return null;
 }

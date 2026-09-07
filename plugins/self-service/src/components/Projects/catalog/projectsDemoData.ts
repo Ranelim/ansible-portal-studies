@@ -195,4 +195,48 @@ export const DEMO_PROJECTS: DemoProject[] = [
       { id: 192, trigger: 'b3a7d91', commitMessage: 'fix: AWS credential rotation handling', status: 'passed', startedAt: '2026-03-17 10:45', duration: '6m 50s', stages: [] },
     ],
   },
+  {
+    name: 'backup-automation',
+    title: 'backup-automation',
+    description:
+      'Scheduled PostgreSQL and MySQL backups with rotation, restore drills, and offsite copy.',
+    owner: 'david.lee',
+    createdAt: '2026-02-04',
+    templateUsed: 'Standard Playbook Repository',
+    pipelineType: 'comprehensive',
+    repo: {
+      url: 'https://github.com/acme-corp/backup-automation',
+      branch: 'main',
+      provider: 'github',
+      lastCommit: {
+        hash: 'c4f2e88',
+        message: 'add PostgreSQL backup rotation playbook',
+        author: 'david.lee',
+        timestamp: '2026-03-19 08:55',
+      },
+    },
+    resources: [
+      { name: 'backup-postgres.yml', path: 'playbooks/backup-postgres.yml', type: 'playbook' },
+      { name: 'backup-mysql.yml', path: 'playbooks/backup-mysql.yml', type: 'playbook' },
+      { name: 'restore-database.yml', path: 'playbooks/restore-database.yml', type: 'playbook' },
+      { name: 'db-backup-agent', path: 'roles/db-backup-agent', type: 'role' },
+      { name: 'community.postgresql', path: 'collections/requirements.yml', type: 'collection-dep' },
+      { name: 'community.mysql', path: 'collections/requirements.yml', type: 'collection-dep' },
+    ],
+    pipeline: [
+      { name: 'Commit', status: 'passed', timestamp: '2026-03-19 08:55', duration: '2s', detail: 'Commit c4f2e88 by david.lee', description: STAGE_DESCRIPTIONS['Commit'] },
+      { name: 'Lint', status: 'failed', timestamp: '2026-03-19 08:56', duration: '31s', description: STAGE_DESCRIPTIONS['Lint'] },
+      { name: 'Policy Check', status: 'failed', timestamp: '2026-03-19 08:57', duration: '42s', description: STAGE_DESCRIPTIONS['Policy Check'] },
+      { name: 'EE Compatibility', status: 'pending', description: STAGE_DESCRIPTIONS['EE Compatibility'] },
+      { name: 'Integration Test', status: 'pending', description: STAGE_DESCRIPTIONS['Integration Test'] },
+    ],
+    aap: { project: 'not-pushed', jobTemplate: 'not-pushed' },
+    lastJobRun: { status: 'failed', timestamp: '2026-03-19 09:10' },
+    starred: false,
+    jobHistory: [],
+    pipelineHistory: [
+      { id: 88, trigger: 'c4f2e88', commitMessage: 'add PostgreSQL backup rotation playbook', status: 'failed', startedAt: '2026-03-19 08:55', duration: '1m 15s', stages: [] },
+      { id: 85, trigger: '9a1c4d2', commitMessage: 'chore: pin community.postgresql to 3.4.0', status: 'failed', startedAt: '2026-03-16 11:20', duration: '1m 02s', stages: [] },
+    ],
+  },
 ];

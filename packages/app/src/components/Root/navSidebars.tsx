@@ -174,6 +174,12 @@ const useExpandableNavItemStyles = makeStyles(theme => {
       backgroundColor: selectedBg,
       color: nav.selectedColor ?? theme.palette.text.primary,
     },
+    buttonStatic: {
+      cursor: 'default',
+      '&:hover, &:focus-visible': {
+        backgroundColor: 'transparent',
+      },
+    },
     iconContainer: {
       boxSizing: 'border-box',
       height: '100%',
@@ -312,6 +318,8 @@ type ExpandableNavItemProps = {
   defaultOpen?: boolean;
   /** Highlight parent when location matches (child routes). */
   activePathPrefix?: string;
+  /** Override parent highlight (e.g. Automate Templates + Runs). */
+  isActive?: boolean;
   children: ReactNode;
 };
 
@@ -321,12 +329,14 @@ const ExpandableNavItem = ({
   icon: Icon,
   defaultOpen = true,
   activePathPrefix,
+  isActive,
   children,
 }: ExpandableNavItemProps) => {
   const classes = useExpandableNavItemStyles();
   const { pathname } = useLocation();
   const childActive = Boolean(
-    activePathPrefix && pathname.startsWith(activePathPrefix),
+    isActive ||
+      (activePathPrefix && pathname.startsWith(activePathPrefix)),
   );
 
   const [open, setOpen] = useState(() => {
@@ -389,6 +399,32 @@ const ExpandableNavItem = ({
       <Collapse in={open} id={`nav-expandable-${id}`}>
         <Box className={classes.children}>{children}</Box>
       </Collapse>
+    </Box>
+  );
+};
+
+/** Visible rail row that is not a link (study prototype). */
+const StaticNavItem = ({
+  text,
+  icon: Icon,
+}: {
+  text: string;
+  icon: ElementType;
+}) => {
+  const classes = useExpandableNavItemStyles();
+  return (
+    <Box className={classes.root}>
+      <div
+        className={`${classes.button} ${classes.buttonStatic}`}
+        aria-disabled="true"
+      >
+        <span className={classes.iconContainer} aria-hidden>
+          <Icon fontSize="small" />
+        </span>
+        <Typography className={classes.label} component="span">
+          {text}
+        </Typography>
+      </div>
     </Box>
   );
 };
@@ -1402,180 +1438,66 @@ export const ExperiencesSidebar = () => {
 };
 
 const ExperiencesDomainSidebar = () => {
-  const { pathname } = useLocation();
-  const { role, hasRole } = useUserRoleContext();
-  const { plugins } = useNavPlugins();
+  const { pathname, search } = useLocation();
   const { experience, setExperience } = useNavIaModel();
-  const { variant: runPairIa } = useTemplatesRunsIa();
-  const automateRail = runPairIa === 'automate-rail';
-  const isAdmin = hasRole('admin');
-  const smeLocked = isSmeRole(role);
-  const { visibility: bridgeVisibility } = useBridgeExperienceVisibility();
-  const available = availableExperiences({
-    role,
-    isAdmin,
-    compliance: plugins.compliance,
-    rhem: plugins.rhem,
-    bridgeVisibility,
-  });
-  const switcherAvailable = switcherIds(available);
-  const current = currentSwitcherId(pathname, experience, switcherAvailable);
+  const automateActive =
+    ((pathname === '/create' || pathname.startsWith('/create/')) &&
+      new URLSearchParams(search).get('scope') === 'experience') ||
+    pathname.startsWith('/self-service/create/tasks');
 
-  // SME: force Automate. Path owns Admin / Assistant. Coerce leftover Bridge 'all'.
   useEffect(() => {
-    if (smeLocked) return;
-    if (current === experience) return;
-    setExperience(current);
-    writeNavExperience(current);
-  }, [current, experience, setExperience, smeLocked]);
+    if (experience === 'develop') return;
+    setExperience('develop');
+    writeNavExperience('develop');
+  }, [experience, setExperience]);
 
-  /**
-   * Experience Settings rail omitted until real personal prefs exist.
-   * Platform sync / integrations stay in Administration; page route kept for later.
-   */
-  /** Experience Dashboard — overview; entity items stay list-first. */
-  const ExperienceDashboardItem = (
-    <SidebarItem
-      icon={DashboardIcon}
-      to={EXPERIENCE_DASHBOARD}
-      text="Dashboard"
-      end
-    />
-  );
-
-  const domain = current;
-
-  /** Templates · Runs (or bundled Automate) — soft gap only, no hard rules. */
-  const ExperienceRunPair =
-    runPairIa === 'masthead-plus' ? (
-      <>
-        <BundledAutomateRailItem />
-        <SidebarSpacer />
-      </>
-    ) : (
-      <>
-        <RunItems />
-        <SidebarSpacer />
-      </>
-    );
-
-  const developAdminFooter =
-    domain === 'develop' && isAdmin ? (
+  return (
+    <SearchAndMenu showSearch={false}>
+      <StaticNavItem icon={DashboardIcon} text="Dashboard" />
       <ExpandableNavItem
-        id="develop-admin"
-        icon={SettingsIcon}
-        text="Administration"
-        activePathPrefix="/self-service/develop/admin"
+        id="develop-automate"
+        icon={PlayArrowIcon}
+        text="Automate"
+        isActive={automateActive}
         defaultOpen
       >
         <ExpandableNavChild
-          to="/self-service/develop/admin/access"
-          text="Access"
+          to="/create?scope=experience"
+          text="Templates"
+          extraActive={p => p === '/create' || p.startsWith('/create/')}
         />
         <ExpandableNavChild
-          to="/self-service/develop/admin/quality"
-          text="Quality"
+          to="/self-service/create/tasks"
+          text="Runs"
+          extraActive={p => p.startsWith('/self-service/create/tasks')}
         />
       </ExpandableNavItem>
-    ) : undefined;
-
-  return (
-    <SearchAndMenu showSearch={false} footer={developAdminFooter}>
-      <ExperienceRailHeader
-        current={current}
-        available={switcherAvailable}
-        smeLocked={smeLocked}
-      />
-
-      {/* Soft gap — experience name vs menu (invisible spacer, not a rule). */}
+      <ExpandableNavItem
+        id="develop-git-repos"
+        icon={CodeIcon}
+        text="Content"
+        activePathPrefix="/self-service/repositories"
+        defaultOpen
+      >
+        <ExpandableNavChild
+          to="/self-service/repositories/list"
+          text="Git Repositories"
+          extraActive={isGitRepoDetailPath}
+        />
+        <ExpandableNavChild
+          to="/self-service/repositories/dashboard"
+          text="Content quality"
+          extraActive={p =>
+            p.includes('/repositories/remediations') ||
+            p.includes('/repositories/scans')
+          }
+        />
+      </ExpandableNavItem>
+      <StaticNavItem icon={CategoryIcon} text="Collections" />
+      <StaticNavItem icon={MemoryIcon} text="Execution Env." />
       <SidebarSpacer />
-
-      {/* A: Automate = Templates · Runs only (no Learn). B is rail-less — skip. */}
-      {domain === 'automate' && automateRail && <RunItems />}
-
-      {/* Develop — Content expandable; Git Repositories + Content quality nested. */}
-      {domain === 'develop' && (
-        <>
-          {ExperienceDashboardItem}
-          {ExperienceRunPair}
-          <ExpandableNavItem
-            id="develop-git-repos"
-            icon={CodeIcon}
-            text="Content"
-            activePathPrefix="/self-service/repositories"
-            defaultOpen
-          >
-            <ExpandableNavChild
-              to="/self-service/repositories/list"
-              text="Git Repositories"
-              extraActive={isGitRepoDetailPath}
-            />
-            <ExpandableNavChild
-              to="/self-service/repositories/dashboard"
-              text="Content quality"
-              extraActive={pathname =>
-                pathname.includes('/repositories/remediations') ||
-                pathname.includes('/repositories/scans')
-              }
-            />
-          </ExpandableNavItem>
-          <SidebarItem
-            icon={CategoryIcon}
-            to="/self-service/collections"
-            text="Collections"
-          />
-          <SidebarItem
-            icon={MemoryIcon}
-            to="/self-service/ee"
-            text="Execution Env."
-          />
-          <SidebarSpacer />
-          <LearnItems />
-        </>
-      )}
-
-      {domain === 'compliance' && (
-        <>
-          {ExperienceDashboardItem}
-          {ExperienceRunPair}
-          <SidebarItem
-            icon={StorageIcon}
-            to="/self-service/inventories"
-            text="Inventories"
-          />
-          <SidebarSpacer />
-          <LearnItems />
-        </>
-      )}
-
-      {domain === 'edge' && (
-        <>
-          {ExperienceDashboardItem}
-          {ExperienceRunPair}
-          <SidebarItem
-            icon={RouterIcon}
-            to="/self-service/edge-fleets"
-            text="Edge fleets"
-          />
-          <SidebarSpacer />
-          <LearnItems />
-        </>
-      )}
-
-      {domain === 'orchestrator' && (
-        <>
-          {ExperienceRunPair}
-          <SidebarItem
-            icon={AccountTreeIcon}
-            to="/self-service/orchestrator"
-            text="Workflows"
-          />
-          <SidebarSpacer />
-          <LearnItems />
-        </>
-      )}
-
-      {domain === 'admin' && <AdminItems />}
+      <StaticNavItem icon={LibraryBooks} text="Documentation" />
+      <StaticNavItem icon={SchoolIcon} text="Learning Paths" />
     </SearchAndMenu>
   );
 };

@@ -1,9 +1,7 @@
 /** Masthead only on Experiences shell branch (no Opt 1–5 purple banner). */
 export const IA_BANNER_HEIGHT = 0;
-/**
- * Quiet prototype jumper (Landing / Setup / Post-setup) above the masthead.
- */
-export const SETUP_DEMO_BAR_HEIGHT = 24;
+/** Quiet prototype jumper (Landing / Setup / Post-setup) — off for the study. */
+export const SETUP_DEMO_BAR_HEIGHT = 0;
 export const MASTHEAD_HEIGHT = 64;
 /**
  * Left inset for waffle / Back / magenta TEMP / page Header+Content.

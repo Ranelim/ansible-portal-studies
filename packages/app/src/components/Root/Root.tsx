@@ -3,38 +3,24 @@ import { makeStyles, Box, Typography, Button } from '@material-ui/core';
 import WarningIcon from '@material-ui/icons/Warning';
 import { useLocation } from 'react-router-dom';
 import {
-  FORCED_ADMIN_SYNC_IA,
-  FORCED_TEMPLATES_RUNS_IA,
-  FORCED_INTEGRATIONS_ORIENT,
   RestartProvider,
   useRestartRequired,
   useNavIaModel,
   writeNavExperience,
-  useTemplatesRunsIa,
-  useUserRoleContext,
-  isSmeRole,
-  isDevelopExperience,
-  experienceFromPath,
 } from '@ansible/plugin-backstage-self-service';
 import { SidebarPage } from '@backstage/core-components';
 import { ExperiencesSidebar } from './navSidebars';
 import {
-  isBridgePath,
   isGlobalShellPath,
   useCaptureGlobalShellReturn,
 } from './GlobalShellResumeBar';
-import { isAutomateFullPagePath } from './AutomateFullPageChrome';
 import {
   CHROME_TOP_BASE,
   MASTHEAD_HEIGHT,
   RAIL_ICON_GUTTER_PX,
-  SETUP_DEMO_BAR_HEIGHT,
-  TEMPLATES_RUNS_IA_BAR_HEIGHT,
   chromeTopForPrototypeBars,
   NavIaRouteGuard,
 } from '../IaPrototype';
-import { useMagentaIaBarVisible } from '../IaPrototype/useMagentaIaBarVisible';
-import { ExperienceRunPairTabs } from '../IaPrototype/ExperienceRunPairTabs';
 import { isDay0SetupPath } from '../GlobalHeader/isDay0SetupPath';
 import { ExperiencesHeaderBackPortal } from './ExperiencesHeaderBackPortal';
 
@@ -449,70 +435,14 @@ export const Root = ({ children }: PropsWithChildren<{}>) => {
   const rootClasses = useRootStyles();
   const location = useLocation();
   const { experience, setExperience } = useNavIaModel();
-  const { role } = useUserRoleContext();
-  const { variant: runPairIa } = useTemplatesRunsIa();
-  const mastheadPlus = runPairIa === 'masthead-plus';
-  const sme = isSmeRole(role);
   const isSetup = isDay0SetupPath(location.pathname);
-  const onBridge = isBridgePath(location.pathname);
   const onGlobalShell = isGlobalShellPath(
     location.pathname,
     location.search,
   );
-  const onExperienceRunPaths = isAutomateFullPagePath(
-    location.pathname,
-    location.search,
-  );
 
-  // A: Automate rail (≥2 items) — Templates · Runs.
-  // B: unified Automate host — rail-less page tabs; multi-seat return = waffle (no Back).
-  const inAutomateExperience = experience === 'automate' || (sme && mastheadPlus);
-  const railLess =
-    onBridge ||
-    onGlobalShell ||
-    (mastheadPlus && inAutomateExperience);
-
-  const { visible: magentaBarVisible } = useMagentaIaBarVisible();
-  const onAdminArea =
-    experience === 'admin' ||
-    location.pathname.startsWith('/self-service/admin') ||
-    location.pathname === '/rbac' ||
-    location.pathname.startsWith('/rbac/');
-  const showAdminSyncBar =
-    onAdminArea && !isSetup && FORCED_ADMIN_SYNC_IA === null;
-  const showIntegrationsOrientBar =
-    onAdminArea && !isSetup && FORCED_INTEGRATIONS_ORIENT === null;
-  const templatesRunsBarEligible =
-    !isSetup && FORCED_TEMPLATES_RUNS_IA === null;
-  const showTemplatesRunsBar = templatesRunsBarEligible && magentaBarVisible;
-
-  /** Option B Automate experience — page tabs Templates | Runs. Not masthead +. */
-  const showAutomateExperienceHostTabs =
-    mastheadPlus && inAutomateExperience && onExperienceRunPaths;
-
-  /** Option B: Automate pin inside Develop/Compliance/Edge → same host tabs. */
-  const showExperienceRunPairTabs =
-    mastheadPlus &&
-    !railLess &&
-    onExperienceRunPaths &&
-    (isDevelopExperience(experience) ||
-      experience === 'compliance' ||
-      experience === 'edge');
-
-  const showAutomateHostChrome =
-    showAutomateExperienceHostTabs || showExperienceRunPairTabs;
-
-  const chromeTop = isSetup
-    ? SETUP_DEMO_BAR_HEIGHT
-    : chromeTopForPrototypeBars({
-        showAdminSyncBar,
-        showIntegrationsOrientBar,
-        showTemplatesRunsBar,
-      });
-  const magentaBarPx = isSetup
-    ? SETUP_DEMO_BAR_HEIGHT
-    : SETUP_DEMO_BAR_HEIGHT +
-      (showTemplatesRunsBar ? TEMPLATES_RUNS_IA_BAR_HEIGHT : 0);
+  const chromeTop = chromeTopForPrototypeBars({});
+  const magentaBarPx = 0;
 
   useCaptureGlobalShellReturn(
     location.pathname,
@@ -521,29 +451,10 @@ export const Root = ({ children }: PropsWithChildren<{}>) => {
   );
 
   useEffect(() => {
-    if (!onBridge) return;
-    // SME has no Bridge — don't clear Automate while on catalog routes by mistake.
-    if (sme) return;
-    setExperience('all');
-    writeNavExperience('all');
-  }, [onBridge, sme, setExperience]);
-
-  // Admin / Assistant URLs own the switcher label (don't leave Automate stuck on).
-  useEffect(() => {
-    if (sme || isSetup) return;
-    const fromPath = experienceFromPath(location.pathname);
-    if (!fromPath || fromPath === experience) return;
-    setExperience(fromPath);
-    writeNavExperience(fromPath);
-  }, [location.pathname, experience, sme, isSetup, setExperience]);
-
-  // SME always lives in Automate (both A and B).
-  useEffect(() => {
-    if (!sme || isSetup) return;
-    if (experience === 'automate') return;
-    setExperience('automate');
-    writeNavExperience('automate');
-  }, [sme, isSetup, experience, setExperience]);
+    if (experience === 'develop') return;
+    setExperience('develop');
+    writeNavExperience('develop');
+  }, [experience, setExperience]);
 
   useEffect(() => {
     document.documentElement.style.setProperty(
@@ -565,26 +476,14 @@ export const Root = ({ children }: PropsWithChildren<{}>) => {
     return <>{children}</>;
   }
 
-  if (railLess) {
+  if (onGlobalShell) {
     return (
       <RestartProvider>
         <div className={rootClasses.fixedHeaderOffset} style={chromeOffsetStyle}>
           <NavIaRouteGuard />
           <GlobalRestartBanner />
-          {showAutomateExperienceHostTabs && (
-            <ExperienceRunPairTabs mode="experience" />
-          )}
-          {/* Search / Settings / profile / Create — ← left of Header title */}
-          {!showAutomateHostChrome && <ExperiencesHeaderBackPortal />}
-          <div
-            className={`${rootClasses.bridgeContent}${
-              showAutomateHostChrome
-                ? ` ${rootClasses.hideNestedPageHeader}`
-                : ''
-            }`}
-          >
-            {children}
-          </div>
+          <ExperiencesHeaderBackPortal />
+          <div className={rootClasses.bridgeContent}>{children}</div>
         </div>
       </RestartProvider>
     );
@@ -597,19 +496,9 @@ export const Root = ({ children }: PropsWithChildren<{}>) => {
         <SidebarPage>
           <ExperiencesSidebar />
           <GlobalRestartBanner />
-          {showExperienceRunPairTabs && (
-            <ExperienceRunPairTabs mode="experience" />
-          )}
           <div
             data-portal-page-inset
-            className={[
-              rootClasses.pageInsetWell,
-              showAutomateHostChrome
-                ? rootClasses.hideNestedPageHeader
-                : undefined,
-            ]
-              .filter(Boolean)
-              .join(' ')}
+            className={rootClasses.pageInsetWell}
           >
             {children}
           </div>

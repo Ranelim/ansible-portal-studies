@@ -10,7 +10,6 @@ import LogoutOutlinedIcon from '@mui/icons-material/LogoutOutlined';
 import Avatar from '@mui/material/Avatar';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
-import Divider from '@mui/material/Divider';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
 import Menu from '@mui/material/Menu';
@@ -18,11 +17,7 @@ import MenuItem from '@mui/material/MenuItem';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import { lighten } from '@mui/material/styles';
-import {
-  SEAT_OPTIONS,
-  applySeat,
-  usePrototypeSeatSync,
-} from './prototypeSeats';
+import { usePrototypeSeatSync } from './prototypeSeats';
 import { prototypeDisplayName } from './prototypeIdentity';
 
 /** user:default/guest → /catalog/default/user/guest */
@@ -236,61 +231,6 @@ export const PortalProfileMenu = () => {
           </ListItemIcon>
           <ListItemText primary="Sign out" />
         </MenuItem>
-
-        <Divider sx={{ my: 1 }} />
-
-        <Box
-          sx={theme => ({
-            mx: 1,
-            mb: 1,
-            borderRadius: 1,
-            border: `1px dashed ${theme.palette.divider}`,
-            bgcolor:
-              theme.palette.mode === 'dark'
-                ? 'rgba(255, 193, 7, 0.08)'
-                : 'rgba(255, 193, 7, 0.1)',
-            overflow: 'hidden',
-          })}
-        >
-          <Box sx={{ px: 1.5, pt: 1, pb: 0.5 }}>
-            <Typography
-              variant="caption"
-              sx={{
-                fontWeight: 700,
-                textTransform: 'uppercase',
-                letterSpacing: 0.6,
-                color: 'text.secondary',
-                display: 'block',
-              }}
-            >
-              Prototype only
-            </Typography>
-            <Typography
-              variant="caption"
-              sx={{
-                color: 'text.secondary',
-                display: 'block',
-                lineHeight: 1.35,
-              }}
-            >
-              Seat switcher for demos — not in production
-            </Typography>
-          </Box>
-          {SEAT_OPTIONS.map(seat => (
-            <MenuItem
-              key={seat.id}
-              selected={seatId === seat.id}
-              onClick={() => {
-                handleClose();
-                applySeat(seat);
-              }}
-              sx={menuItemSx}
-            >
-              <ListItemIcon>{seat.icon}</ListItemIcon>
-              <ListItemText primary={seat.label} />
-            </MenuItem>
-          ))}
-        </Box>
       </Menu>
     </Box>
   );

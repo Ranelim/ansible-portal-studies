@@ -53,7 +53,7 @@ const REPOSITORY_TEMPLATES: ResourceTemplate[] = [
     name: 'create-playbook-project',
     title: 'Ansible Playbook Repository',
     description:
-      'General-purpose playbook repository with a standard directory structure, role scaffolding, and inventory layout. Includes APME quality scanning via GitHub Actions.',
+      'General-purpose playbook repository with a standard directory structure, role scaffolding, and inventory layout. Includes quality scanning via GitHub Actions.',
     tags: ['playbook', 'starter', 'quality-scan'],
     owner: 'platform-engineering',
   },

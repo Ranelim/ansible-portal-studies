@@ -650,7 +650,7 @@ export const QualityTab = ({
             </Typography>
             <Typography style={{ fontSize: 13, color: '#888', maxWidth: 400, margin: '0 auto' }}>
               Quality scans run automatically as GitHub Actions when you push to this repository.
-              Configure the APME scan workflow to check for compatibility issues, security risks, and best practice violations.
+              Configure the quality scan workflow to check for compatibility issues, security risks, and best practice violations.
             </Typography>
           </CardContent>
         </Card>
@@ -668,7 +668,7 @@ export const QualityTab = ({
         ...quality,
         remediationStatus: demoRemediationState,
         remediationBranch: !['none', 'available'].includes(demoRemediationState)
-          ? 'apme/remediate-demo' : undefined,
+          ? 'quality/remediate-demo' : undefined,
         remediationPrUrl: ['pr-open', 'pr-merged'].includes(demoRemediationState)
           ? `https://github.com/acme-corp/${projectName}/pull/99` : undefined,
         remediationSummary: ['in-progress', 'proposals-ready', 'pr-open', 'pr-merged'].includes(demoRemediationState)
@@ -2504,7 +2504,7 @@ export const QualityTabUnified = ({
     setSelectMenuAnchor(null);
   };
 
-  const remBranch = 'apme/remediate-' + projectName;
+  const remBranch = 'quality/remediate-' + projectName;
 
   if (!quality || !scan) {
     return (
@@ -2515,7 +2515,7 @@ export const QualityTabUnified = ({
             <Typography style={{ fontSize: 16, fontWeight: 500, marginBottom: 8 }}>No quality scans yet</Typography>
             <Typography style={{ fontSize: 13, color: theme.palette.text.secondary, maxWidth: 400, margin: '0 auto' }}>
               Quality scans run automatically as GitHub Actions when you push to this repository.
-              Configure the APME scan workflow to check for compatibility issues, security risks, and best practice violations.
+              Configure the quality scan workflow to check for compatibility issues, security risks, and best practice violations.
             </Typography>
           </CardContent>
         </Card>

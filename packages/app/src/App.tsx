@@ -26,11 +26,6 @@ import { entityPage } from './components/catalog/EntityPage';
 import { SearchPage } from './components/search/SearchPage';
 import { Root } from './components/Root';
 import { GlobalHeader } from './components/GlobalHeader';
-// import { ExperienceReturnCompareBar } from './components/IaPrototype'; // kept — remount when comparing A again
-import { AdminSyncIaCompareBar } from './components/IaPrototype';
-import { IntegrationsOrientCompareBar } from './components/IaPrototype';
-import { TemplatesRunsIaCompareBar } from './components/IaPrototype';
-import { SetupDemoBar } from './components/IaPrototype';
 import { PortalNotificationsPage } from './components/Notifications/PortalNotificationsPage';
 import { PortalNotificationSettingsPage } from './components/Notifications/PortalNotificationSettingsPage';
 import { PortalUserSettingsPage } from './components/Settings/PortalUserSettingsPage';
@@ -38,9 +33,9 @@ import { PortalMyProfilePage } from './components/catalog/PortalMyProfilePage';
 import { LightspeedProvider, LightspeedPanel } from './components/Lightspeed';
 import { QuickstartProvider, QuickstartPanel } from './components/Quickstart';
 import { getThemes } from '@red-hat-developer-hub/backstage-plugin-theme';
-
-import { CustomSignInPage } from './components/SignIn/CustomSignInPage';
+import { lockStudyWorld, STUDY_LANDING } from './studyLock';
 import { createApp } from '@backstage/app-defaults';
+import { CustomSignInPage } from './components/SignIn/CustomSignInPage';
 import { AppRouter, FlatRoutes } from '@backstage/core-app-api';
 import { CatalogGraphPage } from '@backstage/plugin-catalog-graph';
 import { RequirePermission } from '@backstage/plugin-permission-react';
@@ -50,6 +45,8 @@ import { PortalCreatePage } from './components/scaffolder/PortalCreatePage';
 import { SelfServicePage } from '@ansible/plugin-backstage-self-service';
 import { RbacPage } from '@backstage-community/plugin-rbac';
 import { TechDocsWrapper } from './components/docs/TechDocsWrapper';
+
+lockStudyWorld();
 
 const app = createApp({
   apis,
@@ -82,15 +79,10 @@ const app = createApp({
 });
 
 const RoleLandingRedirect = () => {
-  const { role, loading } = useUserRoleContext();
+  const { loading } = useUserRoleContext();
   if (loading) return null;
-  // SME → Automate experience (A/B only changes Templates/Runs chrome).
-  // Multi-seat → Bridge catalog
-  if (role === 'sme') {
-    writeNavExperience('automate');
-    return <Navigate to="/create?scope=experience" replace />;
-  }
-  return <Navigate to="/self-service/experiences" replace />;
+  writeNavExperience('develop');
+  return <Navigate to={STUDY_LANDING} replace />;
 };
 
 const routes = (
@@ -143,7 +135,18 @@ const routes = (
 );
 
 const RoleProvider = ({ children }: { children: React.ReactNode }) => {
-  const value = useUserRole();
+  useUserRole();
+  const value = React.useMemo(
+    () => ({
+      role: 'developer' as const,
+      loading: false,
+      hasRole: (minRole: 'sme' | 'developer' | 'operator' | 'admin') => {
+        const hierarchy = { sme: 0, developer: 1, operator: 1, admin: 2 };
+        return hierarchy.developer >= hierarchy[minRole];
+      },
+    }),
+    [],
+  );
   return (
     <UserRoleContext.Provider value={value}>
       {children}
@@ -160,11 +163,6 @@ export default app.createRoot(
         <LightspeedProvider>
           <QuickstartProvider>
             <GlobalHeader />
-            <SetupDemoBar />
-            {/* <ExperienceReturnCompareBar /> — B forced; remount to compare A */}
-            <AdminSyncIaCompareBar />
-            <IntegrationsOrientCompareBar />
-            <TemplatesRunsIaCompareBar />
             <Root>{routes}</Root>
             <LightspeedPanel />
             <QuickstartPanel />

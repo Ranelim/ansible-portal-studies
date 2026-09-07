@@ -747,7 +747,7 @@ const PipelineQualityStep = ({
   return (
     <Box>
       <Typography variant="body2" color="textSecondary" style={{ marginBottom: 20 }}>
-        APME quality scanning runs as a GitHub Action and checks your content for
+        Quality scanning runs as a GitHub Action and checks your content for
         compatibility issues, security risks, and best-practice violations. Choose
         how often scans run.
       </Typography>

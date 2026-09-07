@@ -1240,7 +1240,7 @@ export const ApmeRemediationPage = () => {
   }, []);
   const [createPr, setCreatePr] = useState(true);
   const [branchName, setBranchName] = useState(
-    `apme/remediate-${(quality?.latestScan.scanId ?? 'fix').slice(0, 12)}`,
+    `quality/remediate-${(quality?.latestScan.scanId ?? 'fix').slice(0, 12)}`,
   );
   const [committing, setCommitting] = useState(false);
   const [pushed, setPushed] = useState(false);

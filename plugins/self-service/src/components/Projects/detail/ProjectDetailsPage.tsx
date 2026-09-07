@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { DEVSPACES_BASE_URL } from '../../Admin/syncDemoData';
 import { isDevSpacesConnected } from '../../../hooks/devSpacesSetup';
 import { useUserRoleContext } from '../../../hooks/useUserRole';
@@ -139,11 +139,37 @@ This project automates the complete patching lifecycle for RHEL hosts: pre-patch
 ## License
 
 Apache-2.0`,
+
+  'backup-automation': `# Backup Automation
+
+Scheduled database backups for PostgreSQL and MySQL, with rotation and restore drills.
+
+## Overview
+
+This repository backs up production databases on a schedule, rotates local copies, and can restore a backup to a target host for recovery testing.
+
+## Playbooks
+
+| Playbook | Description |
+|----------|-------------|
+| \`backup-postgres.yml\` | Dump PostgreSQL, rotate local copies, copy offsite |
+| \`backup-mysql.yml\` | MySQL dump with retention policy |
+| \`restore-database.yml\` | Restore a backup to a target host |
+
+## Requirements
+
+- Ansible >= 2.15
+- \`community.postgresql\` and \`community.mysql\`
+- Vaulted credentials for database hosts
+
+## License
+
+Apache-2.0`,
 };
 
 const DEFAULT_PROJECT_README = `# Project
 
-This project was created in the Ansible Portal to manage automation content with AAP integration.
+This project was created in Automation Portal to manage automation content with AAP integration.
 
 ## Getting Started
 
@@ -1154,13 +1180,6 @@ export const ProjectDetailsPage = () => {
     setQualityInitialView(view);
     setSelectedTab(index);
   }, []);
-
-  useEffect(() => {
-    const id = window.requestAnimationFrame(() => {
-      window.dispatchEvent(new Event('resize'));
-    });
-    return () => window.cancelAnimationFrame(id);
-  }, [selectedTab, pageTabs.length]);
 
   if (!project) {
     return (

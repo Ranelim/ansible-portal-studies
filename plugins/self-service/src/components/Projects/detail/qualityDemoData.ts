@@ -306,7 +306,7 @@ const QUALITY_DATA: Record<string, ProjectQualityData> = {
     ],
     remediationStatus: 'pr-open',
     remediationPrUrl: 'https://github.com/acme-corp/network-firewall-rules/pull/15',
-    remediationBranch: 'apme/remediate-008',
+    remediationBranch: 'quality/remediate-008',
     remediationSummary: { addressed: 9, remaining: 5, autoFixed: 6, aiProposed: 3 },
     latestScan: {
       scanId: 'scan-net-008',
@@ -450,7 +450,7 @@ const QUALITY_DATA: Record<string, ProjectQualityData> = {
       { scanIndex: 3, totalViolations: 21, fixable: 12 },
     ],
     remediationStatus: 'proposals-ready',
-    remediationBranch: 'apme/remediate-005',
+    remediationBranch: 'quality/remediate-005',
     remediationSummary: { addressed: 12, remaining: 9, autoFixed: 8, aiProposed: 4 },
     latestScan: {
       scanId: 'scan-bak-005',
@@ -505,12 +505,12 @@ const QUALITY_DATA: Record<string, ProjectQualityData> = {
     proposals: [],
     ansibleCoreVersion: '2.15.4',
     collections: [
-      { fqcn: 'paloalto.panos', version: '2.19.0', source: 'galaxy', violations: 3 },
-      { fqcn: 'ansible.netcommon', version: '5.3.0', source: 'galaxy', violations: 1 },
+      { fqcn: 'community.postgresql', version: '3.4.0', source: 'galaxy', violations: 2 },
+      { fqcn: 'community.mysql', version: '3.8.0', source: 'galaxy', violations: 1 },
     ],
     pythonPackages: [
-      { name: 'pan-os-python', version: '1.11.0', cveCount: 1, highestSeverity: 'high' },
-      { name: 'paramiko', version: '3.3.1', cveCount: 0 },
+      { name: 'psycopg2-binary', version: '2.9.9', cveCount: 0 },
+      { name: 'PyMySQL', version: '1.1.0', cveCount: 0 },
     ],
   },
 };

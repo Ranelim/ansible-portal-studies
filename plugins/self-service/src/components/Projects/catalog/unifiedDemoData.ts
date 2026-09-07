@@ -107,9 +107,9 @@ export const PIPELINE_PROFILES: PipelineProfile[] = [
       },
       {
         id: 'stig-apme-quality-scan',
-        name: 'APME quality scan required',
-        description: 'All pushes must pass an APME quality scan. Violations must be below the threshold before merging.',
-        standard: 'APME',
+        name: 'Quality scan required',
+        description: 'All pushes must pass a quality scan. Violations must be below the threshold before merging.',
+        standard: 'Quality',
         severity: 'high',
       },
     ],
@@ -149,7 +149,7 @@ export const PIPELINE_PROFILES: PipelineProfile[] = [
       {
         id: 'org-apme-quality-gate',
         name: 'Quality scan gate',
-        description: 'APME quality scans run on every push and pull request. Critical and high violations block merge.',
+        description: 'Quality scans run on every push and pull request. Critical and high violations block merge.',
         severity: 'high',
       },
     ],
@@ -275,9 +275,8 @@ export type GitRepository = {
   jobHistory?: JobRunEntry[];
 };
 
-const DISCOVERED_ONLY_NAMES = new Set([
-  'backup-automation',
-]);
+// All study repos are full DemoProjects so list → detail never 404s.
+const DISCOVERED_ONLY_NAMES = new Set<string>([]);
 
 const PIPELINE_PROFILE_BY_REPO: Record<string, string> = {
   'rhel-patching': 'stig-rhel9',

@@ -109,7 +109,7 @@ const TemplateCard = ({
           {template.tags.map(tag => (
             <Chip
               key={tag}
-              label={tag === 'quality-scan' ? 'APME quality scan' : tag}
+              label={tag === 'quality-scan' ? 'Quality scan' : tag}
               size="small"
               variant="outlined"
               style={{

@@ -2,9 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { SignInPage } from '@backstage/core-components';
 import { SignInPageProps } from '@backstage/core-plugin-api';
 import { Box, Typography, Button, makeStyles, CircularProgress, TextField } from '@material-ui/core';
-import SettingsIcon from '@material-ui/icons/Settings';
 import LockOutlinedIcon from '@material-ui/icons/LockOutlined';
-import { writeSetupDemoMode } from '@ansible/plugin-backstage-self-service';
 
 type CustomSignInPageProps = SignInPageProps & {
   providers: any[];
@@ -203,46 +201,11 @@ export const CustomSignInPage = (props: CustomSignInPageProps) => {
   }
 
   return (
-    <>
-      <SignInPage
-        {...signInProps}
-        align="center"
-        title="Select a sign-in method"
-        providers={providers}
-      />
-      <Box className={classes.setupCard}>
-        <SettingsIcon style={{ fontSize: 22, flexShrink: 0, opacity: 0.6 }} />
-        <Box className={classes.setupText}>
-          <Typography className={classes.setupTitle}>
-            First time setup?
-          </Typography>
-          <Typography className={classes.setupDescription}>
-            Configure portal connections to AAP, Git, and registries.
-          </Typography>
-        </Box>
-        <Button
-          variant="outlined"
-          size="small"
-          className={classes.setupButton}
-          onClick={() => {
-            sessionStorage.setItem('portal-setup-redirect', 'true');
-            sessionStorage.setItem('portal-welcome-modal-dismissed-session', 'true');
-            writeSetupDemoMode('landing');
-            props.onSignInSuccess({
-              getIdToken: async () => ({ token: '' }),
-              getId: async () => 'setup-admin',
-              getProfile: async () => ({
-                email: 'admin@portal.local',
-                displayName: 'Admin',
-              }),
-              getCredentials: async () => ({ token: '' }),
-              signOut: async () => {},
-            } as any);
-          }}
-        >
-          Setup Wizard
-        </Button>
-      </Box>
-    </>
+    <SignInPage
+      {...signInProps}
+      align="center"
+      title="Select a sign-in method"
+      providers={providers}
+    />
   );
 };

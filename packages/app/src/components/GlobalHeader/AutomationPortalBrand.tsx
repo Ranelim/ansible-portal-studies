@@ -1,21 +1,13 @@
-import { Link } from '@backstage/core-components';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import { useTheme } from '@mui/material/styles';
-import {
-  isSmeRole,
-  useUserRoleContext,
-} from '@ansible/plugin-backstage-self-service';
-import {
-  ExperiencesWaffleButton,
-  SHOW_EXPERIENCES_WAFFLE,
-} from './ExperiencesWaffleButton';
+import { ExperiencesWaffleButton } from './ExperiencesWaffleButton';
 
 /** Matches Backstage/RHDH open sidebar. */
 export const SIDEBAR_WIDTH_OPEN = 224;
 
 /**
- * Prototype-only: “Ansible Automation Portal” must not ellipsize.
+ * Prototype-only: product name must not ellipsize.
  * Wider than the rail so the full product name fits at a slightly smaller size.
  */
 export const BRAND_COLUMN_WIDTH = 280;
@@ -51,13 +43,6 @@ const RedHatFedora = ({ size = 36 }: { size?: number }) => (
 export const AutomationPortalBrand = () => {
   const theme = useTheme();
   const ink = theme.palette.text.primary;
-  const { role } = useUserRoleContext();
-  const sme = isSmeRole(role);
-  const showWaffle = SHOW_EXPERIENCES_WAFFLE && !sme;
-
-  const homeTo = sme
-    ? '/create?scope=experience'
-    : '/self-service/experiences';
 
   return (
     <Box
@@ -72,21 +57,15 @@ export const AutomationPortalBrand = () => {
         alignItems: 'center',
         flexShrink: 0,
         boxSizing: 'border-box',
-        // Toolbar already pads RAIL_ICON_GUTTER (32px) — same as the rail back
-        // chevron. Do not add extra pl when the waffle is off or the fedora
-        // sits to the right of the back button.
         ml: 0,
         pl: 0,
         pr: 1,
-        gap: showWaffle ? 1.5 : 0,
+        gap: 0,
       }}
     >
       <ExperiencesWaffleButton />
-      <Link
-        to={homeTo}
-        underline="none"
-        color="inherit"
-        aria-label="Home — Ansible Automation Portal"
+      <Box
+        aria-label="Automation Portal"
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -132,10 +111,10 @@ export const AutomationPortalBrand = () => {
               whiteSpace: 'nowrap',
             }}
           >
-            Ansible Automation Portal
+            Automation Portal
           </Typography>
         </Box>
-      </Link>
+      </Box>
     </Box>
   );
 };
