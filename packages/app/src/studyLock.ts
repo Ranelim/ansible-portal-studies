@@ -11,8 +11,9 @@ import {
   writeSetupDemoMode,
 } from '@ansible/plugin-backstage-self-service';
 
-export const STUDY_DISPLAY_NAME = 'Username';
+export const STUDY_DISPLAY_NAME = 'Ansible Automation Portal Prototype - APME V2';
 export const STUDY_LANDING = '/self-service/repositories/list';
+export const STUDY_PASSWORD = 'fish-dawn';
 
 export function lockStudyWorld() {
   if (typeof window === 'undefined') return;
