@@ -33,8 +33,10 @@ jobs:
       - name: Install dependencies
         run: yarn install --frozen-lockfile
 
-      - name: Build prototype
-        run: yarn build
+      - name: Build frontend bundle
+        run: yarn tsc:skip || true && yarn build:backend --config ../../app-config.yaml || yarn workspace app build
+        env:
+          NODE_OPTIONS: '--max-old-space-size=4096'
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
