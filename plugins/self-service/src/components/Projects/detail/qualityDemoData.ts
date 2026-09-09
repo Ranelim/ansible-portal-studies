@@ -163,7 +163,7 @@ const QUALITY_DATA: Record<string, ProjectQualityData> = {
       scanSource: 'github-action',
       trigger: 'push',
       ciRunUrl: 'https://github.com/acme-corp/rhel-patching/actions/runs/9841',
-      ciRunId: 'Quality Scan #287',
+      ciRunId: 'CI #849',
     },
     scanHistory: [
       {
@@ -173,7 +173,7 @@ const QUALITY_DATA: Record<string, ProjectQualityData> = {
         severityBreakdown: { critical: 1, high: 3, medium: 5, low: 2, info: 1 },
         commitHash: 'a3f1b2c', scanSource: 'github-action', trigger: 'push',
         ciRunUrl: 'https://github.com/acme-corp/rhel-patching/actions/runs/9841',
-        ciRunId: 'Quality Scan #287',
+        ciRunId: 'CI #849',
         remainingViolations: 12,
         remainingSeverity: { critical: 1, high: 3, medium: 5, low: 2, info: 1 },
         remediationOutcome: 'none',
@@ -314,26 +314,30 @@ const QUALITY_DATA: Record<string, ProjectQualityData> = {
       scanType: 'check',
       createdAt: '1 day ago',
       totalViolations: 14,
-      fixable: 9,
-      aiCandidates: 5,
+      fixable: 12,
+      aiCandidates: 2,
       aiAccepted: 0,
       aiDeclined: 0,
-      manualReview: 5,
-      remediatedCount: 0,
+      manualReview: 2,
+      remediatedCount: 9,
       severityBreakdown: { critical: 1, high: 3, medium: 5, low: 4, info: 1 },
       commitHash: 'e7d2f1a',
       scanSource: 'github-action',
       trigger: 'push',
-      ciRunId: 'Quality Scan #54',
+      ciRunId: 'CI #56',
+      remainingViolations: 5,
+      remainingSeverity: { critical: 0, high: 1, medium: 2, low: 1, info: 1 },
+      remediationOutcome: 'pr-open',
+      prUrl: 'https://github.com/acme-corp/network-firewall-rules/pull/15',
     },
     scanHistory: [
       {
         scanId: 'scan-net-008', scanType: 'check', createdAt: 'May 24, 2026 08:15',
-        totalViolations: 14, fixable: 9, aiCandidates: 5, aiAccepted: 0, aiDeclined: 0,
-        manualReview: 5, remediatedCount: 9,
+        totalViolations: 14, fixable: 12, aiCandidates: 2, aiAccepted: 0, aiDeclined: 0,
+        manualReview: 2, remediatedCount: 9,
         severityBreakdown: { critical: 1, high: 3, medium: 5, low: 4, info: 1 },
         commitHash: 'e7d2f1a', scanSource: 'github-action', trigger: 'push',
-        ciRunId: 'Quality Scan #54',
+        ciRunId: 'CI #56',
         remainingViolations: 5,
         remainingSeverity: { critical: 0, high: 1, medium: 2, low: 1, info: 1 },
         remediationOutcome: 'pr-open',
@@ -371,9 +375,9 @@ const QUALITY_DATA: Record<string, ProjectQualityData> = {
     proposals: [],
     ansibleCoreVersion: '2.15.8',
     collections: [
-      { fqcn: 'amazon.aws', version: '6.5.0', source: 'galaxy', violations: 1 },
-      { fqcn: 'community.aws', version: '6.4.0', source: 'galaxy', violations: 3 },
+      { fqcn: 'paloalto.panos', version: '2.19.0', source: 'galaxy', violations: 2 },
       { fqcn: 'ansible.posix', version: '1.5.4', source: 'galaxy', violations: 0 },
+      { fqcn: 'ansible.netcommon', version: '5.3.0', source: 'galaxy', violations: 1 },
     ],
     pythonPackages: [
       { name: 'boto3', version: '1.28.0', cveCount: 0 },
@@ -387,7 +391,7 @@ const QUALITY_DATA: Record<string, ProjectQualityData> = {
     totalViolations: 3,
     lastScannedAt: '4 hours ago',
     lastScannedCommit: 'b4f9c2d',
-    scanCount: 22,
+    scanCount: 1,
     severityBreakdown: { critical: 0, high: 0, medium: 1, low: 1, info: 1 },
     trend: [
       { scanIndex: 1, totalViolations: 8, fixable: 6 },
@@ -411,7 +415,7 @@ const QUALITY_DATA: Record<string, ProjectQualityData> = {
       commitHash: 'b4f9c2d',
       scanSource: 'github-action',
       trigger: 'push',
-      ciRunId: 'Quality Scan #102',
+      ciRunId: 'CI #104',
     },
     scanHistory: [
       {
@@ -420,7 +424,7 @@ const QUALITY_DATA: Record<string, ProjectQualityData> = {
         manualReview: 1, remediatedCount: 0,
         severityBreakdown: { critical: 0, high: 0, medium: 1, low: 1, info: 1 },
         commitHash: 'b4f9c2d', scanSource: 'github-action', trigger: 'push',
-        ciRunId: 'Quality Scan #102',
+        ciRunId: 'CI #104',
       },
     ],
     violations: [
@@ -458,26 +462,28 @@ const QUALITY_DATA: Record<string, ProjectQualityData> = {
       scanType: 'check',
       createdAt: '3 days ago',
       totalViolations: 21,
-      fixable: 12,
-      aiCandidates: 6,
+      fixable: 17,
+      aiCandidates: 4,
       aiAccepted: 0,
       aiDeclined: 0,
-      manualReview: 9,
+      manualReview: 4,
       remediatedCount: 0,
       severityBreakdown: { critical: 2, high: 5, medium: 8, low: 4, info: 2 },
       commitHash: 'c1d8e3f',
       scanSource: 'github-action',
       trigger: 'schedule',
-      ciRunId: 'Quality Scan #19',
+      ciRunId: 'CI #21',
+      remediationOutcome: 'suggestions-ready',
     },
     scanHistory: [
       {
         scanId: 'scan-bak-005', scanType: 'check', createdAt: 'May 22, 2026 06:00',
-        totalViolations: 21, fixable: 12, aiCandidates: 6, aiAccepted: 0, aiDeclined: 0,
-        manualReview: 9, remediatedCount: 0,
+        totalViolations: 21, fixable: 17, aiCandidates: 4, aiAccepted: 0, aiDeclined: 0,
+        manualReview: 4, remediatedCount: 0,
         severityBreakdown: { critical: 2, high: 5, medium: 8, low: 4, info: 2 },
         commitHash: 'c1d8e3f', scanSource: 'github-action', trigger: 'schedule',
-        ciRunId: 'Quality Scan #19',
+        ciRunId: 'CI #21',
+        remediationOutcome: 'suggestions-ready',
       },
     ],
     violations: [
@@ -518,6 +524,20 @@ const QUALITY_DATA: Record<string, ProjectQualityData> = {
 
 export function getProjectQuality(projectName: string): ProjectQualityData | null {
   return QUALITY_DATA[projectName] ?? null;
+}
+
+const DEMO_NEW_PR_URLS: Record<string, string> = {
+  'rhel-patching': 'https://github.com/acme-corp/rhel-patching/pull/43',
+  'cloud-provisioner': 'https://github.com/acme-corp/cloud-provisioner/pull/29',
+  'backup-automation': 'https://github.com/acme-corp/backup-automation/pull/22',
+};
+
+/** PR URL shown when the remediation wizard completes (repo-specific). */
+export function getDemoRemediationPrUrl(repoName: string, org = 'acme-corp'): string {
+  const q = QUALITY_DATA[repoName];
+  if (q?.remediationPrUrl) return q.remediationPrUrl;
+  if (DEMO_NEW_PR_URLS[repoName]) return DEMO_NEW_PR_URLS[repoName];
+  return `https://github.com/${org}/${repoName}/pull/1`;
 }
 
 /** APME-style 0–100 from a scan’s severity mix (prototype; not Gateway). */
@@ -908,46 +928,47 @@ export type FleetQualityRow = {
 export function getFleetQualityData(): FleetQualityRow[] {
   const scenarios: Record<string, { status: WorkflowStatus; label: string; remaining: number; pipeline: PipelineStep[] }> = {
     'rhel-patching': {
-      status: 'remediation-in-review',
-      label: '10 addressed · review in IDE',
-      remaining: 2,
+      status: 'remediation-available',
+      label: '12 violations · remediation available',
+      remaining: 12,
       pipeline: [
         { label: 'Scanned', status: 'done', detail: '2 hours ago · push · commit a3f1b2c' },
-        { label: '12 violations found', status: 'done', detail: '1 critical · 3 high · 5 medium' },
-        { label: '10 addressed (8 auto + 2 AI)', status: 'done', detail: 'PR #42 open for review' },
-        { label: 'Review PR', status: 'active', detail: '2 remaining need manual fix' },
+        { label: '12 violations found', status: 'active', detail: '1 critical · 3 high · 5 medium' },
+        { label: 'Suggest fixes', status: 'pending', detail: '10 auto-fixable · 2 manual' },
+        { label: 'Review PR', status: 'pending' },
       ],
     },
     'network-firewall-rules': {
-      status: 'has-violations',
-      label: '14 violations found',
-      remaining: 14,
+      status: 'remediation-in-review',
+      label: 'PR #15 open · 5 remaining',
+      remaining: 5,
       pipeline: [
         { label: 'Scanned', status: 'done', detail: '1 day ago · push · commit e7d2f1a' },
-        { label: '14 violations found', status: 'active', detail: '1 critical · 3 high · 5 medium' },
-        { label: 'Suggest fixes', status: 'pending', detail: '9 auto-fixable · 5 manual' },
-        { label: 'Review PR', status: 'pending' },
+        { label: '14 violations found', status: 'done', detail: '1 critical · 3 high · 5 medium' },
+        { label: '9 addressed (6 auto + 3 AI)', status: 'done', detail: 'Remediation branch pushed' },
+        { label: 'Review PR', status: 'active', detail: 'PR #15 open · 5 remaining need manual fix' },
       ],
     },
     'cloud-provisioner': {
       status: 'has-violations',
-      label: '3 minor issues',
+      label: '3 minor issues · remediation in progress',
       remaining: 3,
       pipeline: [
         { label: 'Scanned', status: 'done', detail: '4 hours ago · push · commit b4f9c2d' },
-        { label: '3 violations found', status: 'active', detail: '1 medium · 1 low · 1 info' },
-        { label: 'Suggest fixes', status: 'pending', detail: '2 auto-fixable · 1 manual' },
+        { label: '3 violations found', status: 'done', detail: '1 medium · 1 low · 1 info' },
+        { label: 'Suggest fixes', status: 'active', detail: '2 auto-fixable · 1 manual' },
+        { label: 'Review PR', status: 'pending' },
       ],
     },
     'backup-automation': {
-      status: 'remaining',
-      label: '21 violations · needs attention',
-      remaining: 21,
+      status: 'remediation-in-review',
+      label: '12 fixes ready for review',
+      remaining: 9,
       pipeline: [
         { label: 'Scanned', status: 'done', detail: '3 days ago · scheduled · commit c1d8e3f' },
-        { label: '21 violations found', status: 'active', detail: '2 critical · 5 high · 8 medium' },
-        { label: 'Suggest fixes', status: 'pending', detail: '12 auto-fixable · 9 manual' },
-        { label: 'Review PR', status: 'pending' },
+        { label: '21 violations found', status: 'done', detail: '2 critical · 5 high · 8 medium' },
+        { label: '12 addressed (8 auto + 4 AI)', status: 'active', detail: 'Suggestions ready on quality/remediate-005' },
+        { label: 'Review PR', status: 'pending', detail: '9 remaining need manual fix' },
       ],
     },
   };
@@ -1162,7 +1183,7 @@ const UPGRADE_DATA: Record<string, AapUpgradeData> = {
     currentVersion: '2.4',
     latestVersion: '2.7',
     findings: [],
-    summary: { total: 12, autoFixable: 9, manualReview: 3, breakingChanges: 2 },
+    summary: { total: 8, autoFixable: 6, manualReview: 2, breakingChanges: 2 },
   },
   'network-firewall-rules': {
     currentVersion: '2.5',

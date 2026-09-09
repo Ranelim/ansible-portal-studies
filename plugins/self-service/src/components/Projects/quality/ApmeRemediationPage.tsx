@@ -23,7 +23,11 @@ import {
 } from './qualitySurfacePaths';
 import { statusColors } from '../../common/statusColors';
 import { GIT_REPOSITORIES } from '../catalog/unifiedDemoData';
-import { getProjectQuality, type QualityViolation } from '../detail/qualityDemoData';
+import {
+  getDemoRemediationPrUrl,
+  getProjectQuality,
+  type QualityViolation,
+} from '../detail/qualityDemoData';
 import {
   NodeReviewList,
   OperationProgressPanel,
@@ -1280,8 +1284,7 @@ export const ApmeRemediationPage = () => {
   const [committing, setCommitting] = useState(false);
   const [pushed, setPushed] = useState(false);
   const [prUrl, setPrUrl] = useState(
-    quality?.remediationPrUrl ??
-      `https://github.com/${repo?.org ?? 'acme-corp'}/${repoName}/pull/42`,
+    getDemoRemediationPrUrl(repoName, repo?.org ?? 'acme-corp'),
   );
 
   const quickFix = quality?.violations.filter(v => v.fixTier === 'deterministic') ?? [];
@@ -1874,7 +1877,7 @@ export const ApmeRemediationPage = () => {
                 window.setTimeout(() => {
                   setCommitting(false);
                   setPushed(true);
-                  setPrUrl(`https://github.com/${repo.org}/${repo.name}/pull/42`);
+                  setPrUrl(getDemoRemediationPrUrl(repo.name, repo.org));
                   setStep('complete');
                 }, 1400);
               }}
