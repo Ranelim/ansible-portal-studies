@@ -55,13 +55,53 @@ export const REMEDIATION_STATUS_LABEL: Record<RemediationStatus, string> = {
   available: 'not started',
   'in-progress': 'in progress',
   'proposals-ready': 'proposals ready',
+  superseded: 'superseded',
   'pr-open': 'pull request open',
   'pr-merged': 'pull request merged',
 };
 
-/** Idle = default. Only surface status when work has started. */
+/** Card + popover: unified status line (replaces per-state remediation labels). */
+export function getCardRemediationStatusLabel(
+  status: RemediationStatus,
+): 'Remediation pending' | 'Superseded' | null {
+  if (status === 'superseded') return 'Superseded';
+  if (
+    status === 'available' ||
+    status === 'in-progress' ||
+    status === 'proposals-ready'
+  ) {
+    return 'Remediation pending';
+  }
+  return null;
+}
+
+export function shouldShowRemediateButton(
+  status: RemediationStatus,
+  totalViolations: number,
+): boolean {
+  if (totalViolations === 0) return false;
+  if (status === 'none' || status === 'pr-open' || status === 'pr-merged') {
+    return false;
+  }
+  return (
+    status === 'available' ||
+    status === 'in-progress' ||
+    status === 'proposals-ready' ||
+    status === 'superseded'
+  );
+}
+
+export function isRemediateButtonDisabled(status: RemediationStatus): boolean {
+  return status === 'superseded';
+}
+
+export function remediationSessionResume(status: RemediationStatus): boolean {
+  return status === 'in-progress' || status === 'proposals-ready';
+}
+
+/** @deprecated Use getCardRemediationStatusLabel for card surfaces. */
 export const remediationHasStarted = (status: RemediationStatus) =>
-  status !== 'none' && status !== 'available';
+  getCardRemediationStatusLabel(status) !== null;
 
 type NodeHit = {
   key: string;
@@ -493,7 +533,7 @@ export const HealthScorePopover = ({
   const presentSev = SEVERITY_ORDER.filter(sev => (severityBreakdown[sev] ?? 0) > 0);
   const sha = lastScannedCommit ? shortSha(lastScannedCommit) : null;
   const findings = quality.violations ?? [];
-  const showRemediation = remediationHasStarted(quality.remediationStatus);
+  const cardStatus = getCardRemediationStatusLabel(quality.remediationStatus);
   const listCell = showScanMeta || showFindingsLink;
   const findingsLabel =
     totalViolations === 0
@@ -567,9 +607,9 @@ export const HealthScorePopover = ({
                 </>
               )}
             </Typography>
-            {showRemediation && (
+            {cardStatus && (
               <Typography className={classes.meta}>
-                Remediation: {REMEDIATION_STATUS_LABEL[quality.remediationStatus]}
+                Status: {cardStatus}
               </Typography>
             )}
             <Typography style={{ fontSize: 11, color: theme.palette.text.disabled, marginTop: 2, lineHeight: 1.45 }}>

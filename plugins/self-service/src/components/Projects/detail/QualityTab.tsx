@@ -558,7 +558,13 @@ const TRIGGER_LABELS: Record<string, string> = {
 // Main QualityTab
 // ---------------------------------------------------------------------------
 const DEMO_REMEDIATION_STATES: RemediationStatus[] = [
-  'none', 'available', 'in-progress', 'proposals-ready', 'pr-open', 'pr-merged',
+  'none',
+  'available',
+  'in-progress',
+  'proposals-ready',
+  'superseded',
+  'pr-open',
+  'pr-merged',
 ];
 
 const DEMO_STATE_LABELS: Record<RemediationStatus, string> = {
@@ -566,6 +572,7 @@ const DEMO_STATE_LABELS: Record<RemediationStatus, string> = {
   'available': 'Available',
   'in-progress': 'In progress',
   'proposals-ready': 'Proposals',
+  'superseded': 'Superseded',
   'pr-open': 'PR open',
   'pr-merged': 'Merged',
 };

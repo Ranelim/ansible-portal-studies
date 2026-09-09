@@ -101,6 +101,7 @@ export type RemediationStatus =
   | 'available'
   | 'in-progress'
   | 'proposals-ready'
+  | 'superseded'
   | 'pr-open'
   | 'pr-merged';
 

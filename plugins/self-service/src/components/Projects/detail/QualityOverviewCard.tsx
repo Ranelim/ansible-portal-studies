@@ -6,16 +6,15 @@ import {
   CategoryMixMini,
   HEALTH_SCORE_HINT,
   HealthScorePopover,
-  REMEDIATION_STATUS_LABEL,
-  remediationHasStarted,
+  getCardRemediationStatusLabel,
+  isRemediateButtonDisabled,
+  remediationSessionResume,
+  shouldShowRemediateButton,
 } from '../catalog/HealthScorePopover';
 import { useNavIaModel } from '../../../hooks/useNavIaModel';
 import { scansListPath } from '../quality/qualitySurfacePaths';
 import { useProjectDetailStyles } from './styles';
 import type { ProjectQualityData } from './qualityDemoData';
-
-const liveSession = (status: ProjectQualityData['remediationStatus']) =>
-  status === 'in-progress' || status === 'proposals-ready';
 
 const shortSha = (sha: string) => sha.slice(0, 7);
 
@@ -99,11 +98,14 @@ export const QualityOverviewCard = ({
     );
   }
 
-  const live = liveSession(quality.remediationStatus);
   const scannedSha = quality.lastScannedCommit
     ? shortSha(quality.lastScannedCommit)
     : null;
-  const showRemediation = remediationHasStarted(quality.remediationStatus);
+  const cardStatus = getCardRemediationStatusLabel(quality.remediationStatus);
+  const showRemediate = shouldShowRemediateButton(
+    quality.remediationStatus,
+    quality.totalViolations,
+  );
   const prUrl = quality.remediationPrUrl;
 
   return (
@@ -132,9 +134,9 @@ export const QualityOverviewCard = ({
             </>
           )}
         </Typography>
-        {showRemediation && (
+        {cardStatus && (
           <Typography color="textSecondary" style={{ fontSize: 13, marginTop: 4 }}>
-            Remediation: {REMEDIATION_STATUS_LABEL[quality.remediationStatus]}
+            Status: {cardStatus}
           </Typography>
         )}
         <CategoryMixMini repoName={repoName} divided={false} />
@@ -144,13 +146,18 @@ export const QualityOverviewCard = ({
           alignItems="stretch"
           style={{ gap: 8, marginTop: 16 }}
         >
-          {live && (
+          {showRemediate && (
             <Button
               variant="contained"
               color="primary"
               size="small"
               style={pill}
-              onClick={() => navigate(scanPath(true))}
+              disabled={isRemediateButtonDisabled(quality.remediationStatus)}
+              onClick={() =>
+                navigate(
+                  scanPath(remediationSessionResume(quality.remediationStatus)),
+                )
+              }
             >
               Remediate
             </Button>
