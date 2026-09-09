@@ -54,8 +54,8 @@ import { RemediationReceipt } from './RemediationReceipt';
  * Redesign = Scan → Review auto-fixes → Choose AI findings → Review AI-fixes → Commit.
  * Inline AI = Scan → Results & Remediation → Commit.
  * Inline visual = Scan → Findings → Auto remediations → AI remediations → Commit.
- * Session is Without findings (no separate Findings step): Scan → Findings
- * and Auto remediations → AI remediations → Commit. Design-options compare
+ * Session is Without findings: Scan (results) → Rule remediations → AI remediations → Commit.
+ * Design-options compare
  * (With findings vs Without findings) is parked — set SHOW_STEPS_COMPARE
  * `true` and FORCED_STEPS_MODEL `null` to revive. Stale
  * `?steps=without-results|review|work` still maps to without-findings.
@@ -169,8 +169,8 @@ function displayStepId(
 ): StepId {
   if (chrome === 'original') return step;
   if (chrome === 'visual') {
-    if (skipsFindingsStep(stepsModel) && step === 'findings') {
-      return 'tier1_proposals';
+    if (skipsFindingsStep(stepsModel) && (step === 'findings' || step === 'scan')) {
+      return 'findings';
     }
     switch (step) {
       case 'scan':
@@ -434,6 +434,7 @@ const useStyles = makeStyles(theme => ({
   },
   panel: {
     padding: theme.spacing(2.5),
+    marginTop: theme.spacing(2),
     marginBottom: theme.spacing(2),
   },
   panelTitle: {
@@ -456,6 +457,33 @@ const useStyles = makeStyles(theme => ({
     maxWidth: 480,
     marginBottom: theme.spacing(2),
   },
+  listHeading: {
+    fontSize: '1.25rem',
+    fontWeight: 600,
+    lineHeight: 1.3,
+    color: theme.palette.text.primary,
+  },
+  stepIntro: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: theme.spacing(1),
+    flex: 1,
+    minWidth: 0,
+  },
+  stepIntroDesc: {
+    ...theme.typography.body2,
+    color: theme.palette.text.secondary,
+    maxWidth: 720,
+    margin: 0,
+  },
+  commitIntroRow: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: theme.spacing(2),
+    marginBottom: theme.spacing(2),
+    width: '100%',
+  },
   commitHeader: {
     display: 'flex',
     justifyContent: 'space-between',
@@ -475,11 +503,11 @@ function workflowSteps(
 ): StepDef[] {
   if (chrome === 'visual') {
     if (skipsFindingsStep(stepsModel)) {
-      const steps: StepDef[] = [{ id: 'scan', label: 'Scan' }];
+      const steps: StepDef[] = [{ id: 'findings', label: 'Findings' }];
       if (includeAuto || includeManual) {
         steps.push({
           id: 'tier1_proposals',
-          label: 'Findings and Auto remediations',
+          label: 'Rule remediations',
         });
       }
       if (includeAi) {
@@ -493,7 +521,7 @@ function workflowSteps(
       { id: 'findings', label: 'Findings' },
     ];
     if (includeAuto) {
-      steps.push({ id: 'tier1_proposals', label: 'Auto remediations' });
+      steps.push({ id: 'tier1_proposals', label: 'Rule remediations' });
     }
     if (includeAi) {
       steps.push({ id: 'ai_proposals', label: 'AI remediations' });
@@ -553,6 +581,13 @@ const SPINNING = new Set<StepId>([
 function findingsPhrase(n: number): string {
   return `${n} finding${n !== 1 ? 's' : ''}`;
 }
+
+function remediatedChangesCountHeading(count: number): string {
+  return count === 1 ? '1 Remediated change' : `${count} Remediated changes`;
+}
+
+const COMMIT_STEP_DESC =
+  'Create a branch, push the remediations you accepted, and optionally open a pull request.';
 
 function WorkflowStepper({
   steps,
@@ -1212,7 +1247,7 @@ export const ApmeRemediationPage = () => {
   const [aiOptIn, setAiOptIn] = useState<Record<string, boolean>>({});
   const [aiGenerating, setAiGenerating] = useState(false);
   const [aiStatus, setAiStatus] = useState<Record<string, AiRowStatus>>({});
-  const [sideBySide, setSideBySide] = useState(true);
+  const [sideBySide, setSideBySide] = useState(false);
   const generateInlineAi = useCallback((key: string) => {
     setAiStatus(prev => ({ ...prev, [key]: 'loading' }));
     window.setTimeout(() => {
@@ -1279,7 +1314,9 @@ export const ApmeRemediationPage = () => {
       setLogIndex(i => {
         if (i >= SCAN_PHASES.length - 1) {
           window.clearInterval(id);
-          if (skipsFindingsStep(stepsModel)) {
+          if (skipsFindingsStep(stepsModel) && visual) {
+            setStep('findings');
+          } else if (skipsFindingsStep(stepsModel)) {
             setStep(
               includeAuto || includeManual
                 ? 'tier1_proposals'
@@ -1297,18 +1334,6 @@ export const ApmeRemediationPage = () => {
     }, 700);
     return () => window.clearInterval(id);
   }, [step, stepsModel, includeAuto, includeManual, includeAi]);
-
-  useEffect(() => {
-    if (!visual || !skipsFindingsStep(stepsModel)) return;
-    if (step !== 'findings') return;
-    setStep(
-      includeAuto || includeManual
-        ? 'tier1_proposals'
-        : includeAi
-          ? 'ai_proposals'
-          : 'commit',
-    );
-  }, [visual, stepsModel, step, includeAuto, includeManual, includeAi]);
 
   useEffect(() => {
     if (step !== 'tier1_applied' && step !== 'ai_applied' && !(step === 'ai_assessment' && aiGenerating)) {
@@ -1406,7 +1431,6 @@ export const ApmeRemediationPage = () => {
   }
 
   const displayRepo = `${repo.org}/${repo.name}`;
-  const isWithoutFindings = stepsModel === 'without-findings';
   const scanWhen =
     quality.scanHistory[0]?.createdAt ?? quality.latestScan.createdAt;
   const scanSha = quality.latestScan.commitHash;
@@ -1474,15 +1498,7 @@ export const ApmeRemediationPage = () => {
         sessionDone={sessionDone}
         bare={visual}
       />
-      {visual && step === 'commit' ? (
-        <Typography
-          className={`${classes.stepperHint} ${classes.stepperHintBeforePanel}`}
-          variant="body2"
-          color="textSecondary"
-        >
-          Create a branch, push the remediations you accepted, and optionally open a pull request.
-        </Typography>
-      ) : visual && step === 'complete' && completeAcceptedCount > 0 ? (
+      {visual && step === 'complete' && completeAcceptedCount > 0 ? (
         <Typography
           className={`${classes.stepperHint} ${classes.stepperHintBeforePanel}`}
           variant="body2"
@@ -1575,7 +1591,7 @@ export const ApmeRemediationPage = () => {
             setAiDecisions={setAiDecisions}
             aiStatus={aiStatus}
             onNext={() => {
-              if (includeAuto) setStep('tier1_proposals');
+              if (includeAuto || includeManual) setStep('tier1_proposals');
               else if (includeAi) setStep('ai_proposals');
               else setStep('commit');
             }}
@@ -1641,7 +1657,7 @@ export const ApmeRemediationPage = () => {
             onCancel={goBack}
             ctaLayout={ctaLayout}
             reviewLayout={reviewLayout}
-            phase={isWithoutFindings ? 'review' : 'autofix'}
+            phase="autofix"
             sideBySide={sideBySide}
             onSideBySideChange={setSideBySide}
             header={
@@ -1764,27 +1780,43 @@ export const ApmeRemediationPage = () => {
       const count = remediated || quality.latestScan.fixable;
       const commitHeading =
         count > 0
-          ? `Commit ${count} remediated change${count !== 1 ? 's' : ''}`
-          : 'Commit remediation changes';
+          ? remediatedChangesCountHeading(count)
+          : 'Remediated changes';
       return (
         <>
         <Paper variant="outlined" className={classes.panel}>
           <div className={classes.commitHeader}>
-            <Box>
-              <Typography className={classes.panelTitle}>{commitHeading}</Typography>
-              {visual ? null : (
-                <Typography className={classes.hint} style={{ marginBottom: 0 }}>
-                  Create a branch, push the fixes, and optionally open a pull request.
-                </Typography>
-              )}
-            </Box>
-            <Box display="flex" flexDirection="column" alignItems="flex-end" style={{ gap: 8 }}>
-              {visual ? (
+            {visual ? (
+              <div className={classes.commitIntroRow}>
+                <div className={classes.stepIntro}>
+                  <Typography className={classes.listHeading} component="h2">
+                    {commitHeading}
+                  </Typography>
+                  <Typography
+                    className={classes.stepIntroDesc}
+                    variant="body2"
+                    color="textSecondary"
+                  >
+                    {COMMIT_STEP_DESC}
+                  </Typography>
+                </div>
                 <Button className={classes.pill} onClick={goBack} disabled={committing}>
                   Cancel
                 </Button>
-              ) : (
-                <>
+              </div>
+            ) : (
+              <>
+                <Box flex={1}>
+                  <Typography className={classes.panelTitle}>
+                    {count > 0
+                      ? `Commit ${count} remediated change${count !== 1 ? 's' : ''}`
+                      : 'Commit remediation changes'}
+                  </Typography>
+                  <Typography className={classes.hint} style={{ marginBottom: 0 }}>
+                    Create a branch, push the fixes, and optionally open a pull request.
+                  </Typography>
+                </Box>
+                <Box display="flex" flexDirection="column" alignItems="flex-end" style={{ gap: 8 }}>
                   <Box display="flex" style={{ gap: 8 }}>
                     <Button
                       className={classes.pill}
@@ -1807,9 +1839,9 @@ export const ApmeRemediationPage = () => {
                         ? 'Continue without pushing. Use Create below to push or open a PR first.'
                         : 'Continue without pushing. Use Commit below to push or open a PR first.'}
                   </Typography>
-                </>
-              )}
-            </Box>
+                </Box>
+              </>
+            )}
           </div>
           <Box className={classes.formRow}>
             <TextField
@@ -1868,6 +1900,7 @@ export const ApmeRemediationPage = () => {
             setAiDecisions={setAiDecisions}
             aiStatus={aiStatus}
             sideBySide={sideBySide}
+            onSideBySideChange={setSideBySide}
           />
         ) : null}
         </>

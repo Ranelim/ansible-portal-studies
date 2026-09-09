@@ -10,7 +10,7 @@ export const SIDEBAR_WIDTH_OPEN = 224;
  * Prototype-only: product name must not ellipsize.
  * Wider than the rail so the full product name fits at a slightly smaller size.
  */
-export const BRAND_COLUMN_WIDTH = 280;
+export const BRAND_COLUMN_WIDTH = 320;
 
 
 /**
@@ -65,7 +65,7 @@ export const AutomationPortalBrand = () => {
     >
       <ExperiencesWaffleButton />
       <Box
-        aria-label="Automation Portal"
+        aria-label="Ansible Automation Portal"
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -111,7 +111,7 @@ export const AutomationPortalBrand = () => {
               whiteSpace: 'nowrap',
             }}
           >
-            Automation Portal
+            Ansible Automation Portal
           </Typography>
         </Box>
       </Box>

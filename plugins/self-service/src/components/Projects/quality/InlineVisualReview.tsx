@@ -195,6 +195,33 @@ const LightspeedSpark = ({ size = 14 }: { size?: number }) => (
   </svg>
 );
 
+const DiffLayoutToggle: React.FC<{
+  sideBySide: boolean;
+  onSideBySideChange?: (next: boolean) => void;
+}> = ({ sideBySide, onSideBySideChange }) => {
+  const classes = useStyles();
+  return (
+    <ToggleButtonGroup
+      exclusive
+      size="small"
+      className={classes.diffToggle}
+      value={sideBySide ? 'split' : 'stacked'}
+      onChange={(_event, next: 'stacked' | 'split' | null) => {
+        if (next == null) return;
+        onSideBySideChange?.(next === 'split');
+      }}
+      aria-label="Diff layout"
+    >
+      <ToggleButton value="stacked" aria-label="Stacked" title="Stacked" sx={DIFF_TOGGLE_SX}>
+        <DiffStackedIcon />
+      </ToggleButton>
+      <ToggleButton value="split" aria-label="Side by side" title="Side by side" sx={DIFF_TOGGLE_SX}>
+        <DiffSplitIcon />
+      </ToggleButton>
+    </ToggleButtonGroup>
+  );
+};
+
 export type CtaLayout = 'current' | 'footer';
 /** Current = Continue under the stepper. Redesign / 3 / 4 = forks of Current. */
 export type ReviewLayout = 'current' | 'redesign' | 'redesign3' | 'redesign4';
@@ -262,27 +289,27 @@ const TAB_LABEL: Record<FixLane, string> = {
 };
 
 const REMEDIATION_LANE_LABEL: Record<FixLane, string> = {
-  'Auto-fix': 'Auto remediation',
+  'Auto-fix': 'Rule remediation',
   'AI-fix': 'AI remediation',
   'Manual-fix': 'Manual remediation',
 };
 
 const REVIEW_TAB_LABEL: Record<FixLane, string> = {
-  'Auto-fix': 'Auto remediations',
+  'Auto-fix': 'Rule remediations',
   'AI-fix': 'AI remediations',
   'Manual-fix': 'Manual only',
 };
 
 const FINDINGS_TAB_LABEL: Record<ReviewTab, string> = {
   All: 'All',
-  'Auto-fix': 'Auto remediations',
+  'Auto-fix': 'Rule remediations',
   'AI-fix': 'Requires AI remediation',
   'Manual-fix': 'Manual remediation only',
 };
 
 const REVIEW_FILTER_TAB_LABEL: Record<ReviewTab, string> = {
   All: 'All',
-  'Auto-fix': 'Auto remediations',
+  'Auto-fix': 'Rule remediations',
   'AI-fix': 'AI remediations',
   'Manual-fix': 'Manual remediations',
 };
@@ -290,7 +317,7 @@ const REVIEW_FILTER_TAB_LABEL: Record<ReviewTab, string> = {
 function findingsTabCountLabel(tab: ReviewTab, n: number): string {
   if (tab === 'All') return `${n} findings`;
   if (tab === 'Auto-fix') {
-    return n === 1 ? '1 auto remediation' : `${n} auto remediations`;
+    return n === 1 ? '1 rule remediation' : `${n} rule remediations`;
   }
   if (tab === 'AI-fix') {
     return n === 1 ? '1 requires AI remediation' : `${n} require AI remediation`;
@@ -326,7 +353,7 @@ function reviewTabLabel(tab: ReviewTab, redesign: boolean, redesign3 = false): s
 function reviewLaneCountLabel(tab: ReviewTab, n: number): string {
   if (tab === 'All') return `${n} findings`;
   if (tab === 'Auto-fix') {
-    return n === 1 ? '1 auto remediation' : `${n} auto remediations`;
+    return n === 1 ? '1 rule remediation' : `${n} rule remediations`;
   }
   if (tab === 'AI-fix') {
     return n === 1 ? '1 AI remediation' : `${n} AI remediations`;
@@ -364,19 +391,44 @@ const LANE_EXPLAIN: Record<FixLane, string> = {
   'Manual-fix': 'No remediation found. Remediate this manually.',
 };
 
+const FINDINGS_LANE_HINT: Record<FixLane, string> = {
+  'Auto-fix':
+    'Ready-made replacements from Ansible quality rules. Review and accept or decline on the Rule remediations step.',
+  'AI-fix':
+    'Eligible for a Lightspeed suggestion you review before it goes in the PR. Generate and decide on the AI remediations step.',
+  'Manual-fix':
+    'No automated remediation is available. Fix these manually outside this wizard.',
+};
+
+function findingsBreakdownPhrase(count: number, lane: FixLane): string {
+  if (lane === 'Auto-fix') {
+    return count === 1 ? '1 Rule remediation' : `${count} Rule remediations`;
+  }
+  if (lane === 'AI-fix') {
+    return count === 1 ? '1 AI remediation' : `${count} AI remediations`;
+  }
+  return count === 1 ? '1 Manual remediation' : `${count} Manual remediations`;
+}
+
 const AUTO_FIX_EXPLAIN =
   'Ready-made replacements from Ansible quality rules.';
 
 const AUTO_STEP_DESC =
-  'Review auto remediations and decline any you do not want in the pull request. Each is a ready-made replacement from this scan, and starts accepted.';
+  'Review rule remediations and decline any you do not want in the pull request. Each starts accepted.';
 
 const AI_STEP_DESC =
   'Generate Lightspeed suggestions, then accept or decline them so the pull request includes only the remediations you want.';
 
+const RULE_REMEDIATIONS_STEP_DESC =
+  'Ready-made replacements from Ansible quality rules. Review and decline any you do not want in the pull request. Each starts accepted.';
+
+const AI_REMEDIATIONS_STEP_DESC =
+  'Eligible for an AI-generated suggestion you review before it goes in the PR. Generate Lightspeed suggestions, then accept or decline them so the pull request includes only the remediations you want.';
+
 function autoRemediationJobTitle(count: number): string {
   return count === 1
-    ? 'Accept or decline 1 auto remediation'
-    : `Accept or decline ${count} auto remediations`;
+    ? 'Accept or decline 1 rule remediation'
+    : `Accept or decline ${count} rule remediations`;
 }
 
 function aiRemediationJobTitle(count: number): string {
@@ -387,6 +439,18 @@ function aiRemediationJobTitle(count: number): string {
 
 function findingsJobTitle(count: number): string {
   return count === 1 ? 'Review 1 finding' : `Review ${count} findings`;
+}
+
+function findingsCountHeading(count: number): string {
+  return count === 1 ? '1 Finding' : `${count} Findings`;
+}
+
+function ruleRemediationsCountHeading(count: number): string {
+  return count === 1 ? '1 Rule remediation' : `${count} Rule remediations`;
+}
+
+function aiRemediationsCountHeading(count: number): string {
+  return count === 1 ? '1 AI remediation' : `${count} AI remediations`;
 }
 
 function findingsRemediationHeading(
@@ -423,6 +487,9 @@ const RESULTS_MANUAL_BODY =
 
 const RESULTS_AI_BODY =
   'No remediation yet. Generate an AI suggestion on the next step.';
+
+const RESULTS_RULE_BODY =
+  'Review the proposed fix on the Rule remediations step.';
 
 const FINDINGS_AI_BODY = RESULTS_AI_BODY;
 
@@ -654,7 +721,7 @@ const useStyles = makeStyles((theme: Theme) => ({
     },
   },
   scrollBodyRedesign: {
-    gap: theme.spacing(1),
+    gap: theme.spacing(2),
   },
   wizardFooter: {
     flexShrink: 0,
@@ -896,8 +963,65 @@ const useStyles = makeStyles((theme: Theme) => ({
     gap: theme.spacing(1),
     padding: theme.spacing(1.5, 2, 0),
   },
+  stepIntro: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: theme.spacing(1),
+    padding: theme.spacing(2, 2, 0),
+  },
+  stepIntroDesc: {
+    ...theme.typography.body2,
+    color: theme.palette.text.secondary,
+    maxWidth: 720,
+    margin: 0,
+  },
+  findingsLaneBreakdown: {
+    display: 'flex',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: theme.spacing(0.5),
+    maxWidth: 720,
+  },
+  findingsLaneBreakdownItem: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 2,
+  },
+  findingsLaneBreakdownLink: {
+    ...theme.typography.body2,
+    color: theme.palette.text.secondary,
+    background: 'none',
+    border: 'none',
+    padding: 0,
+    font: 'inherit',
+    cursor: 'pointer',
+    textAlign: 'left',
+    '&:hover': {
+      color: theme.palette.text.primary,
+    },
+  },
+  findingsLaneBreakdownLinkActive: {
+    color: theme.palette.text.primary,
+    textDecoration: 'underline',
+    fontWeight: 600,
+  },
+  findingsLaneBreakdownSep: {
+    ...theme.typography.body2,
+    color: theme.palette.text.secondary,
+    marginRight: theme.spacing(0.5),
+  },
+  stepPanelChrome: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: theme.spacing(2),
+    paddingBottom: theme.spacing(2.5),
+  },
   resultsMixAfterCount: {
     paddingTop: theme.spacing(1),
+  },
+  resultsMixStep: {
+    padding: theme.spacing(0, 2),
+    gap: theme.spacing(1.5),
   },
   resultsMixBar: {
     width: '100%',
@@ -1006,8 +1130,8 @@ const useStyles = makeStyles((theme: Theme) => ({
   },
   commitFilters: {
     display: 'flex',
-    alignItems: 'center',
-    flexWrap: 'wrap',
+    flexDirection: 'column',
+    alignItems: 'stretch',
     gap: theme.spacing(1),
     padding: theme.spacing(1.5, 2, 1),
     width: '100%',
@@ -1164,8 +1288,7 @@ const useStyles = makeStyles((theme: Theme) => ({
     alignItems: 'center',
     gap: theme.spacing(1.5),
     flexWrap: 'wrap',
-    /* Top 0: bulkBar padding already supplies the gap above. Bottom matches that 8px. */
-    margin: theme.spacing(0, 2, 1),
+    margin: theme.spacing(0, 2, 0),
     padding: theme.spacing(1.25, 1.5),
     backgroundColor:
       theme.palette.type === 'light' ? '#e7f1fa' : 'rgba(38, 117, 195, 0.12)',
@@ -1549,6 +1672,10 @@ const useStyles = makeStyles((theme: Theme) => ({
   bulkBarSpaced: {
     paddingTop: theme.spacing(1.5),
     paddingBottom: theme.spacing(2.5),
+  },
+  bulkBarStep: {
+    padding: theme.spacing(0, 2),
+    gap: theme.spacing(1.5),
   },
   bulkRow: {
     display: 'flex',
@@ -1951,7 +2078,7 @@ export const InlineVisualReview: React.FC<{
   ctaLayout?: CtaLayout;
   reviewLayout?: ReviewLayout;
   phase?: ReviewPhase;
-  /** Current | Remediation split. Default stacked. */
+  /** Current | Remediation split. Default stacked (full width). */
   sideBySide?: boolean;
   onSideBySideChange?: (next: boolean) => void;
   header?: ReactNode;
@@ -1969,7 +2096,7 @@ export const InlineVisualReview: React.FC<{
   ctaLayout = 'current',
   reviewLayout = 'current',
   phase = 'bundled',
-  sideBySide = true,
+  sideBySide = false,
   onSideBySideChange,
   header,
 }) => {
@@ -1985,7 +2112,7 @@ export const InlineVisualReview: React.FC<{
     auto.length > 0 && {
       id: 'auto',
       count: auto.length,
-      label: auto.length === 1 ? 'auto remediation' : 'auto remediations',
+      label: auto.length === 1 ? 'rule remediation' : 'rule remediations',
       hint: LANE_EXPLAIN['Auto-fix'],
     },
     ai.length > 0 && {
@@ -2005,7 +2132,7 @@ export const InlineVisualReview: React.FC<{
     auto.length > 0 && {
       id: 'auto',
       count: auto.length,
-      label: auto.length === 1 ? 'auto remediation' : 'auto remediations',
+      label: auto.length === 1 ? 'rule remediation' : 'rule remediations',
       hint: LANE_EXPLAIN['Auto-fix'],
     },
     ai.length > 0 && {
@@ -2023,6 +2150,31 @@ export const InlineVisualReview: React.FC<{
   ].filter(Boolean) as { id: string; count: number; label: string; hint: string }[];
   const inventoryCountItems =
     phase === 'review' ? reviewCountItems : phase === 'work' ? workCountItems : [];
+  const findingsBreakdownItems = [
+    auto.length > 0 && {
+      lane: 'Auto-fix' as FixLane,
+      count: auto.length,
+      label: findingsBreakdownPhrase(auto.length, 'Auto-fix'),
+      hint: FINDINGS_LANE_HINT['Auto-fix'],
+    },
+    ai.length > 0 && {
+      lane: 'AI-fix' as FixLane,
+      count: ai.length,
+      label: findingsBreakdownPhrase(ai.length, 'AI-fix'),
+      hint: FINDINGS_LANE_HINT['AI-fix'],
+    },
+    manual.length > 0 && {
+      lane: 'Manual-fix' as FixLane,
+      count: manual.length,
+      label: findingsBreakdownPhrase(manual.length, 'Manual-fix'),
+      hint: FINDINGS_LANE_HINT['Manual-fix'],
+    },
+  ].filter(Boolean) as {
+    lane: FixLane;
+    count: number;
+    label: string;
+    hint: string;
+  }[];
 
   const mix = useMemo(() => mixFromFindings(reviewFindings), [reviewFindings]);
   const autoMix = useMemo(
@@ -2468,7 +2620,7 @@ export const InlineVisualReview: React.FC<{
       : phase === 'autofix' || isCombinedPhase(phase)
       ? pendingT1 > 0
         ? usesRemediationVocab(phase)
-          ? 'Accept or decline each auto remediation to continue.'
+          ? 'Accept or decline each rule remediation to continue.'
           : 'Accept or decline each auto-fix to continue.'
         : ''
       : phase === 'ai'
@@ -2515,27 +2667,40 @@ export const InlineVisualReview: React.FC<{
   const decideCount =
     auto.length === 0
       ? usesRemediationVocab(phase)
-        ? 'No auto remediations to decide'
+        ? 'No rule remediations to decide'
         : 'No auto-fixes to decide'
       : usesRemediationVocab(phase)
-        ? `${autoDecided} of ${auto.length} auto remediations decided`
+        ? `${autoDecided} of ${auto.length} rule remediations decided`
         : `${autoDecided} of ${auto.length} auto-fixes decided`;
 
   const findingWord = mix.total === 1 ? 'finding' : 'findings';
   const stepHeading =
     phase === 'results'
-      ? findingsJobTitle(mix.total)
-      : phase === 'review' || phase === 'autofix'
+      ? findingsCountHeading(mix.total)
+      : phase === 'autofix'
+        ? ruleRemediationsCountHeading(auto.length)
+      : phase === 'review'
         ? autoRemediationJobTitle(auto.length)
         : phase === 'ai'
-          ? aiRemediationJobTitle(ai.length)
+          ? aiRemediationsCountHeading(ai.length)
           : '';
-  const stepDescription =
-    phase === 'review' || phase === 'autofix'
-      ? AUTO_STEP_DESC
+  const stepIntroDescription =
+    phase === 'autofix'
+      ? RULE_REMEDIATIONS_STEP_DESC
       : phase === 'ai'
-        ? AI_STEP_DESC
+        ? AI_REMEDIATIONS_STEP_DESC
         : null;
+  const usesStepPanelChrome =
+    currentRedesign &&
+    (phase === 'results' || phase === 'autofix' || phase === 'ai');
+  const stepDescription =
+    usesStepPanelChrome
+      ? null
+      : phase === 'review' || phase === 'autofix'
+        ? AUTO_STEP_DESC
+        : phase === 'ai'
+          ? AI_STEP_DESC
+          : null;
   const useFooter = ctaLayout === 'footer' || currentRedesign;
   const showListChrome = true;
   const searchPlaceholder =
@@ -2547,7 +2712,7 @@ export const InlineVisualReview: React.FC<{
       ? 'Search findings'
       : fixType === 'Auto-fix'
       ? usesRemediationVocab(phase)
-        ? 'Search auto remediations'
+        ? 'Search rule remediations'
         : 'Search auto-fixes'
       : fixType === 'AI-fix'
         ? usesRemediationVocab(phase)
@@ -2576,11 +2741,16 @@ export const InlineVisualReview: React.FC<{
     [findingsFilterMix],
   );
   const usesFindingsFilterBar =
-    phase === 'review' || phase === 'ai' || phase === 'autofix';
+    phase === 'results' ||
+    phase === 'review' ||
+    phase === 'ai' ||
+    phase === 'autofix';
 
   const showingCount = filtered.length;
   const showingTotal =
-    phase === 'review' ? reviewFindings.length : tabFindings.length;
+    phase === 'review' || phase === 'results'
+      ? reviewFindings.length
+      : tabFindings.length;
   const showingLabel = `${showingCount} showing`;
   const remainingItems =
     fixType === 'AI-fix'
@@ -2633,7 +2803,8 @@ export const InlineVisualReview: React.FC<{
     category !== 'all' ||
     laneFilter !== 'all' ||
     severityFilter.size > 0 ||
-    filterGeneratedAi;
+    filterGeneratedAi ||
+    (phase === 'results' && fixType !== 'All');
   const clearFilters = () => {
     setQuery('');
     setContentType('all');
@@ -2641,7 +2812,7 @@ export const InlineVisualReview: React.FC<{
     setLaneFilter('all');
     setSeverityFilter(new Set());
     setFilterGeneratedAi(false);
-    if (phase === 'review') setFixType('All');
+    if (phase === 'review' || phase === 'results') setFixType('All');
   };
   const showingCountControl = (
     <div className={classes.showingInline}>
@@ -2667,24 +2838,10 @@ export const InlineVisualReview: React.FC<{
   );
   const generateAiLabel = `Generate remediations with AI (${idleAi.length})`;
   const diffDisplayToggle = (
-    <ToggleButtonGroup
-      exclusive
-      size="small"
-      className={classes.diffToggle}
-      value={sideBySide ? 'split' : 'stacked'}
-      onChange={(_event, next: 'stacked' | 'split' | null) => {
-        if (next == null) return;
-        onSideBySideChange?.(next === 'split');
-      }}
-      aria-label="Diff layout"
-    >
-      <ToggleButton value="stacked" aria-label="Stacked" title="Stacked" sx={DIFF_TOGGLE_SX}>
-        <DiffStackedIcon />
-      </ToggleButton>
-      <ToggleButton value="split" aria-label="Side by side" title="Side by side" sx={DIFF_TOGGLE_SX}>
-        <DiffSplitIcon />
-      </ToggleButton>
-    </ToggleButtonGroup>
+    <DiffLayoutToggle
+      sideBySide={sideBySide}
+      onSideBySideChange={onSideBySideChange}
+    />
   );
   const reviewFilterBar = usesFindingsFilterBar ? (
       <div
@@ -2802,7 +2959,9 @@ export const InlineVisualReview: React.FC<{
             onChange={e => setQuery(e.target.value)}
             inputProps={{ 'aria-label': searchPlaceholder }}
           />
-          <div className={classes.reviewFilterToggle}>{diffDisplayToggle}</div>
+          {phase === 'results' ? null : (
+            <div className={classes.reviewFilterToggle}>{diffDisplayToggle}</div>
+          )}
         </div>
         {filtersActive ? showingCountControl : null}
       </div>
@@ -2848,9 +3007,9 @@ export const InlineVisualReview: React.FC<{
   const autoAcceptIndeterminate = autoAccepted > 0 && autoUndecidedCount > 0;
   const includeAllLabel =
     phase === 'review'
-      ? 'Include all auto remediations'
+      ? 'Include all rule remediations'
       : `Auto-accept all ${
-          usesRemediationVocab(phase) ? 'auto remediations' : 'auto-fixes'
+          usesRemediationVocab(phase) ? 'rule remediations' : 'auto-fixes'
         }`;
   const includeAllExplain =
     phase === 'review' ? REVIEW_INCLUDE_EXPLAIN : AUTO_ACCEPT_EXPLAIN;
@@ -2933,7 +3092,7 @@ export const InlineVisualReview: React.FC<{
           nextLocked
             ? phase === 'autofix' || isCombinedPhase(phase)
               ? usesRemediationVocab(phase)
-                ? 'Accept or decline each auto remediation to continue'
+                ? 'Accept or decline each rule remediation to continue'
                 : 'Accept or decline each auto-fix to continue'
               : phase === 'ai'
                 ? aiLoading
@@ -3013,7 +3172,7 @@ export const InlineVisualReview: React.FC<{
   const acceptAllLabel =
     fixType === 'Auto-fix'
       ? usesRemediationVocab(phase)
-        ? 'Accept all auto remediations'
+        ? 'Accept all rule remediations'
         : 'Accept all auto-fixes'
       : fixType === 'AI-fix'
         ? usesRemediationVocab(phase)
@@ -3023,7 +3182,7 @@ export const InlineVisualReview: React.FC<{
   const declineAllLabel =
     fixType === 'Auto-fix'
       ? usesRemediationVocab(phase)
-        ? 'Decline all auto remediations'
+        ? 'Decline all rule remediations'
         : 'Decline all auto-fixes'
       : fixType === 'AI-fix'
         ? usesRemediationVocab(phase)
@@ -3046,7 +3205,7 @@ export const InlineVisualReview: React.FC<{
           <ListItemText
             primary={
               usesRemediationVocab(phase)
-                ? 'Accept all auto remediations'
+                ? 'Accept all rule remediations'
                 : 'Accept all auto-fixes'
             }
             secondary={INCLUDE_MENU_EXPLAIN.auto}
@@ -3095,7 +3254,7 @@ export const InlineVisualReview: React.FC<{
             closeActions();
           }}
         >
-          {usesRemediationVocab(phase) ? 'Decline auto remediations' : 'Decline auto-fixes'}
+          {usesRemediationVocab(phase) ? 'Decline rule remediations' : 'Decline auto-fixes'}
         </MenuItem>
       )}
       {phase === 'autofix' || isCombinedPhase(phase) ? null : (
@@ -3206,7 +3365,7 @@ export const InlineVisualReview: React.FC<{
             <div
               className={classes.bulkTwinActions}
               role="group"
-              aria-label="Accept or decline remaining auto remediations"
+              aria-label="Accept or decline remaining rule remediations"
             >
               <Button
                 size="small"
@@ -3327,7 +3486,7 @@ export const InlineVisualReview: React.FC<{
     <div
       className={classes.footerBulk}
       role="group"
-      aria-label="Accept or decline all auto remediations"
+      aria-label="Accept or decline all rule remediations"
     >
       <Button
         size="small"
@@ -3433,33 +3592,48 @@ export const InlineVisualReview: React.FC<{
         </div>
   ) : null;
 
-  const findingsTabs =
-    phase === 'results' && phaseTabs.length > 0 ? (
-      <div className={`${classes.tabsHost} ${classes.findingsTabsHost}`}>
-        <HeaderTabs
-          selectedIndex={Math.max(
-            0,
-            phaseTabs.findIndex(tab => tab === fixType),
-          )}
-          onChange={index => {
-            const next = phaseTabs[index];
-            if (!next) return;
-            setFixType(next);
-            setContentType('all');
-          }}
-          tabs={phaseTabs.map(lane => ({
-            id: lane,
-            label: (
-              <span className={classes.tabLabel}>
-                <span>{FINDINGS_TAB_LABEL[lane]}</span>
-                <ReadCountBadge
-                  count={laneCount[lane]}
-                  label={findingsTabCountLabel(lane, laneCount[lane])}
-                />
+  const findingsLaneBreakdown =
+    phase === 'results' && findingsBreakdownItems.length > 0 ? (
+      <div
+        className={classes.findingsLaneBreakdown}
+        role="group"
+        aria-label="Findings by remediation type"
+      >
+        {findingsBreakdownItems.map((item, index) => (
+          <Fragment key={item.lane}>
+            {index > 0 ? (
+              <span className={classes.findingsLaneBreakdownSep} aria-hidden>
+                .
               </span>
-            ),
-          }))}
-        />
+            ) : null}
+            <span className={classes.findingsLaneBreakdownItem}>
+              <button
+                type="button"
+                className={`${classes.findingsLaneBreakdownLink}${
+                  fixType === item.lane ? ` ${classes.findingsLaneBreakdownLinkActive}` : ''
+                }`}
+                aria-pressed={fixType === item.lane}
+                onClick={() => {
+                  setFixType(fixType === item.lane ? 'All' : item.lane);
+                  setContentType('all');
+                }}
+              >
+                {item.label}
+              </button>
+              <Tooltip title={item.hint} arrow>
+                <span
+                  className={classes.catHelpHit}
+                  tabIndex={0}
+                  aria-label={item.hint}
+                  onClick={event => event.stopPropagation()}
+                  onMouseDown={event => event.preventDefault()}
+                >
+                  <HelpOutlineIcon className={classes.catHelp} aria-hidden />
+                </span>
+              </Tooltip>
+            </span>
+          </Fragment>
+        ))}
       </div>
     ) : null;
 
@@ -3564,7 +3738,7 @@ export const InlineVisualReview: React.FC<{
           highlight={bundle.some(f => pulseKey === findingKey(f))}
           showLane
           phase={phase}
-          sideBySide={sideBySide}
+          sideBySide={phase === 'results' ? false : sideBySide}
           readOnly={
             phase === 'results' ||
             (isCombinedPhase(phase) && laneOf(primary) !== 'Auto-fix')
@@ -3826,31 +4000,56 @@ export const InlineVisualReview: React.FC<{
         </div>
         )}
         {showsResultsMix(phase) || phase === 'autofix' || phase === 'ai' || phase === 'review' ? (
-        <>
-        {phase === 'review' || phase === 'ai' ? (
-          <div className={classes.findingsCountHead}>
+        <div className={usesStepPanelChrome ? classes.stepPanelChrome : undefined}>
+        {phase === 'results' ||
+        phase === 'autofix' ||
+        phase === 'review' ||
+        phase === 'ai' ? (
+          <div className={usesStepPanelChrome ? classes.stepIntro : classes.findingsCountHead}>
             <Typography className={classes.listHeading} component="h2">
-              {phase === 'ai'
-                ? findingsOrRemediationsHeading(ai.length, readyAi.length)
-                : findingsRemediationHeading(mix.total, auto.length)}
+              {phase === 'results'
+                ? findingsCountHeading(mix.total)
+                : phase === 'autofix'
+                  ? ruleRemediationsCountHeading(auto.length)
+                  : phase === 'ai'
+                    ? aiRemediationsCountHeading(ai.length)
+                    : findingsRemediationHeading(mix.total, auto.length)}
             </Typography>
+            {phase === 'results' ? (
+              findingsLaneBreakdown
+            ) : stepIntroDescription ? (
+              <Typography
+                className={classes.stepIntroDesc}
+                variant="body2"
+                color="textSecondary"
+              >
+                {stepIntroDescription}
+              </Typography>
+            ) : null}
           </div>
         ) : null}
         {showsFindingsFilters(phase) ? (
         <div
           className={`${classes.resultsMix}${
-            phase === 'ai' ? ` ${classes.resultsMixBeforeSearch}` : ''
-          }${
-            phase === 'review' || phase === 'ai'
-              ? ` ${classes.resultsMixAfterCount}`
-              : ''
+            usesStepPanelChrome
+              ? ` ${classes.resultsMixStep}`
+              : `${
+                  phase === 'ai' ? ` ${classes.resultsMixBeforeSearch}` : ''
+                }${
+                  phase === 'results' ||
+                  phase === 'autofix' ||
+                  phase === 'review' ||
+                  phase === 'ai'
+                    ? ` ${classes.resultsMixAfterCount}`
+                    : ''
+                }`
           }`}
           role="group"
           aria-label={
             phase === 'ai'
               ? 'Severity and category mix for AI remediations'
               : phase === 'autofix'
-                ? 'Severity and category mix for auto remediations'
+                ? 'Severity and category mix for rule remediations'
                 : 'Severity and category mix for this scan'
           }
         >
@@ -3919,8 +4118,6 @@ export const InlineVisualReview: React.FC<{
         </div>
         ) : null}
         {usesFindingsFilterBar ? null : filterToolbar}
-        </>
-        ) : null}
         {showsResultsMix(phase) || !currentRedesign || redesign3Plus ? null : (
           <Typography className={classes.tabPageHint}>
             {REDESIGN_TAB_HINT[fixType]}
@@ -3934,12 +4131,14 @@ export const InlineVisualReview: React.FC<{
             (showListChrome || fixType === 'AI-fix' || fixType === 'All'))) ? (
           <div
             className={`${classes.bulkBar}${
-              phase === 'review' || phase === 'ai'
-                ? ` ${classes.bulkBarCompact}`
-                : currentRedesign
-                  ? ` ${classes.bulkBarSpaced}`
-                  : ''
-            }${phase === 'results' ? ` ${classes.bulkBarBeforeTabs}` : ''}`}
+              usesStepPanelChrome
+                ? ` ${classes.bulkBarStep}`
+                : phase === 'review' || phase === 'ai'
+                  ? ` ${classes.bulkBarCompact}`
+                  : currentRedesign
+                    ? ` ${classes.bulkBarSpaced}`
+                    : ''
+            }${phase === 'results' && !usesStepPanelChrome ? ` ${classes.bulkBarBeforeTabs}` : ''}`}
           >
             {!currentRedesign &&
             phase === 'ai' &&
@@ -4024,8 +4223,8 @@ export const InlineVisualReview: React.FC<{
         ) : null}
 
         {aiGenerateBanner}
-
-        {findingsTabs}
+        </div>
+        ) : null}
 
         {((phase === 'review'
           ? reviewAutoItems.length === 0 &&
@@ -4058,7 +4257,7 @@ export const InlineVisualReview: React.FC<{
                     component="h3"
                     id="review-auto"
                   >
-                    Auto remediations
+                    Rule remediations
                   </Typography>
                   <Typography
                     className={classes.reviewRemainderHint}
@@ -4298,7 +4497,7 @@ const FindingRow: React.FC<{
   highlight,
   showLane = true,
   phase,
-  sideBySide = true,
+  sideBySide = false,
   readOnly,
 }) => {
   const classes = useStyles();
@@ -4377,7 +4576,8 @@ const FindingRow: React.FC<{
     );
 
   const canDecide =
-    lane === 'Auto-fix' || (lane === 'AI-fix' && aiStatus === 'ready');
+    !readOnly &&
+    (lane === 'Auto-fix' || (lane === 'AI-fix' && aiStatus === 'ready'));
   const devSpacesAction = (
     <Button
       size="small"
@@ -4481,8 +4681,9 @@ const FindingRow: React.FC<{
         const beforeLines = beforeOnlyDiff(itemSnip.current, itemSnip.proposed);
         const previewLines = previewDiff(itemSnip.current, itemSnip.proposed);
         const showProposed =
-          itemLane === 'Auto-fix' ||
-          (itemLane === 'AI-fix' && aiStatus === 'ready');
+          phase !== 'results' &&
+          (itemLane === 'Auto-fix' ||
+            (itemLane === 'AI-fix' && aiStatus === 'ready'));
         const aiEmptyCopy = onGenerateAi ? AI_GENERATE_HINT : RESULTS_AI_BODY;
         const renderDiffLines = (lines: DiffLine[]) =>
           lines.length === 0 ? (
@@ -4506,7 +4707,9 @@ const FindingRow: React.FC<{
           );
         const currentLines = beforeLines;
         const findingsNote =
-          itemLane === 'AI-fix' ? (
+          itemLane === 'Auto-fix' && phase === 'results' ? (
+            <p className={classes.splitNote}>{RESULTS_RULE_BODY}</p>
+          ) : itemLane === 'AI-fix' ? (
             <p className={classes.splitNote}>{FINDINGS_AI_BODY}</p>
           ) : itemLane === 'Manual-fix' ? (
             <p className={classes.splitNote}>{FINDINGS_MANUAL_BODY}</p>
@@ -4552,12 +4755,12 @@ const FindingRow: React.FC<{
         const itemLines: DiffLine[] = showRemediation ? previewLines : beforeLines;
         return (
       <div className={classes.diffBlock} key={`diff-${findingKey(item)}`}>
-        {readOnly && itemLane === 'Manual-fix' ? (
+        {readOnly && phase !== 'results' && itemLane === 'Manual-fix' ? (
           <div className={`${classes.suggestionEmpty} ${classes.suggestionLeadRow}`}>
             <span>{RESULTS_MANUAL_BODY}</span>
           </div>
         ) : null}
-        {readOnly && itemLane === 'AI-fix' && isCombinedPhase(phase) ? (
+        {readOnly && phase !== 'results' && itemLane === 'AI-fix' && isCombinedPhase(phase) ? (
           <div className={`${classes.suggestionEmpty} ${classes.suggestionLeadRow}`}>
             <span>{RESULTS_AI_BODY}</span>
           </div>
@@ -4628,6 +4831,7 @@ export const CommitFindingReview: React.FC<{
   setAiDecisions: Dispatch<SetStateAction<Record<string, WizardDecision>>>;
   aiStatus: Record<string, AiRowStatus>;
   sideBySide?: boolean;
+  onSideBySideChange?: (next: boolean) => void;
   readOnly?: boolean;
 }> = ({
   findings,
@@ -4636,10 +4840,14 @@ export const CommitFindingReview: React.FC<{
   aiDecisions,
   setAiDecisions,
   aiStatus,
-  sideBySide = true,
+  sideBySide = false,
+  onSideBySideChange,
   readOnly = false,
 }) => {
   const classes = useStyles();
+  const [localSideBySide, setLocalSideBySide] = useState(sideBySide);
+  const activeSideBySide = onSideBySideChange ? sideBySide : localSideBySide;
+  const setActiveSideBySide = onSideBySideChange ?? setLocalSideBySide;
   const [tab, setTab] = useState(0);
   const [query, setQuery] = useState('');
   const [contentType, setContentType] = useState<'all' | string>('all');
@@ -4746,6 +4954,7 @@ export const CommitFindingReview: React.FC<{
   return (
     <Paper variant="outlined" className={classes.commitReview} elevation={0}>
       <div className={classes.commitFilters}>
+        <div className={classes.reviewFilterRow}>
         <div className={classes.commitFilterSelects}>
         <FormControl variant="outlined" size="small" className={classes.commitSelect}>
           <InputLabel id="commit-severity-label">Severity</InputLabel>
@@ -4826,6 +5035,13 @@ export const CommitFindingReview: React.FC<{
           onChange={e => setQuery(e.target.value)}
           inputProps={{ 'aria-label': 'Search remediations' }}
         />
+        <div className={classes.reviewFilterToggle}>
+          <DiffLayoutToggle
+            sideBySide={activeSideBySide}
+            onSideBySideChange={setActiveSideBySide}
+          />
+        </div>
+        </div>
       </div>
       <div className={`${classes.tabsHost} ${classes.findingsTabsHost}`}>
         <HeaderTabs
@@ -4896,7 +5112,7 @@ export const CommitFindingReview: React.FC<{
                   aiStatus={aiStatus[key] ?? 'idle'}
                   onDecision={next => decideFinding(finding, next)}
                   showLane
-                  sideBySide={sideBySide}
+                  sideBySide={activeSideBySide}
                   readOnly={readOnly}
                 />
               </Collapse>
