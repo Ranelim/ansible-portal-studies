@@ -2562,6 +2562,21 @@ export const InlineVisualReview: React.FC<{
   const presentSeverities = SEV_ORDER.filter(sev =>
     tabFindings.some(f => f.severity === sev),
   );
+  const findingsFilterMix = useMemo(
+    () => mixFromFindings(mixFindings),
+    [mixFindings],
+  );
+  const filterSeverityOptions = useMemo(
+    () =>
+      SEV_ORDER.filter(sev => (findingsFilterMix.bySeverity[sev] ?? 0) > 0),
+    [findingsFilterMix],
+  );
+  const filterCategoryOptions = useMemo(
+    () => findingsFilterMix.categories.filter(cat => cat.count > 0),
+    [findingsFilterMix],
+  );
+  const usesFindingsFilterBar =
+    phase === 'review' || phase === 'ai' || phase === 'autofix';
 
   const showingCount = filtered.length;
   const showingTotal =
@@ -2671,8 +2686,7 @@ export const InlineVisualReview: React.FC<{
       </ToggleButton>
     </ToggleButtonGroup>
   );
-  const reviewFilterBar =
-    phase === 'review' || phase === 'ai' ? (
+  const reviewFilterBar = usesFindingsFilterBar ? (
       <div
         className={classes.reviewFilters}
         role="search"
@@ -2703,6 +2717,59 @@ export const InlineVisualReview: React.FC<{
             </Select>
           </FormControl>
           ) : null}
+          <FormControl
+            variant="outlined"
+            size="small"
+            className={classes.select}
+          >
+            <InputLabel id="review-severity-label">Severity</InputLabel>
+            <Select
+              labelId="review-severity-label"
+              label="Severity"
+              value={severitySelect}
+              onChange={e => {
+                const next = e.target.value as 'all' | SeverityClass;
+                setSeverityFilter(next === 'all' ? new Set() : new Set([next]));
+              }}
+              renderValue={value =>
+                value === 'all' ? 'All severities' : SEV_LABEL[value]
+              }
+            >
+              <MenuItem value="all">All severities</MenuItem>
+              {filterSeverityOptions.map(sev => (
+                <MenuItem key={sev} value={sev}>
+                  {SEV_LABEL[sev]} ({findingsFilterMix.bySeverity[sev] ?? 0})
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <FormControl
+            variant="outlined"
+            size="small"
+            className={classes.select}
+          >
+            <InputLabel id="review-category-label">Category</InputLabel>
+            <Select
+              labelId="review-category-label"
+              label="Category"
+              value={category}
+              onChange={e =>
+                setCategory(e.target.value as 'all' | ApmeRuleCategory)
+              }
+              renderValue={value =>
+                value === 'all'
+                  ? 'All categories'
+                  : APME_CATEGORY_LABEL[value]
+              }
+            >
+              <MenuItem value="all">All categories</MenuItem>
+              {filterCategoryOptions.map(cat => (
+                <MenuItem key={cat.id} value={cat.id}>
+                  {cat.label} ({cat.count})
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
           <FormControl
             variant="outlined"
             size="small"
@@ -3795,33 +3862,6 @@ export const InlineVisualReview: React.FC<{
               onSegmentClick={toggleSeverity}
             />
           </div>
-          <SeverityFilterChips
-            breakdown={mixFromFindings(mixFindings).bySeverity}
-            active={severityFilter}
-            onToggle={toggleSeverity}
-            severityLabel={
-              phase === 'review' || phase === 'ai' ? 'Severity' : undefined
-            }
-            categoryLabel={
-              phase === 'review' || phase === 'ai' ? 'Category' : undefined
-            }
-            categories={
-              categoryAsChips
-                ? mixFromFindings(mixFindings).categories.map(cat => ({
-                    id: cat.id,
-                    label: cat.label,
-                    count: cat.count,
-                    hint: cat.hint,
-                  }))
-                : undefined
-            }
-            activeCategory={categoryAsChips ? category : undefined}
-            onToggleCategory={
-              categoryAsChips
-                ? id => toggleCategory(id as ApmeRuleCategory)
-                : undefined
-            }
-          />
         {resultsCatRows.length > 0 && !categoryAsChips ? (
           <div className={classes.resultsCatViz}>
             {resultsCatRows.map(cat => {
@@ -3878,7 +3918,7 @@ export const InlineVisualReview: React.FC<{
         ) : null}
         </div>
         ) : null}
-        {phase === 'review' || phase === 'ai' ? null : filterToolbar}
+        {usesFindingsFilterBar ? null : filterToolbar}
         </>
         ) : null}
         {showsResultsMix(phase) || !currentRedesign || redesign3Plus ? null : (
@@ -3951,7 +3991,7 @@ export const InlineVisualReview: React.FC<{
                   role="region"
                   aria-label="Bulk finding actions"
                 >
-                  {phase === 'review' || phase === 'ai' ? (
+                  {usesFindingsFilterBar ? (
                     reviewFilterBar
                   ) : redesign4 ? (
                     showingCountControl
@@ -3966,7 +4006,7 @@ export const InlineVisualReview: React.FC<{
                   ) : (
                     <div>{redesignActionsControl}</div>
                   )}
-                  {phase === 'review' || phase === 'ai' ? null : phase ===
+                  {usesFindingsFilterBar ? null : phase ===
                       'results' ||
                     showFooterRemaining ||
                     showFooterAll ? (
