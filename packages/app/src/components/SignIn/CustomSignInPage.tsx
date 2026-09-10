@@ -3,7 +3,11 @@ import { SignInPage } from '@backstage/core-components';
 import { SignInPageProps } from '@backstage/core-plugin-api';
 import { Box, Typography, Button, makeStyles, CircularProgress, TextField } from '@material-ui/core';
 import LockOutlinedIcon from '@material-ui/icons/LockOutlined';
-import { STUDY_DISPLAY_NAME, STUDY_PASSWORD } from '../../studyLock';
+import {
+  STUDY_BUILD_LABEL,
+  STUDY_DISPLAY_NAME,
+  STUDY_PASSWORD,
+} from '../../studyLock';
 
 type CustomSignInPageProps = SignInPageProps & {
   providers: any[];
@@ -104,6 +108,11 @@ const useStyles = makeStyles(theme => ({
     fontSize: 13,
     marginBottom: theme.spacing(1),
   },
+  buildLabel: {
+    marginTop: theme.spacing(2),
+    fontSize: 11,
+    color: theme.palette.text.disabled,
+  },
 }));
 
 export const CustomSignInPage = (props: CustomSignInPageProps) => {
@@ -187,6 +196,10 @@ export const CustomSignInPage = (props: CustomSignInPageProps) => {
               Continue
             </Button>
           </form>
+          <Typography className={classes.buildLabel}>
+            Study build {STUDY_BUILD_LABEL}. If Home is missing from the menu,
+            hard-refresh this page (Cmd+Shift+R or Ctrl+Shift+R).
+          </Typography>
         </Box>
       </Box>
     );

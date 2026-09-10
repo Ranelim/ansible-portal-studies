@@ -39,6 +39,9 @@ jobs:
           PUBLIC_URL: '/ansible-portal-studies/'
           NODE_OPTIONS: '--max-old-space-size=4096'
 
+      - name: Add GitHub Pages SPA fallback
+        run: cp packages/app/dist/index.html packages/app/dist/404.html
+
       - name: Setup Pages
         uses: actions/configure-pages@v4
 

@@ -3,7 +3,25 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
     <meta name="theme-color" content="#000000" />
+    <script>
+      (function () {
+        var BUILD = '2026-09-10-home-v2';
+        var key = 'portal-study-html-build';
+        try {
+          if (localStorage.getItem(key) !== BUILD) {
+            localStorage.setItem(key, BUILD);
+            if (sessionStorage.getItem(key + '-reload') !== BUILD) {
+              sessionStorage.setItem(key + '-reload', BUILD);
+              location.reload();
+            }
+          }
+        } catch (e) {}
+      })();
+    </script>
     <meta
       name="description"
       content="Backstage is an open source framework for building developer self-services"
