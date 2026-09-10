@@ -70,7 +70,7 @@ export const AutomationPortalBrand = () => {
         to={STUDY_LANDING}
         underline="none"
         color="inherit"
-        aria-label="Home — Ansible Automation Portal"
+        aria-label="Templates — Ansible Automation Portal"
         style={{
           display: 'flex',
           alignItems: 'center',

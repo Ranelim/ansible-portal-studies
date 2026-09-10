@@ -12,11 +12,11 @@ import {
 } from '@ansible/plugin-backstage-self-service';
 
 export const STUDY_DISPLAY_NAME = 'Ansible Automation Portal Prototype - APME V2';
-export const STUDY_LANDING = '/self-service/home';
+export const STUDY_LANDING = '/create?scope=experience';
 export const STUDY_PASSWORD = 'fish-dawn';
 /** Bump when study UI changes — shown on access gate; also in index.html inline reload. */
-export const STUDY_BUILD_ID = '2026-09-10-rail-fix-v2';
-export const STUDY_BUILD_LABEL = 'Sep 10, 2026 · Home rail fix v2';
+export const STUDY_BUILD_ID = '2026-09-10-templates-landing';
+export const STUDY_BUILD_LABEL = 'Sep 10, 2026 · Templates landing + remediation footer';
 
 export function lockStudyWorld() {
   if (typeof window === 'undefined') return;

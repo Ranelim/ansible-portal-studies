@@ -45,7 +45,6 @@ import {
   ExperiencesHomePage,
   PortalAssistantPage,
   SHOW_ASSISTANT_EXPERIENCE,
-  StudyHomePage,
   ExperienceSettingsPage,
   ExperienceDashboardPage,
   OrchestratorPage,
@@ -199,9 +198,15 @@ const RouteViewContent = () => {
             </RequirePermission>
           }
         />
-        {/* IA — Flat Home dashboard + Experiences All + Catalog hub */}
-        <Route path="home" element={<StudyHomePage />} />
-        <Route path="home/*" element={<StudyHomePage />} />
+        {/* Study — Home hidden; land on Automate Templates */}
+        <Route
+          path="home"
+          element={<Navigate to="/create?scope=experience" replace />}
+        />
+        <Route
+          path="home/*"
+          element={<Navigate to="/create?scope=experience" replace />}
+        />
         <Route path="experiences" element={<ExperiencesHomePage />} />
         <Route path="experiences/*" element={<ExperiencesHomePage />} />
         <Route

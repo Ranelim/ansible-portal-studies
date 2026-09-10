@@ -1,7 +1,7 @@
 import { type NavIaModel } from '@ansible/plugin-backstage-self-service';
 import { STUDY_LANDING } from '../../studyLock';
 
-/** Study prototype — always land on Home. */
+/** Study prototype — land on Automate → Templates. */
 export function modelHomePath(_model?: NavIaModel): string {
   return STUDY_LANDING;
 }
@@ -21,7 +21,9 @@ export function mismatchedModelRedirect(
     pathname === '/self-service/setup' ||
     pathname.startsWith('/self-service/setup/') ||
     pathname.startsWith('/self-service/outcomes') ||
-    pathname.startsWith('/self-service/home-dashboard')
+    pathname.startsWith('/self-service/home-dashboard') ||
+    pathname === '/self-service/home' ||
+    pathname.startsWith('/self-service/home/')
   ) {
     return STUDY_LANDING;
   }

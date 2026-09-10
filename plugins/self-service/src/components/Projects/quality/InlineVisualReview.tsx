@@ -41,6 +41,7 @@ import { fade, type Theme } from '@material-ui/core/styles';
 import ArrowDropDownIcon from '@material-ui/icons/ArrowDropDown';
 import CheckIcon from '@material-ui/icons/Check';
 import CloseIcon from '@material-ui/icons/Close';
+import CodeIcon from '@material-ui/icons/Code';
 import ExpandLessIcon from '@material-ui/icons/ExpandLess';
 import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
 import HelpOutlineIcon from '@material-ui/icons/HelpOutline';
@@ -71,6 +72,15 @@ import { statusColors } from '../../common/statusColors';
 
 const PILL = { borderRadius: 20, textTransform: 'none' as const, fontWeight: 600 };
 const PILL_COMPACT = { ...PILL, minWidth: 0, padding: '2px 12px' };
+/** Header-slot control — same 28px row as Accept / Decline. */
+const HEADER_ACTION = {
+  ...PILL,
+  minWidth: 0,
+  minHeight: 28,
+  height: 28,
+  padding: '0 12px',
+  boxSizing: 'border-box' as const,
+};
 const ROW_TOGGLE_SX = {
   height: 28,
   minHeight: 28,
@@ -4561,11 +4571,33 @@ const FindingRow: React.FC<{
     </ToggleButtonGroup>
   );
 
+  const openDevSpaces = (item: QualityViolation = finding) =>
+    window.open(
+      `/devspaces-mockup.html?file=${encodeURIComponent(
+        item.file || '',
+      )}&line=${item.lineStart}&tier=${item.fixTier}&status=open`,
+      '_blank',
+    );
+
   const canDecide =
     !readOnly &&
     (lane === 'Auto-fix' || (lane === 'AI-fix' && aiStatus === 'ready'));
+  const devSpacesAction = (
+    <Button
+      size="small"
+      variant="outlined"
+      color="primary"
+      startIcon={<CodeIcon style={{ fontSize: 14 }} />}
+      style={HEADER_ACTION}
+      onClick={() => openDevSpaces()}
+    >
+      Open in Dev Spaces
+    </Button>
+  );
   const actions = canDecide ? (
       suggestionActions
+    ) : lane === 'Manual-fix' ? (
+      devSpacesAction
     ) : readOnly ? null : lane === 'AI-fix' && aiStatus === 'loading' ? null : lane === 'AI-fix' ? (
       onGenerateAi ? (
         <Button
