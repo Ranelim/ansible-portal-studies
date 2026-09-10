@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
-import { DEVSPACES_BASE_URL } from '../../Admin/syncDemoData';
+import { devSpacesMockupPath } from '../../Admin/syncDemoData';
 import { isDevSpacesConnected } from '../../../hooks/devSpacesSetup';
 import { useUserRoleContext } from '../../../hooks/useUserRole';
 import { Table, TableColumn } from '@backstage/core-components';
@@ -387,7 +387,7 @@ const RowActionsMenu = ({
       >
         {isDevSpacesConnected() && hasRole('developer') && (
           <MenuItem onClick={() => {
-            window.open(`${DEVSPACES_BASE_URL}/#${repo.url}/tree/${repo.branch}`, '_blank');
+            window.open(`${devSpacesMockupPath()}/#${repo.url}/tree/${repo.branch}`, '_blank');
             handleClose();
           }}>
             <ListItemIcon><CodeIcon fontSize="small" /></ListItemIcon>
@@ -877,7 +877,7 @@ export const GitRepositoriesContent = () => {
                 size="small"
                 onClick={(e) => {
                   e.stopPropagation();
-                  window.open(`${DEVSPACES_BASE_URL}/#${row.url}/tree/${row.branch}`, '_blank');
+                  window.open(`${devSpacesMockupPath()}/#${row.url}/tree/${row.branch}`, '_blank');
                 }}
               >
                 <CodeIcon fontSize="small" />

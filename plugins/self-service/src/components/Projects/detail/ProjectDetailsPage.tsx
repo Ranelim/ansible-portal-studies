@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
-import { DEVSPACES_BASE_URL } from '../../Admin/syncDemoData';
+import { devSpacesMockupPath } from '../../Admin/syncDemoData';
 import { isDevSpacesConnected } from '../../../hooks/devSpacesSetup';
 import { useUserRoleContext } from '../../../hooks/useUserRole';
 import { useParams, useNavigate, useSearchParams, Link as RouterLink } from 'react-router-dom';
@@ -1254,7 +1254,7 @@ export const ProjectDetailsPage = () => {
               onPushToAap={openPushModal}
               onOpenDevSpaces={() =>
                 openInDevSpaces(
-                  `${DEVSPACES_BASE_URL}/#${project.repo.url}/tree/${project.repo.branch}`,
+                  `${devSpacesMockupPath()}/#${project.repo.url}/tree/${project.repo.branch}`,
                 )
               }
             />

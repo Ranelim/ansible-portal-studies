@@ -14,6 +14,7 @@ import {
   type AiRowStatus,
   type WizardDecision,
 } from './SpaRemediationReview';
+import { devSpacesMockupUrl } from '../../Admin/syncDemoData';
 
 const PILL = { borderRadius: 20, textTransform: 'none' as const, fontWeight: 600 };
 
@@ -133,7 +134,10 @@ export const RemediationReceipt: React.FC<{
                 startIcon={<CodeIcon fontSize="small" />}
                 onClick={() =>
                   window.open(
-                    `/devspaces-mockup.html?state=${hasPullRequest ? 'pr-review' : 'branch-review'}&branch=${encodeURIComponent(branchName)}`,
+                    devSpacesMockupUrl({
+                      state: hasPullRequest ? 'pr-review' : 'branch-review',
+                      branch: branchName,
+                    }),
                     '_blank',
                   )
                 }

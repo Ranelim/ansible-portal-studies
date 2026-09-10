@@ -40,7 +40,7 @@ import SvgIcon from '@material-ui/core/SvgIcon';
 import { useProjectDetailStyles } from '../detail/styles';
 import { statusColors } from '../../common/statusColors';
 import { useUserRoleContext } from '../../../hooks/useUserRole';
-import { DEVSPACES_BASE_URL } from '../../Admin/syncDemoData';
+import { devSpacesMockupPath } from '../../Admin/syncDemoData';
 import { isDevSpacesConnected } from '../../../hooks/devSpacesSetup';
 import {
   DISCOVERED_REPOS,
@@ -910,7 +910,7 @@ export const RepositoryDetailPage = () => {
                 variant="outlined"
                 size="small"
                 startIcon={<CodeIcon style={{ fontSize: 16 }} />}
-                onClick={() => window.open(`${DEVSPACES_BASE_URL}/#${repo.url}/tree/${repo.branch}`, '_blank')}
+                onClick={() => window.open(`${devSpacesMockupPath()}/#${repo.url}/tree/${repo.branch}`, '_blank')}
                 style={{ textTransform: 'none', fontWeight: 500 }}
               >
                 Edit in Dev Spaces

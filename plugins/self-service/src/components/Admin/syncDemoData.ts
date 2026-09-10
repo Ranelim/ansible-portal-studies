@@ -65,10 +65,51 @@ export type ConnectionProvider = {
   syncJobs: { name: string; interval: string; enabled: boolean }[];
 };
 
-/** Central Dev Spaces base URL used by all prototype touchpoints.
- *  Points to the local VS Code mockup so all "Edit in Dev Spaces" buttons
- *  work in both local dev and the static GitLab Pages deployment. */
-export const DEVSPACES_BASE_URL = '/devspaces-mockup.html';
+/** GitHub Pages study deploy — app is not at domain root. */
+const STUDY_GH_PAGES_PREFIX = '/ansible-portal-studies';
+
+/** Subpath when the SPA is hosted under a prefix (e.g. GitHub Pages). */
+export function appPublicBasePath(): string {
+  if (typeof window !== 'undefined') {
+    const { pathname } = window.location;
+    if (
+      pathname === STUDY_GH_PAGES_PREFIX ||
+      pathname.startsWith(`${STUDY_GH_PAGES_PREFIX}/`)
+    ) {
+      return STUDY_GH_PAGES_PREFIX;
+    }
+  }
+  const built =
+    typeof process !== 'undefined' &&
+    typeof process.env !== 'undefined' &&
+    process.env.PUBLIC_URL
+      ? process.env.PUBLIC_URL.replace(/\/$/, '')
+      : '';
+  return built && built !== '/' ? built : '';
+}
+
+/** Dev Spaces mockup HTML (packages/app/public) with deploy subpath when needed. */
+export function devSpacesMockupPath(): string {
+  return `${appPublicBasePath()}/devspaces-mockup.html`;
+}
+
+/** @deprecated use devSpacesMockupPath() */
+export const DEVSPACES_BASE_URL = devSpacesMockupPath();
+
+export function devSpacesMockupUrl(
+  query?: Record<string, string | number | undefined>,
+): string {
+  const base = devSpacesMockupPath();
+  if (!query) return base;
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined && value !== '') {
+      params.set(key, String(value));
+    }
+  }
+  const qs = params.toString();
+  return qs ? `${base}?${qs}` : base;
+}
 
 export const DEMO_CONNECTIONS: ConnectionProvider[] = [
   {

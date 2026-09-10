@@ -69,6 +69,7 @@ import { snippetForRule } from './spaWizardSnippets';
 import { beforeOnlyDiff, previewDiff, splitDiff, unifiedDiff, type DiffLine } from './qualityDiff';
 import { ReadCountBadge } from '../../common/ReadCountBadge';
 import { statusColors } from '../../common/statusColors';
+import { devSpacesMockupUrl } from '../../Admin/syncDemoData';
 
 const PILL = { borderRadius: 20, textTransform: 'none' as const, fontWeight: 600 };
 const PILL_COMPACT = { ...PILL, minWidth: 0, padding: '2px 12px' };
@@ -4573,9 +4574,12 @@ const FindingRow: React.FC<{
 
   const openDevSpaces = (item: QualityViolation = finding) =>
     window.open(
-      `/devspaces-mockup.html?file=${encodeURIComponent(
-        item.file || '',
-      )}&line=${item.lineStart}&tier=${item.fixTier}&status=open`,
+      devSpacesMockupUrl({
+        file: item.file || '',
+        line: item.lineStart,
+        tier: item.fixTier,
+        status: 'open',
+      }),
       '_blank',
     );
 

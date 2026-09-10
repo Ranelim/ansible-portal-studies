@@ -47,7 +47,7 @@ import LoopIcon from '@material-ui/icons/Loop';
 import CodeIcon from '@material-ui/icons/Code';
 import { rootRouteRef, selectedTemplateRouteRef } from '../../routes';
 import { useUserRole } from '../../hooks/useUserRole';
-import { DEVSPACES_BASE_URL } from '../Admin/syncDemoData';
+import { devSpacesMockupPath } from '../Admin/syncDemoData';
 import { isDevSpacesConnected } from '../../hooks/devSpacesSetup';
 import { createTarArchive } from '../utils/tarArchiveUtils';
 import {
@@ -1742,7 +1742,7 @@ export const RunTask = () => {
                 if (!repoLink) return null;
                 return (
                   <Button
-                    onClick={() => window.open(`${DEVSPACES_BASE_URL}/#${repoLink.url}`, '_blank')}
+                    onClick={() => window.open(`${devSpacesMockupPath()}/#${repoLink.url}`, '_blank')}
                     variant="outlined"
                     size="small"
                     startIcon={<CodeIcon style={{ fontSize: 16 }} />}
@@ -1833,7 +1833,7 @@ export const RunTask = () => {
                   if (!repoMatch) return null;
                   return (
                     <Button
-                      onClick={() => window.open(`${DEVSPACES_BASE_URL}/#${repoMatch[1]}`, '_blank')}
+                      onClick={() => window.open(`${devSpacesMockupPath()}/#${repoMatch[1]}`, '_blank')}
                       variant="outlined"
                       size="small"
                       startIcon={<CodeIcon style={{ fontSize: 16 }} />}

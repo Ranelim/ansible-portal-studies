@@ -29,7 +29,7 @@ import VerifiedUserOutlinedIcon from '@material-ui/icons/VerifiedUserOutlined';
 import CodeIcon from '@material-ui/icons/Code';
 import { CatalogFilterLayout } from '@backstage/plugin-catalog-react';
 import { statusColors } from '../../common/statusColors';
-import { DEVSPACES_BASE_URL } from '../../Admin/syncDemoData';
+import { devSpacesMockupPath } from '../../Admin/syncDemoData';
 import { isDevSpacesConnected } from '../../../hooks/devSpacesSetup';
 
 type CIRunStatus = 'success' | 'failure' | 'running' | 'cancelled' | 'queued';
@@ -413,7 +413,7 @@ export const CIActivityContent = () => {
       render: (row: CIRun) => row.status === 'failure' ? (
         <Tooltip title="Edit in Dev Spaces" arrow>
           <IconButton size="small"
-            onClick={(e: React.MouseEvent) => { e.stopPropagation(); window.open(`${DEVSPACES_BASE_URL}/#https://github.com/${row.project}/tree/${row.branch}`, '_blank'); }}
+            onClick={(e: React.MouseEvent) => { e.stopPropagation(); window.open(`${devSpacesMockupPath()}/#https://github.com/${row.project}/tree/${row.branch}`, '_blank'); }}
             style={{ padding: 6, borderRadius: 4, border: '1px solid #d2d2d2', background: '#fafafa' }}>
             <CodeIcon style={{ fontSize: 16, color: '#6a6e73' }} />
           </IconButton>
