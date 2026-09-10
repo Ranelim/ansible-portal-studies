@@ -45,7 +45,7 @@ import {
   ExperiencesHomePage,
   PortalAssistantPage,
   SHOW_ASSISTANT_EXPERIENCE,
-  FlatHomeDashboardPage,
+  StudyHomePage,
   ExperienceSettingsPage,
   ExperienceDashboardPage,
   OrchestratorPage,
@@ -200,8 +200,8 @@ const RouteViewContent = () => {
           }
         />
         {/* IA — Flat Home dashboard + Experiences All + Catalog hub */}
-        <Route path="home" element={<FlatHomeDashboardPage />} />
-        <Route path="home/*" element={<FlatHomeDashboardPage />} />
+        <Route path="home" element={<StudyHomePage />} />
+        <Route path="home/*" element={<StudyHomePage />} />
         <Route path="experiences" element={<ExperiencesHomePage />} />
         <Route path="experiences/*" element={<ExperiencesHomePage />} />
         <Route

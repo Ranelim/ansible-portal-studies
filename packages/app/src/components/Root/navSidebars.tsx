@@ -1453,7 +1453,7 @@ const ExperiencesDomainSidebar = () => {
 
   return (
     <SearchAndMenu showSearch={false}>
-      <StaticNavItem icon={DashboardIcon} text="Dashboard" />
+      <SidebarItem icon={HomeIcon} to="/self-service/home" text="Home" />
       <ExpandableNavItem
         id="develop-automate"
         icon={PlayArrowIcon}

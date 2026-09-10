@@ -5,6 +5,7 @@ export { HomeBandDashboardPage } from './HomeBandDashboardPage';
 export { ExperiencesHomePage } from './ExperiencesHomePage';
 export { PortalAssistantPage } from './PortalAssistantPage';
 export { FlatHomeDashboardPage } from './FlatHomeDashboardPage';
+export { StudyHomePage } from './StudyHomePage';
 export { ExperienceSettingsPage } from './ExperienceSettingsPage';
 export { ExperienceDashboardPage } from './ExperienceDashboardPage';
 export { OrchestratorPage } from './OrchestratorPage';

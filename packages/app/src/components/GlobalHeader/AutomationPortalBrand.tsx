@@ -1,6 +1,8 @@
+import { Link } from '@backstage/core-components';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import { useTheme } from '@mui/material/styles';
+import { STUDY_LANDING } from '../../studyLock';
 import { ExperiencesWaffleButton } from './ExperiencesWaffleButton';
 
 /** Matches Backstage/RHDH open sidebar. */
@@ -64,8 +66,11 @@ export const AutomationPortalBrand = () => {
       }}
     >
       <ExperiencesWaffleButton />
-      <Box
-        aria-label="Ansible Automation Portal"
+      <Link
+        to={STUDY_LANDING}
+        underline="none"
+        color="inherit"
+        aria-label="Home — Ansible Automation Portal"
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -114,7 +119,7 @@ export const AutomationPortalBrand = () => {
             Ansible Automation Portal
           </Typography>
         </Box>
-      </Box>
+      </Link>
     </Box>
   );
 };
