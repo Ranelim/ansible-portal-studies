@@ -244,6 +244,11 @@ const useStyles = makeStyles(theme => ({
     width: '100%',
     overflowX: 'hidden',
     boxSizing: 'border-box',
+    display: 'flex',
+    flexDirection: 'column',
+    flex: 1,
+    minHeight: 0,
+    height: '100%',
   },
   visualSession: {
     maxWidth: '100%',
@@ -270,6 +275,11 @@ const useStyles = makeStyles(theme => ({
     width: '100%',
     overflowX: 'hidden',
     boxSizing: 'border-box',
+    display: 'flex',
+    flexDirection: 'column',
+    flex: 1,
+    minHeight: 0,
+    height: '100%',
   },
   /**
    * Redesign layouts fill the inset well (`data-portal-remediate-fill` on html).
@@ -313,9 +323,12 @@ const useStyles = makeStyles(theme => ({
     minWidth: 0,
     width: '100%',
     maxWidth: '100%',
+    height: '100%',
     display: 'flex',
     flexDirection: 'column',
-    overflow: 'auto',
+    // Findings scroll inside InlineVisualReview.scrollBody — not here.
+    // overflow:auto on this wrapper pushed the wizard footer below the fold.
+    overflow: 'hidden',
   },
   compareStrip: {
     flexShrink: 0,
