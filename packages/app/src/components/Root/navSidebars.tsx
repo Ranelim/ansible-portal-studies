@@ -253,6 +253,13 @@ const useExpandableNavItemStyles = makeStyles(theme => {
       backgroundColor: selectedBg,
       color: nav.selectedColor ?? theme.palette.text.primary,
     },
+    childLinkStatic: {
+      cursor: 'default',
+      pointerEvents: 'none',
+      '&:hover, &:focus-visible': {
+        backgroundColor: 'transparent',
+      },
+    },
   };
 });
 
@@ -308,6 +315,16 @@ const ExpandableNavChild = ({
     >
       {text}
     </Link>
+  );
+};
+
+/** Nested rail label — visible but not navigable (study prototype). */
+const StaticNavChild = ({ text }: { text: string }) => {
+  const classes = useExpandableNavItemStyles();
+  return (
+    <span className={`${classes.childLink} ${classes.childLinkStatic}`} aria-disabled="true">
+      {text}
+    </span>
   );
 };
 
@@ -1465,11 +1482,7 @@ const ExperiencesDomainSidebar = () => {
           text="Templates"
           extraActive={p => p === '/create' || p.startsWith('/create/')}
         />
-        <ExpandableNavChild
-          to="/self-service/create/tasks"
-          text="Runs"
-          extraActive={p => p.startsWith('/self-service/create/tasks')}
-        />
+        <StaticNavChild text="Runs" />
       </ExpandableNavItem>
       <ExpandableNavItem
         id="develop-git-repos"

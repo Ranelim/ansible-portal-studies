@@ -4586,6 +4586,7 @@ const FindingRow: React.FC<{
   const canDecide =
     !readOnly &&
     (lane === 'Auto-fix' || (lane === 'AI-fix' && aiStatus === 'ready'));
+  const devSpacesDisplayOnly = phase === 'results';
   const devSpacesAction = (
     <Button
       size="small"
@@ -4593,7 +4594,9 @@ const FindingRow: React.FC<{
       color="primary"
       startIcon={<CodeIcon style={{ fontSize: 14 }} />}
       style={HEADER_ACTION}
-      onClick={() => openDevSpaces()}
+      disabled={devSpacesDisplayOnly}
+      tabIndex={devSpacesDisplayOnly ? -1 : undefined}
+      onClick={devSpacesDisplayOnly ? undefined : () => openDevSpaces()}
     >
       Open in Dev Spaces
     </Button>

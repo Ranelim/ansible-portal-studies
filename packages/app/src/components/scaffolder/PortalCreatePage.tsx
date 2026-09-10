@@ -278,13 +278,15 @@ export const PortalCreatePage = () => {
 
   return (
     <Page themeId="home">
-      {!experienceScoped && (
-        <Header
-          title="Create"
-          subtitle="Choose a template to create automation content."
-          pageTitleOverride="Create"
-        />
-      )}
+      <Header
+        title={experienceScoped ? 'Templates' : 'Create'}
+        subtitle={
+          experienceScoped
+            ? undefined
+            : 'Choose a template to create automation content.'
+        }
+        pageTitleOverride={experienceScoped ? 'Templates' : 'Create'}
+      />
       <Content>
         <Box className={classes.filterBand}>
         <Box className={classes.toolbar}>
