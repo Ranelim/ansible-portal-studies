@@ -1,4 +1,4 @@
-import { PropsWithChildren, useEffect } from 'react';
+import { PropsWithChildren, useEffect, useLayoutEffect } from 'react';
 import { makeStyles, Box, Typography, Button } from '@material-ui/core';
 import WarningIcon from '@material-ui/icons/Warning';
 import { useLocation } from 'react-router-dom';
@@ -435,6 +435,36 @@ const GlobalRestartBanner = () => {
  *  Assistant experience is parked (`SHOW_ASSISTANT_EXPERIENCE`). Lightspeed FAB stays. */
 // Path helpers live in GlobalShellResumeBar.
 
+/**
+ * Production / Rspack builds drop BackstageSidebar-* class names, so @global
+ * rail clearance never matches. Pin the fixed drawer below the masthead inline.
+ */
+function useExperienceRailBelowMasthead(chromeTop: number, enabled: boolean) {
+  useLayoutEffect(() => {
+    if (!enabled) return undefined;
+
+    const topPx = `${chromeTop}px`;
+    const sync = (): boolean => {
+      const el = document.querySelector(
+        'nav[aria-label="sidebar nav"] > div',
+      ) as HTMLElement | null;
+      if (!el) return false;
+      el.style.setProperty('top', topPx, 'important');
+      el.style.setProperty('bottom', '0', 'important');
+      el.style.setProperty('height', 'auto', 'important');
+      return true;
+    };
+
+    if (sync()) return undefined;
+
+    const observer = new MutationObserver(() => {
+      if (sync()) observer.disconnect();
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, [chromeTop, enabled]);
+}
+
 export const Root = ({ children }: PropsWithChildren<{}>) => {
   const rootClasses = useRootStyles();
   const location = useLocation();
@@ -470,6 +500,8 @@ export const Root = ({ children }: PropsWithChildren<{}>) => {
       `${chromeTop}px`,
     );
   }, [chromeTop, magentaBarPx]);
+
+  useExperienceRailBelowMasthead(chromeTop, !isSetup && !onGlobalShell);
 
   const chromeOffsetStyle = {
     paddingTop: chromeTop,
