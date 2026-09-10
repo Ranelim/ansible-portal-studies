@@ -127,7 +127,7 @@ const useRootStyles = makeStyles(theme => {
     },
     // JSS hashes class names (e.g. BackstageSidebar-root-83) — use substring match
     // so the rail clears the masthead (+ Admin Sync bar when --portal-chrome-top is set).
-    '[class*="BackstageSidebar-root"]': {
+    '[class*="BackstageSidebar-root"], nav[aria-label="sidebar nav"] > div': {
       top: `var(--portal-chrome-top, ${CHROME_TOP_BASE}px) !important`,
       bottom: '0 !important',
       height: 'auto !important',
@@ -152,7 +152,8 @@ const useRootStyles = makeStyles(theme => {
       },
     },
     // Always-on scroll region for long experience menus.
-    '[class*="BackstageSidebar-drawer"] [data-portal-sidebar-scroll]': {
+    '[class*="BackstageSidebar-drawer"] [data-portal-sidebar-scroll], [data-portal-sidebar-scroll]':
+      {
       flex: '1 1 auto !important',
       flexShrink: '1 !important' as any,
       minHeight: '0 !important',

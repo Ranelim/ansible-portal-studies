@@ -15,12 +15,14 @@ export const STUDY_DISPLAY_NAME = 'Ansible Automation Portal Prototype - APME V2
 export const STUDY_LANDING = '/self-service/home';
 export const STUDY_PASSWORD = 'fish-dawn';
 /** Bump when study UI changes — shown on access gate; also in index.html inline reload. */
-export const STUDY_BUILD_ID = '2026-09-10-home-v2';
-export const STUDY_BUILD_LABEL = 'Sep 10, 2026 · Home + remediation footer';
+export const STUDY_BUILD_ID = '2026-09-10-rail-fix';
+export const STUDY_BUILD_LABEL = 'Sep 10, 2026 · Home rail clearance fix';
 
 export function lockStudyWorld() {
   if (typeof window === 'undefined') return;
   try {
+    document.documentElement.removeAttribute('data-portal-remediate-fill');
+    document.documentElement.removeAttribute('data-portal-assistant-rail');
     localStorage.setItem('portal-user-role', 'developer');
     localStorage.setItem('portal-nav-seat', 'developer');
     writeSetupDemoMode('post-setup');
